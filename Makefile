@@ -665,14 +665,16 @@ ifeq ($(PLATFORM),freebsd)
 
   # optional features/libraries
   ifeq ($(USE_OPENAL),1)
-    ifeq ($(USE_OPENAL_DLOPEN),1)
-      CLIENT_LIBS += $(THREAD_LIBS) -lopenal
+    CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
+    ifneq ($(USE_LOCAL_HEADERS),1)
+      CLIENT_CFLAGS += $(OPENAL_CFLAGS)
     endif
   endif
 
   ifeq ($(USE_CURL),1)
-    ifeq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += -lcurl
+    CLIENT_LIBS += $(CURL_LIBS)
+    ifneq ($(USE_LOCAL_HEADERS),1)
+      CLIENT_CFLAGS += $(CURL_CFLAGS)
     endif
   endif
 
