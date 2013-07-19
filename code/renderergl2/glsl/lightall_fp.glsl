@@ -302,9 +302,9 @@ void main()
 #endif
 
 #if defined(USE_LIGHT) && defined(USE_FAST_LIGHT)
-	gl_FragColor = diffuse.rgb;
+	gl_FragColor.rgb = diffuseAlbedo.rgb;
   #if defined(USE_LIGHTMAP) 
-	gl_FragColor *= lightColor;
+	gl_FragColor.rgb *= lightColor;
   #endif
 #elif defined(USE_LIGHT)
 	L = normalize(L);
