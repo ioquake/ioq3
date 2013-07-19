@@ -3361,7 +3361,7 @@ void RE_LoadWorldMap( const char *name ) {
 		int lightGridSize;
 		int i;
 
-        w = &s_worldData;
+		w = &s_worldData;
 
 		lightGridSize = w->lightGridBounds[0] * w->lightGridBounds[1] * w->lightGridBounds[2];
 		primaryLightGrid = ri.Malloc(lightGridSize * sizeof(*primaryLightGrid));
