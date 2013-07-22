@@ -930,7 +930,6 @@ void GL_SetDefaultState( void )
 	glState.glStateBits = GLS_DEPTHTEST_DISABLE | GLS_DEPTHMASK_TRUE;
 
 	glState.vertexAttribsState = 0;
-	glState.vertexAttribPointersSet = 0;
 	glState.currentProgram = 0;
 	qglUseProgramObjectARB(0);
 

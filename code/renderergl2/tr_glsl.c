@@ -1654,7 +1654,6 @@ void GLSL_VertexAttribsState(uint32_t stateBits)
 
 void GLSL_VertexAttribPointers(uint32_t attribBits)
 {
-	qboolean animated;
 	int newFrame, oldFrame;
 	
 	if(!glState.currentVBO)
@@ -1669,105 +1668,92 @@ void GLSL_VertexAttribPointers(uint32_t attribBits)
 	// position/normal/tangent/bitangent are always set in case of animation
 	oldFrame = glState.vertexAttribsOldFrame;
 	newFrame = glState.vertexAttribsNewFrame;
-	animated = (oldFrame != newFrame) && (glState.vertexAttribsInterpolation > 0.0f);
 	
-	if((attribBits & ATTR_POSITION) && (!(glState.vertexAttribPointersSet & ATTR_POSITION) || animated))
+	if(attribBits & ATTR_POSITION)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_POSITION )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_POSITION, 3, GL_FLOAT, 0, glState.currentVBO->stride_xyz, BUFFER_OFFSET(glState.currentVBO->ofs_xyz + newFrame * glState.currentVBO->size_xyz));
-		glState.vertexAttribPointersSet |= ATTR_POSITION;
 	}
 
-	if((attribBits & ATTR_TEXCOORD) && !(glState.vertexAttribPointersSet & ATTR_TEXCOORD))
+	if(attribBits & ATTR_TEXCOORD)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_TEXCOORD )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_TEXCOORD0, 2, GL_FLOAT, 0, glState.currentVBO->stride_st, BUFFER_OFFSET(glState.currentVBO->ofs_st));
-		glState.vertexAttribPointersSet |= ATTR_TEXCOORD;
 	}
 
-	if((attribBits & ATTR_LIGHTCOORD) && !(glState.vertexAttribPointersSet & ATTR_LIGHTCOORD))
+	if(attribBits & ATTR_LIGHTCOORD)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_LIGHTCOORD )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_TEXCOORD1, 2, GL_FLOAT, 0, glState.currentVBO->stride_lightmap, BUFFER_OFFSET(glState.currentVBO->ofs_lightmap));
-		glState.vertexAttribPointersSet |= ATTR_LIGHTCOORD;
 	}
 
-	if((attribBits & ATTR_NORMAL) && (!(glState.vertexAttribPointersSet & ATTR_NORMAL) || animated))
+	if(attribBits & ATTR_NORMAL)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_NORMAL )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_NORMAL, 3, GL_FLOAT, 0, glState.currentVBO->stride_normal, BUFFER_OFFSET(glState.currentVBO->ofs_normal + newFrame * glState.currentVBO->size_normal));
-		glState.vertexAttribPointersSet |= ATTR_NORMAL;
 	}
 
 #ifdef USE_VERT_TANGENT_SPACE
-	if((attribBits & ATTR_TANGENT) && (!(glState.vertexAttribPointersSet & ATTR_TANGENT) || animated))
+	if(attribBits & ATTR_TANGENT)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_TANGENT )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_TANGENT, 3, GL_FLOAT, 0, glState.currentVBO->stride_tangent, BUFFER_OFFSET(glState.currentVBO->ofs_tangent + newFrame * glState.currentVBO->size_normal)); // FIXME
-		glState.vertexAttribPointersSet |= ATTR_TANGENT;
 	}
 
-	if((attribBits & ATTR_BITANGENT) && (!(glState.vertexAttribPointersSet & ATTR_BITANGENT) || animated))
+	if(attribBits & ATTR_BITANGENT)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_BITANGENT )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_BITANGENT, 3, GL_FLOAT, 0, glState.currentVBO->stride_bitangent, BUFFER_OFFSET(glState.currentVBO->ofs_bitangent + newFrame * glState.currentVBO->size_normal)); // FIXME
-		glState.vertexAttribPointersSet |= ATTR_BITANGENT;
 	}
 #endif
 
-	if((attribBits & ATTR_COLOR) && !(glState.vertexAttribPointersSet & ATTR_COLOR))
+	if(attribBits & ATTR_COLOR)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_COLOR )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_COLOR, 4, GL_FLOAT, 0, glState.currentVBO->stride_vertexcolor, BUFFER_OFFSET(glState.currentVBO->ofs_vertexcolor));
-		glState.vertexAttribPointersSet |= ATTR_COLOR;
 	}
 
-	if((attribBits & ATTR_LIGHTDIRECTION) && !(glState.vertexAttribPointersSet & ATTR_LIGHTDIRECTION))
+	if(attribBits & ATTR_LIGHTDIRECTION)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_LIGHTDIRECTION )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_LIGHTDIRECTION, 3, GL_FLOAT, 0, glState.currentVBO->stride_lightdir, BUFFER_OFFSET(glState.currentVBO->ofs_lightdir));
-		glState.vertexAttribPointersSet |= ATTR_LIGHTDIRECTION;
 	}
 
-	if((attribBits & ATTR_POSITION2) && (!(glState.vertexAttribPointersSet & ATTR_POSITION2) || animated))
+	if(attribBits & ATTR_POSITION2)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_POSITION2 )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_POSITION2, 3, GL_FLOAT, 0, glState.currentVBO->stride_xyz, BUFFER_OFFSET(glState.currentVBO->ofs_xyz + oldFrame * glState.currentVBO->size_xyz));
-		glState.vertexAttribPointersSet |= ATTR_POSITION2;
 	}
 
-	if((attribBits & ATTR_NORMAL2) && (!(glState.vertexAttribPointersSet & ATTR_NORMAL2) || animated))
+	if(attribBits & ATTR_NORMAL2)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_NORMAL2 )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_NORMAL2, 3, GL_FLOAT, 0, glState.currentVBO->stride_normal, BUFFER_OFFSET(glState.currentVBO->ofs_normal + oldFrame * glState.currentVBO->size_normal));
-		glState.vertexAttribPointersSet |= ATTR_NORMAL2;
 	}
 
 #ifdef USE_VERT_TANGENT_SPACE
-	if((attribBits & ATTR_TANGENT2) && (!(glState.vertexAttribPointersSet & ATTR_TANGENT2) || animated))
+	if(attribBits & ATTR_TANGENT2)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_TANGENT2 )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_TANGENT2, 3, GL_FLOAT, 0, glState.currentVBO->stride_tangent, BUFFER_OFFSET(glState.currentVBO->ofs_tangent + oldFrame * glState.currentVBO->size_normal)); // FIXME
-		glState.vertexAttribPointersSet |= ATTR_TANGENT2;
 	}
 
-	if((attribBits & ATTR_BITANGENT2) && (!(glState.vertexAttribPointersSet & ATTR_BITANGENT2) || animated))
+	if(attribBits & ATTR_BITANGENT2)
 	{
 		GLimp_LogComment("qglVertexAttribPointerARB( ATTR_INDEX_BITANGENT2 )\n");
 
 		qglVertexAttribPointerARB(ATTR_INDEX_BITANGENT2, 3, GL_FLOAT, 0, glState.currentVBO->stride_bitangent, BUFFER_OFFSET(glState.currentVBO->ofs_bitangent + oldFrame * glState.currentVBO->size_normal)); // FIXME
-		glState.vertexAttribPointersSet |= ATTR_BITANGENT2;
 	}
 #endif
 

@@ -1550,7 +1550,6 @@ typedef struct {
 	int			faceCulling;
 	unsigned long	glStateBits;
 	uint32_t		vertexAttribsState;
-	uint32_t		vertexAttribPointersSet;
 	uint32_t        vertexAttribsNewFrame;
 	uint32_t        vertexAttribsOldFrame;
 	float           vertexAttribsInterpolation;
