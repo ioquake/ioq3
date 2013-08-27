@@ -499,6 +499,7 @@ void VectorRotate( vec3_t in, vec3_t matrix[3], vec3_t out )
 /*
 ** float q_rsqrt( float number )
 */
+#ifndef NEON
 float Q_rsqrt( float number )
 {
 	floatint_t t;
@@ -514,6 +515,7 @@ float Q_rsqrt( float number )
 
 	return y;
 }
+#endif
 
 float Q_fabs( float f ) {
 	floatint_t fi;

@@ -453,6 +453,7 @@ int Q_isnan(float x);
   extern long (QDECL *Q_ftol)(float f);
   extern int (QDECL *Q_VMftol)(void);
   extern void (QDECL *Q_SnapVector)(vec3_t vec);
+//#elif !defined(PANDORA)
 #else
   // Q_ftol must expand to a function name so the pluggable renderer can take
   // its address
@@ -466,12 +467,12 @@ int Q_isnan(float x);
 		(*temp)[1] = round((*temp)[1]);\
 		(*temp)[2] = round((*temp)[2]);\
 	} while(0)
-#endif
-/*
 // if your system does not have lrintf() and round() you can try this block. Please also open a bug report at bugzilla.icculus.org
 // or write a mail to the ioq3 mailing list.
-#else
-  #define Q_ftol(v) ((long) (v))
+#endif
+/*#else
+//  #define Q_ftol(v) ((long) (v))
+  #define Q_ftol lrintf
   #define Q_round(v) do { if((v) < 0) (v) -= 0.5f; else (v) += 0.5f; (v) = Q_ftol((v)); } while(0)
   #define Q_SnapVector(vec) \
 	do\
@@ -511,10 +512,47 @@ static ID_INLINE float Q_fabs(float x) {
 
 #else
 float Q_fabs( float f );
+#ifndef NEON
 float Q_rsqrt( float f );		// reciprocal square root
 #endif
+#endif
 
+#ifdef NEON
+static inline float Q_rsqrt( float f ) {
+ float ret;
+/* 	float32x2_t a,b;
+	float res[2];
+	a=vdup_n_f32(number);
+	b=a;
+	a=vrsqrte_f32(a);
+	a=vmul_f32(a,vrsqrts_f32(b, vmul_f32(a,a)));
+//	b=vmul_f32(a,vrsqrts_f32(b, vmul_f32(a,a)));
+
+	vst1_f32(res, a);
+	return res[0];*/
+ asm volatile (
+	"vmov.32		s0, %1		\n\t"
+	"vdup.32		d0, d0[0]	\n\t"
+	"vmov.64		d1, d0		\n\t"
+	"vrsqrte.f32	d0, d0		\n\t"
+	"vmul.f32		d2, d0, d0	\n\t"
+	"vrsqrts.f32	d1, d1, d2	\n\t"
+	"vmul.f32		d0, d0, d1	\n\t"
+	
+	"vmov.32		%0, s0		\n\t"
+	:"+&r" (ret), "+&r" (f)
+	:
+	:"d0", "d1", "d2"
+ );
+ return ret;
+}
+float SQRTFAST( float x );
+//inline float32x4_t to_neon(const vec3_t a) {return (float32x4_t){ a[0], a[1], a[2], 0 };};
+//inline vec3_t from_neon(const float32x4_t a) {return *(vec3_t*)&a;};
+//#define from_neon(a) ((neon_f32)(a).f)
+#else
 #define SQRTFAST( x ) ( (x) * Q_rsqrt( x ) )
+#endif
 
 signed char ClampChar( int i );
 signed short ClampShort( int i );
@@ -613,6 +651,32 @@ static ID_INLINE vec_t DistanceSquared( const vec3_t p1, const vec3_t p2 ) {
 // that length != 0, nor does it return length, uses rsqrt approximation
 static ID_INLINE void VectorNormalizeFast( vec3_t v )
 {
+#ifdef NEON
+        asm volatile (
+        "vld1.32                {d4}, [%0]                      \n\t"   //d4={x0,y0}
+        "flds                   s10, [%0, #8]                   \n\t"   //d5[0]={z0}
+
+        "vmul.f32               d0, d4, d4                      \n\t"   //d0= d4*d4
+        "vpadd.f32              d0, d0                          \n\t"   //d0 = d[0] + d[1]
+        "vmla.f32               d0, d5, d5                      \n\t"   //d0 = d0 + d5*d5 
+        
+        "vmov.f32               d1, d0                          \n\t"   //d1 = d0
+        "vrsqrte.f32    		d0, d0                          \n\t"   //d0 = ~ 1.0 / sqrt(d0)
+        "vmul.f32               d2, d0, d1                      \n\t"   //d2 = d0 * d1
+        "vrsqrts.f32    		d3, d2, d0                      \n\t"   //d3 = (3 - d0 * d2) / 2        
+        "vmul.f32               d0, d0, d3                      \n\t"   //d0 = d0 * d3
+        "vmul.f32               d2, d0, d1                      \n\t"   //d2 = d0 * d1  
+        "vrsqrts.f32    		d3, d2, d0                      \n\t"   //d4 = (3 - d0 * d3) / 2        
+        "vmul.f32               d0, d0, d3                      \n\t"   //d0 = d0 * d4  
+
+        "vmul.f32               q2, q2, d0[0]                   \n\t"   //d0= d2*d4
+        "vst1.32                d4, [%0]                      	\n\t"   //
+        "fsts                   s10, [%0, #8]                   \n\t"   //
+        
+        :"+&r"(v): 
+    : "d0", "d1", "d2", "d3", "d4", "d5", "memory"
+        );      
+#else
 	float ilength;
 
 	ilength = Q_rsqrt( DotProduct( v, v ) );
@@ -620,6 +684,7 @@ static ID_INLINE void VectorNormalizeFast( vec3_t v )
 	v[0] *= ilength;
 	v[1] *= ilength;
 	v[2] *= ilength;
+#endif
 }
 
 static ID_INLINE void VectorInverse( vec3_t v ){
@@ -629,9 +694,35 @@ static ID_INLINE void VectorInverse( vec3_t v ){
 }
 
 static ID_INLINE void CrossProduct( const vec3_t v1, const vec3_t v2, vec3_t cross ) {
+#ifdef NEON
+        asm volatile (
+        "flds                   s3, [%0]                        \n\t"   //d1[1]={x0}
+        "add                    %0, %0, #4                      \n\t"   //
+        "vld1.32                {d0}, [%0]                      \n\t"   //d0={y0,z0}
+        "vmov.f32               s2, s1                          \n\t"   //d1[0]={z0}
+
+        "flds                   s5, [%1]                        \n\t"   //d2[1]={x1}
+        "add                    %1, %1, #4                      \n\t"   //
+        "vld1.32                {d3}, [%1]                      \n\t"   //d3={y1,z1}
+        "vmov.f32               s4, s7                          \n\t"   //d2[0]=d3[1]
+        
+        "vmul.f32               d4, d0, d2                      \n\t"   //d4=d0*d2
+        "vmls.f32               d4, d1, d3                      \n\t"   //d4-=d1*d3
+        
+        "vmul.f32               d5, d3, d1[1]           		\n\t"   //d5=d3*d1[1]
+        "vmls.f32               d5, d0, d2[1]          		 	\n\t"   //d5-=d0*d2[1]
+        
+        "vst1.32                d4, [%2]                        \n\t"   //
+        "fsts                   s10, [%2, #8]                       \n\t"   //
+        
+        : "+&r"(v1), "+&r"(v2), "+&r"(cross):
+		: "d0", "d1", "d2", "d3", "d4", "d5", "memory"
+        );      
+#else
 	cross[0] = v1[1]*v2[2] - v1[2]*v2[1];
 	cross[1] = v1[2]*v2[0] - v1[0]*v2[2];
 	cross[2] = v1[0]*v2[1] - v1[1]*v2[0];
+#endif
 }
 
 #else

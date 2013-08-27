@@ -8,6 +8,9 @@ COMPILE_PLATFORM=$(shell uname|sed -e s/_.*//|tr '[:upper:]' '[:lower:]'|sed -e 
 
 COMPILE_ARCH=$(shell uname -m | sed -e s/i.86/x86/)
 
+COMPILE_PLATFORM=pandora
+COMPILE_ARCH=arm
+
 ifeq ($(COMPILE_PLATFORM),sunos)
   # Solaris uname and GNU uname differ
   COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
@@ -394,6 +397,93 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
   endif
   endif
 else # ifeq Linux
+
+#############################################################################
+# SETUP AND BUILD -- PANDORA
+#############################################################################
+
+ifeq ($(PLATFORM),pandora)
+
+  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
+    -pipe -DUSE_ICON -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -fsigned-char \
+    -ftree-vectorize -fsingle-precision-constant
+  CLIENT_CFLAGS = $(SDL_CFLAGS)
+  SERVER_CFLAGS =
+  USE_LOCAL_HEADERS = 
+  
+  ifeq ($(USE_OPENAL),1)
+    CLIENT_CFLAGS += -DUSE_OPENAL
+    ifeq ($(USE_OPENAL_DLOPEN),1)
+      CLIENT_CFLAGS += -DUSE_OPENAL_DLOPEN
+    endif
+  endif
+
+  ifeq ($(USE_CURL),1)
+    CLIENT_CFLAGS += -DUSE_CURL
+    ifeq ($(USE_CURL_DLOPEN),1)
+      CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
+    endif
+  endif
+
+  ifeq ($(USE_CODEC_VORBIS),1)
+    CLIENT_CFLAGS += -DUSE_CODEC_VORBIS
+  endif
+
+  OPTIMIZEVM = -O3 -funroll-loops -fomit-frame-pointer
+  OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+  HAVE_VM_COMPILED=
+
+  ifneq ($(HAVE_VM_COMPILED),true)
+    BASE_CFLAGS += -DNO_VM_COMPILED
+  endif
+
+  SHLIBEXT=so
+  SHLIBCFLAGS=-fPIC -fvisibility=hidden
+  SHLIBLDFLAGS=-shared $(LDFLAGS)
+
+  THREAD_LIBS=-lpthread
+  LIBS=-ldl -lm
+
+  CLIENT_LIBS=$(SDL_LIBS) -lGLES_CM -lEGL
+
+  ifeq ($(USE_OPENAL),1)
+    ifneq ($(USE_OPENAL_DLOPEN),1)
+      CLIENT_LIBS += -lopenal
+    endif
+  endif
+
+  ifeq ($(USE_CURL),1)
+    ifneq ($(USE_CURL_DLOPEN),1)
+      CLIENT_LIBS += -lcurl
+    endif
+  endif
+
+  ifeq ($(USE_CODEC_VORBIS),1)
+#Sago: Here I get vorbis to compile in Windows:
+    ifeq ($(PLATFORM),mingw32)
+      CLIENT_LIBS += $(LIBSDIR)/win32/libvorbisfile.a $(LIBSDIR)/win32/libvorbis.a $(LIBSDIR)/win32/libogg.a
+    else
+      CLIENT_LIBS += -lvorbisfile -lvorbis -logg
+    endif
+  endif
+
+  ifeq ($(USE_MUMBLE),1)
+    CLIENT_LIBS += -lrt
+  endif
+
+  ifeq ($(USE_LOCAL_HEADERS),1)
+    CLIENT_CFLAGS += -I$(SDLHDIR)/include
+  endif
+  
+  #No gles2 for now.
+  BUILD_RENDERER_OPENGL2=0
+
+  #I have problem with the Opus codec compilation, disable for now...
+  USE_CODEC_OPUS=0
+  
+  BASE_CFLAGS += -DPANDORA -DARM -DNEON -DHAVE_GLES
+
+else # ifeq pandora
 
 #############################################################################
 # SETUP AND BUILD -- MAC OS X
@@ -886,6 +976,7 @@ else # ifeq sunos
   SHLIBLDFLAGS=-shared
 
 endif #Linux
+endif #pandora
 endif #darwin
 endif #mingw32
 endif #FreeBSD
@@ -1079,7 +1170,7 @@ BASE_CFLAGS += -DPRODUCT_VERSION=\\\"$(VERSION)\\\"
 BASE_CFLAGS += -Wformat=2 -Wno-format-zero-length -Wformat-security -Wno-format-nonliteral
 BASE_CFLAGS += -Wstrict-aliasing=2 -Wmissing-format-attribute
 BASE_CFLAGS += -Wdisabled-optimization
-BASE_CFLAGS += -Werror-implicit-function-declaration
+#BASE_CFLAGS += -Werror-implicit-function-declaration
 
 ifeq ($(V),1)
 echo_cmd=@:
@@ -1210,11 +1301,11 @@ print_list=@for i in $(1); \
              echo "    $$i"; \
      done
 
-ifneq ($(call bin_path, fmt),)
-  print_wrapped=@echo $(1) | fmt -w $(TERM_COLUMNS) | sed -e "s/^\(.*\)$$/    \1/"
-else
+#ifneq ($(call bin_path, fmt),)
+#  print_wrapped=@echo $(1) | fmt -w $(TERM_COLUMNS) | sed -e "s/^\(.*\)$$/    \1/"
+#else
   print_wrapped=$(print_list)
-endif
+#endif
 
 # Create the build directories, check libraries and print out
 # an informational message, then start building
@@ -1628,7 +1719,7 @@ Q3R2OBJ = \
   \
   $(B)/renderergl1/sdl_gamma.o \
   $(B)/renderergl1/sdl_glimp.o
-
+  
 Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/bokeh_fp.o \
   $(B)/renderergl2/glsl/bokeh_vp.o \
@@ -1705,6 +1796,11 @@ ifneq ($(USE_RENDERER_DLOPEN), 0)
     $(B)/renderergl1/puff.o \
     $(B)/renderergl1/q_math.o \
     $(B)/renderergl1/tr_subs.o
+endif
+
+ifeq ($(ARCH),arm)
+Q3ROBJ += \
+	$(B)/renderergl1/eglport.o
 endif
 
 ifneq ($(USE_INTERNAL_JPEG),0)

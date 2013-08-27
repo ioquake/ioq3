@@ -41,6 +41,7 @@ This is just for OpenGL conformance testing, it should never be the fastest
 ================
 */
 static void APIENTRY R_ArrayElementDiscrete( GLint index ) {
+#ifndef HAVE_GLES
 	qglColor4ubv( tess.svars.colors[ index ] );
 	if ( glState.currenttmu ) {
 		qglMultiTexCoord2fARB( 0, tess.svars.texcoords[ 0 ][ index ][0], tess.svars.texcoords[ 0 ][ index ][1] );
@@ -49,6 +50,7 @@ static void APIENTRY R_ArrayElementDiscrete( GLint index ) {
 		qglTexCoord2fv( tess.svars.texcoords[ 0 ][ index ] );
 	}
 	qglVertex3fv( tess.xyz[ index ] );
+#endif
 }
 
 /*
@@ -57,6 +59,15 @@ R_DrawStripElements
 
 ===================
 */
+#ifdef HAVE_GLES
+#define MAX_INDEX 4096
+glIndex_t sindexes[MAX_INDEX];
+int	  num_sindexed;
+void  AddIndexe(GLint idx) {
+	sindexes[num_sindexed++]=idx;
+}
+#endif
+#ifndef HAVE_GLES
 static int		c_vertexes;		// for seeing how long our average strips are
 static int		c_begins;
 static void R_DrawStripElements( int numIndexes, const glIndex_t *indexes, void ( APIENTRY *element )(GLint) ) {
@@ -151,7 +162,7 @@ static void R_DrawStripElements( int numIndexes, const glIndex_t *indexes, void 
 
 	qglEnd();
 }
-
+#endif //HAVE_GLES
 
 
 /*
@@ -169,6 +180,9 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	primitives = r_primitives->integer;
 
 	// default is to use triangles if compiled vertex arrays are present
+	#ifdef HAVE_GLES
+		primitives = 2;
+	#else
 	if ( primitives == 0 ) {
 		if ( qglLockArraysEXT ) {
 			primitives = 2;
@@ -176,14 +190,18 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 			primitives = 1;
 		}
 	}
+	#endif
 
 
+#ifndef HAVE_GLES
 	if ( primitives == 2 ) {
+#endif
 		qglDrawElements( GL_TRIANGLES, 
 						numIndexes,
 						GL_INDEX_TYPE,
 						indexes );
 		return;
+#ifndef HAVE_GLES
 	}
 
 	if ( primitives == 1 ) {
@@ -195,6 +213,7 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		R_DrawStripElements( numIndexes,  indexes, R_ArrayElementDiscrete );
 		return;
 	}
+#endif
 
 	// anything else will cause no drawing
 }
@@ -268,7 +287,14 @@ static void DrawTris (shaderCommands_t *input) {
 		GLimp_LogComment( "glLockArraysEXT\n" );
 	}
 
+	#ifdef HAVE_GLES
+	qglDrawElements( GL_LINE_STRIP, 
+					input->numIndexes,
+					GL_INDEX_TYPE,
+					input->indexes );
+	#else
 	R_DrawElements( input->numIndexes, input->indexes );
+	#endif
 
 	if (qglUnlockArraysEXT) {
 		qglUnlockArraysEXT();
@@ -294,13 +320,31 @@ static void DrawNormals (shaderCommands_t *input) {
 	qglDepthRange( 0, 0 );	// never occluded
 	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE );
 
+	#ifdef HAVE_GLES
+	vec3_t vtx[2];
+	//*TODO* save states for texture & color array
+	#else
 	qglBegin (GL_LINES);
+	#endif
 	for (i = 0 ; i < input->numVertexes ; i++) {
+		#ifndef HAVE_GLES
 		qglVertex3fv (input->xyz[i]);
+		#endif
 		VectorMA (input->xyz[i], 2, input->normal[i], temp);
+		#ifdef HAVE_GLES
+		memcpy(vtx, input->xyz[i], sizeof(GLfloat)*3);
+		memcpy(vtx+1, temp, sizeof(GLfloat)*3);
+		qglVertexPointer (3, GL_FLOAT, 16, vtx);
+		qglDrawArrays(GL_LINES, 0, 2);
+		#else
 		qglVertex3fv (temp);
+		#endif
 	}
+	#ifdef HAVE_GLES
+	//*TODO* restaure state for texture & color
+	#else
 	qglEnd ();
+	#endif
 
 	qglDepthRange( 0, 1 );
 }
@@ -354,9 +398,11 @@ static void DrawMultitextured( shaderCommands_t *input, int stage ) {
 
 	// this is an ugly hack to work around a GeForce driver
 	// bug with multitexture and clip planes
+	#ifndef HAVE_GLES
 	if ( backEnd.viewParms.isPortal ) {
 		qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 	}
+	#endif
 
 	//
 	// base
@@ -593,7 +639,7 @@ static void ProjectDlightTexture_scalar( void ) {
 	byte	clipBits[SHADER_MAX_VERTEXES];
 	float	texCoordsArray[SHADER_MAX_VERTEXES][2];
 	byte	colorArray[SHADER_MAX_VERTEXES][4];
-	unsigned	hitIndexes[SHADER_MAX_INDEXES];
+	glIndex_t	hitIndexes[SHADER_MAX_INDEXES];
 	int		numIndexes;
 	float	scale;
 	float	radius;

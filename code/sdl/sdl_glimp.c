@@ -42,12 +42,20 @@ typedef CGLContextObj QGLContext;
 #define GLimp_GetCurrentContext() CGLGetCurrentContext()
 #define GLimp_SetCurrentContext(ctx) CGLSetCurrentContext(ctx)
 #else
+#ifdef HAVE_GLES
+#include "eglport.h"
+void myglMultiTexCoord2f( GLenum texture, GLfloat s, GLfloat t )
+{
+	glMultiTexCoord4f(texture, s, t, 0, 1);
+}
+#else
 typedef void *QGLContext;
 #define GLimp_GetCurrentContext() (NULL)
 #define GLimp_SetCurrentContext(ctx)
-#endif
 
 static QGLContext opengl_context;
+#endif
+#endif
 
 typedef enum
 {
@@ -82,6 +90,10 @@ GLimp_Shutdown
 void GLimp_Shutdown( void )
 {
 	ri.IN_Shutdown();
+	
+	#ifdef HAVE_GLES
+	EGL_Close();
+	#endif
 
 	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 	screen = NULL;
@@ -199,7 +211,11 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 	int samples;
 	int i = 0;
 	SDL_Surface *vidscreen = NULL;
+	#ifdef HAVE_GLES
+	Uint32 flags = 0;
+	#else
 	Uint32 flags = SDL_OPENGL;
+	#endif
 
 	ri.Printf( PRINT_ALL, "Initializing OpenGL display\n");
 
@@ -238,6 +254,11 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 
 	ri.Printf (PRINT_ALL, "...setting mode %d:", mode );
 
+	#ifdef PANDORA
+	glConfig.vidWidth=800;
+	glConfig.vidHeight=480;
+	glConfig.windowAspect=800.0/480.0;
+	#else
 	if (mode == -2)
 	{
 		// use desktop video resolution
@@ -261,8 +282,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		ri.Printf( PRINT_ALL, " invalid mode\n" );
 		return RSERR_INVALID_MODE;
 	}
+	#endif
 	ri.Printf( PRINT_ALL, " %d %d\n", glConfig.vidWidth, glConfig.vidHeight);
 
+	#ifdef PANDORA
+		flags |= SDL_FULLSCREEN;
+		glConfig.isFullscreen = qtrue;
+	#else
 	if (fullscreen)
 	{
 		flags |= SDL_FULLSCREEN;
@@ -275,6 +301,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 
 		glConfig.isFullscreen = qfalse;
 	}
+	#endif
 
 	colorbits = r_colorbits->value;
 	if ((!colorbits) || (colorbits >= 32))
@@ -347,6 +374,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		if (tcolorbits == 24)
 			sdlcolorbits = 8;
 
+#ifndef HAVE_GLES
 #ifdef __sgi /* Fix for SGIs grabbing too many bits of color */
 		if (sdlcolorbits == 4)
 			sdlcolorbits = 0; /* Use minimum size for 16-bit color */
@@ -392,6 +420,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		if( SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, r_swapInterval->integer ) < 0 )
 			ri.Printf( PRINT_ALL, "r_swapInterval requires libSDL >= 1.2.10\n" );
 
+#endif //HAVE_GLES
 #ifdef USE_ICON
 		{
 			SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(
@@ -421,7 +450,14 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 			continue;
 		}
 
+#ifdef HAVE_GLES
+		EGL_Open(glConfig.vidWidth, glConfig.vidHeight);
+		sdlcolorbits = eglColorbits;
+		tdepthbits = eglDepthbits;
+		tstencilbits = eglStencilbits;
+#else
 		opengl_context = GLimp_GetCurrentContext();
+#endif
 
 		ri.Printf( PRINT_ALL, "Using %d/%d/%d Color bits, %d depth, %d stencil display.\n",
 				sdlcolorbits, sdlcolorbits, sdlcolorbits, tdepthbits, tstencilbits);
@@ -431,6 +467,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		glConfig.stencilBits = tstencilbits;
 		break;
 	}
+
+	#ifdef HAVE_GLES
+//	EGL_Open(glConfig.vidWidth, glConfig.vidHeight);
+	#endif
 
 	GLimp_DetectAvailableModes();
 
@@ -567,6 +607,10 @@ static void GLimp_InitExtensions( void )
 
 
 	// GL_EXT_texture_env_add
+	#ifdef HAVE_GLES
+	glConfig.textureEnvAddAvailable = qtrue;
+	ri.Printf( PRINT_ALL, "...using GL_EXT_texture_env_add\n" );
+	#else
 	glConfig.textureEnvAddAvailable = qfalse;
 	if ( GLimp_HaveExtension( "EXT_texture_env_add" ) )
 	{
@@ -585,11 +629,31 @@ static void GLimp_InitExtensions( void )
 	{
 		ri.Printf( PRINT_ALL, "...GL_EXT_texture_env_add not found\n" );
 	}
+	#endif
 
 	// GL_ARB_multitexture
 	qglMultiTexCoord2fARB = NULL;
 	qglActiveTextureARB = NULL;
 	qglClientActiveTextureARB = NULL;
+	#ifdef HAVE_GLES
+	qglGetIntegerv( GL_MAX_TEXTURE_UNITS, &glConfig.numTextureUnits );
+	//ri.Printf( PRINT_ALL, "...not using GL_ARB_multitexture, %i texture units\n", glConfig.maxActiveTextures );
+	//glConfig.maxActiveTextures=4;
+	qglMultiTexCoord2fARB = myglMultiTexCoord2f;
+	qglActiveTextureARB = glActiveTexture;
+	qglClientActiveTextureARB = glClientActiveTexture;
+	if ( glConfig.numTextureUnits > 1 )
+	{
+		ri.Printf( PRINT_ALL, "...using GL_ARB_multitexture (%i texture units)\n", glConfig.numTextureUnits );
+	}
+	else
+	{
+		qglMultiTexCoord2fARB = NULL;
+		qglActiveTextureARB = NULL;
+		qglClientActiveTextureARB = NULL;
+		ri.Printf( PRINT_ALL, "...not using GL_ARB_multitexture, < 2 texture units\n" );
+	}
+	#else
 	if ( GLimp_HaveExtension( "GL_ARB_multitexture" ) )
 	{
 		if ( r_ext_multitexture->value )
@@ -625,6 +689,7 @@ static void GLimp_InitExtensions( void )
 	{
 		ri.Printf( PRINT_ALL, "...GL_ARB_multitexture not found\n" );
 	}
+	#endif
 
 	// GL_EXT_compiled_vertex_array
 	if ( GLimp_HaveExtension( "GL_EXT_compiled_vertex_array" ) )
@@ -675,7 +740,11 @@ static void GLimp_InitExtensions( void )
 	}
 }
 
+#ifdef PANDORA
+#define R_MODE_FALLBACK 11 // 800 * 480
+#else
 #define R_MODE_FALLBACK 3 // 640 * 480
+#endif
 
 /*
 ===============
@@ -772,11 +841,15 @@ Responsible for doing a swapbuffers
 */
 void GLimp_EndFrame( void )
 {
+	#ifdef HAVE_GLES
+	EGL_SwapBuffers();
+	#else
 	// don't flip if drawing to front buffer
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
 		SDL_GL_SwapBuffers();
 	}
+	#endif
 
 	if( r_fullscreen->modified )
 	{

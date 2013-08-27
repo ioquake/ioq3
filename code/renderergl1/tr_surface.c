@@ -24,6 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if idppc_altivec && !defined(MACOS_X)
 #include <altivec.h>
 #endif
+#ifdef NEON
+#include <arm_neon.h>
+#endif
 
 /*
 
@@ -328,12 +331,32 @@ static void RB_SurfaceBeam( void )
 
 	qglColor3f( 1, 0, 0 );
 
+	#ifdef HAVE_GLES
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (glcol)
+		qglDisableClientState(GL_COLOR_ARRAY);
+	if (text)
+		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	GLfloat vtx[NUM_BEAM_SEGS*6+6];
+	for ( i = 0; i <= NUM_BEAM_SEGS; i++ ) {
+		memcpy(vtx+i*6, start_points[ i % NUM_BEAM_SEGS], sizeof(GLfloat)*3);
+		memcpy(vtx+i*6+3, end_points[ i % NUM_BEAM_SEGS], sizeof(GLfloat)*3);
+	}
+	qglVertexPointer (3, GL_FLOAT, 0, vtx);
+	qglDrawArrays(GL_TRIANGLE_STRIP, 0, NUM_BEAM_SEGS*2+2);
+	if (glcol)
+		qglEnableClientState(GL_COLOR_ARRAY);
+	if (text)
+		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+	#else
 	qglBegin( GL_TRIANGLE_STRIP );
 	for ( i = 0; i <= NUM_BEAM_SEGS; i++ ) {
 		qglVertex3fv( start_points[ i % NUM_BEAM_SEGS] );
 		qglVertex3fv( end_points[ i % NUM_BEAM_SEGS] );
 	}
 	qglEnd();
+	#endif
 }
 
 //================================================================================
@@ -771,9 +794,13 @@ static void LerpMeshVertexes_scalar(md3Surface_t *surf, float backlerp)
 			outXyz += 4, outNormal += 4) 
 		{
 
+			#ifdef NEON
+			vst1q_f32(outXyz, vmulq_n_f32(vcvtq_f32_s32(vmovl_s16(vld1_s16(newXyz))), newXyzScale));
+			#else
 			outXyz[0] = newXyz[0] * newXyzScale;
 			outXyz[1] = newXyz[1] * newXyzScale;
 			outXyz[2] = newXyz[2] * newXyzScale;
+			#endif
 
 			lat = ( newNormals[0] >> 8 ) & 0xff;
 			lng = ( newNormals[0] & 0xff );
@@ -806,9 +833,14 @@ static void LerpMeshVertexes_scalar(md3Surface_t *surf, float backlerp)
 			vec3_t uncompressedOldNormal, uncompressedNewNormal;
 
 			// interpolate the xyz
+			#ifdef NEON
+			vst1q_f32(outXyz, vaddq_f32(vmulq_n_f32(vcvtq_f32_s32(vmovl_s16(vld1_s16(newXyz))), newXyzScale),
+										vmulq_n_f32(vcvtq_f32_s32(vmovl_s16(vld1_s16(oldXyz))), oldXyzScale)));
+			#else
 			outXyz[0] = oldXyz[0] * oldXyzScale + newXyz[0] * newXyzScale;
 			outXyz[1] = oldXyz[1] * oldXyzScale + newXyz[1] * newXyzScale;
 			outXyz[2] = oldXyz[2] * oldXyzScale + newXyz[2] * newXyzScale;
+			#endif
 
 			// FIXME: interpolate lat/long instead?
 			lat = ( newNormals[0] >> 8 ) & 0xff;
@@ -905,7 +937,8 @@ RB_SurfaceFace
 */
 static void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 	int			i;
-	unsigned	*indices, *tessIndexes;
+	unsigned	*indices;
+	glIndex_t *tessIndexes;
 	float		*v;
 	float		*normal;
 	int			ndx;
@@ -1159,6 +1192,37 @@ static void RB_SurfaceAxis( void ) {
 	GL_Bind( tr.whiteImage );
 	GL_State( GLS_DEFAULT );
 	qglLineWidth( 3 );
+#ifdef HAVE_GLES
+	 GLfloat col[] = {
+	  1,0,0, 1,
+	  1,0,0, 1,
+	  0,1,0, 1,
+	  0,1,0, 1,
+	  0,0,1, 1,
+	  0,0,1, 1
+	 };
+	 GLfloat vtx[] = {
+	  0,0,0,
+	  16,0,0,
+	  0,0,0,
+	  0,16,0,
+	  0,0,0,
+	  0,0,16
+	 };
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (text)
+		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	if (!glcol)
+		qglEnableClientState( GL_COLOR_ARRAY);
+	qglColorPointer( 4, GL_UNSIGNED_BYTE, 0, col );
+	qglVertexPointer (3, GL_FLOAT, 0, vtx);
+	qglDrawArrays(GL_LINES, 0, 6);
+	if (text)
+		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+	if (!glcol)
+		qglDisableClientState( GL_COLOR_ARRAY);
+#else
 	qglBegin( GL_LINES );
 	qglColor3f( 1,0,0 );
 	qglVertex3f( 0,0,0 );
@@ -1170,6 +1234,7 @@ static void RB_SurfaceAxis( void ) {
 	qglVertex3f( 0,0,0 );
 	qglVertex3f( 0,0,16 );
 	qglEnd();
+#endif
 	qglLineWidth( 1 );
 }
 
@@ -1218,7 +1283,11 @@ static void RB_SurfaceFlare(srfFlare_t *surf)
 static void RB_SurfaceDisplayList( srfDisplayList_t *surf ) {
 	// all apropriate state must be set in RB_BeginSurface
 	// this isn't implemented yet...
+	#ifdef HAVE_GLES
+	assert(0);
+	#else
 	qglCallList( surf->listNum );
+	#endif
 }
 
 static void RB_SurfaceSkip( void *surf ) {

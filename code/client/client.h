@@ -446,6 +446,10 @@ extern	cvar_t	*cl_voipShowMeter;
 extern	cvar_t	*cl_voip;
 #endif
 
+#ifdef PANDORA
+extern cvar_t	*in_toggleCrouch;
+#endif
+
 //=================================================
 
 //

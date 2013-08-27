@@ -269,11 +269,21 @@ static const char *IN_TranslateSDLToQ3Key( SDL_keysym *keysym,
 			case SDLK_DELETE:       *key = K_DEL;           break;
 			case SDLK_PAUSE:        *key = K_PAUSE;         break;
 
+#ifdef PANDORA
+			case SDLK_LSHIFT:  		*key = K_SHIFT;  		break;
+			case SDLK_RSHIFT:  		*key = K_MOUSE2;  		break;
+#else
 			case SDLK_LSHIFT:
 			case SDLK_RSHIFT:       *key = K_SHIFT;         break;
+#endif
 
+#ifdef PANDORA
+			case SDLK_LCTRL:  		*key = K_CTRL;  		break;
+			case SDLK_RCTRL:  		*key = K_MOUSE1;  		break;
+#else
 			case SDLK_LCTRL:
 			case SDLK_RCTRL:        *key = K_CTRL;          break;
+#endif
 
 			case SDLK_RMETA:
 			case SDLK_LMETA:        *key = K_COMMAND;       break;
