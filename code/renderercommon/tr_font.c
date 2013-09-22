@@ -83,6 +83,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define _CEIL(x)   (((x)+63) & -64)
 #define _TRUNC(x)  ((x) >> 6)
 
+#define OUT_SIZE 256
+
 FT_Library ftLibrary = NULL;  
 #endif
 
@@ -188,7 +190,7 @@ void WriteTGA (char *filename, byte *data, int width, int height) {
 	ri.Free (buffer);
 }
 
-static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, int *yOut, int *maxHeight, FT_Face face, const unsigned char c, qboolean calcHeight) {
+static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, int *yOut, int *maxHeight, FT_Face face, const unsigned char c) {
 	int i;
 	static glyphInfo_t glyph;
 	unsigned char *src, *dst;
@@ -206,15 +208,6 @@ static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, in
 			return &glyph;
 		}
 
-		if (glyph.height > *maxHeight) {
-			*maxHeight = glyph.height;
-		}
-
-		if (calcHeight) {
-			ri.Free(bitmap->buffer);
-			ri.Free(bitmap);
-			return &glyph;
-		}
 
 /*
 		// need to convert to power of 2 sizes so we do not get 
@@ -229,22 +222,27 @@ static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, in
 		scaled_height = glyph.height;
 
 		// we need to make sure we fit
-		if (*xOut + scaled_width + 1 >= 255) {
+		if (*xOut + scaled_width + 1 >= OUT_SIZE - 1) {
 			*xOut = 0;
 			*yOut += *maxHeight + 1;
+			*maxHeight = scaled_height;
 		}
 
-		if (*yOut + *maxHeight + 1 >= 255) {
+		if (*yOut + *maxHeight + 1 >= OUT_SIZE - 1) {
 			*yOut = -1;
 			*xOut = -1;
 			ri.Free(bitmap->buffer);
 			ri.Free(bitmap);
+			*maxHeight = scaled_height;
 			return &glyph;
 		}
 
+		if (scaled_height > *maxHeight) {
+			*maxHeight = scaled_height;
+		}
 
 		src = bitmap->buffer;
-		dst = imageOut + (*yOut * 256) + *xOut;
+		dst = imageOut + (*yOut * OUT_SIZE) + *xOut;
 
 		if (bitmap->pixel_mode == ft_pixel_mode_mono) {
 			for (i = 0; i < glyph.height; i++) {
@@ -269,13 +267,13 @@ static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, in
 				}
 
 				src += glyph.pitch;
-				dst += 256;
+				dst += OUT_SIZE;
 			}
 		} else {
 			for (i = 0; i < glyph.height; i++) {
 				Com_Memcpy(dst, src, glyph.pitch);
 				src += glyph.pitch;
-				dst += 256;
+				dst += OUT_SIZE;
 			}
 		}
 
@@ -284,10 +282,10 @@ static glyphInfo_t *RE_ConstructGlyphInfo(unsigned char *imageOut, int *xOut, in
 
 		glyph.imageHeight = scaled_height;
 		glyph.imageWidth = scaled_width;
-		glyph.s = (float)*xOut / 256;
-		glyph.t = (float)*yOut / 256;
-		glyph.s2 = glyph.s + (float)scaled_width / 256;
-		glyph.t2 = glyph.t + (float)scaled_height / 256;
+		glyph.s = (float)*xOut / OUT_SIZE;
+		glyph.t = (float)*yOut / OUT_SIZE;
+		glyph.s2 = glyph.s + (float)scaled_width / OUT_SIZE;
+		glyph.t2 = glyph.t + (float)scaled_height / OUT_SIZE;
 
 		*xOut += scaled_width + 1;
 
@@ -433,21 +431,17 @@ void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font) {
 
 	//*font = &registeredFonts[registeredFontCount++];
 
-	// make a 256x256 image buffer, once it is full, register it, clean it and keep going 
+	// make a OUT_SIZE x OUT_SIZE image buffer, once it is full, register it, clean it and keep going 
 	// until all glyphs are rendered
 
-	out = ri.Malloc(256*256);
+	out = ri.Malloc(OUT_SIZE*OUT_SIZE);
 	if (out == NULL) {
 		ri.Printf(PRINT_WARNING, "RE_RegisterFont: ri.Malloc failure during output image creation.\n");
 		return;
 	}
-	Com_Memset(out, 0, 256*256);
+	Com_Memset(out, 0, OUT_SIZE*OUT_SIZE);
 
 	maxHeight = 0;
-
-	for (i = GLYPH_START; i < GLYPH_END; i++) {
-		RE_ConstructGlyphInfo(out, &xOut, &yOut, &maxHeight, face, (unsigned char)i, qtrue);
-	}
 
 	xOut = 0;
 	yOut = 0;
@@ -457,14 +451,14 @@ void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font) {
 
 	while ( i <= GLYPH_END ) {
 
-		glyph = RE_ConstructGlyphInfo(out, &xOut, &yOut, &maxHeight, face, (unsigned char)i, qfalse);
+		glyph = RE_ConstructGlyphInfo(out, &xOut, &yOut, &maxHeight, face, (unsigned char)i);
 
 		if (xOut == -1 || yOut == -1 || i == GLYPH_END)  {
 			// ran out of room
 			// we need to create an image from the bitmap, set all the handles in the glyphs to this point
 			// 
 
-			scaledSize = 256*256;
+			scaledSize = OUT_SIZE*OUT_SIZE;
 			newSize = scaledSize * 4;
 			imageBuff = ri.Malloc(newSize);
 			left = 0;
@@ -489,18 +483,18 @@ void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font) {
 
 			Com_sprintf (name, sizeof(name), "fonts/fontImage_%i_%i.tga", imageNumber++, pointSize);
 			if (r_saveFontData->integer) { 
-				WriteTGA(name, imageBuff, 256, 256);
+				WriteTGA(name, imageBuff, OUT_SIZE, OUT_SIZE);
 			}
 
 			//Com_sprintf (name, sizeof(name), "fonts/fontImage_%i_%i", imageNumber++, pointSize);
-			image = R_CreateImage(name, imageBuff, 256, 256, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+			image = R_CreateImage(name, imageBuff, OUT_SIZE, OUT_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
 			h = RE_RegisterShaderFromImage(name, LIGHTMAP_2D, image, qfalse);
 			for (j = lastStart; j < i; j++) {
 				font->glyphs[j].glyph = h;
 				Q_strncpyz(font->glyphs[j].shaderName, name, sizeof(font->glyphs[j].shaderName));
 			}
 			lastStart = i;
-			Com_Memset(out, 0, 256*256);
+			Com_Memset(out, 0, OUT_SIZE*OUT_SIZE);
 			xOut = 0;
 			yOut = 0;
 			ri.Free(imageBuff);
