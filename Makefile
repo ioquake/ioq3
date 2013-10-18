@@ -820,6 +820,20 @@ ifeq ($(PLATFORM),irix64)
 else # ifeq IRIX
 
 #############################################################################
+# SETUP AND BUILD -- Haiku
+#############################################################################
+
+ifeq ($(PLATFORM),haiku)
+  CC=gcc
+  MKDIR=mkdir
+  LIBS=-lbe -lnetwork
+
+  SHLIBEXT=so
+  SHLIBLDFLAGS=-shared
+
+else #ifeq Haiku
+
+#############################################################################
 # SETUP AND BUILD -- SunOS
 #############################################################################
 
@@ -892,6 +906,7 @@ endif #FreeBSD
 endif #OpenBSD
 endif #NetBSD
 endif #IRIX
+endif #Haiku
 endif #SunOS
 
 ifndef CC
