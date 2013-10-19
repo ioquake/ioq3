@@ -16,6 +16,10 @@ ifeq ($(COMPILE_PLATFORM),darwin)
   # Apple does some things a little differently...
   COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
 endif
+ifeq ($(COMPILE_PLATFORM),haiku)
+  # Haiku uname and GNU uname differ
+  COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
+endif
 
 ifndef BUILD_STANDALONE
   BUILD_STANDALONE =

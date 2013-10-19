@@ -333,11 +333,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PATH_SEP '/'
 
 #if defined __i386__
-#undef id386
 #define ARCH_STRING "x86"
 #define Q3_LITTLE_ENDIAN
 #elif defined __x86_64__
-#undef idx64
 #define ARCH_STRING "x86_64"
 #define Q3_LITTLE_ENDIAN
 #elif defined __powerpc64__
