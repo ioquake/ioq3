@@ -825,11 +825,20 @@ else # ifeq IRIX
 
 ifeq ($(PLATFORM),haiku)
   CC=gcc
-  MKDIR=mkdir
   LIBS=-lbe -lnetwork
 
+  # TODO: Haiku has a shell based which that breaks
+  SDL_CFLAGS=$(shell pkg-config --cflags sdl|sed 's/-Dmain=SDL_main//')
+  SDL_LIBS=$(shell pkg-config --libs sdl)
+
+  BASE_CFLAGS += -I. -I/boot/system/develop/headers
+
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
+  CLIENT_LIBS += $(SDL_LIBS)
+  RENDERER_LIBS = $(SDL_LIBS) -lGL
+
   SHLIBEXT=so
-  SHLIBLDFLAGS=-shared
+  SHLIBLDFLAGS=-shared $(LDFLAGS)
 
 else #ifeq Haiku
 
