@@ -143,6 +143,7 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 	iqmData_t		*iqmData;
 	srfIQModel_t		*surface;
 	char			meshName[MAX_QPATH];
+	byte			blendIndexesType, blendWeightsType;
 
 	if( filesize < sizeof(iqmHeader_t) ) {
 		return qfalse;
@@ -264,11 +265,20 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 			}
 			break;
 		case IQM_BLENDINDEXES:
+			if( (vertexarray->format != IQM_INT &&
+				 vertexarray->format != IQM_UBYTE) ||
+				vertexarray->size != 4 ) {
+				return qfalse;
+			}
+			blendIndexesType = vertexarray->format;
+			break;
 		case IQM_BLENDWEIGHTS:
-			if( vertexarray->format != IQM_UBYTE ||
+			if( (vertexarray->format != IQM_FLOAT &&
+				 vertexarray->format != IQM_UBYTE) ||
 			    vertexarray->size != 4 ) {
 				return qfalse;
 			}
+			blendWeightsType = vertexarray->format;
 			break;
 		case IQM_COLOR:
 			if( vertexarray->format != IQM_UBYTE ||
@@ -277,6 +287,11 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 			}
 			break;
 		}
+	}
+	
+	if (!((blendIndexesType == IQM_INT && blendWeightsType == IQM_FLOAT) ||
+	 	  (blendIndexesType == IQM_UBYTE && blendWeightsType == IQM_UBYTE))) {
+		return qfalse;
 	}
 
 	// check and swap triangles
@@ -445,13 +460,20 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 	size += header->num_vertexes * 2 * sizeof(float);	// texcoords
 	size += header->num_vertexes * 3 * sizeof(float);	// normals
 	size += header->num_vertexes * 4 * sizeof(float);	// tangents
-	size += header->num_vertexes * 4 * sizeof(byte);	// blendIndexes
-	size += header->num_vertexes * 4 * sizeof(byte);	// blendWeights
 	size += header->num_vertexes * 4 * sizeof(byte);	// colors
 	size += header->num_joints * sizeof(int);		// parents
 	size += header->num_triangles * 3 * sizeof(int);	// triangles
 	size += joint_names;					// joint names
 
+	// blendIndexes and blendWeights
+	if(blendIndexesType == IQM_INT && blendWeightsType == IQM_FLOAT) {
+		size += header->num_vertexes * 4 * sizeof(int);
+		size += header->num_vertexes * 4 * sizeof(float);
+	} else {
+		size += header->num_vertexes * 4 * sizeof(byte);
+		size += header->num_vertexes * 4 * sizeof(byte);
+	}
+	
 	mod->type = MOD_IQM;
 	iqmData = (iqmData_t *)ri.Hunk_Alloc( size, h_low );
 	mod->modelData = iqmData;
@@ -475,9 +497,17 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 	iqmData->texcoords    = iqmData->positions + 3 * header->num_vertexes;
 	iqmData->normals      = iqmData->texcoords + 2 * header->num_vertexes;
 	iqmData->tangents     = iqmData->normals + 3 * header->num_vertexes;
-	iqmData->blendIndexes = (byte *)(iqmData->tangents + 4 * header->num_vertexes);
-	iqmData->blendWeights = iqmData->blendIndexes + 4 * header->num_vertexes;
-	iqmData->colors       = iqmData->blendWeights + 4 * header->num_vertexes;
+
+	if(iqmData->blendTypesIntFloat) {
+		iqmData->blendIndexes.i = (int *)(iqmData->tangents + 4 * header->num_vertexes);
+		iqmData->blendWeights.f = (float *)iqmData->blendIndexes.i + 4 * header->num_vertexes;
+		iqmData->colors		= (byte *)(iqmData->blendWeights.f + 4 * header->num_vertexes);
+	} else {
+		iqmData->blendIndexes.b = (byte *)(iqmData->tangents + 4 * header->num_vertexes);
+		iqmData->blendWeights.b = iqmData->blendIndexes.b + 4 * header->num_vertexes;
+		iqmData->colors		= iqmData->blendWeights.b + 4 * header->num_vertexes;
+	}
+	
 	iqmData->jointParents = (int *)(iqmData->colors + 4 * header->num_vertexes);
 	iqmData->triangles    = iqmData->jointParents + header->num_joints;
 	iqmData->names        = (char *)(iqmData->triangles + 3 * header->num_triangles);
@@ -593,7 +623,7 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 	// copy vertexarrays and indexes
 	vertexarray = (iqmVertexArray_t *)((byte *)header + header->ofs_vertexarrays);
 	for( i = 0; i < header->num_vertexarrays; i++, vertexarray++ ) {
-		int	n;
+		int	n, size;
 
 		// total number of values
 		n = header->num_vertexes * vertexarray->size;
@@ -620,14 +650,16 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 				    n * sizeof(float) );
 			break;
 		case IQM_BLENDINDEXES:
-			Com_Memcpy( iqmData->blendIndexes,
+			size = (iqmData->blendTypesIntFloat) ? sizeof(int) : sizeof(byte);
+			Com_Memcpy( iqmData->blendIndexes.b,
 				    (byte *)header + vertexarray->offset,
-				    n * sizeof(byte) );
+				    n * size );
 			break;
 		case IQM_BLENDWEIGHTS:
-			Com_Memcpy( iqmData->blendWeights,
+			size = (iqmData->blendTypesIntFloat) ? sizeof(float) : sizeof(byte);
+			Com_Memcpy( iqmData->blendWeights.b,
 				    (byte *)header + vertexarray->offset,
-				    n * sizeof(byte) );
+				    n * size );
 			break;
 		case IQM_COLOR:
 			Com_Memcpy( iqmData->colors,
@@ -986,7 +1018,8 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 		float	nrmMat[9];
 		int	vtx = i + surf->first_vertex;
 
-		if ( data->num_joints == 0 || data->blendWeights[4*vtx] <= 0 ) {
+		if ( data->num_joints == 0 || ((data->blendTypesIntFloat && data->blendWeights.f[4*vtx] <= 0) || 
+									   (!data->blendTypesIntFloat && data->blendWeights.b[4*vtx] <= 0))) {
 			// no blend joint, use identity matrix.
 			for( j = 0; j < 3; j++ ) {
 				for( k = 0; k < 4; k++ )
@@ -995,18 +1028,35 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 		} else {
 			// compute the vertex matrix by blending the up to
 			// four blend weights
-			for( k = 0; k < 12; k++ )
-				vtxMat[k] = data->blendWeights[4*vtx]
-					* jointMats[12*data->blendIndexes[4*vtx] + k];
-			for( j = 1; j < 4; j++ ) {
-				if( data->blendWeights[4*vtx + j] <= 0 )
-					break;
-				for( k = 0; k < 12; k++ )
-					vtxMat[k] += data->blendWeights[4*vtx + j]
-						* jointMats[12*data->blendIndexes[4*vtx + j] + k];
+			for( k = 0; k < 12; k++ ) {
+				if (data->blendTypesIntFloat) {
+					vtxMat[k] = data->blendWeights.f[4*vtx] * jointMats[12*data->blendIndexes.i[4*vtx] + k];
+				} else {
+					vtxMat[k] = data->blendWeights.b[4*vtx] * jointMats[12*data->blendIndexes.b[4*vtx] + k];
+				}
 			}
-			for( k = 0; k < 12; k++ )
-				vtxMat[k] *= 1.0f / 255.0f;
+			for( j = 1; j < 4; j++ ) {
+				if (data->blendTypesIntFloat) {
+					if( data->blendWeights.f[4*vtx + j] <= 0 ) {
+						break;
+					}
+					for( k = 0; k < 12; k++ ) {
+						vtxMat[k] += data->blendWeights.f[4*vtx + j] * jointMats[12*data->blendIndexes.i[4*vtx + j] + k];
+					}
+				} else {
+					if( data->blendWeights.b[4*vtx + j] <= 0 ) {
+						break;
+					}
+					for( k = 0; k < 12; k++ ) {
+						vtxMat[k] += data->blendWeights.b[4*vtx + j] * jointMats[12*data->blendIndexes.b[4*vtx + j] + k];
+					}
+				}
+			}
+			if (!data->blendTypesIntFloat) {
+				for( k = 0; k < 12; k++ ) {
+					vtxMat[k] *= 1.0f / 255.0f;
+				}
+			}
 		}
 
 		// compute the normal matrix as transpose of the adjoint
