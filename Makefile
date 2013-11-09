@@ -16,6 +16,10 @@ ifeq ($(COMPILE_PLATFORM),darwin)
   # Apple does some things a little differently...
   COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
 endif
+ifeq ($(COMPILE_PLATFORM),haiku)
+  # Haiku uname and GNU uname differ
+  COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
+endif
 
 ifndef BUILD_STANDALONE
   BUILD_STANDALONE =
@@ -820,6 +824,29 @@ ifeq ($(PLATFORM),irix64)
 else # ifeq IRIX
 
 #############################################################################
+# SETUP AND BUILD -- Haiku
+#############################################################################
+
+ifeq ($(PLATFORM),haiku)
+  CC=gcc
+  LIBS=-lbe -lnetwork
+
+  # TODO: Haiku has a shell based which that breaks
+  SDL_CFLAGS=$(shell pkg-config --cflags sdl|sed 's/-Dmain=SDL_main//')
+  SDL_LIBS=$(shell pkg-config --libs sdl)
+
+  BASE_CFLAGS += -I. -I/boot/system/develop/headers
+
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
+  CLIENT_LIBS += $(SDL_LIBS)
+  RENDERER_LIBS = $(SDL_LIBS) -lGL
+
+  SHLIBEXT=so
+  SHLIBLDFLAGS=-shared $(LDFLAGS)
+
+else #ifeq Haiku
+
+#############################################################################
 # SETUP AND BUILD -- SunOS
 #############################################################################
 
@@ -892,6 +919,7 @@ endif #FreeBSD
 endif #OpenBSD
 endif #NetBSD
 endif #IRIX
+endif #Haiku
 endif #SunOS
 
 ifndef CC

@@ -835,7 +835,9 @@ void Sys_PlatformInit( void )
 	signal( SIGHUP, Sys_SigHandler );
 	signal( SIGQUIT, Sys_SigHandler );
 	signal( SIGTRAP, Sys_SigHandler );
+	#ifndef __HAIKU__
 	signal( SIGIOT, Sys_SigHandler );
+	#endif
 	signal( SIGBUS, Sys_SigHandler );
 
 	stdinIsATTY = isatty( STDIN_FILENO ) &&

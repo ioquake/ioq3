@@ -73,7 +73,7 @@ static qboolean	winsockInitialized = qfalse;
 #	include <sys/types.h>
 #	include <sys/time.h>
 #	include <unistd.h>
-#	if !defined(__sun) && !defined(__sgi)
+#	if !defined(__sun) && !defined(__sgi) && !defined(__HAIKU__)
 #		include <ifaddrs.h>
 #	endif
 

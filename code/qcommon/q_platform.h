@@ -324,6 +324,34 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #endif
 
+//================================================================== Q3VM ===
+
+#ifdef __HAIKU__
+
+#define OS_STRING "haiku"
+#define ID_INLINE
+#define PATH_SEP '/'
+
+#if defined __i386__
+#define ARCH_STRING "x86"
+#define Q3_LITTLE_ENDIAN
+#elif defined __x86_64__
+#define ARCH_STRING "x86_64"
+#define Q3_LITTLE_ENDIAN
+#elif defined __powerpc64__
+#define ARCH_STRING "ppc64"
+#define Q3_BIG_ENDIAN
+#elif defined __powerpc__
+#define ARCH_STRING "ppc"
+#define Q3_BIG_ENDIAN
+#else
+#error "Unknown Architecture!"
+#endif
+
+#define DLL_EXT ".so"
+
+#endif
+
 //===========================================================================
 
 //catch missing defines in above blocks
