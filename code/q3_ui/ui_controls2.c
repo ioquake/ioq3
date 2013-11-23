@@ -1604,18 +1604,18 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.sidestep );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.attack );
-	Menu_AddItem( &s_controls.menu, &s_controls.nextweapon );
-	Menu_AddItem( &s_controls.menu, &s_controls.prevweapon );
-	Menu_AddItem( &s_controls.menu, &s_controls.autoswitch );
-	Menu_AddItem( &s_controls.menu, &s_controls.chainsaw );
-	Menu_AddItem( &s_controls.menu, &s_controls.machinegun );
-	Menu_AddItem( &s_controls.menu, &s_controls.shotgun );
-	Menu_AddItem( &s_controls.menu, &s_controls.grenadelauncher );
-	Menu_AddItem( &s_controls.menu, &s_controls.rocketlauncher );
-	Menu_AddItem( &s_controls.menu, &s_controls.lightning );
-	Menu_AddItem( &s_controls.menu, &s_controls.railgun );
-	Menu_AddItem( &s_controls.menu, &s_controls.plasma );
-	Menu_AddItem( &s_controls.menu, &s_controls.bfg );
+	//Menu_AddItem( &s_controls.menu, &s_controls.nextweapon );
+	//Menu_AddItem( &s_controls.menu, &s_controls.prevweapon );
+	//Menu_AddItem( &s_controls.menu, &s_controls.autoswitch );
+	//Menu_AddItem( &s_controls.menu, &s_controls.chainsaw );
+	//Menu_AddItem( &s_controls.menu, &s_controls.machinegun );
+	//Menu_AddItem( &s_controls.menu, &s_controls.shotgun );
+	//Menu_AddItem( &s_controls.menu, &s_controls.grenadelauncher );
+	//Menu_AddItem( &s_controls.menu, &s_controls.rocketlauncher );
+	//Menu_AddItem( &s_controls.menu, &s_controls.lightning );
+	//Menu_AddItem( &s_controls.menu, &s_controls.railgun );
+	//Menu_AddItem( &s_controls.menu, &s_controls.plasma );
+	//Menu_AddItem( &s_controls.menu, &s_controls.bfg );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.showscores );
 	Menu_AddItem( &s_controls.menu, &s_controls.useitem );
