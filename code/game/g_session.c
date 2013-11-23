@@ -44,14 +44,15 @@ void G_WriteClientSessionData( gclient_t *client ) {
 	const char	*s;
 	const char	*var;
 
-	s = va("%i %i %i %i %i %i %i", 
+	s = va("%i %i %i %i %i %i %i %i", 
 		client->sess.sessionTeam,
 		client->sess.spectatorNum,
 		client->sess.spectatorState,
 		client->sess.spectatorClient,
 		client->sess.wins,
 		client->sess.losses,
-		client->sess.teamLeader
+		client->sess.teamLeader,
+		client->sess.weapon
 		);
 
 	var = va( "session%i", (int)(client - level.clients) );
@@ -72,23 +73,26 @@ void G_ReadSessionData( gclient_t *client ) {
 	int teamLeader;
 	int spectatorState;
 	int sessionTeam;
+	int weapon;
 
 	var = va( "session%i", (int)(client - level.clients) );
 	trap_Cvar_VariableStringBuffer( var, s, sizeof(s) );
 
-	sscanf( s, "%i %i %i %i %i %i %i",
+	sscanf( s, "%i %i %i %i %i %i %i %i",
 		&sessionTeam,
 		&client->sess.spectatorNum,
 		&spectatorState,
 		&client->sess.spectatorClient,
 		&client->sess.wins,
 		&client->sess.losses,
-		&teamLeader
+		&teamLeader,
+		&weapon
 		);
 
 	client->sess.sessionTeam = (team_t)sessionTeam;
 	client->sess.spectatorState = (spectatorState_t)spectatorState;
 	client->sess.teamLeader = (qboolean)teamLeader;
+	client->sess.weapon = (weapon_t)weapon;
 }
 
 

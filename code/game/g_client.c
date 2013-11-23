@@ -1180,16 +1180,16 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.clientNum = index;
 
-	client->ps.stats[STAT_WEAPONS] = ( 1 << WP_MACHINEGUN );
-	if ( g_gametype.integer == GT_TEAM ) {
-		client->ps.ammo[WP_MACHINEGUN] = 50;
-	} else {
-		client->ps.ammo[WP_MACHINEGUN] = 100;
-	}
+	// give sess.weapon
+	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
+	client->ps.ammo[client->sess.weapon] = -1;
 
-	client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GAUNTLET );
-	client->ps.ammo[WP_GAUNTLET] = -1;
-	client->ps.ammo[WP_GRAPPLING_HOOK] = -1;
+	if ( g_gametype.integer == GT_FFA ) {
+		if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
+			client->sess.weapon = WP_RAILGUN;
+		else if ( client->sess.weapon == WP_RAILGUN )
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+	}
 
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
@@ -1218,7 +1218,7 @@ void ClientSpawn(gentity_t *ent) {
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR) {
 			G_KillBox(ent);
 			// force the base weapon up
-			client->ps.weapon = WP_MACHINEGUN;
+			client->ps.weapon = client->sess.weapon;
 			client->ps.weaponstate = WEAPON_READY;
 			// fire the targets of the spawn point
 			G_UseTargets(spawnPoint, ent);

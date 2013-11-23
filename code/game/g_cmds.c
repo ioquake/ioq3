@@ -510,6 +510,7 @@ void SetTeam( gentity_t *ent, char *s ) {
 	spectatorState_t	specState;
 	int					specClient;
 	int					teamLeader;
+	char				wp_str[3];
 
 	//
 	// see what change is requested
@@ -633,6 +634,21 @@ void SetTeam( gentity_t *ent, char *s ) {
 	// get and distribute relevent paramters
 	ClientUserinfoChanged( clientNum );
 
+	// set sess.weapon
+	trap_Argv( 2, wp_str, sizeof(wp_str));
+		//Com_Printf("s %s, wp_str %s\n", s, wp_str);
+	if (!Q_stricmp( wp_str, "rg" ))
+		client->sess.weapon = WP_RAILGUN;
+	else if (!Q_stricmp( wp_str, "rl" ))
+		client->sess.weapon = WP_ROCKET_LAUNCHER;
+	else {
+		//Com_Printf("TEST\n");
+		if (crandom() > 0)
+			client->sess.weapon = WP_RAILGUN;
+		else
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+	}
+
 	ClientBegin( clientNum );
 }
 
@@ -662,7 +678,7 @@ void Cmd_Team_f( gentity_t *ent ) {
 	int			oldTeam;
 	char		s[MAX_TOKEN_CHARS];
 
-	if ( trap_Argc() != 2 ) {
+	if ( trap_Argc() == 1 ) {
 		oldTeam = ent->client->sess.sessionTeam;
 		switch ( oldTeam ) {
 		case TEAM_BLUE:
