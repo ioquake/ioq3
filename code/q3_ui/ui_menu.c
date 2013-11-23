@@ -33,13 +33,14 @@ MAIN MENU
 
 
 #define ID_SINGLEPLAYER			10
-#define ID_MULTIPLAYER			11
-#define ID_SETUP				12
-#define ID_DEMOS				13
-#define ID_CINEMATICS			14
-#define ID_TEAMARENA		15
-#define ID_MODS					16
-#define ID_EXIT					17
+#define	ID_SKIRMISH				11	
+#define ID_MULTIPLAYER			12
+#define ID_SETUP				13
+#define ID_DEMOS				14
+//#define ID_CINEMATICS			14
+//#define ID_TEAMARENA			15
+#define ID_MODS					15
+#define ID_EXIT					16
 
 #define MAIN_BANNER_MODEL				"models/mapobjects/banner/banner5.md3"
 #define MAIN_MENU_VERTICAL_SPACING		34
@@ -48,7 +49,9 @@ MAIN MENU
 typedef struct {
 	menuframework_s	menu;
 
+	menutext_s		slugrock;
 	menutext_s		singleplayer;
+	menutext_s		skirmish;
 	menutext_s		multiplayer;
 	menutext_s		setup;
 	menutext_s		demos;
@@ -100,6 +103,10 @@ void Main_MenuEvent (void* ptr, int event) {
 		UI_SPLevelMenu();
 		break;
 
+	case ID_SKIRMISH:
+		UI_StartServerMenu( qfalse );
+		break;
+
 	case ID_MULTIPLAYER:
 		UI_ArenaServersMenu();
 		break;
@@ -112,18 +119,18 @@ void Main_MenuEvent (void* ptr, int event) {
 		UI_DemosMenu();
 		break;
 
-	case ID_CINEMATICS:
-		UI_CinematicsMenu();
-		break;
+	//case ID_CINEMATICS:
+	//	UI_CinematicsMenu();
+	//	break;
 
 	case ID_MODS:
 		UI_ModsMenu();
 		break;
 
-	case ID_TEAMARENA:
-		trap_Cvar_Set( "fs_game", BASETA);
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart;" );
-		break;
+	//case ID_TEAMARENA:
+	//	trap_Cvar_Set( "fs_game", BASETA);
+	//	trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart;" );
+	//	break;
 
 	case ID_EXIT:
 		UI_ConfirmMenu( "EXIT GAME?", 0, MainMenu_ExitAction );
@@ -308,9 +315,21 @@ void UI_MainMenu( void ) {
 	s_main.menu.draw = Main_MenuDraw;
 	s_main.menu.fullscreen = qtrue;
 	s_main.menu.wrapAround = qtrue;
-	s_main.menu.showlogo = qtrue;
+	s_main.menu.showlogo = qfalse;
 
-	y = 134;
+// SlugRock several adjustments here
+	y = 140;
+	s_main.slugrock.generic.type			= MTYPE_BTEXT;
+	s_main.slugrock.generic.x				= 320;
+	s_main.slugrock.generic.y				= y;
+	s_main.slugrock.string					= "SLUGS AND ROCKETS";
+	s_main.slugrock.color					= color_red;//color_white;
+	s_main.slugrock.style					= UI_CENTER;
+
+	y += MAIN_MENU_VERTICAL_SPACING + 16;
+/*	y = 134; */
+// end SlugRock
+
 	s_main.singleplayer.generic.type		= MTYPE_PTEXT;
 	s_main.singleplayer.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_main.singleplayer.generic.x			= 320;
@@ -320,6 +339,17 @@ void UI_MainMenu( void ) {
 	s_main.singleplayer.string				= "SINGLE PLAYER";
 	s_main.singleplayer.color				= color_red;
 	s_main.singleplayer.style				= style;
+
+	y += MAIN_MENU_VERTICAL_SPACING;
+	s_main.skirmish.generic.type		= MTYPE_PTEXT;
+	s_main.skirmish.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_main.skirmish.generic.x			= 320;
+	s_main.skirmish.generic.y			= y;
+	s_main.skirmish.generic.id			= ID_SKIRMISH;
+	s_main.skirmish.generic.callback	= Main_MenuEvent; 
+	s_main.skirmish.string				= "SKIRMISH";
+	s_main.skirmish.color				= color_red;
+	s_main.skirmish.style				= style;
 
 	y += MAIN_MENU_VERTICAL_SPACING;
 	s_main.multiplayer.generic.type			= MTYPE_PTEXT;
@@ -354,30 +384,30 @@ void UI_MainMenu( void ) {
 	s_main.demos.color						= color_red;
 	s_main.demos.style						= style;
 
-	y += MAIN_MENU_VERTICAL_SPACING;
-	s_main.cinematics.generic.type			= MTYPE_PTEXT;
-	s_main.cinematics.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_main.cinematics.generic.x				= 320;
-	s_main.cinematics.generic.y				= y;
-	s_main.cinematics.generic.id			= ID_CINEMATICS;
-	s_main.cinematics.generic.callback		= Main_MenuEvent; 
-	s_main.cinematics.string				= "CINEMATICS";
-	s_main.cinematics.color					= color_red;
-	s_main.cinematics.style					= style;
+	//y += MAIN_MENU_VERTICAL_SPACING;
+	//s_main.cinematics.generic.type			= MTYPE_PTEXT;
+	//s_main.cinematics.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	//s_main.cinematics.generic.x				= 320;
+	//s_main.cinematics.generic.y				= y;
+	//s_main.cinematics.generic.id			= ID_CINEMATICS;
+	//s_main.cinematics.generic.callback		= Main_MenuEvent; 
+	//s_main.cinematics.string				= "CINEMATICS";
+	//s_main.cinematics.color					= color_red;
+	//s_main.cinematics.style					= style;
 
-	if ( !uis.demoversion && UI_TeamArenaExists() ) {
-		teamArena = qtrue;
-		y += MAIN_MENU_VERTICAL_SPACING;
-		s_main.teamArena.generic.type			= MTYPE_PTEXT;
-		s_main.teamArena.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-		s_main.teamArena.generic.x				= 320;
-		s_main.teamArena.generic.y				= y;
-		s_main.teamArena.generic.id				= ID_TEAMARENA;
-		s_main.teamArena.generic.callback		= Main_MenuEvent; 
-		s_main.teamArena.string					= "TEAM ARENA";
-		s_main.teamArena.color					= color_red;
-		s_main.teamArena.style					= style;
-	}
+	//if ( !uis.demoversion && UI_TeamArenaExists() ) {
+	//	teamArena = qtrue;
+	//	y += MAIN_MENU_VERTICAL_SPACING;
+	//	s_main.teamArena.generic.type			= MTYPE_PTEXT;
+	//	s_main.teamArena.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	//	s_main.teamArena.generic.x				= 320;
+	//	s_main.teamArena.generic.y				= y;
+	//	s_main.teamArena.generic.id				= ID_TEAMARENA;
+	//	s_main.teamArena.generic.callback		= Main_MenuEvent; 
+	//	s_main.teamArena.string					= "TEAM ARENA";
+	//	s_main.teamArena.color					= color_red;
+	//	s_main.teamArena.style					= style;
+	//}
 
 	if ( !uis.demoversion ) {
 		y += MAIN_MENU_VERTICAL_SPACING;
@@ -403,14 +433,16 @@ void UI_MainMenu( void ) {
 	s_main.exit.color						= color_red;
 	s_main.exit.style						= style;
 
+	Menu_AddItem( &s_main.menu,	&s_main.slugrock );
 	Menu_AddItem( &s_main.menu,	&s_main.singleplayer );
+	Menu_AddItem( &s_main.menu,	&s_main.skirmish );
 	Menu_AddItem( &s_main.menu,	&s_main.multiplayer );
 	Menu_AddItem( &s_main.menu,	&s_main.setup );
 	Menu_AddItem( &s_main.menu,	&s_main.demos );
-	Menu_AddItem( &s_main.menu,	&s_main.cinematics );
-	if (teamArena) {
-		Menu_AddItem( &s_main.menu,	&s_main.teamArena );
-	}
+	//Menu_AddItem( &s_main.menu,	&s_main.cinematics );
+	//if (teamArena) {
+	//	Menu_AddItem( &s_main.menu,	&s_main.teamArena );
+	//}
 	if ( !uis.demoversion ) {
 		Menu_AddItem( &s_main.menu,	&s_main.mods );
 	}
