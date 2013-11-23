@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_JOINBLUE		101
 #define ID_JOINGAME		102
 #define ID_SPECTATE		103
+#define ID_WEAPON		104
 
 
 typedef struct
@@ -43,6 +44,7 @@ typedef struct
 	menutext_s		joinblue;
 	menutext_s		joingame;
 	menutext_s		spectate;
+	menulist_s		weapon;
 } teammain_t;
 
 static teammain_t	s_teammain;
@@ -53,18 +55,28 @@ TeamMain_MenuEvent
 ===============
 */
 static void TeamMain_MenuEvent( void* ptr, int event ) {
+	char s[MAX_TOKEN_CHARS];
+	char wp_s[3];
+
 	if( event != QM_ACTIVATED ) {
 		return;
 	}
 
+	if ( s_teammain.weapon.curvalue == 0 )
+		sprintf(wp_s, "rg");
+	else
+		sprintf(wp_s, "rl");
+
 	switch( ((menucommon_s*)ptr)->id ) {
 	case ID_JOINRED:
-		trap_Cmd_ExecuteText( EXEC_APPEND, "cmd team red\n" );
+		sprintf( s, "cmd team red %s\n", wp_s );
+		trap_Cmd_ExecuteText( EXEC_APPEND, s );
 		UI_ForceMenuOff();
 		break;
 
 	case ID_JOINBLUE:
-		trap_Cmd_ExecuteText( EXEC_APPEND, "cmd team blue\n" );
+		sprintf( s, "cmd team blue %s\n", wp_s );
+		trap_Cmd_ExecuteText( EXEC_APPEND, s );
 		UI_ForceMenuOff();
 		break;
 
@@ -86,10 +98,17 @@ static void TeamMain_MenuEvent( void* ptr, int event ) {
 TeamMain_MenuInit
 ===============
 */
+static const char *weapons[] = {
+	"Railgun",
+	"Rocket Launcher",
+	0
+};
 void TeamMain_MenuInit( void ) {
 	int		y;
 	int		gametype;
 	char	info[MAX_INFO_STRING];
+	uiClientState_t cs;
+	int team;
 
 	memset( &s_teammain, 0, sizeof(s_teammain) );
 
@@ -152,6 +171,19 @@ void TeamMain_MenuInit( void ) {
 	s_teammain.spectate.color            = colorRed;
 	y += 20;
 
+	y += 12;
+	s_teammain.weapon.generic.type		= MTYPE_SPINCONTROL;
+	s_teammain.weapon.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_teammain.weapon.generic.x			= 320;
+	s_teammain.weapon.generic.y			= y;
+	s_teammain.weapon.generic.name		= "Weapon: ";
+	s_teammain.weapon.generic.id		= ID_WEAPON;
+	s_teammain.weapon.itemnames			= weapons;
+
+	trap_GetClientState( &cs );
+	trap_GetConfigString( CS_PLAYERS + cs.clientNum, info, MAX_INFO_STRING );
+	team = atoi( Info_ValueForKey( info, "t" ) );
+
 	trap_GetConfigString(CS_SERVERINFO, info, MAX_INFO_STRING);   
 	gametype = atoi( Info_ValueForKey( info,"g_gametype" ) );
 			      
@@ -167,6 +199,15 @@ void TeamMain_MenuInit( void ) {
 	default:
 	case GT_TEAM:
 	case GT_CTF:
+		if( team == TEAM_RED ) {
+			s_teammain.joinred.generic.flags |= QMF_GRAYED;
+		}
+		else if( team == TEAM_BLUE ) {
+			s_teammain.joinblue.generic.flags |= QMF_GRAYED;
+		}
+		else if( team == TEAM_SPECTATOR ) {
+			s_teammain.spectate.generic.flags |= QMF_GRAYED;
+		}
 		s_teammain.joingame.generic.flags |= QMF_GRAYED;
 		break;
 	}
@@ -176,6 +217,7 @@ void TeamMain_MenuInit( void ) {
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joinblue );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joingame );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.spectate );
+	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.weapon );
 }
 
 
