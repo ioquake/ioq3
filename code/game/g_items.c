@@ -905,6 +905,8 @@ void G_SpawnItem (gentity_t *ent, gitem_t *item) {
 		ent->s.generic1 = ent->spawnflags;
 	}
 #endif
+	if ( item->giType != IT_TEAM )
+		ent->s.eFlags |= EF_NODRAW;
 }
 
 
