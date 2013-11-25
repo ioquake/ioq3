@@ -61,7 +61,7 @@ void CG_CheckAmmo( void ) {
 			total += cg.snap->ps.ammo[i] * 200;
 			break;
 		}
-		if ( total >= 5000 ) {
+		if ( total >= 5000 || total < 0 ) {
 			cg.lowAmmoWarning = 0;
 			return;
 		}
