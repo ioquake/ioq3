@@ -1073,6 +1073,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		accuracy_hits, accuracy_shots;
 	int		eventSequence;
 	char	userinfo[MAX_INFO_STRING];
+	char	*ffaWeaponMode;
 
 	index = ent - g_entities;
 	client = ent->client;
@@ -1202,6 +1203,21 @@ void ClientSpawn(gentity_t *ent) {
 	if (!Q_stricmp(g_forceWeapon.string, "rg"))
 		client->sess.weapon = WP_RAILGUN;
 
+	// get ffaWeaponMode value
+	trap_GetUserinfo( ent - g_entities, userinfo, sizeof(userinfo) );
+	if (ent->r.svFlags & SVF_BOT)
+		ffaWeaponMode = Info_ValueForKey( userinfo, "bot_ffaWeaponMode" );
+	else
+		ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
+
+	if ( g_gametype.integer = GT_FFA )
+	{
+		if (!Q_stricmp(ffaWeaponMode, "rl"))
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+		if (!Q_stricmp(ffaWeaponMode, "rg"))
+			client->sess.weapon = WP_RAILGUN;
+	}
+
 	// give sess.weapon
 	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
 	client->ps.ammo[client->sess.weapon] = -1;
@@ -1278,6 +1294,19 @@ void ClientSpawn(gentity_t *ent) {
 
 	// clear entity state values
 	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
+
+	// alternate or random weapon in ffa
+		if (!Q_stricmp( ffaWeaponMode, "alternate" )) {
+			if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
+				client->sess.weapon = WP_RAILGUN;
+			else if ( client->sess.weapon == WP_RAILGUN )
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+		} else if (!Q_stricmp( ffaWeaponMode, "random" )) {
+			if (crandom() > 0)
+				client->sess.weapon = WP_RAILGUN;
+			else
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+		}
 }
 
 
