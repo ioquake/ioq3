@@ -96,9 +96,11 @@ vmCvar_t	g_proxMineTimeout;
 #endif
 // SlugRock cvars
 vmCvar_t	g_healthRegen;
+vmCvar_t	g_forceWeapon;
 
 static cvarTable_t		gameCvarTable[] = {
 	{ &g_healthRegen, "g_healthRegen", "0", 0, 0, qfalse },
+	{ &g_forceWeapon, "g_forceWeapon", "", 0, 0, qfalse },
 
 	// don't override the cheat state set by the system
 	{ &g_cheats, "sv_cheats", "", 0, 0, qfalse },

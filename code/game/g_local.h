@@ -698,6 +698,7 @@ extern	gentity_t		g_entities[MAX_GENTITIES];
 
 // SlugRock cvars
 extern	vmCvar_t	g_healthRegen;
+extern	vmCvar_t	g_forceWeapon;
 
 extern	vmCvar_t	g_gametype;
 extern	vmCvar_t	g_dedicated;
