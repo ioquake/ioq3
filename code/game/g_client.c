@@ -1180,6 +1180,22 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.clientNum = index;
 
+	// force team weapons?
+	if (g_forceTeamWeapons.integer) {
+		if (g_switchTeamWeapons.integer) {
+			if (client->sess.sessionTeam == TEAM_BLUE)
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+			else
+				client->sess.weapon = WP_RAILGUN;
+		}
+		else {
+			if (client->sess.sessionTeam == TEAM_RED)
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+			else
+				client->sess.weapon = WP_RAILGUN;
+		}
+	}
+
 	// force weapon?
 	if (!Q_stricmp(g_forceWeapon.string, "rl"))
 		client->sess.weapon = WP_ROCKET_LAUNCHER;
