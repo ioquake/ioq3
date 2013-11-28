@@ -1180,6 +1180,12 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.clientNum = index;
 
+	// force weapon?
+	if (!Q_stricmp(g_forceWeapon.string, "rl"))
+		client->sess.weapon = WP_ROCKET_LAUNCHER;
+	if (!Q_stricmp(g_forceWeapon.string, "rg"))
+		client->sess.weapon = WP_RAILGUN;
+
 	// give sess.weapon
 	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
 	client->ps.ammo[client->sess.weapon] = -1;
