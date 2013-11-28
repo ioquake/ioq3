@@ -150,6 +150,11 @@ void G_InitSessionData( gclient_t *client, char *userinfo ) {
 	sess->spectatorState = SPECTATOR_FREE;
 	AddTournamentQueue(client);
 
+	if (crandom() > 0)
+		client->sess.weapon = WP_RAILGUN;
+	else
+		client->sess.weapon = WP_ROCKET_LAUNCHER;
+
 	G_WriteClientSessionData( client );
 }
 

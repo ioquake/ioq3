@@ -641,13 +641,6 @@ void SetTeam( gentity_t *ent, char *s ) {
 		client->sess.weapon = WP_RAILGUN;
 	else if (!Q_stricmp( wp_str, "rl" ))
 		client->sess.weapon = WP_ROCKET_LAUNCHER;
-	else {
-		//Com_Printf("TEST\n");
-		if (crandom() > 0)
-			client->sess.weapon = WP_RAILGUN;
-		else
-			client->sess.weapon = WP_ROCKET_LAUNCHER;
-	}
 
 	ClientBegin( clientNum );
 }
