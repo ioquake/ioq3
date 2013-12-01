@@ -445,7 +445,7 @@ void ClientTimerActions( gentity_t *ent, int msec ) {
 			}
 #endif
 		} 
-		else if ( g_healthRegen.integer = 1 ) {
+		else if ( g_healthRegen.integer == 1 ) {
 			if ( ent->health < 125 ) 
 				ent->health += 5;
 			if ( ent->health > 125 )

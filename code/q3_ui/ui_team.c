@@ -63,19 +63,19 @@ static void TeamMain_MenuEvent( void* ptr, int event ) {
 	}
 
 	if ( s_teammain.weapon.curvalue == 0 )
-		sprintf(wp_s, "rg");
+		Com_sprintf(wp_s, sizeof(wp_s), "rg");
 	else
-		sprintf(wp_s, "rl");
+		Com_sprintf(wp_s, sizeof(wp_s), "rl");
 
 	switch( ((menucommon_s*)ptr)->id ) {
 	case ID_JOINRED:
-		sprintf( s, "cmd team red %s\n", wp_s );
+		Com_sprintf( s, sizeof(s), "cmd team red %s\n", wp_s );
 		trap_Cmd_ExecuteText( EXEC_APPEND, s );
 		UI_ForceMenuOff();
 		break;
 
 	case ID_JOINBLUE:
-		sprintf( s, "cmd team blue %s\n", wp_s );
+		Com_sprintf( s, sizeof(s), "cmd team blue %s\n", wp_s );
 		trap_Cmd_ExecuteText( EXEC_APPEND, s );
 		UI_ForceMenuOff();
 		break;
