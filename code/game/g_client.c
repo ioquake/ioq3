@@ -1210,7 +1210,7 @@ void ClientSpawn(gentity_t *ent) {
 	else
 		ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
 
-	if ( g_gametype.integer = GT_FFA )
+	if ( g_gametype.integer == GT_FFA )
 	{
 		if (!Q_stricmp(ffaWeaponMode, "rl"))
 			client->sess.weapon = WP_ROCKET_LAUNCHER;
