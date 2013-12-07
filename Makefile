@@ -918,7 +918,8 @@ ifeq ($(USE_FREETYPE),1)
 endif
 
 ifeq ($(USE_ZCAM),1)
-  BASE_CFLAGS += -D__ZCAM__
+  BASEGAME_CFLAGS += -D__ZCAM__
+  MISSIONPACK_CFLAGS += -D__ZCAM__
 endif
 
 ifndef FULLBINEXT
