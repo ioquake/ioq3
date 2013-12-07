@@ -101,6 +101,7 @@ Makefile.local:
   USE_INTERNAL_SPEEX - build internal speex library instead of dynamically
                        linking against system libspeex
   USE_FREETYPE       - enable FreeType support for rendering fonts
+  USE_ZCAM           - build ioq3 with zcam support enabled
   USE_INTERNAL_ZLIB  - build and link against internal zlib
   USE_INTERNAL_JPEG  - build and link against internal JPEG library
   USE_INTERNAL_OGG   - build and link against internal ogg library
