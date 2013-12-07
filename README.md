@@ -315,6 +315,8 @@ The defaults for these variables differ depending on the target platform.
                             all bots even if someone is named "allbots")
 
   tell <client num> <msg> - send message to a single client (new to server)
+  camera <flic|swing>     - to select ZCAM camera mode.
+  camera <prev|next>      - to switch ZCAM to the previous or next player (cycle).
 ```
 
 
