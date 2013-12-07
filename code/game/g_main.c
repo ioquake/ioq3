@@ -22,6 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#ifdef __ZCAM__
+#include "zcam.h"
+#endif /* __ZCAM__ */
 
 level_locals_t	level;
 
@@ -461,6 +464,10 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 		g_entities[i].client = level.clients + i;
 	}
 
+#ifdef __ZCAM__
+	camera_init ();
+#endif /* __ZCAM__ */
+
 	// always leave room for the max number of clients,
 	// even if they aren't all used, so numbers inside that
 	// range are NEVER anything but clients
@@ -527,6 +534,10 @@ void G_ShutdownGame( int restart ) {
 
 	// write all the client session data so we can get it back
 	G_WriteSessionData();
+
+#ifdef __ZCAM__
+	camera_shutdown ();
+#endif /* __ZCAM__ */
 
 	if ( trap_Cvar_VariableIntegerValue( "bot_enable" ) ) {
 		BotAIShutdown( restart );
