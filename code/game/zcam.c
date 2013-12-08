@@ -1,9 +1,9 @@
 /* 
  *  ZCam v1.0.4
  *  Spectator Camera for Quake III Arena
- *  Copyright (C), 2001 by Avi "Zung!" Rozen
+ *  Copyright (C), 2001 by Avi "Zung!" Rozen <zungbang+zcam@gmail.com>
  *	
- *  http://www.telefragged.com/zungbang/zcam
+ *  https://web.archive.org/web/20100722005140/http://www.telefragged.com/zungbang/zcam
  *
  *  Credits:
  *  FLIC  camera mode is based on code  taken from q2cam by Paul Jordan
