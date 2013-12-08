@@ -688,7 +688,8 @@ void FinishSpawningItem( gentity_t *ent ) {
 		ent->r.contents = 0;
 		return;
 	}
-
+// SlugRock
+/*
 	// powerups don't spawn in for a while
 	if ( ent->item->giType == IT_POWERUP ) {
 		float	respawn;
@@ -700,7 +701,7 @@ void FinishSpawningItem( gentity_t *ent ) {
 		ent->think = RespawnItem;
 		return;
 	}
-
+*/
 
 	trap_LinkEntity (ent);
 }
