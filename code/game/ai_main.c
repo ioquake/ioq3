@@ -1662,7 +1662,7 @@ BotAISetup
 int BotAISetup( int restart ) {
 	int			errnum;
 // SlugRock
-	trap_Cvar_Register(&bot_ffaWeaponMode, "bot_ffaWeaponMode", "alternate", 0);
+	trap_Cvar_Register(&bot_ffaWeaponMode, "bot_ffaWeaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE);
 
 	trap_Cvar_Register(&bot_thinktime, "bot_thinktime", "100", CVAR_CHEAT);
 	trap_Cvar_Register(&bot_memorydump, "bot_memorydump", "0", CVAR_CHEAT);

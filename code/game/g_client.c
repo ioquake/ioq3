@@ -1218,9 +1218,17 @@ void ClientSpawn(gentity_t *ent) {
 			client->sess.weapon = WP_RAILGUN;
 	}
 
+	if ( g_gametype.integer == GT_FFA && !Q_stricmp(ffaWeaponMode, "both") ) {
+		client->ps.stats[STAT_WEAPONS] = ( 1 << WP_ROCKET_LAUNCHER );
+		client->ps.ammo[WP_ROCKET_LAUNCHER] = -1;
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_RAILGUN );
+		client->ps.ammo[WP_RAILGUN] = -1;
+	}
+	else {
 	// give sess.weapon
-	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
-	client->ps.ammo[client->sess.weapon] = -1;
+		client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
+		client->ps.ammo[client->sess.weapon] = -1;
+	}
 
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
