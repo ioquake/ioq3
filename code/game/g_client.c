@@ -1222,13 +1222,6 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
 	client->ps.ammo[client->sess.weapon] = -1;
 
-	if ( g_gametype.integer == GT_FFA ) {
-		if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
-			client->sess.weapon = WP_RAILGUN;
-		else if ( client->sess.weapon == WP_RAILGUN )
-			client->sess.weapon = WP_ROCKET_LAUNCHER;
-	}
-
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
 
@@ -1296,17 +1289,17 @@ void ClientSpawn(gentity_t *ent) {
 	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
 
 	// alternate or random weapon in ffa
-		if (!Q_stricmp( ffaWeaponMode, "alternate" )) {
-			if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
-				client->sess.weapon = WP_RAILGUN;
-			else if ( client->sess.weapon == WP_RAILGUN )
-				client->sess.weapon = WP_ROCKET_LAUNCHER;
-		} else if (!Q_stricmp( ffaWeaponMode, "random" )) {
-			if (crandom() > 0)
-				client->sess.weapon = WP_RAILGUN;
-			else
-				client->sess.weapon = WP_ROCKET_LAUNCHER;
-		}
+	if (!Q_stricmp( ffaWeaponMode, "alternate" )) {
+		if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
+			client->sess.weapon = WP_RAILGUN;
+		else if ( client->sess.weapon == WP_RAILGUN )
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+	} else if (!Q_stricmp( ffaWeaponMode, "random" )) {
+		if (crandom() > 0)
+			client->sess.weapon = WP_RAILGUN;
+		else
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+	}
 }
 
 
