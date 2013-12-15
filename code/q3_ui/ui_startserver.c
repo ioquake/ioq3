@@ -125,11 +125,14 @@ static int GametypeBits( char *string ) {
 
 		if( Q_stricmp( token, "ffa" ) == 0 ) {
 			bits |= 1 << GT_FFA;
+			bits |= 1 << GT_TEAM;		// SlugRock
 			continue;
 		}
 
 		if( Q_stricmp( token, "tourney" ) == 0 ) {
 			bits |= 1 << GT_TOURNAMENT;
+			bits |= 1 << GT_FFA;		// SlugRock
+			bits |= 1 << GT_TEAM;		// SlugRock
 			continue;
 		}
 
@@ -140,6 +143,7 @@ static int GametypeBits( char *string ) {
 
 		if( Q_stricmp( token, "team" ) == 0 ) {
 			bits |= 1 << GT_TEAM;
+			bits |= 1 << GT_FFA;		// SlugRock
 			continue;
 		}
 
