@@ -568,6 +568,8 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	char			*headmodel;
 	char			userinfo[MAX_INFO_STRING];
 	char			buff[MAX_INFO_VALUE];
+// SlugRock
+	float  rnd;
 
 	// have the server allocate a client slot
 	clientNum = trap_BotAllocateClient();
@@ -605,6 +607,8 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	Info_SetValueForKey( userinfo, "snaps", "20" );
 	Info_SetValueForKey( userinfo, "skill", va("%.2f", skill) );
 
+// SlugRock
+/*
 	if ( skill >= 1 && skill < 2 ) {
 		Info_SetValueForKey( userinfo, "handicap", "50" );
 	}
@@ -614,7 +618,7 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	else if ( skill >= 3 && skill < 4 ) {
 		Info_SetValueForKey( userinfo, "handicap", "90" );
 	}
-
+*/
 	key = "model";
 	model = Info_ValueForKey( botinfo, key );
 	if ( !*model ) {
@@ -640,19 +644,64 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	}
 	Info_SetValueForKey( userinfo, "sex", s );
 
+// SlugRock
+
+	rnd = random(); 
+
 	key = "color1";
 	s = Info_ValueForKey( botinfo, key );
 	if ( !*s ) {
+		if  (rnd < 0.14) {
+		s = "1";
+		}
+		else if  (rnd < 0.28) {
+		s = "2";
+		}
+		else if  (rnd < 0.42) {
+		s = "3";
+		}
+		else if  (rnd < 0.56) {
 		s = "4";
+		}
+		else if  (rnd < 0.70) {
+		s = "5";
+		}
+		else if  (rnd < 0.85) {
+		s = "6";
+		}
+		else  {
+		s = "7";
+		}
 	}
 	Info_SetValueForKey( userinfo, key, s );
 
 	key = "color2";
 	s = Info_ValueForKey( botinfo, key );
 	if ( !*s ) {
+		if  (rnd < 0.14) {
+		s = "1";
+		}
+		else if  (rnd < 0.28) {
+		s = "2";
+		}
+		else if  (rnd < 0.42) {
+		s = "3";
+		}
+		else if  (rnd < 0.56) {
+		s = "4";
+		}
+		else if  (rnd < 0.70) {
 		s = "5";
+		}
+		else if  (rnd < 0.85) {
+		s = "6";
+		}
+		else  {
+		s = "7";
+		}
 	}
 	Info_SetValueForKey( userinfo, key, s );
+// end SlugRock
 
 	s = Info_ValueForKey(botinfo, "aifile");
 	if (!*s ) {
