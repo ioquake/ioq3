@@ -182,7 +182,7 @@ static void PlayerModel_UpdateModel( void )
 	VectorClear( moveangles );
 
 	UI_PlayerInfo_SetModel( &s_playermodel.playerinfo, s_playermodel.modelskin );
-	UI_PlayerInfo_SetInfo( &s_playermodel.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_MACHINEGUN, qfalse );
+	UI_PlayerInfo_SetInfo( &s_playermodel.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_RAILGUN/*WP_MACHINEGUN*/, qfalse ); // SlugRock
 }
 
 /*

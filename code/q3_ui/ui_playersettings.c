@@ -243,7 +243,7 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 		viewangles[YAW]   = 180 - 30;
 		viewangles[PITCH] = 0;
 		viewangles[ROLL]  = 0;
-		UI_PlayerInfo_SetInfo( &s_playersettings.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, vec3_origin, WP_MACHINEGUN, qfalse );
+		UI_PlayerInfo_SetInfo( &s_playersettings.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, vec3_origin, WP_RAILGUN/*WP_MACHINEGUN*/, qfalse ); // SlugRock
 	}
 
 	b = (menubitmap_s*) self;
@@ -309,7 +309,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 	viewangles[ROLL]  = 0;
 
 	UI_PlayerInfo_SetModel( &s_playersettings.playerinfo, UI_Cvar_VariableString( "model" ) );
-	UI_PlayerInfo_SetInfo( &s_playersettings.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, vec3_origin, WP_MACHINEGUN, qfalse );
+	UI_PlayerInfo_SetInfo( &s_playersettings.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, vec3_origin, WP_RAILGUN/*WP_MACHINEGUN*/, qfalse ); // SlugRock
 
 	// handicap
 	h = Com_Clamp( 5, 100, trap_Cvar_VariableValue("handicap") );

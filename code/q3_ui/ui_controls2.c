@@ -546,7 +546,7 @@ static void Controls_UpdateModel( int anim ) {
 		break;
 	}
 
-	UI_PlayerInfo_SetInfo( &s_controls.playerinfo, s_controls.playerLegs, s_controls.playerTorso, s_controls.playerViewangles, s_controls.playerMoveangles, s_controls.playerWeapon, s_controls.playerChat );
+	UI_PlayerInfo_SetInfo( &s_controls.playerinfo, s_controls.playerLegs, s_controls.playerTorso, s_controls.playerViewangles, s_controls.playerMoveangles, WP_RAILGUN/*s_controls.playerWeapon*/, s_controls.playerChat ); // SlugRock
 }
 
 
