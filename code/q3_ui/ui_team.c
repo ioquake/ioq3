@@ -109,6 +109,7 @@ void TeamMain_MenuInit( void ) {
 	char	info[MAX_INFO_STRING];
 	uiClientState_t cs;
 	int team;
+	int gt;
 
 	memset( &s_teammain, 0, sizeof(s_teammain) );
 
@@ -171,14 +172,18 @@ void TeamMain_MenuInit( void ) {
 	s_teammain.spectate.color            = colorRed;
 	y += 20;
 
-	y += 12;
-	s_teammain.weapon.generic.type		= MTYPE_SPINCONTROL;
-	s_teammain.weapon.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_teammain.weapon.generic.x			= 320;
-	s_teammain.weapon.generic.y			= y;
-	s_teammain.weapon.generic.name		= "Weapon: ";
-	s_teammain.weapon.generic.id		= ID_WEAPON;
-	s_teammain.weapon.itemnames			= weapons;
+	trap_GetConfigString( CS_SERVERINFO, info, sizeof(info) );
+	gt = atoi( Info_ValueForKey( info, "g_gametype" ) );
+	if ( gt >= GT_TEAM ) {
+		y += 12;
+		s_teammain.weapon.generic.type		= MTYPE_SPINCONTROL;
+		s_teammain.weapon.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_teammain.weapon.generic.x			= 320;
+		s_teammain.weapon.generic.y			= y;
+		s_teammain.weapon.generic.name		= "Weapon: ";
+		s_teammain.weapon.generic.id		= ID_WEAPON;
+		s_teammain.weapon.itemnames			= weapons;
+	}
 
 	trap_GetClientState( &cs );
 	trap_GetConfigString( CS_PLAYERS + cs.clientNum, info, MAX_INFO_STRING );
@@ -217,7 +222,8 @@ void TeamMain_MenuInit( void ) {
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joinblue );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joingame );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.spectate );
-	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.weapon );
+	if ( gt >= GT_TEAM )
+		Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.weapon );
 }
 
 
