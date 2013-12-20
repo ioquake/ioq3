@@ -1125,6 +1125,8 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 
 	switch (g_gametype.integer) {
 		case GT_FFA:
+		case GT_TOURNAMENT:
+		case GT_SINGLE_PLAYER:
 			if ( g_forceWeaponMode.string[0] )
 				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
 			else {
@@ -1139,6 +1141,7 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 			}
 			break;
 		case GT_TEAM:
+		case GT_CTF:
 			if ( g_forceWeaponMode.string[0] ) {
 				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
 			}
