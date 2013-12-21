@@ -486,7 +486,7 @@ void G_RunMissile( gentity_t *ent ) {
 		passent = ent->r.ownerNum;
 	}
 	// trace a line from the previous position to the current position
-	trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask );
+	trap_Trace( &tr, ent->r.currentOrigin, 0, 0, origin, passent, ent->clipmask );
 
 	if ( tr.startsolid || tr.allsolid ) {
 		// make sure the tr.entityNum is set to the entity we're stuck in
