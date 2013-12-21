@@ -80,6 +80,22 @@ void TossClientItems( gentity_t *self ) {
 	int			i;
 	gentity_t	*drop;
 
+	for (i = PW_REDFLAG; i <= PW_NEUTRALFLAG; i++) {
+		if ( self->client->ps.powerups[ i ] > level.time ) {
+			item = BG_FindItemForPowerup( i );
+			if ( !item ) {
+				continue;
+			}
+			drop = Drop_Item( self, item, 0 );
+			// decide how many seconds it has left
+			drop->count = ( self->client->ps.powerups[ i ] - level.time ) / 1000;
+			if ( drop->count < 1 ) {
+				drop->count = 1;
+			}
+		}
+	}
+	return;
+
 	// drop the weapon if not a gauntlet or machinegun
 	weapon = self->s.weapon;
 
@@ -561,7 +577,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 		}
 	}
 
-	//TossClientItems( self );
+	TossClientItems( self );
 #ifdef MISSIONPACK
 	TossClientPersistantPowerups( self );
 	if( g_gametype.integer == GT_HARVESTER ) {
