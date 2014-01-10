@@ -36,7 +36,6 @@ static char* slugrock_artlist[] =
 	NULL
 };
 
-#define ID_ADD	 100
 #define ID_BACK	 101
 
 typedef struct
@@ -46,50 +45,11 @@ typedef struct
 	menubitmap_s	framel;
 	menubitmap_s	framer;
 	menubitmap_s	back;
-	menutext_s		add;
 	char			info[MAX_INFO_STRING];
 	int				numlines;
 } slugrock_t;
 
 static slugrock_t	s_slugrock;
-
-
-/*
-=================
-Favorites_Add
-
-Add current server to favorites
-=================
-*/
-void Favorites_Add( void )
-{
-	char	adrstr[128];
-	char	serverbuff[128];
-	int		i;
-	int		best;
-
-	trap_Cvar_VariableStringBuffer( "cl_currentServerAddress", serverbuff, sizeof(serverbuff) );
-	if (!serverbuff[0])
-		return;
-
-	best = 0;
-	for (i=0; i<MAX_FAVORITESERVERS; i++)
-	{
-		trap_Cvar_VariableStringBuffer( va("server%d",i+1), adrstr, sizeof(adrstr) );
-		if (!Q_stricmp(serverbuff,adrstr))
-		{
-			// already in list
-			return;
-		}
-		
-		// use first empty available slot
-		if (!adrstr[0] && !best)
-			best = i+1;
-	}
-
-	if (best)
-		trap_Cvar_Set( va("server%d",best), serverbuff);
-}
 
 
 /*
@@ -101,14 +61,6 @@ static void SlugRock_Event( void* ptr, int event )
 {
 	switch (((menucommon_s*)ptr)->id)
 	{
-		case ID_ADD:
-			if (event != QM_ACTIVATED)
-				break;
-		
-			Favorites_Add();
-			UI_PopMenu();
-			break;
-
 		case ID_BACK:
 			if (event != QM_ACTIVATED)
 				break;
@@ -222,19 +174,6 @@ void UI_SlugRockMenu( void )
 	s_slugrock.framer.width  	      = 256;
 	s_slugrock.framer.height  	  = 334;
 
-	s_slugrock.add.generic.type	  = MTYPE_PTEXT;
-	s_slugrock.add.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_slugrock.add.generic.callback = SlugRock_Event;
-	s_slugrock.add.generic.id	      = ID_ADD;
-	s_slugrock.add.generic.x		  = 320;
-	s_slugrock.add.generic.y		  = 371;
-	s_slugrock.add.string  		  = "ADD TO FAVORITES";
-	s_slugrock.add.style  		  = UI_CENTER|UI_SMALLFONT;
-	s_slugrock.add.color			  =	color_red;
-	if( trap_Cvar_VariableValue( "sv_running" ) ) {
-		s_slugrock.add.generic.flags |= QMF_GRAYED;
-	}
-
 	s_slugrock.back.generic.type	   = MTYPE_BITMAP;
 	s_slugrock.back.generic.name     = SLUGROCK_BACK0;
 	s_slugrock.back.generic.flags    = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -264,7 +203,6 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.banner );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framel );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
-	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.add );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
 
 	UI_PushMenu( &s_slugrock.menu );
