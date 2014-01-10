@@ -36,7 +36,7 @@ static char* slugrock_artlist[] =
 	NULL
 };
 
-#define ID_BACK	 101
+#define ID_BACK	 100
 
 typedef struct
 {
