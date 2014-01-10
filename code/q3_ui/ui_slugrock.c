@@ -154,7 +154,7 @@ void UI_SlugRockMenu( void )
 	s_slugrock.banner.generic.type  = MTYPE_BTEXT;
 	s_slugrock.banner.generic.x		= 320;
 	s_slugrock.banner.generic.y		= 16;
-	s_slugrock.banner.string		= "SLUGROCK CONFIG";
+	s_slugrock.banner.string		= "SLUGROCK SETTINGS";
 	s_slugrock.banner.color			= color_white;
 	s_slugrock.banner.style			= UI_CENTER;
 

@@ -622,6 +622,7 @@ SERVER OPTIONS MENU *****
 #define ID_DEDICATED			22
 #define ID_GO					23
 #define ID_BACK					24
+#define ID_SLUGROCK				25
 
 #define PLAYER_SLOTS			12
 
@@ -662,6 +663,7 @@ typedef struct {
 	char				newBotName[16];
 	
 	menulist_s		punkbuster;
+	menutext_s		slugrock;
 } serveroptions_t;
 
 static serveroptions_t s_serveroptions;
@@ -970,6 +972,12 @@ static void ServerOptions_Event( void* ptr, int event ) {
 			break;
 		}
 		UI_PopMenu();
+		break;
+	case ID_SLUGROCK:
+		if( event != QM_ACTIVATED ) {
+			break;
+		}
+		UI_SlugRockMenu();
 		break;
 	}
 }
@@ -1358,6 +1366,18 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	s_serveroptions.punkbuster.generic.x				= OPTIONS_X;
 	s_serveroptions.punkbuster.generic.y				= y;
 	s_serveroptions.punkbuster.itemnames				= punkbuster_items;
+
+	//Com_Printf("y %i\n", y);
+	y += SMALLCHAR_HEIGHT;
+	s_serveroptions.slugrock.generic.type		= MTYPE_PTEXT;
+	s_serveroptions.slugrock.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_serveroptions.slugrock.generic.x			= OPTIONS_X;
+	s_serveroptions.slugrock.generic.y			= (y+(480-64-y)/2)-BIGCHAR_HEIGHT/2;
+	s_serveroptions.slugrock.generic.id			= ID_SLUGROCK;
+	s_serveroptions.slugrock.generic.callback	= ServerOptions_Event; 
+	s_serveroptions.slugrock.string				= "SLUGROCK SETTINGS";
+	s_serveroptions.slugrock.color				= color_red;
+	s_serveroptions.slugrock.style				= UI_CENTER|UI_SMALLFONT;
 	
 	y = 80;
 	s_serveroptions.botSkill.generic.type			= MTYPE_SPINCONTROL;
@@ -1477,12 +1497,12 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	if( s_serveroptions.multiplayer ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.hostname );
 	}
+	Menu_AddItem( &s_serveroptions.menu, (void*) &s_serveroptions.punkbuster );
 
+	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.slugrock );
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.back );
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.next );
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.go );
-
-	Menu_AddItem( &s_serveroptions.menu, (void*) &s_serveroptions.punkbuster );
 	
 	ServerOptions_SetMenuItems();
 }
