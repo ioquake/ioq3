@@ -146,43 +146,43 @@ void UI_SlugRockMenu( void )
 
 	SlugRock_Cache();
 
-	s_slugrock.menu.draw       = SlugRock_MenuDraw;
-	s_slugrock.menu.key        = SlugRock_MenuKey;
-	s_slugrock.menu.wrapAround = qtrue;
-	s_slugrock.menu.fullscreen = qtrue;
+	s_slugrock.menu.draw			= SlugRock_MenuDraw;
+	s_slugrock.menu.key				= SlugRock_MenuKey;
+	s_slugrock.menu.wrapAround		= qtrue;
+	s_slugrock.menu.fullscreen		= qtrue;
 
 	s_slugrock.banner.generic.type  = MTYPE_BTEXT;
-	s_slugrock.banner.generic.x	  = 320;
-	s_slugrock.banner.generic.y	  = 16;
+	s_slugrock.banner.generic.x		= 320;
+	s_slugrock.banner.generic.y		= 16;
 	s_slugrock.banner.string		= "SLUGROCK CONFIG";
-	s_slugrock.banner.color	      = color_white;
-	s_slugrock.banner.style	      = UI_CENTER;
+	s_slugrock.banner.color			= color_white;
+	s_slugrock.banner.style			= UI_CENTER;
 
 	s_slugrock.framel.generic.type  = MTYPE_BITMAP;
 	s_slugrock.framel.generic.name  = SLUGROCK_FRAMEL;
 	s_slugrock.framel.generic.flags = QMF_INACTIVE;
-	s_slugrock.framel.generic.x	  = 0;  
-	s_slugrock.framel.generic.y	  = 78;
-	s_slugrock.framel.width  	      = 256;
-	s_slugrock.framel.height  	  = 329;
+	s_slugrock.framel.generic.x		= 0;  
+	s_slugrock.framel.generic.y		= 78;
+	s_slugrock.framel.width  	    = 256;
+	s_slugrock.framel.height  		= 329;
 
 	s_slugrock.framer.generic.type  = MTYPE_BITMAP;
 	s_slugrock.framer.generic.name  = SLUGROCK_FRAMER;
 	s_slugrock.framer.generic.flags = QMF_INACTIVE;
-	s_slugrock.framer.generic.x	  = 376;
-	s_slugrock.framer.generic.y	  = 76;
-	s_slugrock.framer.width  	      = 256;
-	s_slugrock.framer.height  	  = 334;
+	s_slugrock.framer.generic.x		= 376;
+	s_slugrock.framer.generic.y		= 76;
+	s_slugrock.framer.width  	    = 256;
+	s_slugrock.framer.height  		= 334;
 
-	s_slugrock.back.generic.type	   = MTYPE_BITMAP;
+	s_slugrock.back.generic.type	 = MTYPE_BITMAP;
 	s_slugrock.back.generic.name     = SLUGROCK_BACK0;
 	s_slugrock.back.generic.flags    = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_slugrock.back.generic.callback = SlugRock_Event;
-	s_slugrock.back.generic.id	   = ID_BACK;
-	s_slugrock.back.generic.x		   = 0;
-	s_slugrock.back.generic.y		   = 480-64;
-	s_slugrock.back.width  		   = 128;
-	s_slugrock.back.height  		   = 64;
+	s_slugrock.back.generic.id		 = ID_BACK;
+	s_slugrock.back.generic.x		 = 0;
+	s_slugrock.back.generic.y		 = 480-64;
+	s_slugrock.back.width  			 = 128;
+	s_slugrock.back.height  		 = 64;
 	s_slugrock.back.focuspic         = SLUGROCK_BACK1;
 
 	trap_GetConfigString( CS_SERVERINFO, s_slugrock.info, MAX_INFO_STRING );
