@@ -46,6 +46,7 @@ INGAME MENU
 #define ID_QUIT					17
 #define ID_RESUME				18
 #define ID_TEAMORDERS			19
+#define ID_SLUGROCK				20
 
 
 typedef struct {
@@ -62,6 +63,7 @@ typedef struct {
 	menutext_s		teamorders;
 	menutext_s		quit;
 	menutext_s		resume;
+	menutext_s		slugrock;
 } ingamemenu_t;
 
 static ingamemenu_t	s_ingame;
@@ -146,6 +148,10 @@ void InGame_Event( void *ptr, int notification ) {
 	case ID_RESUME:
 		UI_PopMenu();
 		break;
+
+	case ID_SLUGROCK:
+		UI_SlugRockMenu();
+		break;
 	}
 }
 
@@ -178,6 +184,17 @@ void InGame_MenuInit( void ) {
 
 	//y = 96;
 	y = 88;
+	s_ingame.slugrock.generic.type		= MTYPE_PTEXT;
+	s_ingame.slugrock.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_ingame.slugrock.generic.x			= 320;
+	s_ingame.slugrock.generic.y			= y;
+	s_ingame.slugrock.generic.id		= ID_SLUGROCK;
+	s_ingame.slugrock.generic.callback	= InGame_Event; 
+	s_ingame.slugrock.string			= "SLUGROCK";
+	s_ingame.slugrock.color				= color_red;
+	s_ingame.slugrock.style				= UI_CENTER|UI_SMALLFONT;
+
+	y += INGAME_MENU_VERTICAL_SPACING;
 	s_ingame.team.generic.type			= MTYPE_PTEXT;
 	s_ingame.team.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_ingame.team.generic.x				= 320;
@@ -308,11 +325,13 @@ void InGame_MenuInit( void ) {
 	s_ingame.quit.style					= UI_CENTER|UI_SMALLFONT;
 
 	Menu_AddItem( &s_ingame.menu, &s_ingame.frame );
+	Menu_AddItem( &s_ingame.menu, &s_ingame.slugrock );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.team );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.addbots );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.removebots );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.teamorders );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.setup );
+	Menu_AddItem( &s_ingame.menu, &s_ingame.slugrock );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.server );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.restart );
 	Menu_AddItem( &s_ingame.menu, &s_ingame.resume );
