@@ -501,7 +501,7 @@ void RB_BeginDrawingView (void) {
 	}
 
 	// clear to black for cube maps
-	if (backEnd.viewParms.targetFbo == tr.renderCubeFbo)
+	if (glRefConfig.framebufferObject && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
 	{
 		clearBits |= GL_COLOR_BUFFER_BIT;
 		qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
