@@ -1086,16 +1086,6 @@ void SlugRock_WeaponMode(gentity_t *ent, char *mode) {
 	}
 }
 
-void SlugRock_ForceWeapon(gclient_t *client) {
-	if (!Q_stricmp(g_forceWeaponMode.string, "rl"))
-		client->sess.weapon = WP_ROCKET_LAUNCHER;
-	if (!Q_stricmp(g_forceWeaponMode.string, "rg"))
-		client->sess.weapon = WP_RAILGUN;
-
-	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
-	client->ps.ammo[client->sess.weapon] = -1;
-}
-
 void SlugRock_ForceTeamWeapons(gclient_t *client) {
 	if (g_switchTeamWeapons.integer) {
 		if (client->sess.sessionTeam == TEAM_BLUE)
