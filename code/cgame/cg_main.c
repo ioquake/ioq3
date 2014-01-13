@@ -208,7 +208,7 @@ typedef struct {
 } cvarTable_t;
 
 static cvarTable_t cvarTable[] = {
-	{ &cg_weaponMode, "cg_weaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE },
+	{ &cg_weaponMode, "cg_weaponMode", "select", CVAR_USERINFO|CVAR_ARCHIVE },
 
 	{ &cg_ignore, "cg_ignore", "0", 0 },	// used for debugging
 	{ &cg_autoswitch, "cg_autoswitch", "1", CVAR_ARCHIVE },
