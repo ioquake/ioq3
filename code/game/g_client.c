@@ -1123,7 +1123,7 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 
 	client = ent->client;
 
-	if ( g_forceWeaponMode.string[0] )
+	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) != 0 )
 		SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
 	else {
 				// get weaponMode value

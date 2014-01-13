@@ -102,7 +102,7 @@ vmCvar_t	g_switchTeamWeapons;
 
 static cvarTable_t		gameCvarTable[] = {
 	{ &g_healthRegen, "g_healthRegen", "0", 0, 0, qfalse },
-	{ &g_forceWeaponMode, "g_forceWeaponMode", "", 0, 0, qfalse },
+	{ &g_forceWeaponMode, "g_forceWeaponMode", "no", CVAR_SERVERINFO, 0, qfalse },
 	{ &g_forceTeamWeapons, "g_forceTeamWeapons", "0", 0, 0, qfalse },
 	{ &g_switchTeamWeapons, "g_switchTeamWeapons", "0", 0, 0, qfalse },
 
