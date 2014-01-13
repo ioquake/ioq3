@@ -1048,28 +1048,18 @@ void ClientBegin( int clientNum ) {
 	CalculateRanks();
 }
 
-void SlugRock_FFAWeaponMode(gentity_t *ent) {
-	char		userinfo[MAX_INFO_STRING];
-	char		*ffaWeaponMode;
+void SlugRock_WeaponMode(gentity_t *ent, char *mode) {
 	gclient_t	*client;
 
 	client = ent->client;
 	
-	// get ffaWeaponMode value
-	trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
-	if (ent->r.svFlags & SVF_BOT)
-		ffaWeaponMode = Info_ValueForKey( userinfo, "bot_ffaWeaponMode" );
-	else
-		ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
-
-
-	if (!Q_stricmp(ffaWeaponMode, "rl"))
+	if (!Q_stricmp(mode, "rl"))
 		client->sess.weapon = WP_ROCKET_LAUNCHER;
 
-	if (!Q_stricmp(ffaWeaponMode, "rg"))
+	if (!Q_stricmp(mode, "rg"))
 		client->sess.weapon = WP_RAILGUN;
 
-	if (!Q_stricmp(ffaWeaponMode, "both")) {
+	if (!Q_stricmp(mode, "both")) {
 		client->ps.stats[STAT_WEAPONS] = ( 1 << WP_ROCKET_LAUNCHER );
 		client->ps.ammo[WP_ROCKET_LAUNCHER] = -1;
 		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_RAILGUN );
@@ -1081,14 +1071,14 @@ void SlugRock_FFAWeaponMode(gentity_t *ent) {
 	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
 	client->ps.ammo[client->sess.weapon] = -1;
 
-	if (!Q_stricmp( ffaWeaponMode, "alternate" )) {
+	if (!Q_stricmp( mode, "alternate" )) {
 		if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
 			client->sess.weapon = WP_RAILGUN;
 		else if ( client->sess.weapon == WP_RAILGUN )
 			client->sess.weapon = WP_ROCKET_LAUNCHER;
 	}
 	
-	if (!Q_stricmp( ffaWeaponMode, "random" )) {
+	if (!Q_stricmp( mode, "random" )) {
 		if (crandom() > 0)
 			client->sess.weapon = WP_RAILGUN;
 		else
