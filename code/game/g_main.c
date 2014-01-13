@@ -96,13 +96,13 @@ vmCvar_t	g_proxMineTimeout;
 #endif
 // SlugRock cvars
 vmCvar_t	g_healthRegen;
-vmCvar_t	g_forceWeapon;
+vmCvar_t	g_forceWeaponMode;
 vmCvar_t	g_forceTeamWeapons;
 vmCvar_t	g_switchTeamWeapons;
 
 static cvarTable_t		gameCvarTable[] = {
 	{ &g_healthRegen, "g_healthRegen", "0", 0, 0, qfalse },
-	{ &g_forceWeapon, "g_forceWeapon", "", 0, 0, qfalse },
+	{ &g_forceWeaponMode, "g_forceWeaponMode", "", 0, 0, qfalse },
 	{ &g_forceTeamWeapons, "g_forceTeamWeapons", "0", 0, 0, qfalse },
 	{ &g_switchTeamWeapons, "g_switchTeamWeapons", "0", 0, 0, qfalse },
 

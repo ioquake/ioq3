@@ -1097,9 +1097,9 @@ void SlugRock_FFAWeaponMode(gentity_t *ent) {
 }
 
 void SlugRock_ForceWeapon(gclient_t *client) {
-	if (!Q_stricmp(g_forceWeapon.string, "rl"))
+	if (!Q_stricmp(g_forceWeaponMode.string, "rl"))
 		client->sess.weapon = WP_ROCKET_LAUNCHER;
-	if (!Q_stricmp(g_forceWeapon.string, "rg"))
+	if (!Q_stricmp(g_forceWeaponMode.string, "rg"))
 		client->sess.weapon = WP_RAILGUN;
 
 	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
@@ -1129,7 +1129,7 @@ void SlugRock_ForceTeamWeapons(gclient_t *client) {
 GiveWeapon
 
 Cvars related to this:
-- g_forceWeapon
+- g_forceWeaponMode
 - g_forceTeamWeapons
 - g_switchTeamWeapons
 - cg_ffaWeaponMode
@@ -1143,13 +1143,13 @@ void GiveWeapon(gentity_t *ent) {
 
 	switch (g_gametype.integer) {
 		case GT_FFA:
-			if ( g_forceWeapon.integer )
+			if ( g_forceWeaponMode.integer )
 				SlugRock_ForceWeapon(client);
 			else
 				SlugRock_FFAWeaponMode(ent);
 			break;
 		case GT_TEAM:
-			if ( g_forceWeapon.integer )
+			if ( g_forceWeaponMode.integer )
 				SlugRock_ForceWeapon(client);
 			else if ( g_forceTeamWeapons.integer )
 				SlugRock_ForceTeamWeapons(client);
