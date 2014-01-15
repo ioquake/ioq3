@@ -1128,21 +1128,32 @@ Cvars related to this:
 */
 void SlugRock_GiveWeapon(gentity_t *ent) {
 	gclient_t	*client;
+	char		userinfo[MAX_INFO_STRING];
+	char		*ffaWeaponMode;
 
 	client = ent->client;
 
 	switch (g_gametype.integer) {
 		case GT_FFA:
-			if ( g_forceWeaponMode.integer )
-				SlugRock_ForceWeapon(client);
-			else
-				SlugRock_FFAWeaponMode(ent);
+			if ( g_forceWeaponMode.string[0] )
+				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+			else {
+				// get ffaWeaponMode value
+				trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
+				if (ent->r.svFlags & SVF_BOT)
+					ffaWeaponMode = Info_ValueForKey( userinfo, "bot_ffaWeaponMode" );
+				else
+					ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
+
+				SlugRock_WeaponMode(ent, ffaWeaponMode);
+			}
 			break;
 		case GT_TEAM:
-			if ( g_forceWeaponMode.integer )
-				SlugRock_ForceWeapon(client);
+			if ( g_forceWeaponMode.string[0] ) {
+				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+			}
 			else if ( g_forceTeamWeapons.integer )
-				SlugRock_ForceTeamWeapons(client);
+				SlugRock_ForceTeamWeapons( client );
 			else {
 				client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
 				client->ps.ammo[client->sess.weapon] = -1;
