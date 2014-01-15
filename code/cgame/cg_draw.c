@@ -1795,7 +1795,7 @@ static void CG_DrawCenterString( void ) {
 
 	start = cg.centerPrint;
 
-	y = cg.centerPrintY - cg.centerPrintLines * BIGCHAR_HEIGHT / 2;
+	y = cg.centerPrintY - cg.centerPrintLines * cg.centerPrintCharWidth * 1.5 / 2;
 
 	while ( 1 ) {
 		char linebuffer[1024];
