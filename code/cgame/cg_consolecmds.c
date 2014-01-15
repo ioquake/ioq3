@@ -444,6 +444,53 @@ static void CG_Camera_f( void ) {
 }
 */
 
+static void CG_Test_f(void) {
+		char	*s;
+
+		if ( cgs.gametype < GT_TEAM ) {
+			s = va("You fragged yourself\n1st place with 1");
+		} else {
+			s = va("You fragged yourself");
+		}
+		CG_CenterPrint( s, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+		
+		cg.rewardStack++;
+		cg.rewardSound[cg.rewardStack] = cgs.media.excellentSound;
+		cg.rewardShader[cg.rewardStack] = cgs.media.medalExcellent;
+		cg.rewardCount[cg.rewardStack] = 1;
+}
+
+static void CG_Test2_f(void) {
+		char	*s;
+
+		if ( cgs.gametype < GT_TEAM ) {
+			s = va("You fragged yourself\n1st place with 1");
+		} else {
+			s = va("You fragged yourself");
+		}
+		CG_CenterPrint( s, SCREEN_HEIGHT * 0.08, TINYCHAR_WIDTH );
+		
+		cg.rewardStack++;
+		cg.rewardSound[cg.rewardStack] = cgs.media.excellentSound;
+		cg.rewardShader[cg.rewardStack] = cgs.media.medalExcellent;
+		cg.rewardCount[cg.rewardStack] = 1;
+}
+
+static void CG_Test3_f(void) {
+		char	*s;
+
+		if ( cgs.gametype < GT_TEAM ) {
+			s = va("You fragged yourself\n1st place with 1");
+		} else {
+			s = va("You fragged yourself");
+		}
+		CG_CenterPrint( s, 28, BIGCHAR_WIDTH-5 );
+		
+		cg.rewardStack++;
+		cg.rewardSound[cg.rewardStack] = cgs.media.excellentSound;
+		cg.rewardShader[cg.rewardStack] = cgs.media.medalExcellent;
+		cg.rewardCount[cg.rewardStack] = 1;
+}
 
 typedef struct {
 	char	*cmd;
@@ -451,6 +498,9 @@ typedef struct {
 } consoleCommand_t;
 
 static consoleCommand_t	commands[] = {
+	{ "test", CG_Test_f },
+	{ "test2", CG_Test2_f },
+	{ "test3", CG_Test3_f },
 	{ "testgun", CG_TestGun_f },
 	{ "testmodel", CG_TestModel_f },
 	{ "nextframe", CG_TestModelNextFrame_f },
