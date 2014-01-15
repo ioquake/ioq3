@@ -1116,7 +1116,7 @@ void SlugRock_ForceTeamWeapons(gclient_t *client) {
 
 /*
 ===========
-GiveWeapon
+SlugRock_GiveWeapon
 
 Cvars related to this:
 - g_forceWeaponMode
@@ -1126,7 +1126,7 @@ Cvars related to this:
 - bot_ffaWeaponMode
 ============
 */
-void GiveWeapon(gentity_t *ent) {
+void SlugRock_GiveWeapon(gentity_t *ent) {
 	gclient_t	*client;
 
 	client = ent->client;
@@ -1306,7 +1306,7 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.torsoAnim = TORSO_STAND;
 	client->ps.legsAnim = LEGS_IDLE;
 
-	GiveWeapon(ent);
+	SlugRock_GiveWeapon(ent);
 
 	if (!level.intermissiontime) {
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR) {
