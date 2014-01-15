@@ -72,7 +72,7 @@ float regularupdate_time;
 int bot_interbreed;
 int bot_interbreedmatchcount;
 // SlugRock cvars
-vmCvar_t bot_ffaWeaponMode;
+vmCvar_t bot_weaponMode;
 //
 vmCvar_t bot_thinktime;
 vmCvar_t bot_memorydump;
@@ -1662,7 +1662,7 @@ BotAISetup
 int BotAISetup( int restart ) {
 	int			errnum;
 // SlugRock
-	trap_Cvar_Register(&bot_ffaWeaponMode, "bot_ffaWeaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE);
+	trap_Cvar_Register(&bot_weaponMode, "bot_weaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE);
 
 	trap_Cvar_Register(&bot_thinktime, "bot_thinktime", "100", CVAR_CHEAT);
 	trap_Cvar_Register(&bot_memorydump, "bot_memorydump", "0", CVAR_CHEAT);

@@ -198,7 +198,7 @@ vmCvar_t	cg_obeliskRespawnDelay;
 #endif
 
 // Slugrock cvars
-vmCvar_t	cg_ffaWeaponMode;
+vmCvar_t	cg_weaponMode;
 
 typedef struct {
 	vmCvar_t	*vmCvar;
@@ -208,7 +208,7 @@ typedef struct {
 } cvarTable_t;
 
 static cvarTable_t cvarTable[] = {
-	{ &cg_ffaWeaponMode, "cg_ffaWeaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE },
+	{ &cg_weaponMode, "cg_weaponMode", "alternate", CVAR_USERINFO|CVAR_ARCHIVE },
 
 	{ &cg_ignore, "cg_ignore", "0", 0 },	// used for debugging
 	{ &cg_autoswitch, "cg_autoswitch", "1", CVAR_ARCHIVE },

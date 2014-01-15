@@ -1112,14 +1112,14 @@ Cvars related to this:
 - g_forceWeaponMode
 - g_forceTeamWeapons
 - g_switchTeamWeapons
-- cg_ffaWeaponMode
-- bot_ffaWeaponMode
+- cg_weaponMode
+- bot_weaponMode
 ============
 */
 void SlugRock_GiveWeapon(gentity_t *ent) {
 	gclient_t	*client;
 	char		userinfo[MAX_INFO_STRING];
-	char		*ffaWeaponMode;
+	char		*weaponMode;
 
 	client = ent->client;
 
@@ -1130,14 +1130,14 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 			if ( g_forceWeaponMode.string[0] )
 				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
 			else {
-				// get ffaWeaponMode value
+				// get weaponMode value
 				trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
 				if (ent->r.svFlags & SVF_BOT)
-					ffaWeaponMode = Info_ValueForKey( userinfo, "bot_ffaWeaponMode" );
+					weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
 				else
-					ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
+					weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
 
-				SlugRock_WeaponMode(ent, ffaWeaponMode);
+				SlugRock_WeaponMode(ent, weaponMode);
 			}
 			break;
 		case GT_TEAM:

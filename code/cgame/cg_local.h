@@ -1088,7 +1088,7 @@ extern	itemInfo_t		cg_items[MAX_ITEMS];
 extern	markPoly_t		cg_markPolys[MAX_MARK_POLYS];
 
 // Slugrock cvars
-extern	vmCvar_t		cg_ffaWeaponMode;
+extern	vmCvar_t		cg_weaponMode;
 
 extern	vmCvar_t		cg_centertime;
 extern	vmCvar_t		cg_runpitch;
