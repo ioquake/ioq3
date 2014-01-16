@@ -1123,13 +1123,9 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 
 	client = ent->client;
 
-	switch (g_gametype.integer) {
-		case GT_FFA:
-		case GT_TOURNAMENT:
-		case GT_SINGLE_PLAYER:
-			if ( g_forceWeaponMode.string[0] )
-				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
-			else {
+	if ( g_forceWeaponMode.string[0] )
+		SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+	else {
 				// get weaponMode value
 				trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
 				if (ent->r.svFlags & SVF_BOT)
@@ -1138,20 +1134,6 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 					weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
 
 				SlugRock_WeaponMode(ent, weaponMode);
-			}
-			break;
-		case GT_TEAM:
-		case GT_CTF:
-			if ( g_forceWeaponMode.string[0] ) {
-				SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
-			}
-			else if ( g_forceTeamWeapons.integer )
-				SlugRock_ForceTeamWeapons( client );
-			else {
-				client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
-				client->ps.ammo[client->sess.weapon] = -1;
-			}
-			break;
 	}
 }
 
