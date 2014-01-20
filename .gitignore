@@ -2,6 +2,8 @@ build
 Makefile.local
 *.swp
 *tags
+misc/premake5-custom.lua
+misc/msvc-premake/
 
 # OS X
 ####################
