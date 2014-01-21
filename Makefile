@@ -2410,6 +2410,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_serverinfo.o \
   $(B)/$(BASEGAME)/ui/ui_servers2.o \
   $(B)/$(BASEGAME)/ui/ui_setup.o \
+  $(B)/$(BASEGAME)/ui/ui_slugrock.o \
   $(B)/$(BASEGAME)/ui/ui_sound.o \
   $(B)/$(BASEGAME)/ui/ui_sparena.o \
   $(B)/$(BASEGAME)/ui/ui_specifyserver.o \
