@@ -223,16 +223,21 @@ void UI_SlugRockMenu( void )
 
 	id = 0;
 	y = 100;
-	s_slugrock.g_forceWeaponMode.generic.type		= MTYPE_SPINCONTROL;
-	s_slugrock.g_forceWeaponMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
-	s_slugrock.g_forceWeaponMode.generic.x			= SCREEN_WIDTH/2+30;
-	s_slugrock.g_forceWeaponMode.generic.y			= y;
-	s_slugrock.g_forceWeaponMode.generic.name		= "g_forceWeaponMode";
-	s_slugrock.g_forceWeaponMode.generic.id			= id;
-	s_slugrock.g_forceWeaponMode.generic.callback	= SlugRock_Event;
-	s_slugrock.g_forceWeaponMode.itemnames			= g_forceWeaponMode_names;
-	id++;
-	y += SMALLCHAR_HEIGHT;
+	while (cvar_list[id].name) {
+		switch(cvar_list[id].type) {
+			case MTYPE_SPINCONTROL:
+			((menulist_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
+			((menulist_s*)cvar_list[id].menuitem)->generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
+			((menulist_s*)cvar_list[id].menuitem)->generic.x		= SCREEN_WIDTH/2+30;
+			((menulist_s*)cvar_list[id].menuitem)->generic.y		= y;
+			((menulist_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].name;
+			((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
+			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
+			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
+		}
+		id++;
+		y += SMALLCHAR_HEIGHT;
+	}
 
 	s_slugrock.apply.generic.type     = MTYPE_BITMAP;
 	s_slugrock.apply.generic.name     = SLUGROCK_ACCEPT0;
