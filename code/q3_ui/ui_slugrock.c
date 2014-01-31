@@ -208,8 +208,8 @@ void UI_SlugRockMenu( void )
 	id = 0;
 	y = 100;
 	s_slugrock.g_forceWeaponMode.generic.type		= MTYPE_SPINCONTROL;
-	s_slugrock.g_forceWeaponMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_slugrock.g_forceWeaponMode.generic.x			= 312;
+	s_slugrock.g_forceWeaponMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
+	s_slugrock.g_forceWeaponMode.generic.x			= SCREEN_WIDTH/2+30;
 	s_slugrock.g_forceWeaponMode.generic.y			= y;
 	s_slugrock.g_forceWeaponMode.generic.name		= "g_forceWeaponMode";
 	s_slugrock.g_forceWeaponMode.generic.id			= id;
