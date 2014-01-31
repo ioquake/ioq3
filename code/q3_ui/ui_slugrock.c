@@ -147,7 +147,6 @@ void UI_SlugRockMenu( void )
 
 	SlugRock_Cache();
 
-	s_slugrock.menu.draw			= SlugRock_MenuDraw;
 	s_slugrock.menu.key				= SlugRock_MenuKey;
 	s_slugrock.menu.wrapAround		= qtrue;
 	s_slugrock.menu.fullscreen		= qtrue;
