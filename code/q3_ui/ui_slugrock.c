@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define SLUGROCK_FRAMER	"menu/art/frame1_r"
 #define SLUGROCK_BACK0	"menu/art/back_0"
 #define SLUGROCK_BACK1	"menu/art/back_1"
+#define SLUGROCK_ACCEPT0	"menu/art/accept_0"
+#define SLUGROCK_ACCEPT1	"menu/art/accept_1"
 
 static char* slugrock_artlist[] =
 {
@@ -48,6 +50,7 @@ typedef struct
 	char			info[MAX_INFO_STRING];
 	int				numlines;
 	menulist_s		g_forceWeaponMode;
+	menubitmap_s	apply;
 } slugrock_t;
 static slugrock_t	s_slugrock;
 
@@ -198,11 +201,21 @@ void UI_SlugRockMenu( void )
 	id++;
 	y += SMALLCHAR_HEIGHT;
 
+	s_slugrock.apply.generic.type     = MTYPE_BITMAP;
+	s_slugrock.apply.generic.name     = SLUGROCK_ACCEPT0;
+	s_slugrock.apply.generic.flags    = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
+	//s_slugrock.apply.generic.callback = SLUGROCK_ApplyChanges;
+	s_slugrock.apply.generic.x        = 640;
+	s_slugrock.apply.generic.y        = 480-64;
+	s_slugrock.apply.width  		  = 128;
+	s_slugrock.apply.height  		  = 64;
+	s_slugrock.apply.focuspic         = SLUGROCK_ACCEPT1;
 
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.banner );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framel );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.g_forceWeaponMode );
 
 	UI_PushMenu( &s_slugrock.menu );
