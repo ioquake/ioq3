@@ -47,9 +47,11 @@ typedef struct
 	menubitmap_s	back;
 	char			info[MAX_INFO_STRING];
 	int				numlines;
+	menulist_s		g_forceWeaponMode;
 } slugrock_t;
-
 static slugrock_t	s_slugrock;
+
+char *g_forceWeaponMode_names[] = { "no", "alternate", "random", "rl", "rg", "both", 0 };
 
 
 /*
@@ -140,6 +142,8 @@ void UI_SlugRockMenu( void )
 	const char		*s;
 	char			key[MAX_INFO_KEY];
 	char			value[MAX_INFO_VALUE];
+	int				y;
+	int				id;
 
 	// zero set all our globals
 	memset( &s_slugrock, 0 ,sizeof(slugrock_t) );
@@ -185,6 +189,19 @@ void UI_SlugRockMenu( void )
 	s_slugrock.back.height  		 = 64;
 	s_slugrock.back.focuspic         = SLUGROCK_BACK1;
 
+	id = 0;
+	y = 100;
+	s_slugrock.g_forceWeaponMode.generic.type		= MTYPE_SPINCONTROL;
+	s_slugrock.g_forceWeaponMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_slugrock.g_forceWeaponMode.generic.x			= 312;
+	s_slugrock.g_forceWeaponMode.generic.y			= y;
+	s_slugrock.g_forceWeaponMode.generic.name		= "g_forceWeaponMode";
+	s_slugrock.g_forceWeaponMode.generic.id			= id;
+	s_slugrock.g_forceWeaponMode.generic.callback	= SlugRock_Event;
+	s_slugrock.g_forceWeaponMode.itemnames			= g_forceWeaponMode_names;
+	id++;
+	y += SMALLCHAR_HEIGHT;
+
 	trap_GetConfigString( CS_SERVERINFO, s_slugrock.info, MAX_INFO_STRING );
 
 	s_slugrock.numlines = 0;
@@ -204,6 +221,7 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framel );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.g_forceWeaponMode );
 
 	UI_PushMenu( &s_slugrock.menu );
 }
