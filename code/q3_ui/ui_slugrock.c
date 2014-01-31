@@ -56,6 +56,13 @@ static slugrock_t	s_slugrock;
 
 char *g_forceWeaponMode_names[] = { "no", "alternate", "random", "rl", "rg", "both", 0 };
 
+typedef struct {
+	const char	*name;
+	const char	*names[10];
+	void		*menuitem;
+	int			type;
+} slugrockCvar_t;
+
 
 /*
 =================
