@@ -63,6 +63,15 @@ typedef struct {
 	int			type;
 } slugrockCvar_t;
 
+slugrockCvar_t cvar_list[] = {
+	{
+		"g_forceWeaponMode",
+		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		&s_slugrock.g_forceWeaponMode,
+		MTYPE_SPINCONTROL
+	},
+	{ NULL }
+};
 
 /*
 =================
