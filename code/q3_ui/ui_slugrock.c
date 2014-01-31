@@ -234,6 +234,7 @@ void UI_SlugRockMenu( void )
 			((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
 			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
 			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
+			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValue( id );
 		}
 		id++;
 		y += SMALLCHAR_HEIGHT;
