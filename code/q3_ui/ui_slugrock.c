@@ -139,9 +139,6 @@ UI_SlugRockMenu
 */
 void UI_SlugRockMenu( void )
 {
-	const char		*s;
-	char			key[MAX_INFO_KEY];
-	char			value[MAX_INFO_VALUE];
 	int				y;
 	int				id;
 
@@ -202,20 +199,6 @@ void UI_SlugRockMenu( void )
 	id++;
 	y += SMALLCHAR_HEIGHT;
 
-	trap_GetConfigString( CS_SERVERINFO, s_slugrock.info, MAX_INFO_STRING );
-
-	s_slugrock.numlines = 0;
-	s = s_slugrock.info;
-	while ( s ) {
-		Info_NextPair( &s, key, value );
-		if ( !key[0] ) {
-			break;
-		}
-		s_slugrock.numlines++;
-	}
-
-	if (s_slugrock.numlines > 16)
-		s_slugrock.numlines = 16;
 
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.banner );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framel );
