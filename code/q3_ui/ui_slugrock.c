@@ -137,6 +137,23 @@ void SlugRock_Cache( void )
 
 /*
 =================
+SlugRock_ApplyChanges
+=================
+*/
+void SlugRock_ApplyChanges( void* ptr, int event ) {
+	int		i;
+
+	if ( event != QM_ACTIVATED )
+		return;
+
+	i = s_slugrock.g_forceWeaponMode.curvalue;
+	trap_Cvar_Set( "g_forceWeaponMode", g_forceWeaponMode_names[i] );
+
+	UI_PopMenu();
+}
+
+/*
+=================
 UI_SlugRockMenu
 =================
 */
@@ -204,7 +221,7 @@ void UI_SlugRockMenu( void )
 	s_slugrock.apply.generic.type     = MTYPE_BITMAP;
 	s_slugrock.apply.generic.name     = SLUGROCK_ACCEPT0;
 	s_slugrock.apply.generic.flags    = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
-	//s_slugrock.apply.generic.callback = SLUGROCK_ApplyChanges;
+	s_slugrock.apply.generic.callback = SlugRock_ApplyChanges;
 	s_slugrock.apply.generic.x        = 640;
 	s_slugrock.apply.generic.y        = 480-64;
 	s_slugrock.apply.width  		  = 128;
