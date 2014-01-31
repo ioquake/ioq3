@@ -93,6 +93,25 @@ static void SlugRock_Event( void* ptr, int event )
 
 /*
 =================
+SlugRock_GetCurrentValueIndex
+=================
+*/
+int SlugRock_GetCurrentValueIndex( int id ) {
+	int		n;
+	char	cvar_value[MAX_INFO_VALUE];
+
+	trap_Cvar_VariableStringBuffer( cvar_list[id].name, cvar_value, sizeof(cvar_value) );
+
+	for(n=0; cvar_list[id].names[n]; n++) {
+		if ( !Q_stricmp(cvar_list[id].names[n], cvar_value) ) {
+			return n;
+		}
+	}
+	return 0;
+}
+
+/*
+=================
 SlugRock_MenuDraw
 =================
 */
@@ -234,7 +253,7 @@ void UI_SlugRockMenu( void )
 			((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
 			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
 			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
-			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValue( id );
+			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
 		}
 		id++;
 		y += SMALLCHAR_HEIGHT;
