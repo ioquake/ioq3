@@ -49,7 +49,12 @@ typedef struct
 	menubitmap_s	back;
 	char			info[MAX_INFO_STRING];
 	int				numlines;
-	menulist_s		g_forceWeaponMode;
+	menulist_s			g_forceWeaponMode;
+	menuradiobutton_s	g_forceTeamWeapons;
+	menuradiobutton_s	g_switchTeamWeapons;
+	menuradiobutton_s	g_healthRegen;
+	menulist_s			cg_weaponMode;
+	menulist_s			bot_weaponMode;
 	menubitmap_s	apply;
 } slugrock_t;
 static slugrock_t	s_slugrock;
@@ -70,6 +75,42 @@ slugrockCvar_t cvar_list[] = {
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
 	},
+
+	{
+		"g_forceTeamWeapons",
+		{ "0", "1", "", 0 },
+		&s_slugrock.g_forceTeamWeapons,
+		MTYPE_RADIOBUTTON
+	},
+
+	{
+		"g_switchTeamWeapons",
+		{ "0", "1", "", 0 }, 
+		&s_slugrock.g_switchTeamWeapons,
+		MTYPE_RADIOBUTTON
+	},
+
+	{
+		"g_healthRegen",
+		{ "0", "1", "", 0 }, 
+		&s_slugrock.g_healthRegen,
+		MTYPE_RADIOBUTTON
+	},
+
+	{
+		"cg_weaponMode", 
+		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		&s_slugrock.cg_weaponMode,
+		MTYPE_SPINCONTROL
+	},
+
+	{
+		"bot_weaponMode",  
+		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		&s_slugrock.bot_weaponMode,
+		MTYPE_SPINCONTROL
+	},
+
 	{ NULL }
 };
 
