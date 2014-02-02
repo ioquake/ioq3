@@ -142,7 +142,7 @@ static void DrawTris (shaderCommands_t *input) {
 	qglDepthRange( 0, 0 );
 
 	{
-		shaderProgram_t *sp = &tr.textureColorShader;
+		shaderProgram_t *sp = &trs.textureColorShader;
 		vec4_t color;
 
 		GLSL_VertexAttribsState(ATTR_POSITION);
@@ -386,7 +386,7 @@ static void ProjectDlightTexture( void ) {
 		radius = dl->radius;
 		scale = 1.0f / radius;
 
-		sp = &tr.dlightShader[deformGen == DGEN_NONE ? 0 : 1];
+		sp = &trs.dlightShader[deformGen == DGEN_NONE ? 0 : 1];
 
 		backEnd.pc.c_dlightDraws++;
 
@@ -743,14 +743,14 @@ static void ForwardDlight( void ) {
 		radius = dl->radius;
 		//scale = 1.0f / radius;
 
-		//if (pStage->glslShaderGroup == tr.lightallShader)
+		//if (pStage->glslShaderGroup == trs.lightallShader)
 		{
 			int index = pStage->glslShaderIndex;
 
 			index &= ~LIGHTDEF_LIGHTTYPE_MASK;
 			index |= LIGHTDEF_USE_LIGHT_VECTOR;
 
-			sp = &tr.lightallShader[index];
+			sp = &trs.lightallShader[index];
 		}
 
 		backEnd.pc.c_lightallDraws++;
@@ -890,7 +890,7 @@ static void ProjectPshadowVBOGLSL( void ) {
 		VectorCopy( ps->lightOrigin, origin );
 		radius = ps->lightRadius;
 
-		sp = &tr.pshadowShader;
+		sp = &trs.pshadowShader;
 
 		GLSL_BindProgram(sp);
 
@@ -965,7 +965,7 @@ static void RB_FogPass( void ) {
 		if (glState.vertexAnimation)
 			index |= FOGDEF_USE_VERTEX_ANIMATION;
 		
-		sp = &tr.fogShader[index];
+		sp = &trs.fogShader[index];
 	}
 
 	backEnd.pc.c_fogDraws++;
@@ -1062,7 +1062,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 
 		if (backEnd.depthFill)
 		{
-			if (pStage->glslShaderGroup == tr.lightallShader)
+			if (pStage->glslShaderGroup == trs.lightallShader)
 			{
 				int index = 0;
 
@@ -1097,10 +1097,10 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 					shaderAttribs |= GENERICDEF_USE_TCGEN_AND_TCMOD;
 				}
 
-				sp = &tr.genericShader[shaderAttribs];
+				sp = &trs.genericShader[shaderAttribs];
 			}
 		}
-		else if (pStage->glslShaderGroup == tr.lightallShader)
+		else if (pStage->glslShaderGroup == trs.lightallShader)
 		{
 			int index = pStage->glslShaderIndex;
 
@@ -1236,7 +1236,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			else if ( pStage->bundle[TB_COLORMAP].image[0] != 0 )
 				R_BindAnimatedImageToTMU( &pStage->bundle[TB_COLORMAP], TB_COLORMAP );
 		}
-		else if ( pStage->glslShaderGroup == tr.lightallShader )
+		else if ( pStage->glslShaderGroup == trs.lightallShader )
 		{
 			int i;
 			vec4_t enableTextures;
@@ -1385,7 +1385,7 @@ static void RB_RenderShadowmap( shaderCommands_t *input )
 	ComputeDeformValues(&deformGen, deformParams);
 
 	{
-		shaderProgram_t *sp = &tr.shadowmapShader;
+		shaderProgram_t *sp = &trs.shadowmapShader;
 
 		vec4_t vector;
 
@@ -1563,7 +1563,7 @@ void RB_StageIteratorGeneric( void )
 	//
 	if ( tess.dlightBits && tess.shader->sort <= SS_OPAQUE
 		&& !(tess.shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY) ) ) {
-		if (tess.shader->numUnfoggedPasses == 1 && tess.xstages[0]->glslShaderGroup == tr.lightallShader
+		if (tess.shader->numUnfoggedPasses == 1 && tess.xstages[0]->glslShaderGroup == trs.lightallShader
 			&& (tess.xstages[0]->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) && r_dlightMode->integer)
 		{
 			ForwardDlight();

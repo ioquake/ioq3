@@ -1581,25 +1581,6 @@ typedef struct {
 	int						shiftedEntityNum;	// currentEntityNum << QSORT_REFENTITYNUM_SHIFT
 	model_t					*currentModel;
 
-	//
-	// GPU shader programs
-	//
-	shaderProgram_t genericShader[GENERICDEF_COUNT];
-	shaderProgram_t textureColorShader;
-	shaderProgram_t fogShader[FOGDEF_COUNT];
-	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
-	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
-	shaderProgram_t shadowmapShader;
-	shaderProgram_t pshadowShader;
-	shaderProgram_t down4xShader;
-	shaderProgram_t bokehShader;
-	shaderProgram_t tonemapShader;
-	shaderProgram_t calclevels4xShader[2];
-	shaderProgram_t shadowmaskShader;
-	shaderProgram_t ssaoShader;
-	shaderProgram_t depthBlurShader[2];
-	shaderProgram_t testcubeShader;
-
 
 	// -----------------------------------------
 
@@ -1666,8 +1647,30 @@ typedef struct {
 	float					fogTable[FOG_TABLE_SIZE];
 } trGlobals_t;
 
+// data not cleared between renderer restarts
+// only when the window context is destroyed
+typedef struct {
+	qboolean shadersInitialized;
+	shaderProgram_t genericShader[GENERICDEF_COUNT];
+	shaderProgram_t textureColorShader;
+	shaderProgram_t fogShader[FOGDEF_COUNT];
+	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
+	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
+	shaderProgram_t shadowmapShader;
+	shaderProgram_t pshadowShader;
+	shaderProgram_t down4xShader;
+	shaderProgram_t bokehShader;
+	shaderProgram_t tonemapShader;
+	shaderProgram_t calclevels4xShader[2];
+	shaderProgram_t shadowmaskShader;
+	shaderProgram_t ssaoShader;
+	shaderProgram_t depthBlurShader[2];
+	shaderProgram_t testcubeShader;
+} trStatic_t;
+
 extern backEndState_t	backEnd;
 extern trGlobals_t	tr;
+extern trStatic_t	trs;
 extern glstate_t	glState;		// outside of TR since it shouldn't be cleared during ref re-init
 extern glRefConfig_t glRefConfig;
 

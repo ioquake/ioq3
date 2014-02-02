@@ -424,7 +424,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 	RB_UpdateVBOs(ATTR_POSITION | ATTR_TEXCOORD);
 /*
 	{
-		shaderProgram_t *sp = &tr.textureColorShader;
+		shaderProgram_t *sp = &trs.textureColorShader;
 
 		GLSL_VertexAttribsState(ATTR_POSITION | ATTR_TEXCOORD);
 		GLSL_BindProgram(sp);
@@ -439,7 +439,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 	}
 */
 	{
-		shaderProgram_t *sp = &tr.lightallShader[0];
+		shaderProgram_t *sp = &trs.lightallShader[0];
 		vec4_t vector;
 
 		GLSL_VertexAttribsState(ATTR_POSITION | ATTR_TEXCOORD);
