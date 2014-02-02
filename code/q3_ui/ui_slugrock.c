@@ -130,26 +130,14 @@ SlugRock_MenuDraw
 */
 static void SlugRock_MenuDraw( void )
 {
-	const char		*s;
-	char			key[MAX_INFO_KEY];
-	char			value[MAX_INFO_VALUE];
-	int				i = 0, y;
+	int	id;
 
-	y = SCREEN_HEIGHT/2 - s_slugrock.numlines*(SMALLCHAR_HEIGHT)/2 - 20;
-	s = s_slugrock.info;
-	while ( s && i < s_slugrock.numlines ) {
-		Info_NextPair( &s, key, value );
-		if ( !key[0] ) {
+	for(id=0; cvar_list[id].name; id++) {
+		switch( cvar_list[id].type ) {
+			case MTYPE_SPINCONTROL:
+			((menulist_s*)cvar_list[id].menuitem)->curvalue = SlugRock_GetCurrentValueIndex( id );
 			break;
 		}
-
-		Q_strcat( key, MAX_INFO_KEY, ":" ); 
-
-		UI_DrawString(SCREEN_WIDTH*0.50 - 8,y,key,UI_RIGHT|UI_SMALLFONT,color_red);
-		UI_DrawString(SCREEN_WIDTH*0.50 + 8,y,value,UI_LEFT|UI_SMALLFONT,text_color_normal);
-
-		y += SMALLCHAR_HEIGHT;
-		i++;
 	}
 
 	Menu_Draw( &s_slugrock.menu );
