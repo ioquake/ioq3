@@ -80,10 +80,6 @@ SlugRock_Event
 */
 static void SlugRock_Event( void* ptr, int event )
 {
-	int id, i;
-
-	id = ((menucommon_s*)ptr)->id;
-
 	switch (((menucommon_s*)ptr)->id)
 	{
 		case ID_BACK:
@@ -91,15 +87,6 @@ static void SlugRock_Event( void* ptr, int event )
 				break;
 
 			UI_PopMenu();
-			break;
-
-		default:
-			switch (cvar_list[id].type) {
-				case MTYPE_SPINCONTROL:
-					i = ((menulist_s*)cvar_list[id].menuitem)->curvalue;
-					break;
-			}
-			trap_Cvar_Set( cvar_list[id].name, cvar_list[id].names[i] );
 			break;
 	}
 }
