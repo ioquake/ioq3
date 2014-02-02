@@ -267,6 +267,7 @@ void UI_SlugRockMenu( void )
 			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
 			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
 			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
+			Menu_AddItem( &s_slugrock.menu, (void*) cvar_list[id].menuitem );
 		}
 		id++;
 		y += SMALLCHAR_HEIGHT;
@@ -287,8 +288,6 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
-	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.g_forceWeaponMode );
-
 	UI_PushMenu( &s_slugrock.menu );
 }
 
