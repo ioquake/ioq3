@@ -164,13 +164,19 @@ SlugRock_ApplyChanges
 =================
 */
 void SlugRock_ApplyChanges( void* ptr, int event ) {
-	int		i;
+	int		i, id;
 
 	if ( event != QM_ACTIVATED )
 		return;
 
-	i = s_slugrock.g_forceWeaponMode.curvalue;
-	trap_Cvar_Set( "g_forceWeaponMode", g_forceWeaponMode_names[i] );
+	for(id=0; cvar_list[id].name; id++) {
+		switch (cvar_list[id].type) {
+			case MTYPE_SPINCONTROL:
+				i = ((menulist_s*)cvar_list[id].menuitem)->curvalue;
+				break;
+		}
+		trap_Cvar_Set( cvar_list[id].name, cvar_list[id].names[i] );
+	}
 
 	UI_PopMenu();
 }
