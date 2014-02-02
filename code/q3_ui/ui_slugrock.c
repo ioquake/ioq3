@@ -227,6 +227,9 @@ void SlugRock_ApplyChanges( void* ptr, int event ) {
 			case MTYPE_SPINCONTROL:
 				i = ((menulist_s*)cvar_list[id].menuitem)->curvalue;
 				break;
+			case MTYPE_RADIOBUTTON:
+				i = ((menuradiobutton_s*)cvar_list[id].menuitem)->curvalue;
+				break;
 		}
 		trap_Cvar_Set( cvar_list[id].name, cvar_list[id].names[i] );
 	}
@@ -302,8 +305,19 @@ void UI_SlugRockMenu( void )
 			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
 			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
 			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
-			Menu_AddItem( &s_slugrock.menu, (void*) cvar_list[id].menuitem );
+			break;
+			case MTYPE_RADIOBUTTON:
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.x			= SCREEN_WIDTH/2+30;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.y			= y;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].name;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.id		= id;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
+			((menuradiobutton_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
+			break;
 		}
+		Menu_AddItem( &s_slugrock.menu, (void*) cvar_list[id].menuitem );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
