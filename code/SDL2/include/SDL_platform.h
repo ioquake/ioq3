@@ -66,7 +66,7 @@
 #endif
 #if defined(ANDROID)
 #undef __ANDROID__
-#undef __LINUX__ /*do we need to do this?*/
+#undef __LINUX__ /* do we need to do this? */
 #define __ANDROID__ 1
 #endif
 
@@ -86,6 +86,9 @@
 #if MAC_OS_X_VERSION_MIN_REQUIRED < 1050
 # error SDL for Mac OS X only supports deploying on 10.5 and above.
 #endif /* MAC_OS_X_VERSION_MIN_REQUIRED < 1050 */
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 1060
+# error SDL for Mac OS X must be built with a 10.6 SDK or above.
+#endif /* MAC_OS_X_VERSION_MAX_ALLOWED < 1060 */
 #endif /* TARGET_OS_IPHONE */
 #endif /* defined(__APPLE__) */
 
@@ -118,8 +121,12 @@
 #define __SOLARIS__ 1
 #endif
 #if defined(WIN32) || defined(_WIN32) || defined(__CYGWIN__)
+#undef __WINDOWS__
+#define __WINDOWS__   1
+#endif
+#if defined(__WINDOWS__)
 #undef __WIN32__
-#define __WIN32__   1
+#define __WIN32__ 1
 #endif
 #if defined(__PSP__)
 #undef __PSP__
