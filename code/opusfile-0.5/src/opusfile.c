@@ -1724,6 +1724,7 @@ ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
     return OP_EINVAL;
   }
   links=_of->links;
+  diff = 0;
   /*We verify that the granule position differences are larger than the
      pre-skip and that the total duration does not overflow during link
      enumeration, so we don't have to check here.*/
@@ -2186,6 +2187,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
   link=_of->links+_li;
+  pcm_pre_skip = 0;
   best_gp=pcm_start=link->pcm_start;
   pcm_end=link->pcm_end;
   serialno=link->serialno;
@@ -2239,7 +2241,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
             }
           }
           else{
-            ogg_int64_t prev_page_gp;
+            ogg_int64_t prev_page_gp = 0;
             /*We might get lucky and already have the packet with the target
                buffered.
               Worth checking.
