@@ -1123,17 +1123,18 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 
 	client = ent->client;
 
-	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) != 0 )
+	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) != 0 ) {
 		SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+	}
 	else {
-				// get weaponMode value
-				trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
-				if (ent->r.svFlags & SVF_BOT)
-					weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
-				else
-					weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
+		// get weaponMode value
+		trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
+		if (ent->r.svFlags & SVF_BOT)
+			weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
+		else
+			weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
 
-				SlugRock_WeaponMode(ent, weaponMode);
+		SlugRock_WeaponMode(ent, weaponMode);
 	}
 }
 
