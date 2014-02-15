@@ -63,6 +63,7 @@ char *g_forceWeaponMode_names[] = { "no", "alternate", "random", "rl", "rg", "bo
 
 typedef struct {
 	const char	*name;
+	const char	*longname;
 	const char	*names[10];
 	void		*menuitem;
 	int			type;
@@ -71,6 +72,7 @@ typedef struct {
 slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceWeaponMode",
+		"Force the weapon mode to:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
@@ -78,6 +80,7 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_forceRedWeaponMode",
+		"Force the red team weapon mode to:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
 		MTYPE_SPINCONTROL
@@ -85,6 +88,7 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_forceBlueWeaponMode",
+		"Force the blue team weapon mode to:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_SPINCONTROL
@@ -92,20 +96,23 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_healthRegen",
+		"Regenerate health:",
 		{ "0", "1", "", 0 }, 
 		&s_slugrock.g_healthRegen,
 		MTYPE_RADIOBUTTON
 	},
 
 	{
-		"cg_weaponMode", 
+		"cg_weaponMode",
+		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
 		&s_slugrock.cg_weaponMode,
 		MTYPE_SPINCONTROL
 	},
 
 	{
-		"bot_weaponMode",  
+		"bot_weaponMode",
+		"Bots weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
 		&s_slugrock.bot_weaponMode,
 		MTYPE_SPINCONTROL
