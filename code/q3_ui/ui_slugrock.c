@@ -51,6 +51,7 @@ typedef struct
 	int				numlines;
 	menutext_s		server;
 	menutext_s		client;
+	menutext_s		bots;
 	menulist_s			g_forceWeaponMode;
 	menulist_s			g_forceRedWeaponMode;
 	menulist_s			g_forceBlueWeaponMode;
@@ -366,6 +367,22 @@ void UI_SlugRockMenu( void )
 		y += SMALLCHAR_HEIGHT;
 	}
 
+	y += 16;
+	s_slugrock.bots.generic.type		= MTYPE_PTEXT;
+	s_slugrock.bots.generic.y			= y;
+	s_slugrock.bots.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.bots.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.bots.string				= "BOTS";
+	s_slugrock.bots.color				= color_orange;
+	s_slugrock.bots.style				= UI_CENTER|UI_SMALLFONT;
+	y += 24;
+
+	while (cvar_list[id].name && cvar_list[id].name[0] == 'b') {
+		SlugRock_AddItem( id, y );
+		id++;
+		y += SMALLCHAR_HEIGHT;
+	}
+
 	s_slugrock.apply.generic.type     = MTYPE_BITMAP;
 	s_slugrock.apply.generic.name     = SLUGROCK_ACCEPT0;
 	s_slugrock.apply.generic.flags    = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -383,6 +400,7 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.server );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.client );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.bots );
 	UI_PushMenu( &s_slugrock.menu );
 }
 
