@@ -75,7 +75,7 @@ typedef struct {
 slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceWeaponMode",
-		"Force the weapon mode to:",
+		"Force the weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
@@ -83,7 +83,7 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_forceRedWeaponMode",
-		"Force the red team weapon mode to:",
+		"Force the red team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
 		MTYPE_SPINCONTROL
@@ -91,7 +91,7 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_forceBlueWeaponMode",
-		"Force the blue team weapon mode to:",
+		"Force the blue team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_SPINCONTROL
