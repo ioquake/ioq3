@@ -1120,22 +1120,32 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 	gclient_t	*client;
 	char		userinfo[MAX_INFO_STRING];
 	char		*weaponMode;
+	team_t		team;
 
 	client = ent->client;
+	team = client->sess.sessionTeam;
 
-	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) != 0 ) {
+	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) ) {
 		SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+		return;
 	}
-	else {
-		// get weaponMode value
-		trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
-		if (ent->r.svFlags & SVF_BOT)
-			weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
-		else
-			weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
 
-		SlugRock_WeaponMode(ent, weaponMode);
+	if ( team == TEAM_RED && Q_stricmp( g_forceRedWeaponMode.string, "no" ) ) {
+		SlugRock_WeaponMode( ent, g_forceRedWeaponMode.string );
+		return;
 	}
+
+	if ( team == TEAM_BLUE && Q_stricmp( g_forceBlueWeaponMode.string, "no" ) ) {
+		SlugRock_WeaponMode( ent, g_forceBlueWeaponMode.string );
+		return;
+	}
+
+	trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
+	if (ent->r.svFlags & SVF_BOT)
+		weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
+	else
+		weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
+	SlugRock_WeaponMode(ent, weaponMode);
 }
 
 /*
