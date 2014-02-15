@@ -50,8 +50,8 @@ typedef struct
 	char			info[MAX_INFO_STRING];
 	int				numlines;
 	menulist_s			g_forceWeaponMode;
-	menuradiobutton_s	g_forceRedWeaponMode;
-	menuradiobutton_s	g_forceBlueWeaponMode;
+	menulist_s			g_forceRedWeaponMode;
+	menulist_s			g_forceBlueWeaponMode;
 	menuradiobutton_s	g_healthRegen;
 	menulist_s			cg_weaponMode;
 	menulist_s			bot_weaponMode;
@@ -78,16 +78,16 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"g_forceRedWeaponMode",
-		{ "0", "1", "", 0 },
+		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
-		MTYPE_RADIOBUTTON
+		MTYPE_SPINCONTROL
 	},
 
 	{
 		"g_forceBlueWeaponMode",
-		{ "0", "1", "", 0 }, 
+		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
-		MTYPE_RADIOBUTTON
+		MTYPE_SPINCONTROL
 	},
 
 	{
