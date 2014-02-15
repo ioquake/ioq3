@@ -50,6 +50,7 @@ typedef struct
 	char			info[MAX_INFO_STRING];
 	int				numlines;
 	menutext_s		server;
+	menutext_s		client;
 	menulist_s			g_forceWeaponMode;
 	menulist_s			g_forceRedWeaponMode;
 	menulist_s			g_forceBlueWeaponMode;
@@ -341,9 +342,25 @@ void UI_SlugRockMenu( void )
 	s_slugrock.server.string			= "SERVER";
 	s_slugrock.server.color				= color_orange;
 	s_slugrock.server.style				= UI_CENTER|UI_SMALLFONT;
-	y += 32;
+	y += 24;
 
 	while (cvar_list[id].name[0] == 'g') {
+		SlugRock_AddItem( id, y );
+		id++;
+		y += SMALLCHAR_HEIGHT;
+	}
+
+	y += 16;
+	s_slugrock.client.generic.type		= MTYPE_PTEXT;
+	s_slugrock.client.generic.y			= y;
+	s_slugrock.client.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.client.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.client.string			= "CLIENT";
+	s_slugrock.client.color				= color_orange;
+	s_slugrock.client.style				= UI_CENTER|UI_SMALLFONT;
+	y += 24;
+
+	while (cvar_list[id].name[0] == 'c') {
 		SlugRock_AddItem( id, y );
 		id++;
 		y += SMALLCHAR_HEIGHT;
@@ -365,6 +382,7 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.server );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.client );
 	UI_PushMenu( &s_slugrock.menu );
 }
 
