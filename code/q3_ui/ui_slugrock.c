@@ -49,6 +49,7 @@ typedef struct
 	menubitmap_s	back;
 	char			info[MAX_INFO_STRING];
 	int				numlines;
+	menutext_s		server;
 	menulist_s			g_forceWeaponMode;
 	menulist_s			g_forceRedWeaponMode;
 	menulist_s			g_forceBlueWeaponMode;
@@ -300,7 +301,17 @@ void UI_SlugRockMenu( void )
 
 	id = 0;
 	y = 100;
-	while (cvar_list[id].name) {
+
+	s_slugrock.server.generic.type		= MTYPE_PTEXT;
+	s_slugrock.server.generic.y			= y;
+	s_slugrock.server.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.server.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.server.string			= "SERVER";
+	s_slugrock.server.color				= color_orange;
+	s_slugrock.server.style				= UI_CENTER|UI_SMALLFONT;
+	y += 32;
+
+	while (cvar_list[id].name[0] == 'g') {
 		switch(cvar_list[id].type) {
 			case MTYPE_SPINCONTROL:
 			((menulist_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
@@ -344,6 +355,7 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.server );
 	UI_PushMenu( &s_slugrock.menu );
 }
 
