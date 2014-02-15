@@ -1127,16 +1127,19 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 
 	if ( Q_stricmp( g_forceWeaponMode.string, "no" ) ) {
 		SlugRock_WeaponMode( ent, g_forceWeaponMode.string );
+		Com_Printf("@SlugRock_GiveWeapon g_forceWeaponMode\n");
 		return;
 	}
 
 	if ( team == TEAM_RED && Q_stricmp( g_forceRedWeaponMode.string, "no" ) ) {
 		SlugRock_WeaponMode( ent, g_forceRedWeaponMode.string );
+		Com_Printf("@SlugRock_GiveWeapon g_forceRedWeaponMode\n");
 		return;
 	}
 
 	if ( team == TEAM_BLUE && Q_stricmp( g_forceBlueWeaponMode.string, "no" ) ) {
 		SlugRock_WeaponMode( ent, g_forceBlueWeaponMode.string );
+		Com_Printf("@SlugRock_GiveWeapon g_forceBlueWeaponMode\n");
 		return;
 	}
 
@@ -1146,6 +1149,7 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 	else
 		weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
 	SlugRock_WeaponMode(ent, weaponMode);
+	Com_Printf("@SlugRock_GiveWeapon bot_weaponMode or cg_weaponMode\n");
 }
 
 /*
