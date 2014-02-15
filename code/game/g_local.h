@@ -700,7 +700,7 @@ extern	gentity_t		g_entities[MAX_GENTITIES];
 extern	vmCvar_t	g_healthRegen;
 extern	vmCvar_t	g_forceWeaponMode;
 extern	vmCvar_t	g_forceRedWeaponMode;
-extern	vmCvar_t	g_switchTeamWeapons;
+extern	vmCvar_t	g_forceBlueWeaponMode;
 
 extern	vmCvar_t	g_gametype;
 extern	vmCvar_t	g_dedicated;

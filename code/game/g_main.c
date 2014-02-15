@@ -98,13 +98,13 @@ vmCvar_t	g_proxMineTimeout;
 vmCvar_t	g_healthRegen;
 vmCvar_t	g_forceWeaponMode;
 vmCvar_t	g_forceRedWeaponMode;
-vmCvar_t	g_switchTeamWeapons;
+vmCvar_t	g_forceBlueWeaponMode;
 
 static cvarTable_t		gameCvarTable[] = {
 	{ &g_healthRegen, "g_healthRegen", "0", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_forceWeaponMode, "g_forceWeaponMode", "no", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
 	{ &g_forceRedWeaponMode, "g_forceRedWeaponMode", "0", CVAR_ARCHIVE, 0, qfalse },
-	{ &g_switchTeamWeapons, "g_switchTeamWeapons", "0", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_forceBlueWeaponMode, "g_forceBlueWeaponMode", "0", CVAR_ARCHIVE, 0, qfalse },
 
 	// don't override the cheat state set by the system
 	{ &g_cheats, "sv_cheats", "", 0, 0, qfalse },

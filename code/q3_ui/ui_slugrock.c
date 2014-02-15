@@ -51,7 +51,7 @@ typedef struct
 	int				numlines;
 	menulist_s			g_forceWeaponMode;
 	menuradiobutton_s	g_forceRedWeaponMode;
-	menuradiobutton_s	g_switchTeamWeapons;
+	menuradiobutton_s	g_forceBlueWeaponMode;
 	menuradiobutton_s	g_healthRegen;
 	menulist_s			cg_weaponMode;
 	menulist_s			bot_weaponMode;
@@ -84,9 +84,9 @@ slugrockCvar_t cvar_list[] = {
 	},
 
 	{
-		"g_switchTeamWeapons",
+		"g_forceBlueWeaponMode",
 		{ "0", "1", "", 0 }, 
-		&s_slugrock.g_switchTeamWeapons,
+		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_RADIOBUTTON
 	},
 

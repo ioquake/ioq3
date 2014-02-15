@@ -1087,7 +1087,7 @@ void SlugRock_WeaponMode(gentity_t *ent, char *mode) {
 }
 
 void SlugRock_ForceTeamWeapons(gclient_t *client) {
-	if (g_switchTeamWeapons.integer) {
+	if (g_forceBlueWeaponMode.integer) {
 		if (client->sess.sessionTeam == TEAM_BLUE)
 			client->sess.weapon = WP_ROCKET_LAUNCHER;
 		else
@@ -1111,7 +1111,7 @@ SlugRock_GiveWeapon
 Cvars related to this:
 - g_forceWeaponMode
 - g_forceRedWeaponMode
-- g_switchTeamWeapons
+- g_forceBlueWeaponMode
 - cg_weaponMode
 - bot_weaponMode
 ============
