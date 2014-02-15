@@ -1110,7 +1110,7 @@ SlugRock_GiveWeapon
 
 Cvars related to this:
 - g_forceWeaponMode
-- g_forceTeamWeapons
+- g_forceRedWeaponMode
 - g_switchTeamWeapons
 - cg_weaponMode
 - bot_weaponMode
