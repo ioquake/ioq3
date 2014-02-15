@@ -252,12 +252,12 @@ void SlugRock_ApplyChanges( void* ptr, int event ) {
 SlugRock_AddItem
 =================
 */
-void SlugRock_AddItem( int id, int y ) {
+void SlugRock_AddItem( int id, int y, int x_offset ) {
 	switch(cvar_list[id].type) {
 		case MTYPE_SPINCONTROL:
 		((menulist_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
 		((menulist_s*)cvar_list[id].menuitem)->generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
-		((menulist_s*)cvar_list[id].menuitem)->generic.x		= SCREEN_WIDTH/2+100;
+		((menulist_s*)cvar_list[id].menuitem)->generic.x		= SCREEN_WIDTH/2+x_offset;
 		((menulist_s*)cvar_list[id].menuitem)->generic.y		= y;
 		((menulist_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].longname;
 		((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
@@ -268,7 +268,7 @@ void SlugRock_AddItem( int id, int y ) {
 		case MTYPE_RADIOBUTTON:
 		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
 		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
-		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.x			= SCREEN_WIDTH/2+100;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.x			= SCREEN_WIDTH/2+x_offset;
 		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.y			= y;
 		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].longname;
 		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.id		= id;
@@ -346,7 +346,7 @@ void UI_SlugRockMenu( void )
 	y += 24;
 
 	while (cvar_list[id].name[0] == 'g') {
-		SlugRock_AddItem( id, y );
+		SlugRock_AddItem( id, y, 100 );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
@@ -362,7 +362,7 @@ void UI_SlugRockMenu( void )
 	y += 24;
 
 	while (cvar_list[id].name[0] == 'c') {
-		SlugRock_AddItem( id, y );
+		SlugRock_AddItem( id, y, 0 );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
@@ -378,7 +378,7 @@ void UI_SlugRockMenu( void )
 	y += 24;
 
 	while (cvar_list[id].name && cvar_list[id].name[0] == 'b') {
-		SlugRock_AddItem( id, y );
+		SlugRock_AddItem( id, y, 0 );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
