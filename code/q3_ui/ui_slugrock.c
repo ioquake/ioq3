@@ -366,7 +366,7 @@ void UI_SlugRockMenu( void )
 	y += 24;
 
 	while (cvar_list[id].name[0] == 'g') {
-		SlugRock_AddItem( id, y, 100 );
+		SlugRock_AddItem( id, y, 50 );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
