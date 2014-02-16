@@ -168,26 +168,19 @@ SlugRock_MenuDraw
 */
 static void SlugRock_MenuDraw( void )
 {
-	const char		*s;
-	char			key[MAX_INFO_KEY];
-	char			value[MAX_INFO_VALUE];
-	int				i = 0, y;
+	if (s_slugrock.g_forceWeaponMode.curvalue == 0) {
+		s_slugrock.g_forceBlueWeaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.g_forceRedWeaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.bot_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else {
+		s_slugrock.g_forceBlueWeaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.g_forceRedWeaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.bot_weaponMode.generic.flags |= QMF_GRAYED;
+	}
 
-	y = SCREEN_HEIGHT/2 - s_slugrock.numlines*(SMALLCHAR_HEIGHT)/2 - 20;
-	s = s_slugrock.info;
-	while ( s && i < s_slugrock.numlines ) {
-		Info_NextPair( &s, key, value );
-		if ( !key[0] ) {
-			break;
-		}
-
-		Q_strcat( key, MAX_INFO_KEY, ":" ); 
-
-		UI_DrawString(SCREEN_WIDTH*0.50 - 8,y,key,UI_RIGHT|UI_SMALLFONT,color_red);
-		UI_DrawString(SCREEN_WIDTH*0.50 + 8,y,value,UI_LEFT|UI_SMALLFONT,text_color_normal);
-
-		y += SMALLCHAR_HEIGHT;
-		i++;
 	}
 
 	Menu_Draw( &s_slugrock.menu );
