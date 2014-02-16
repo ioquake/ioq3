@@ -115,7 +115,7 @@ slugrockCvar_t cvar_list[] = {
 
 	{
 		"bot_weaponMode",
-		"Bots weapon mode:",
+		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
 		&s_slugrock.bot_weaponMode,
 		MTYPE_SPINCONTROL
