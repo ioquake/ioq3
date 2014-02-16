@@ -168,6 +168,10 @@ SlugRock_MenuDraw
 */
 static void SlugRock_MenuDraw( void )
 {
+	char			info[MAX_INFO_STRING];
+	uiClientState_t cs;
+	int				team;
+
 	if (s_slugrock.g_forceWeaponMode.curvalue == 0) {
 		s_slugrock.g_forceBlueWeaponMode.generic.flags &= ~QMF_GRAYED;
 		s_slugrock.g_forceRedWeaponMode.generic.flags &= ~QMF_GRAYED;
@@ -181,6 +185,22 @@ static void SlugRock_MenuDraw( void )
 		s_slugrock.bot_weaponMode.generic.flags |= QMF_GRAYED;
 	}
 
+	trap_GetClientState( &cs );
+	trap_GetConfigString( CS_PLAYERS + cs.clientNum, info, MAX_INFO_STRING );
+	team = atoi( Info_ValueForKey( info, "t" ) );
+	
+	if (s_slugrock.g_forceRedWeaponMode.curvalue == 0) {
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else if ( team == TEAM_RED ) {
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
+	}
+	
+	if (s_slugrock.g_forceBlueWeaponMode.curvalue == 0) {
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else if ( team == TEAM_BLUE ) {
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
 	}
 
 	Menu_Draw( &s_slugrock.menu );
