@@ -68,6 +68,7 @@ typedef struct {
 	const char	*name;
 	const char	*longname;
 	const char	*names[10];
+	const char	*longnames[10];
 	void		*menuitem;
 	int			type;
 } slugrockCvar_t;
@@ -77,6 +78,7 @@ slugrockCvar_t cvar_list[] = {
 		"g_forceWeaponMode",
 		"Force the weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -85,6 +87,7 @@ slugrockCvar_t cvar_list[] = {
 		"g_forceRedWeaponMode",
 		"Force the red team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -93,6 +96,7 @@ slugrockCvar_t cvar_list[] = {
 		"g_forceBlueWeaponMode",
 		"Force the blue team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -101,6 +105,7 @@ slugrockCvar_t cvar_list[] = {
 		"g_healthRegen",
 		"Regenerate health:",
 		{ "0", "1", "", 0 }, 
+		{ NULL }, 
 		&s_slugrock.g_healthRegen,
 		MTYPE_RADIOBUTTON
 	},
@@ -109,6 +114,7 @@ slugrockCvar_t cvar_list[] = {
 		"cg_weaponMode",
 		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		{ "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.cg_weaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -117,6 +123,7 @@ slugrockCvar_t cvar_list[] = {
 		"bot_weaponMode",
 		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		{ "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.bot_weaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -275,7 +282,7 @@ void SlugRock_AddItem( int id, int y, int x_offset ) {
 		((menulist_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].longname;
 		((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
 		((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
-		((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
+		((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].longnames;
 		((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
 		break;
 		case MTYPE_RADIOBUTTON:
