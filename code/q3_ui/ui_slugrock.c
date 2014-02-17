@@ -49,6 +49,9 @@ typedef struct
 	menubitmap_s	back;
 	char			info[MAX_INFO_STRING];
 	int				numlines;
+	menutext_s		server;
+	menutext_s		client;
+	menutext_s		bots;
 	menulist_s			g_forceWeaponMode;
 	menulist_s			g_forceRedWeaponMode;
 	menulist_s			g_forceBlueWeaponMode;
@@ -63,7 +66,9 @@ char *g_forceWeaponMode_names[] = { "no", "alternate", "random", "rl", "rg", "bo
 
 typedef struct {
 	const char	*name;
+	const char	*longname;
 	const char	*names[10];
+	const char	*longnames[10];
 	void		*menuitem;
 	int			type;
 } slugrockCvar_t;
@@ -71,42 +76,54 @@ typedef struct {
 slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceWeaponMode",
+		"Force the weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
 	},
 
 	{
 		"g_forceRedWeaponMode",
+		"Force the red team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
 		MTYPE_SPINCONTROL
 	},
 
 	{
 		"g_forceBlueWeaponMode",
+		"Force the blue team weapon mode:",
 		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_SPINCONTROL
 	},
 
 	{
 		"g_healthRegen",
+		"Regenerate health:",
 		{ "0", "1", "", 0 }, 
+		{ NULL }, 
 		&s_slugrock.g_healthRegen,
 		MTYPE_RADIOBUTTON
 	},
 
 	{
-		"cg_weaponMode", 
+		"cg_weaponMode",
+		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		{ "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.cg_weaponMode,
 		MTYPE_SPINCONTROL
 	},
 
 	{
-		"bot_weaponMode",  
+		"bot_weaponMode",
+		"Weapon mode:",
 		{ "alternate", "random", "rl", "rg", "both", 0 }, 
+		{ "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
 		&s_slugrock.bot_weaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -158,26 +175,39 @@ SlugRock_MenuDraw
 */
 static void SlugRock_MenuDraw( void )
 {
-	const char		*s;
-	char			key[MAX_INFO_KEY];
-	char			value[MAX_INFO_VALUE];
-	int				i = 0, y;
+	char			info[MAX_INFO_STRING];
+	uiClientState_t cs;
+	int				team;
 
-	y = SCREEN_HEIGHT/2 - s_slugrock.numlines*(SMALLCHAR_HEIGHT)/2 - 20;
-	s = s_slugrock.info;
-	while ( s && i < s_slugrock.numlines ) {
-		Info_NextPair( &s, key, value );
-		if ( !key[0] ) {
-			break;
-		}
+	if (s_slugrock.g_forceWeaponMode.curvalue == 0) {
+		s_slugrock.g_forceBlueWeaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.g_forceRedWeaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+		s_slugrock.bot_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else {
+		s_slugrock.g_forceBlueWeaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.g_forceRedWeaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
+		s_slugrock.bot_weaponMode.generic.flags |= QMF_GRAYED;
+	}
 
-		Q_strcat( key, MAX_INFO_KEY, ":" ); 
-
-		UI_DrawString(SCREEN_WIDTH*0.50 - 8,y,key,UI_RIGHT|UI_SMALLFONT,color_red);
-		UI_DrawString(SCREEN_WIDTH*0.50 + 8,y,value,UI_LEFT|UI_SMALLFONT,text_color_normal);
-
-		y += SMALLCHAR_HEIGHT;
-		i++;
+	trap_GetClientState( &cs );
+	trap_GetConfigString( CS_PLAYERS + cs.clientNum, info, MAX_INFO_STRING );
+	team = atoi( Info_ValueForKey( info, "t" ) );
+	
+	if (s_slugrock.g_forceRedWeaponMode.curvalue == 0) {
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else if ( team == TEAM_RED ) {
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
+	}
+	
+	if (s_slugrock.g_forceBlueWeaponMode.curvalue == 0) {
+		s_slugrock.cg_weaponMode.generic.flags &= ~QMF_GRAYED;
+	}
+	else if ( team == TEAM_BLUE ) {
+		s_slugrock.cg_weaponMode.generic.flags |= QMF_GRAYED;
 	}
 
 	Menu_Draw( &s_slugrock.menu );
@@ -239,6 +269,38 @@ void SlugRock_ApplyChanges( void* ptr, int event ) {
 
 /*
 =================
+SlugRock_AddItem
+=================
+*/
+void SlugRock_AddItem( int id, int y, int x_offset ) {
+	switch(cvar_list[id].type) {
+		case MTYPE_SPINCONTROL:
+		((menulist_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
+		((menulist_s*)cvar_list[id].menuitem)->generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
+		((menulist_s*)cvar_list[id].menuitem)->generic.x		= SCREEN_WIDTH/2+x_offset;
+		((menulist_s*)cvar_list[id].menuitem)->generic.y		= y;
+		((menulist_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].longname;
+		((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
+		((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
+		((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].longnames;
+		((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
+		break;
+		case MTYPE_RADIOBUTTON:
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.x			= SCREEN_WIDTH/2+x_offset;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.y			= y;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].longname;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.id		= id;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
+		((menuradiobutton_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
+		break;
+	}
+	Menu_AddItem( &s_slugrock.menu, (void*) cvar_list[id].menuitem );
+}
+
+/*
+=================
 UI_SlugRockMenu
 =================
 */
@@ -293,31 +355,50 @@ void UI_SlugRockMenu( void )
 
 	id = 0;
 	y = 100;
-	while (cvar_list[id].name) {
-		switch(cvar_list[id].type) {
-			case MTYPE_SPINCONTROL:
-			((menulist_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
-			((menulist_s*)cvar_list[id].menuitem)->generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
-			((menulist_s*)cvar_list[id].menuitem)->generic.x		= SCREEN_WIDTH/2+30;
-			((menulist_s*)cvar_list[id].menuitem)->generic.y		= y;
-			((menulist_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].name;
-			((menulist_s*)cvar_list[id].menuitem)->generic.id		= id;
-			((menulist_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
-			((menulist_s*)cvar_list[id].menuitem)->itemnames		= cvar_list[id].names;
-			((menulist_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
-			break;
-			case MTYPE_RADIOBUTTON:
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.type		= cvar_list[id].type;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_CENTER_JUSTIFY;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.x			= SCREEN_WIDTH/2+30;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.y			= y;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.name		= cvar_list[id].name;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.id		= id;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->generic.callback	= SlugRock_Event;
-			((menuradiobutton_s*)cvar_list[id].menuitem)->curvalue			= SlugRock_GetCurrentValueIndex( id );
-			break;
-		}
-		Menu_AddItem( &s_slugrock.menu, (void*) cvar_list[id].menuitem );
+
+	s_slugrock.server.generic.type		= MTYPE_PTEXT;
+	s_slugrock.server.generic.y			= y;
+	s_slugrock.server.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.server.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.server.string			= "SERVER";
+	s_slugrock.server.color				= color_orange;
+	s_slugrock.server.style				= UI_CENTER|UI_SMALLFONT;
+	y += 24;
+
+	while (cvar_list[id].name[0] == 'g') {
+		SlugRock_AddItem( id, y, 50 );
+		id++;
+		y += SMALLCHAR_HEIGHT;
+	}
+
+	y += 16;
+	s_slugrock.client.generic.type		= MTYPE_PTEXT;
+	s_slugrock.client.generic.y			= y;
+	s_slugrock.client.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.client.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.client.string			= "CLIENT";
+	s_slugrock.client.color				= color_orange;
+	s_slugrock.client.style				= UI_CENTER|UI_SMALLFONT;
+	y += 24;
+
+	while (cvar_list[id].name[0] == 'c') {
+		SlugRock_AddItem( id, y, 0 );
+		id++;
+		y += SMALLCHAR_HEIGHT;
+	}
+
+	y += 16;
+	s_slugrock.bots.generic.type		= MTYPE_PTEXT;
+	s_slugrock.bots.generic.y			= y;
+	s_slugrock.bots.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_slugrock.bots.generic.x			= SCREEN_WIDTH/2;
+	s_slugrock.bots.string				= "BOTS";
+	s_slugrock.bots.color				= color_orange;
+	s_slugrock.bots.style				= UI_CENTER|UI_SMALLFONT;
+	y += 24;
+
+	while (cvar_list[id].name && cvar_list[id].name[0] == 'b') {
+		SlugRock_AddItem( id, y, 0 );
 		id++;
 		y += SMALLCHAR_HEIGHT;
 	}
@@ -337,6 +418,9 @@ void UI_SlugRockMenu( void )
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.framer );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.back );
 	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.apply );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.server );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.client );
+	Menu_AddItem( &s_slugrock.menu, (void*) &s_slugrock.bots );
 	UI_PushMenu( &s_slugrock.menu );
 }
 
