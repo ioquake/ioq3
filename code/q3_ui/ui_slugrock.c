@@ -77,8 +77,8 @@ slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceWeaponMode",
 		"Force the weapon mode:",
-		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
-		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
+		{ "no", "alternate", "random", "rl", "rg", "both", "select", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", "Select", 0 },
 		&s_slugrock.g_forceWeaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -86,8 +86,8 @@ slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceRedWeaponMode",
 		"Force the red team weapon mode:",
-		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
-		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
+		{ "no", "alternate", "random", "rl", "rg", "both", "select", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", "Select", 0 },
 		&s_slugrock.g_forceRedWeaponMode,
 		MTYPE_SPINCONTROL
 	},
@@ -95,8 +95,8 @@ slugrockCvar_t cvar_list[] = {
 	{
 		"g_forceBlueWeaponMode",
 		"Force the blue team weapon mode:",
-		{ "no", "alternate", "random", "rl", "rg", "both", 0 },
-		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", 0 },
+		{ "no", "alternate", "random", "rl", "rg", "both", "select", 0 },
+		{ "No", "Alternate", "Random", "Rocket Launcher", "Railgun", "Both", "Select", 0 },
 		&s_slugrock.g_forceBlueWeaponMode,
 		MTYPE_SPINCONTROL
 	},
