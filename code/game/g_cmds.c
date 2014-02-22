@@ -705,7 +705,7 @@ void Cmd_Team_f( gentity_t *ent ) {
 
 	SetTeam( ent, s );
 
-	ent->client->switchTeamTime = level.time + 5000;
+	//ent->client->switchTeamTime = level.time + 5000;
 }
 
 
