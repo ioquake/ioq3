@@ -585,9 +585,9 @@ void SetTeam( gentity_t *ent, char *s ) {
 	// decide if we will allow the change
 	//
 	oldTeam = client->sess.sessionTeam;
-	if ( team == oldTeam && team != TEAM_SPECTATOR ) {
-		return;
-	}
+	//if ( team == oldTeam && team != TEAM_SPECTATOR ) {
+	//	return;
+	//}
 
 	//
 	// execute the team change
