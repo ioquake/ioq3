@@ -1214,6 +1214,8 @@ void R_Init( void ) {
 
 	R_Register();
 
+	R_BloomInit();
+
 	max_polys = r_maxpolys->integer;
 	if (max_polys < MAX_POLYS)
 		max_polys = MAX_POLYS;
