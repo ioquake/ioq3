@@ -1492,7 +1492,7 @@ static void CG_DrawReward( void ) {
 	*/
 
 	if ( cg.rewardCount[0] >= 10 ) {
-		y = 56;
+		y = 60 + 2*BIGCHAR_HEIGHT;
 		x = 320 - ICON_SIZE/2;
 		CG_DrawPic( x, y, ICON_SIZE-4, ICON_SIZE-4, cg.rewardShader[0] );
 		Com_sprintf(buf, sizeof(buf), "%d", cg.rewardCount[0]);
@@ -1504,7 +1504,7 @@ static void CG_DrawReward( void ) {
 
 		count = cg.rewardCount[0];
 
-		y = 56;
+		y = 60 + 2*BIGCHAR_HEIGHT;
 		x = 320 - count * ICON_SIZE/2;
 		for ( i = 0 ; i < count ; i++ ) {
 			CG_DrawPic( x, y, ICON_SIZE-4, ICON_SIZE-4, cg.rewardShader[0] );
