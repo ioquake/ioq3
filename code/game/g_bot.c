@@ -552,6 +552,31 @@ qboolean G_BotConnect( int clientNum, qboolean restart ) {
 	return qtrue;
 }
 
+int InitARandomColor() {
+	float rnd = random();
+
+	if (rnd < 0.14) {
+		return 1;
+	}
+	else if (rnd < 0.28) {
+		return 2;
+	}
+	else if (rnd < 0.42) {
+		return 3;
+	}
+	else if (rnd < 0.56) {
+		return 4;
+	}
+	else if (rnd < 0.70) {
+		return 5;
+	}
+	else if (rnd < 0.85) {
+		return 6;
+	}
+	else {
+		return 7;
+	}
+}
 
 /*
 ===============
@@ -569,7 +594,15 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	char			userinfo[MAX_INFO_STRING];
 	char			buff[MAX_INFO_VALUE];
 // SlugRock
-	float  rnd;
+	static int		color1;
+	static int		color2;
+	static qboolean	firstTime = qtrue;
+
+	if ( firstTime ) {
+		color1 = InitARandomColor();
+		color2 = InitARandomColor();
+		firstTime = qfalse;
+	}
 
 	// have the server allocate a client slot
 	clientNum = trap_BotAllocateClient();
@@ -645,32 +678,16 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	Info_SetValueForKey( userinfo, "sex", s );
 
 // SlugRock
-
-	rnd = random(); 
-
 	key = "color1";
 	s = Info_ValueForKey( botinfo, key );
 	if ( !*s ) {
-		if  (rnd < 0.14) {
-		s = "1";
+		s = va("%i", color1);
+		//Com_Printf("color1 %i\n", color1);
+		if (color1 == 7) {
+			color1 = 1;
 		}
-		else if  (rnd < 0.28) {
-		s = "2";
-		}
-		else if  (rnd < 0.42) {
-		s = "3";
-		}
-		else if  (rnd < 0.56) {
-		s = "4";
-		}
-		else if  (rnd < 0.70) {
-		s = "5";
-		}
-		else if  (rnd < 0.85) {
-		s = "6";
-		}
-		else  {
-		s = "7";
+		else {
+			color1++;
 		}
 	}
 	Info_SetValueForKey( userinfo, key, s );
@@ -678,26 +695,13 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	key = "color2";
 	s = Info_ValueForKey( botinfo, key );
 	if ( !*s ) {
-		if  (rnd < 0.14) {
-		s = "1";
+		s = va("%i", color2);
+		//Com_Printf("color2 %i\n", color2);
+		if (color2 == 7) {
+			color2 = 1;
 		}
-		else if  (rnd < 0.28) {
-		s = "2";
-		}
-		else if  (rnd < 0.42) {
-		s = "3";
-		}
-		else if  (rnd < 0.56) {
-		s = "4";
-		}
-		else if  (rnd < 0.70) {
-		s = "5";
-		}
-		else if  (rnd < 0.85) {
-		s = "6";
-		}
-		else  {
-		s = "7";
+		else {
+			color2++;
 		}
 	}
 	Info_SetValueForKey( userinfo, key, s );
