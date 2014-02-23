@@ -1140,11 +1140,14 @@ void SlugRock_GiveWeapon(gentity_t *ent) {
 		return;
 	}
 
-	trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
-	if (ent->r.svFlags & SVF_BOT)
+	if (ent->r.svFlags & SVF_BOT) {
+		trap_GetUserinfo( 0, userinfo, sizeof(userinfo) );
 		weaponMode = Info_ValueForKey( userinfo, "bot_weaponMode" );
-	else
+	}
+	else {
+		trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof(userinfo) );
 		weaponMode = Info_ValueForKey( userinfo, "cg_weaponMode" );
+	}
 	SlugRock_WeaponMode(ent, weaponMode);
 }
 
