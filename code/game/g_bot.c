@@ -592,7 +592,6 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	char			*model;
 	char			*headmodel;
 	char			userinfo[MAX_INFO_STRING];
-	char			buff[MAX_INFO_VALUE];
 // SlugRock
 	static int		color1;
 	static int		color2;
@@ -622,10 +621,6 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 
 	// create the bot's userinfo
 	userinfo[0] = '\0';
-
-	// add bot_weaponMode to the userinfo
-	trap_Cvar_VariableStringBuffer( "bot_weaponMode", buff, sizeof(buff) );
-	Info_SetValueForKey( userinfo, "bot_weaponMode", buff );
 
 	botname = Info_ValueForKey( botinfo, "funname" );
 	if( !botname[0] ) {
