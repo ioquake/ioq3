@@ -1492,7 +1492,7 @@ static void CG_DrawReward( void ) {
 	*/
 
 	if ( cg.rewardCount[0] >= 10 ) {
-		y = 56;
+		y = 60 + 2*BIGCHAR_HEIGHT;
 		x = 320 - ICON_SIZE/2;
 		CG_DrawPic( x, y, ICON_SIZE-4, ICON_SIZE-4, cg.rewardShader[0] );
 		Com_sprintf(buf, sizeof(buf), "%d", cg.rewardCount[0]);
@@ -1504,7 +1504,7 @@ static void CG_DrawReward( void ) {
 
 		count = cg.rewardCount[0];
 
-		y = 56;
+		y = 60 + 2*BIGCHAR_HEIGHT;
 		x = 320 - count * ICON_SIZE/2;
 		for ( i = 0 ; i < count ; i++ ) {
 			CG_DrawPic( x, y, ICON_SIZE-4, ICON_SIZE-4, cg.rewardShader[0] );
@@ -1795,7 +1795,7 @@ static void CG_DrawCenterString( void ) {
 
 	start = cg.centerPrint;
 
-	y = cg.centerPrintY - cg.centerPrintLines * cg.centerPrintCharWidth * 1.5 / 2;
+	y = 60;
 
 	while ( 1 ) {
 		char linebuffer[1024];
@@ -1815,14 +1815,13 @@ static void CG_DrawCenterString( void ) {
 		CG_Text_Paint(x, y + h, 0.5, color, linebuffer, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
 		y += h + 6;
 #else
-		w = cg.centerPrintCharWidth * CG_DrawStrlen( linebuffer );
+		w = CG_DrawStrlen( linebuffer ) * BIGCHAR_WIDTH;;
 
 		x = ( SCREEN_WIDTH - w ) / 2;
 
-		CG_DrawStringExt( x, y, linebuffer, color, qfalse, qtrue,
-			cg.centerPrintCharWidth, (int)(cg.centerPrintCharWidth * 1.5), 0 );
+		CG_DrawStringExt( x, y, linebuffer, color, qfalse, qtrue, BIGCHAR_WIDTH, BIGCHAR_HEIGHT, 0 );
 
-		y += cg.centerPrintCharWidth * 1.5;
+		y += BIGCHAR_HEIGHT;
 #endif
 		while ( *start && ( *start != '\n' ) ) {
 			start++;

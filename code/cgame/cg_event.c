@@ -226,7 +226,7 @@ static void CG_Obituary( entityState_t *ent ) {
 			CG_CenterPrint( s, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 		} 
 #else
-		CG_CenterPrint( s, 28, BIGCHAR_WIDTH-5 );
+		CG_CenterPrint( s, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 #endif
 
 		// print the text message as well
