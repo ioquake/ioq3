@@ -35,6 +35,7 @@ INGAME MENU
 #define INGAME_FRAME					"menu/art/addbotframe"
 //#define INGAME_FRAME					"menu/art/cut_frame"
 #define INGAME_MENU_VERTICAL_SPACING	28
+#define INGAME_MENU_ITEMS				11
 
 #define ID_TEAM					10
 #define ID_ADDBOTS				11
@@ -182,8 +183,8 @@ void InGame_MenuInit( void ) {
 	s_ingame.frame.width				= 466;//359;
 	s_ingame.frame.height				= 332;//256;
 
-	//y = 96;
-	y = 88;
+	y = (s_ingame.frame.height - INGAME_MENU_VERTICAL_SPACING * (INGAME_MENU_ITEMS-1) - SMALLCHAR_HEIGHT)/2
+		+ s_ingame.frame.generic.y;
 	s_ingame.slugrock.generic.type		= MTYPE_PTEXT;
 	s_ingame.slugrock.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_ingame.slugrock.generic.x			= 320;
