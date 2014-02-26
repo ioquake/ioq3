@@ -104,7 +104,7 @@ slugrockCvar_t cvar_list[] = {
 	{
 		"g_healthRegen",
 		"Regenerate health:",
-		{ "0", "1", "", 0 }, 
+		{ "0", "1", 0 }, 
 		{ NULL }, 
 		&s_slugrock.g_healthRegen,
 		MTYPE_RADIOBUTTON
