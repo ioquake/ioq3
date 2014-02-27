@@ -1,0 +1,4 @@
+- It doesn't autojoin after creating a team game
+- Sometimes a red circle appears in front of the head model at the status bar. Mainly at the begining.
+- Some tourney maps can't be loaded
+Fixed - g_healthRegen isn't properly set after clicking ACCEPT, the first time the mod is loaded
