@@ -1004,6 +1004,7 @@ extern	cvar_t	*r_nocurves;
 extern	cvar_t	*r_showcluster;
 
 extern cvar_t	*r_gamma;
+extern cvar_t	*r_displayRefresh;		// optional display refresh option
 
 extern	cvar_t	*r_nobind;						// turns off binding to appropriate textures
 extern	cvar_t	*r_singleShader;				// make most world faces use default shader
