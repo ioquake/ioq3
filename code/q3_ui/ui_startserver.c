@@ -694,6 +694,7 @@ static const char *botSkill_list[] = {
 	"Hurt Me Plenty",
 	"Hardcore",
 	"Nightmare!",
+	"New Skill",
 	NULL
 };
 
