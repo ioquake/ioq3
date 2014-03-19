@@ -3585,7 +3585,8 @@ void BotAimAtEnemy(bot_state_t *bs) {
 		dist = VectorLength(dir);
 		if (dist > 150) dist = 150;
 		f = 0.6 + dist / 150 * 0.4;
-		aim_accuracy *= f;
+		if ( bs->settings.skill <= 5 ) 
+			aim_accuracy *= f;
 	}
 	//add some random stuff to the aim direction depending on the aim accuracy
 	if (aim_accuracy < 0.8) {
