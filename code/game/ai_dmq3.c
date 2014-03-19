@@ -1573,12 +1573,7 @@ void BotChooseWeapon(bot_state_t *bs) {
 		trap_EA_SelectWeapon(bs->client, bs->weaponnum);
 	}
 	else {
-//SlugRock
-/*		newweaponnum = trap_BotChooseBestFightWeapon(bs->ws, bs->inventory); */
-		newweaponnum = WP_RAILGUN; //SlugRock SCO We only have one weapon so let's choose it
-		if (newweaponnum != WP_RAILGUN); //SlugRock if weapon isn't the rg it is the rl
-			newweaponnum = WP_ROCKET_LAUNCHER;
-
+		newweaponnum = trap_BotChooseBestFightWeapon(bs->ws, bs->inventory);
 		if (bs->weaponnum != newweaponnum) bs->weaponchange_time = FloatTime();
 		bs->weaponnum = newweaponnum;
 		//BotAI_Print(PRT_MESSAGE, "bs->weaponnum = %d\n", bs->weaponnum);
