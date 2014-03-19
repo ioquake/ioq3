@@ -770,7 +770,13 @@ void BotChangeViewAngles(bot_state_t *bs, float thinktime) {
 	//
 	if (bs->enemy >= 0) {
 		factor = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_VIEW_FACTOR, 0.01f, 1);
+		if ( bs->settings.skill > 5 ) {
+			factor = 1;
+		}
 		maxchange = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_VIEW_MAXCHANGE, 1, 1800);
+		if ( bs->settings.skill > 5 ) {
+			maxchange = 1800;
+		}
 	}
 	else {
 		factor = 0.05f;
