@@ -3413,7 +3413,7 @@ void BotAimAtEnemy(bot_state_t *bs) {
 	VectorSubtract(entinfo.origin, entinfo.lastvisorigin, enemyvelocity);
 	VectorScale(enemyvelocity, 1 / entinfo.update_time, enemyvelocity);
 	//enemy origin and velocity is remembered every 0.5 seconds
-	if (bs->enemyposition_time < FloatTime()) {
+	if (bs->enemyposition_time < FloatTime() || bs->settings.skill > 5) {
 		//
 		bs->enemyposition_time = FloatTime() + 0.5;
 		VectorCopy(enemyvelocity, bs->enemyvelocity);
