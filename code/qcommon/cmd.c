@@ -90,6 +90,14 @@ Adds command text at the end of the buffer, does NOT add a final \n
 void Cbuf_AddText( const char *text ) {
 	int		l;
 	
+	{
+		int processed = 0; // make sure to init, because LUA_callfunction won't if lua-handle is NULL
+		LUA_callfunction(global_lua, "Cbuf_AddText", "s,i", text, &processed);
+		//Com_Printf("Cbuf_AddText(%s) processed=%d\n", text, processed);
+		if (processed)
+			return;
+	}
+
 	l = strlen (text);
 
 	if (cmd_text.cursize + l >= cmd_text.maxsize)

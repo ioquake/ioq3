@@ -50,64 +50,64 @@ typedef struct {
 	int		bit;				// for bitwise reads and writes
 } msg_t;
 
-void MSG_Init (msg_t *buf, byte *data, int length);
-void MSG_InitOOB( msg_t *buf, byte *data, int length );
-void MSG_Clear (msg_t *buf);
-void MSG_WriteData (msg_t *buf, const void *data, int length);
-void MSG_Bitstream( msg_t *buf );
+__declspec(dllexport) void MSG_Init (msg_t *buf, byte *data, int length);
+__declspec(dllexport) void MSG_InitOOB( msg_t *buf, byte *data, int length );
+__declspec(dllexport) void MSG_Clear (msg_t *buf);
+__declspec(dllexport) void MSG_WriteData (msg_t *buf, const void *data, int length);
+__declspec(dllexport) void MSG_Bitstream( msg_t *buf );
 
 // TTimo
 // copy a msg_t in case we need to store it as is for a bit
 // (as I needed this to keep an msg_t from a static var for later use)
 // sets data buffer as MSG_Init does prior to do the copy
-void MSG_Copy(msg_t *buf, byte *data, int length, msg_t *src);
+__declspec(dllexport) void MSG_Copy(msg_t *buf, byte *data, int length, msg_t *src);
 
 struct usercmd_s;
 struct entityState_s;
 struct playerState_s;
 
-void MSG_WriteBits( msg_t *msg, int value, int bits );
+__declspec(dllexport) void MSG_WriteBits( msg_t *msg, int value, int bits );
 
-void MSG_WriteChar (msg_t *sb, int c);
-void MSG_WriteByte (msg_t *sb, int c);
-void MSG_WriteShort (msg_t *sb, int c);
-void MSG_WriteLong (msg_t *sb, int c);
-void MSG_WriteFloat (msg_t *sb, float f);
-void MSG_WriteString (msg_t *sb, const char *s);
-void MSG_WriteBigString (msg_t *sb, const char *s);
-void MSG_WriteAngle16 (msg_t *sb, float f);
-int MSG_HashKey(const char *string, int maxlen);
+__declspec(dllexport) void MSG_WriteChar (msg_t *sb, int c);
+__declspec(dllexport) void MSG_WriteByte (msg_t *sb, int c);
+__declspec(dllexport) void MSG_WriteShort (msg_t *sb, int c);
+__declspec(dllexport) void MSG_WriteLong (msg_t *sb, int c);
+__declspec(dllexport) void MSG_WriteFloat (msg_t *sb, float f);
+__declspec(dllexport) void MSG_WriteString (msg_t *sb, const char *s);
+__declspec(dllexport) void MSG_WriteBigString (msg_t *sb, const char *s);
+__declspec(dllexport) void MSG_WriteAngle16 (msg_t *sb, float f);
+__declspec(dllexport) int MSG_HashKey(const char *string, int maxlen);
 
-void	MSG_BeginReading (msg_t *sb);
-void	MSG_BeginReadingOOB(msg_t *sb);
+__declspec(dllexport) void	MSG_BeginReading (msg_t *sb);
+__declspec(dllexport) void	MSG_BeginReadingOOB(msg_t *sb);
 
-int		MSG_ReadBits( msg_t *msg, int bits );
+__declspec(dllexport) int		MSG_ReadBits( msg_t *msg, int bits );
 
-int		MSG_ReadChar (msg_t *sb);
-int		MSG_ReadByte (msg_t *sb);
-int		MSG_ReadShort (msg_t *sb);
-int		MSG_ReadLong (msg_t *sb);
-float	MSG_ReadFloat (msg_t *sb);
-char	*MSG_ReadString (msg_t *sb);
-char	*MSG_ReadBigString (msg_t *sb);
-char	*MSG_ReadStringLine (msg_t *sb);
-float	MSG_ReadAngle16 (msg_t *sb);
-void	MSG_ReadData (msg_t *sb, void *buffer, int size);
-int		MSG_LookaheadByte (msg_t *msg);
+__declspec(dllexport) int		MSG_ReadChar (msg_t *sb);
+__declspec(dllexport) int		MSG_ReadByte (msg_t *sb);
+__declspec(dllexport) int		MSG_ReadShort (msg_t *sb);
+__declspec(dllexport) int		MSG_ReadLong (msg_t *sb);
+__declspec(dllexport) float	MSG_ReadFloat (msg_t *sb);
+__declspec(dllexport) char	*MSG_ReadString (msg_t *sb);
+__declspec(dllexport) char	*MSG_ReadBigString (msg_t *sb);
+__declspec(dllexport) char	*MSG_ReadStringLine (msg_t *sb);
+__declspec(dllexport) float	MSG_ReadAngle16 (msg_t *sb);
+__declspec(dllexport) void	MSG_ReadData (msg_t *sb, void *buffer, int size);
+__declspec(dllexport) int		MSG_LookaheadByte (msg_t *msg);
 
-void MSG_WriteDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
-void MSG_ReadDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
+__declspec(dllexport) void MSG_WriteDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
+__declspec(dllexport) void MSG_ReadDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
 
-void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entityState_s *to
+__declspec(dllexport) void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entityState_s *to
 						   , qboolean force );
-void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
+__declspec(dllexport) void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
 						 int number );
 
-void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
-void MSG_ReadDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
+__declspec(dllexport) void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
+__declspec(dllexport) void MSG_ReadDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
 
 
-void MSG_ReportChangeVectors_f( void );
+__declspec(dllexport) void MSG_ReportChangeVectors_f( void );
 
 //============================================================================
 
@@ -301,6 +301,12 @@ enum svc_ops_e {
 
 // new commands, supported only by ioquake3 protocol but not legacy
 	svc_voip,     // not wrapped in USE_VOIP, so this value is reserved.
+	
+	svc_usermessage_1, // support for custom user messages like in Garrys Mod
+	svc_usermessage_2, // support for custom user messages like in Garrys Mod
+	svc_usermessage_3, // support for custom user messages like in Garrys Mod
+	svc_usermessage_4, // support for custom user messages like in Garrys Mod
+	svc_usermessage_5, // support for custom user messages like in Garrys Mod
 };
 
 
@@ -497,78 +503,78 @@ modules of the program.
 
 */
 
-cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
+__declspec(dllexport) cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
 // creates the variable if it doesn't exist, or returns the existing one
 // if it exists, the value will not be changed, but flags will be ORed in
 // that allows variables to be unarchived without needing bitflags
 // if value is "", the value will not override a previously set value.
 
-void	Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags );
+__declspec(dllexport) void	Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags );
 // basically a slightly modified Cvar_Get for the interpreted modules
 
-void	Cvar_Update( vmCvar_t *vmCvar );
+__declspec(dllexport) void	Cvar_Update( vmCvar_t *vmCvar );
 // updates an interpreted modules' version of a cvar
 
-void 	Cvar_Set( const char *var_name, const char *value );
+__declspec(dllexport) void 	Cvar_Set( const char *var_name, const char *value );
 // will create the variable with no flags if it doesn't exist
 
-cvar_t	*Cvar_Set2(const char *var_name, const char *value, qboolean force);
+__declspec(dllexport) cvar_t	*Cvar_Set2(const char *var_name, const char *value, qboolean force);
 // same as Cvar_Set, but allows more control over setting of cvar
 
-void	Cvar_SetSafe( const char *var_name, const char *value );
+__declspec(dllexport) void	Cvar_SetSafe( const char *var_name, const char *value );
 // sometimes we set variables from an untrusted source: fail if flags & CVAR_PROTECTED
 
-void Cvar_SetLatched( const char *var_name, const char *value);
+__declspec(dllexport) void Cvar_SetLatched( const char *var_name, const char *value);
 // don't set the cvar immediately
 
 void	Cvar_SetValue( const char *var_name, float value );
-void	Cvar_SetValueSafe( const char *var_name, float value );
+__declspec(dllexport) void	Cvar_SetValueSafe( const char *var_name, float value );
 // expands value to a string and calls Cvar_Set/Cvar_SetSafe
 
-float	Cvar_VariableValue( const char *var_name );
-int		Cvar_VariableIntegerValue( const char *var_name );
+__declspec(dllexport) float	Cvar_VariableValue( const char *var_name );
+__declspec(dllexport) int		Cvar_VariableIntegerValue( const char *var_name );
 // returns 0 if not defined or non numeric
 
-char	*Cvar_VariableString( const char *var_name );
-void	Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize );
+__declspec(dllexport) char	*Cvar_VariableString( const char *var_name );
+__declspec(dllexport) void	Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize );
 // returns an empty string if not defined
 
-int	Cvar_Flags(const char *var_name);
+__declspec(dllexport) int	Cvar_Flags(const char *var_name);
 // returns CVAR_NONEXISTENT if cvar doesn't exist or the flags of that particular CVAR.
 
-void	Cvar_CommandCompletion( void(*callback)(const char *s) );
+__declspec(dllexport) void	Cvar_CommandCompletion( void(*callback)(const char *s) );
 // callback with each valid string
 
-void 	Cvar_Reset( const char *var_name );
-void 	Cvar_ForceReset(const char *var_name);
+__declspec(dllexport) void 	Cvar_Reset( const char *var_name );
+__declspec(dllexport) void 	Cvar_ForceReset(const char *var_name);
 
-void	Cvar_SetCheatState( void );
+__declspec(dllexport) void	Cvar_SetCheatState( void );
 // reset all testing vars to a safe value
 
-qboolean Cvar_Command( void );
+__declspec(dllexport) qboolean Cvar_Command( void );
 // called by Cmd_ExecuteString when Cmd_Argv(0) doesn't match a known
 // command.  Returns true if the command was a variable reference that
 // was handled. (print or change)
 
-void 	Cvar_WriteVariables( fileHandle_t f );
+__declspec(dllexport) void 	Cvar_WriteVariables( fileHandle_t f );
 // writes lines containing "set variable value" for all variables
 // with the archive flag set to true.
 
-void	Cvar_Init( void );
+__declspec(dllexport) void	Cvar_Init( void );
 
-char	*Cvar_InfoString( int bit );
-char	*Cvar_InfoString_Big( int bit );
+__declspec(dllexport) char	*Cvar_InfoString( int bit );
+__declspec(dllexport) char	*Cvar_InfoString_Big( int bit );
 // returns an info string containing all the cvars that have the given bit set
 // in their flags ( CVAR_USERINFO, CVAR_SERVERINFO, CVAR_SYSTEMINFO, etc )
-void	Cvar_InfoStringBuffer( int bit, char *buff, int buffsize );
-void Cvar_CheckRange( cvar_t *cv, float minVal, float maxVal, qboolean shouldBeIntegral );
+__declspec(dllexport) void	Cvar_InfoStringBuffer( int bit, char *buff, int buffsize );
+__declspec(dllexport) void Cvar_CheckRange( cvar_t *cv, float minVal, float maxVal, qboolean shouldBeIntegral );
 
-void	Cvar_Restart(qboolean unsetVM);
-void	Cvar_Restart_f( void );
+__declspec(dllexport) void	Cvar_Restart(qboolean unsetVM);
+__declspec(dllexport) void	Cvar_Restart_f( void );
 
-void Cvar_CompleteCvarName( char *args, int argNum );
+__declspec(dllexport) void Cvar_CompleteCvarName( char *args, int argNum );
 
-extern	int			cvar_modifiedFlags;
+__declspec(dllexport) extern	int			cvar_modifiedFlags;
 // whenever a cvar is modifed, its flags will be OR'd into this, so
 // a single check can determine if any CVAR_USERINFO, CVAR_SERVERINFO,
 // etc, variables have been modified since the last check.  The bit
@@ -602,67 +608,67 @@ issues.
 #	define Q3CONFIG_CFG "q3config.cfg"
 #endif
 
-qboolean FS_Initialized( void );
+__declspec(dllexport) qboolean FS_Initialized( void );
 
-void	FS_InitFilesystem ( void );
-void	FS_Shutdown( qboolean closemfp );
+__declspec(dllexport) void	FS_InitFilesystem ( void );
+__declspec(dllexport) void	FS_Shutdown( qboolean closemfp );
 
-qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect);
-void	FS_Restart( int checksumFeed );
+__declspec(dllexport) qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect);
+__declspec(dllexport) void	FS_Restart( int checksumFeed );
 // shutdown and restart the filesystem so changes to fs_gamedir can take effect
 
-void FS_AddGameDirectory( const char *path, const char *dir );
+__declspec(dllexport) void FS_AddGameDirectory( const char *path, const char *dir );
 
-char	**FS_ListFiles( const char *directory, const char *extension, int *numfiles );
+__declspec(dllexport) char	**FS_ListFiles( const char *directory, const char *extension, int *numfiles );
 // directory should not have either a leading or trailing /
 // if extension is "/", only subdirectories will be returned
 // the returned files will not include any directories or /
 
-void	FS_FreeFileList( char **list );
+__declspec(dllexport) void	FS_FreeFileList( char **list );
 
-qboolean FS_FileExists( const char *file );
+__declspec(dllexport) qboolean FS_FileExists( const char *file );
 
-qboolean FS_CreatePath (char *OSPath);
+__declspec(dllexport) qboolean FS_CreatePath (char *OSPath);
 
-int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, int enableDll);
+__declspec(dllexport) int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, int enableDll);
 
-char   *FS_BuildOSPath( const char *base, const char *game, const char *qpath );
-qboolean FS_CompareZipChecksum(const char *zipfile);
+__declspec(dllexport) char   *FS_BuildOSPath( const char *base, const char *game, const char *qpath );
+__declspec(dllexport) qboolean FS_CompareZipChecksum(const char *zipfile);
 
-int		FS_LoadStack( void );
+__declspec(dllexport) int		FS_LoadStack( void );
 
-int		FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize );
-int		FS_GetModList(  char *listbuf, int bufsize );
+__declspec(dllexport) int		FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize );
+__declspec(dllexport) int		FS_GetModList(  char *listbuf, int bufsize );
 
-fileHandle_t	FS_FOpenFileWrite( const char *qpath );
-fileHandle_t	FS_FOpenFileAppend( const char *filename );
-fileHandle_t	FS_FCreateOpenPipeFile( const char *filename );
+__declspec(dllexport) fileHandle_t	FS_FOpenFileWrite( const char *qpath );
+__declspec(dllexport) fileHandle_t	FS_FOpenFileAppend( const char *filename );
+__declspec(dllexport) fileHandle_t	FS_FCreateOpenPipeFile( const char *filename );
 // will properly create any needed paths and deal with seperater character issues
 
-fileHandle_t FS_SV_FOpenFileWrite( const char *filename );
-long		FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp );
-void	FS_SV_Rename( const char *from, const char *to, qboolean safe );
-long		FS_FOpenFileRead( const char *qpath, fileHandle_t *file, qboolean uniqueFILE );
+__declspec(dllexport) fileHandle_t FS_SV_FOpenFileWrite( const char *filename );
+__declspec(dllexport) long		FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp );
+__declspec(dllexport) void	FS_SV_Rename( const char *from, const char *to, qboolean safe );
+__declspec(dllexport) long		FS_FOpenFileRead( const char *qpath, fileHandle_t *file, qboolean uniqueFILE );
 // if uniqueFILE is true, then a new FILE will be fopened even if the file
 // is found in an already open pak file.  If uniqueFILE is false, you must call
 // FS_FCloseFile instead of fclose, otherwise the pak FILE would be improperly closed
 // It is generally safe to always set uniqueFILE to true, because the majority of
 // file IO goes through FS_ReadFile, which Does The Right Thing already.
 
-int		FS_FileIsInPAK(const char *filename, int *pChecksum );
+__declspec(dllexport) int		FS_FileIsInPAK(const char *filename, int *pChecksum );
 // returns 1 if a file is in the PAK file, otherwise -1
 
-int		FS_Write( const void *buffer, int len, fileHandle_t f );
+__declspec(dllexport) int		FS_Write( const void *buffer, int len, fileHandle_t f );
 
-int		FS_Read2( void *buffer, int len, fileHandle_t f );
-int		FS_Read( void *buffer, int len, fileHandle_t f );
+__declspec(dllexport) int		FS_Read2( void *buffer, int len, fileHandle_t f );
+__declspec(dllexport) int		FS_Read( void *buffer, int len, fileHandle_t f );
 // properly handles partial reads and reads from other dlls
 
-void	FS_FCloseFile( fileHandle_t f );
+__declspec(dllexport) void	FS_FCloseFile( fileHandle_t f );
 // note: you can't just fclose from another DLL, due to MS libc issues
 
-long	FS_ReadFileDir(const char *qpath, void *searchPath, qboolean unpure, void **buffer);
-long	FS_ReadFile(const char *qpath, void **buffer);
+__declspec(dllexport) long	FS_ReadFileDir(const char *qpath, void *searchPath, qboolean unpure, void **buffer);
+__declspec(dllexport) long	FS_ReadFile(const char *qpath, void **buffer);
 // returns the length of the file
 // a null buffer will just return the file length without loading
 // as a quick check for existance. -1 length == not present
@@ -670,71 +676,71 @@ long	FS_ReadFile(const char *qpath, void **buffer);
 // the buffer should be considered read-only, because it may be cached
 // for other uses.
 
-void	FS_ForceFlush( fileHandle_t f );
+__declspec(dllexport) void	FS_ForceFlush( fileHandle_t f );
 // forces flush on files we're writing to.
 
-void	FS_FreeFile( void *buffer );
+__declspec(dllexport) void	FS_FreeFile( void *buffer );
 // frees the memory returned by FS_ReadFile
 
-void	FS_WriteFile( const char *qpath, const void *buffer, int size );
+__declspec(dllexport) void	FS_WriteFile( const char *qpath, const void *buffer, int size );
 // writes a complete file, creating any subdirectories needed
 
-long FS_filelength(fileHandle_t f);
+__declspec(dllexport) long FS_filelength(fileHandle_t f);
 // doesn't work for files that are opened from a pack file
 
-int		FS_FTell( fileHandle_t f );
+__declspec(dllexport) int		FS_FTell( fileHandle_t f );
 // where are we?
 
-void	FS_Flush( fileHandle_t f );
+__declspec(dllexport) void	FS_Flush( fileHandle_t f );
 
-void 	QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
+__declspec(dllexport) void 	QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
 // like fprintf
 
-int		FS_FOpenFileByMode( const char *qpath, fileHandle_t *f, fsMode_t mode );
+__declspec(dllexport) int		FS_FOpenFileByMode( const char *qpath, fileHandle_t *f, fsMode_t mode );
 // opens a file for reading, writing, or appending depending on the value of mode
 
-int		FS_Seek( fileHandle_t f, long offset, int origin );
+__declspec(dllexport) int		FS_Seek( fileHandle_t f, long offset, int origin );
 // seek on a file
 
-qboolean FS_FilenameCompare( const char *s1, const char *s2 );
+__declspec(dllexport) qboolean FS_FilenameCompare( const char *s1, const char *s2 );
 
-const char *FS_LoadedPakNames( void );
-const char *FS_LoadedPakChecksums( void );
-const char *FS_LoadedPakPureChecksums( void );
+__declspec(dllexport) const char *FS_LoadedPakNames( void );
+__declspec(dllexport) const char *FS_LoadedPakChecksums( void );
+__declspec(dllexport) const char *FS_LoadedPakPureChecksums( void );
 // Returns a space separated string containing the checksums of all loaded pk3 files.
 // Servers with sv_pure set will get this string and pass it to clients.
 
-const char *FS_ReferencedPakNames( void );
-const char *FS_ReferencedPakChecksums( void );
-const char *FS_ReferencedPakPureChecksums( void );
+__declspec(dllexport) const char *FS_ReferencedPakNames( void );
+__declspec(dllexport) const char *FS_ReferencedPakChecksums( void );
+__declspec(dllexport) const char *FS_ReferencedPakPureChecksums( void );
 // Returns a space separated string containing the checksums of all loaded 
 // AND referenced pk3 files. Servers with sv_pure set will get this string 
 // back from clients for pure validation 
 
-void FS_ClearPakReferences( int flags );
+__declspec(dllexport) void FS_ClearPakReferences( int flags );
 // clears referenced booleans on loaded pk3s
 
-void FS_PureServerSetReferencedPaks( const char *pakSums, const char *pakNames );
-void FS_PureServerSetLoadedPaks( const char *pakSums, const char *pakNames );
+__declspec(dllexport) void FS_PureServerSetReferencedPaks( const char *pakSums, const char *pakNames );
+__declspec(dllexport) void FS_PureServerSetLoadedPaks( const char *pakSums, const char *pakNames );
 // If the string is empty, all data sources will be allowed.
 // If not empty, only pk3 files that match one of the space
 // separated checksums will be checked for files, with the
 // sole exception of .cfg files.
 
-qboolean FS_CheckDirTraversal(const char *checkdir);
-qboolean FS_idPak(char *pak, char *base, int numPaks);
-qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring );
+__declspec(dllexport) qboolean FS_CheckDirTraversal(const char *checkdir);
+__declspec(dllexport) qboolean FS_idPak(char *pak, char *base, int numPaks);
+__declspec(dllexport) qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring );
 
-void FS_Rename( const char *from, const char *to );
+__declspec(dllexport) void FS_Rename( const char *from, const char *to );
 
-void FS_Remove( const char *osPath );
-void FS_HomeRemove( const char *homePath );
+__declspec(dllexport) void FS_Remove( const char *osPath );
+__declspec(dllexport) void FS_HomeRemove( const char *homePath );
 
-void	FS_FilenameCompletion( const char *dir, const char *ext,
+__declspec(dllexport) void	FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk );
 
-const char *FS_GetCurrentGameDir(void);
-qboolean FS_Which(const char *filename, void *searchPath);
+__declspec(dllexport) const char *FS_GetCurrentGameDir(void);
+__declspec(dllexport) qboolean FS_Which(const char *filename, void *searchPath);
 
 /*
 ==============================================================

@@ -453,6 +453,10 @@ qboolean	ConsoleCommand( void ) {
 
 	trap_Argv( 0, cmd, sizeof( cmd ) );
 
+	if ( Q_stricmp (cmd, "lua_server") == 0 ) {
+		LUA_init();
+		return qtrue;
+	}
 	if ( Q_stricmp (cmd, "entitylist") == 0 ) {
 		Svcmd_EntityList_f();
 		return qtrue;

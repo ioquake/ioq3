@@ -905,6 +905,8 @@ static void IN_ProcessEvents( void )
 				break;
 
 			case SDL_MOUSEMOTION:
+				LUA_callfunction(global_lua, "MOUSE_move", "ii", e.motion.x, e.motion.y); // MOUSE_move(left, top)
+
 				if( mouseActive )
 					Com_QueueEvent( 0, SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
 				break;
@@ -924,6 +926,15 @@ static void IN_ProcessEvents( void )
 						case SDL_BUTTON_X2:			b = K_MOUSE5;     break;
 						default:  b = K_AUX1 + ( e.button.button - SDL_BUTTON_X2 + 1 ) % 16; break;
 					}
+
+					if (e.type == SDL_MOUSEBUTTONDOWN) {
+						//Com_Printf("SDL_MOUSEBUTTONDOWN x=%d y=%d button=%d\n", e.motion.x, e.motion.y, b);
+						LUA_callfunction(global_lua, "MOUSE_button_down", "iii", e.motion.x, e.motion.y, b);
+					} else {
+						//Com_Printf("SDL_MOUSEBUTTONUP   x=%d y=%d button=%d\n", e.motion.x, e.motion.y, b);
+						LUA_callfunction(global_lua, "MOUSE_button_up", "iii", e.motion.x, e.motion.y, b);
+					}
+
 					Com_QueueEvent( 0, SE_KEY, b,
 						( e.type == SDL_MOUSEBUTTONDOWN ? qtrue : qfalse ), 0, NULL );
 				}

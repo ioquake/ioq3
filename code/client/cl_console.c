@@ -559,6 +559,8 @@ void Con_DrawNotify (void)
 	int		skip;
 	int		currentColor;
 
+	LUA_callfunction(global_lua, "Con_DrawNotify", "");
+
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
 

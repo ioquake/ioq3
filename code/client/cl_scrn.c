@@ -532,7 +532,12 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 #endif
 			break;
 		}
+
+		LUA_callfunction(global_lua, "SCR_DrawScreenField", "i", (int)clc.state);
+
 	}
+
+
 
 	// the menu draws next
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && uivm ) {

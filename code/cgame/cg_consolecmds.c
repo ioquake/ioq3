@@ -450,7 +450,12 @@ typedef struct {
 	void	(*function)(void);
 } consoleCommand_t;
 
+void CG_lua(void) {
+	LUA_init();
+}
+
 static consoleCommand_t	commands[] = {
+	{ "lua_client", CG_lua },
 	{ "testgun", CG_TestGun_f },
 	{ "testmodel", CG_TestModel_f },
 	{ "nextframe", CG_TestModelNextFrame_f },

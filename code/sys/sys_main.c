@@ -646,6 +646,8 @@ int main( int argc, char **argv )
 	signal( SIGTERM, Sys_SigHandler );
 	signal( SIGINT, Sys_SigHandler );
 
+	LUA_init();
+
 	while( 1 )
 	{
 		IN_Frame( );
