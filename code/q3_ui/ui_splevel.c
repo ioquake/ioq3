@@ -727,7 +727,7 @@ static void UI_SPLevelMenu_Init( void ) {
 	char	buf[MAX_QPATH];
 
 	skill = (int)trap_Cvar_VariableValue( "g_spSkill" );
-	if( skill < 1 || skill > 5 ) {
+	if( skill < 1 || skill > 6 ) {
 		trap_Cvar_Set( "g_spSkill", "2" );
 	}
 

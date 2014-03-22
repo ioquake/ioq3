@@ -492,7 +492,7 @@ void UI_SetBestScore( int level, int score ) {
 
 	// validate skill
 	skill = (int)trap_Cvar_VariableValue( "g_spSkill" );
-	if( skill < 1 || skill > 5 ) {
+	if( skill < 1 || skill > 6 ) {
 		return;
 	}
 
