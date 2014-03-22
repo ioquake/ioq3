@@ -857,9 +857,9 @@ static void G_SpawnBots( char *botList, int baseDelay ) {
 		trap_Cvar_Set( "g_spSkill", "1" );
 		skill = 1;
 	}
-	else if ( skill > 5 ) {
-		trap_Cvar_Set( "g_spSkill", "5" );
-		skill = 5;
+	else if ( skill > 6 ) {
+		trap_Cvar_Set( "g_spSkill", "6" );
+		skill = 6;
 	}
 
 	Q_strncpyz( bots, botList, sizeof(bots) );
