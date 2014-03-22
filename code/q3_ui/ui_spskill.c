@@ -47,8 +47,9 @@ SINGLE PLAYER SKILL MENU
 #define ID_MEDIUM					12
 #define ID_HARD						13
 #define ID_NIGHTMARE				14
-#define ID_BACK						15
-#define ID_FIGHT					16
+#define ID_NEWSKILL					15
+#define ID_BACK						16
+#define ID_FIGHT					17
 
 
 typedef struct {
@@ -62,13 +63,14 @@ typedef struct {
 	menutext_s		item_medium;
 	menutext_s		item_hard;
 	menutext_s		item_nightmare;
+	menutext_s		item_newskill;
 
 	menubitmap_s	art_skillPic;
 	menubitmap_s	item_back;
 	menubitmap_s	item_fight;
 
 	const char		*arenaInfo;
-	qhandle_t		skillpics[5];
+	qhandle_t		skillpics[6];
 	sfxHandle_t		nightmareSound;
 	sfxHandle_t		silenceSound;
 } skillMenuInfo_t;
@@ -92,6 +94,9 @@ static void SetSkillColor( int skill, vec4_t color ) {
 		break;
 	case 5:
 		skillMenuInfo.item_nightmare.color = color;
+		break;
+	case 6:
+		skillMenuInfo.item_newskill.color = color;
 		break;
 	default:
 		break;
@@ -120,7 +125,7 @@ static void UI_SPSkillMenu_SkillEvent( void *ptr, int notification ) {
 	SetSkillColor( skill, color_white );
 	skillMenuInfo.art_skillPic.shader = skillMenuInfo.skillpics[skill - 1];
 
-	if( id == ID_NIGHTMARE ) {
+	if( id == ID_NIGHTMARE || id == ID_NEWSKILL ) {
 		trap_S_StartLocalSound( skillMenuInfo.nightmareSound, CHAN_ANNOUNCER );
 	}
 	else {
@@ -186,6 +191,7 @@ void UI_SPSkillMenu_Cache( void ) {
 	skillMenuInfo.skillpics[2] = trap_R_RegisterShaderNoMip( ART_MAP_COMPLETE3 );
 	skillMenuInfo.skillpics[3] = trap_R_RegisterShaderNoMip( ART_MAP_COMPLETE4 );
 	skillMenuInfo.skillpics[4] = trap_R_RegisterShaderNoMip( ART_MAP_COMPLETE5 );
+	skillMenuInfo.skillpics[5] = trap_R_RegisterShaderNoMip( ART_MAP_COMPLETE5 );
 
 	skillMenuInfo.nightmareSound = trap_S_RegisterSound( "sound/misc/nightmare.wav", qfalse );
 	skillMenuInfo.silenceSound = trap_S_RegisterSound( "sound/misc/silence.wav", qfalse );
@@ -199,6 +205,9 @@ UI_SPSkillMenu_Init
 */
 static void UI_SPSkillMenu_Init( void ) {
 	int		skill;
+	int		num_lines;
+	int		frame_height, frame_y;
+	int		y;
 
 	memset( &skillMenuInfo, 0, sizeof(skillMenuInfo) );
 	skillMenuInfo.menu.fullscreen = qtrue;
@@ -206,14 +215,18 @@ static void UI_SPSkillMenu_Init( void ) {
 
 	UI_SPSkillMenu_Cache();
 
+	num_lines = 6;
+	frame_height = 68 * 2 + 28 * ( num_lines - 1 ) + 32;
+	frame_y = (SCREEN_HEIGHT-frame_height)/2;
 	skillMenuInfo.art_frame.generic.type		= MTYPE_BITMAP;
 	skillMenuInfo.art_frame.generic.name		= ART_FRAME;
 	skillMenuInfo.art_frame.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
 	skillMenuInfo.art_frame.generic.x			= 142;
-	skillMenuInfo.art_frame.generic.y			= 118;
+	skillMenuInfo.art_frame.generic.y			= frame_y;
 	skillMenuInfo.art_frame.width				= 359;
-	skillMenuInfo.art_frame.height				= 256;
+	skillMenuInfo.art_frame.height				= frame_height;
 
+	y = ( SCREEN_HEIGHT - 28 * ( num_lines - 1 ) - 32 )/2;
 	skillMenuInfo.art_banner.generic.type		= MTYPE_BTEXT;
 	skillMenuInfo.art_banner.generic.flags		= QMF_CENTER_JUSTIFY;
 	skillMenuInfo.art_banner.generic.x			= 320;
@@ -225,52 +238,68 @@ static void UI_SPSkillMenu_Init( void ) {
 	skillMenuInfo.item_baby.generic.type		= MTYPE_PTEXT;
 	skillMenuInfo.item_baby.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	skillMenuInfo.item_baby.generic.x			= 320;
-	skillMenuInfo.item_baby.generic.y			= 170;
+	skillMenuInfo.item_baby.generic.y			= y;
 	skillMenuInfo.item_baby.generic.callback	= UI_SPSkillMenu_SkillEvent;
 	skillMenuInfo.item_baby.generic.id			= ID_BABY;
 	skillMenuInfo.item_baby.string				= "I Can Win";
 	skillMenuInfo.item_baby.color				= color_red;
 	skillMenuInfo.item_baby.style				= UI_CENTER;
+	y += 28;
 
 	skillMenuInfo.item_easy.generic.type		= MTYPE_PTEXT;
 	skillMenuInfo.item_easy.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	skillMenuInfo.item_easy.generic.x			= 320;
-	skillMenuInfo.item_easy.generic.y			= 198;
+	skillMenuInfo.item_easy.generic.y			= y;
 	skillMenuInfo.item_easy.generic.callback	= UI_SPSkillMenu_SkillEvent;
 	skillMenuInfo.item_easy.generic.id			= ID_EASY;
 	skillMenuInfo.item_easy.string				= "Bring It On";
 	skillMenuInfo.item_easy.color				= color_red;
 	skillMenuInfo.item_easy.style				= UI_CENTER;
+	y += 28;
 
 	skillMenuInfo.item_medium.generic.type		= MTYPE_PTEXT;
 	skillMenuInfo.item_medium.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	skillMenuInfo.item_medium.generic.x			= 320;
-	skillMenuInfo.item_medium.generic.y			= 227;
+	skillMenuInfo.item_medium.generic.y			= y;
 	skillMenuInfo.item_medium.generic.callback	= UI_SPSkillMenu_SkillEvent;
 	skillMenuInfo.item_medium.generic.id		= ID_MEDIUM;
 	skillMenuInfo.item_medium.string			= "Hurt Me Plenty";
 	skillMenuInfo.item_medium.color				= color_red;
 	skillMenuInfo.item_medium.style				= UI_CENTER;
+	y += 28;
 
 	skillMenuInfo.item_hard.generic.type		= MTYPE_PTEXT;
 	skillMenuInfo.item_hard.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	skillMenuInfo.item_hard.generic.x			= 320;
-	skillMenuInfo.item_hard.generic.y			= 255;
+	skillMenuInfo.item_hard.generic.y			= y;
 	skillMenuInfo.item_hard.generic.callback	= UI_SPSkillMenu_SkillEvent;
 	skillMenuInfo.item_hard.generic.id			= ID_HARD;
 	skillMenuInfo.item_hard.string				= "Hardcore";
 	skillMenuInfo.item_hard.color				= color_red;
 	skillMenuInfo.item_hard.style				= UI_CENTER;
+	y += 28;
 
 	skillMenuInfo.item_nightmare.generic.type		= MTYPE_PTEXT;
 	skillMenuInfo.item_nightmare.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	skillMenuInfo.item_nightmare.generic.x			= 320;
-	skillMenuInfo.item_nightmare.generic.y			= 283;
+	skillMenuInfo.item_nightmare.generic.y			= y;
 	skillMenuInfo.item_nightmare.generic.callback	= UI_SPSkillMenu_SkillEvent;
 	skillMenuInfo.item_nightmare.generic.id			= ID_NIGHTMARE;
 	skillMenuInfo.item_nightmare.string				= "NIGHTMARE!";
 	skillMenuInfo.item_nightmare.color				= color_red;
 	skillMenuInfo.item_nightmare.style				= UI_CENTER;
+	y += 28;
+
+	skillMenuInfo.item_newskill.generic.type		= MTYPE_PTEXT;
+	skillMenuInfo.item_newskill.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	skillMenuInfo.item_newskill.generic.x			= 320;
+	skillMenuInfo.item_newskill.generic.y			= y;
+	skillMenuInfo.item_newskill.generic.callback	= UI_SPSkillMenu_SkillEvent;
+	skillMenuInfo.item_newskill.generic.id			= ID_NEWSKILL;
+	skillMenuInfo.item_newskill.string				= "NEW SKILL";
+	skillMenuInfo.item_newskill.color				= color_red;
+	skillMenuInfo.item_newskill.style				= UI_CENTER;
+	y += 28;
 
 	skillMenuInfo.item_back.generic.type		= MTYPE_BITMAP;
 	skillMenuInfo.item_back.generic.name		= ART_BACK;
@@ -308,14 +337,15 @@ static void UI_SPSkillMenu_Init( void ) {
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_medium );
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_hard );
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_nightmare );
+	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_newskill );
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.art_skillPic );
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_back );
 	Menu_AddItem( &skillMenuInfo.menu, ( void * )&skillMenuInfo.item_fight );
 
-	skill = (int)Com_Clamp( 1, 5, trap_Cvar_VariableValue( "g_spSkill" ) );
+	skill = (int)Com_Clamp( 1, 6, trap_Cvar_VariableValue( "g_spSkill" ) );
 	SetSkillColor( skill, color_white );
 	skillMenuInfo.art_skillPic.shader = skillMenuInfo.skillpics[skill - 1];
-	if( skill == 5 ) {
+	if( skill == 5 || skill == 6 ) {
 		trap_S_StartLocalSound( skillMenuInfo.nightmareSound, CHAN_ANNOUNCER );
 	}
 }
