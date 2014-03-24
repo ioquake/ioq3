@@ -750,7 +750,7 @@ typedef struct {
 
 	qhandle_t	shadowMarkShader;
 
-	qhandle_t	botSkillShaders[5];
+	qhandle_t	botSkillShaders[6];
 
 	// wall mark shaders
 	qhandle_t	wakeMarkShader;

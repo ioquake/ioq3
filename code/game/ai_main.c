@@ -786,7 +786,7 @@ void BotChangeViewAngles(bot_state_t *bs, float thinktime) {
 	maxchange *= thinktime;
 	for (i = 0; i < 2; i++) {
 		//
-		if (bot_challenge.integer) {
+		if ( bot_challenge.integer || bs->settings.skill > 5 ) {
 			//smooth slowdown view model
 			diff = abs(AngleDifference(bs->viewangles[i], bs->ideal_viewangles[i]));
 			anglespeed = diff * factor;
