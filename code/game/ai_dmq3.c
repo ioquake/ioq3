@@ -3600,9 +3600,9 @@ void BotAimAtEnemy(bot_state_t *bs) {
 	bs->ideal_viewangles[YAW] += 6 * wi.hspread * crandom() * (1 - aim_accuracy);
 	bs->ideal_viewangles[YAW] = AngleMod(bs->ideal_viewangles[YAW]);
 	//if the bots should be really challenging
-	if (bot_challenge.integer) {
+	if ( bot_challenge.integer || bs->settings.skill > 5 ) {
 		//if the bot is really accurate and has the enemy in view for some time
-		if (aim_accuracy > 0.9 && bs->enemysight_time < FloatTime() - 1) {
+		if ( (aim_accuracy > 0.9 && bs->enemysight_time < FloatTime() - 1) || bs->settings.skill > 5 ) {
 			//set the view angles directly
 			if (bs->ideal_viewangles[PITCH] > 180) bs->ideal_viewangles[PITCH] -= 360;
 			VectorCopy(bs->ideal_viewangles, bs->viewangles);
