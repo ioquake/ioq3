@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define MAX_MODS			64
 #define NAMEBUFSIZE			( MAX_MODS * 48 )
-#define GAMEBUFSIZE			( MAX_MODS * 16 )
+#define GAMEBUFSIZE			( MAX_MODS * 32 )
 
 #define ID_BACK				10
 #define ID_GO				11
@@ -94,7 +94,7 @@ UI_Mods_ParseInfos
 */
 static void UI_Mods_ParseInfos( char *modDir, char *modDesc ) {
 	s_mods.fs_gameList[s_mods.list.numitems] = s_mods.fs_gamePtr;
-	Q_strncpyz( s_mods.fs_gamePtr, modDir, 16 );
+	Q_strncpyz( s_mods.fs_gamePtr, modDir, 32 );
 
 	s_mods.descriptionList[s_mods.list.numitems] = s_mods.descriptionPtr;
 	Q_strncpyz( s_mods.descriptionPtr, modDesc, 48 );
@@ -132,9 +132,9 @@ static void UI_Mods_LoadMods( void ) {
 	dirptr  = dirlist;
 	for( i = 0; i < numdirs; i++ ) {
 		dirlen = strlen( dirptr ) + 1;
-    descptr = dirptr + dirlen;
-  	UI_Mods_ParseInfos( dirptr, descptr);
-    dirptr += dirlen + strlen(descptr) + 1;
+		descptr = dirptr + dirlen;
+  		UI_Mods_ParseInfos( dirptr, descptr);
+		dirptr += dirlen + strlen(descptr) + 1;
 	}
 
 	trap_Print( va( "%i mods parsed\n", s_mods.list.numitems ) );
