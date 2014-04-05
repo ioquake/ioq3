@@ -36,3 +36,5 @@ profile
 # Microsoft Visual Studio
 ####################
 *.sdf
+misc/premake5-local.lua
+misc/msvc-premake/
