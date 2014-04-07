@@ -64,7 +64,7 @@ Installation, for *nix
      point releases.
   2. Run 'make copyfiles'.
 
-It is also possible to cross compile for Windows under *nix using MinGW. Your
+It is also possible to cross compile for Windows under *nix and Cygwin using MinGW. Your
 distribution may have mingw32 packages available. On debian/Ubuntu, you need to
 install 'mingw-w64'. Thereafter cross compiling is simply a case running
 'PLATFORM=mingw32 ARCH=x86 make' in place of 'make'. ARCH may also be set to
