@@ -441,6 +441,12 @@ extern void UI_ServerInfoMenu( void );
 extern void ServerInfo_Cache( void );
 
 //
+// ui_slugrock.c
+//
+extern void UI_SlugRockMenu( void );
+extern void SlugRock_Cache( void );
+
+//
 // ui_video.c
 //
 extern void UI_GraphicsOptionsMenu( void );
