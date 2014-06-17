@@ -79,7 +79,7 @@ void SND_setup(void) {
 	cvar_t	*cv;
 	int scs;
 
-	cv = Cvar_Get( "com_soundMegs", DEF_COMSOUNDMEGS, CVAR_LATCH | CVAR_ARCHIVE );
+	cv = Cvar_Get( "com_soundMegs", DEF_COMSOUNDMEGS, CVAR_LATCH | CVAR_ARCHIVE, "Missing description." );
 
 	scs = (cv->integer*1536);
 

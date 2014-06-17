@@ -146,11 +146,11 @@ qboolean SNDDMA_Init(void)
 		return qtrue;
 
 	if (!s_sdlBits) {
-		s_sdlBits = Cvar_Get("s_sdlBits", "16", CVAR_ARCHIVE);
-		s_sdlSpeed = Cvar_Get("s_sdlSpeed", "0", CVAR_ARCHIVE);
-		s_sdlChannels = Cvar_Get("s_sdlChannels", "2", CVAR_ARCHIVE);
-		s_sdlDevSamps = Cvar_Get("s_sdlDevSamps", "0", CVAR_ARCHIVE);
-		s_sdlMixSamps = Cvar_Get("s_sdlMixSamps", "0", CVAR_ARCHIVE);
+		s_sdlBits = Cvar_Get("s_sdlBits", "16", CVAR_ARCHIVE, "Missing description.");
+		s_sdlSpeed = Cvar_Get("s_sdlSpeed", "0", CVAR_ARCHIVE, "Missing description.");
+		s_sdlChannels = Cvar_Get("s_sdlChannels", "2", CVAR_ARCHIVE, "Missing description.");
+		s_sdlDevSamps = Cvar_Get("s_sdlDevSamps", "0", CVAR_ARCHIVE, "Missing description.");
+		s_sdlMixSamps = Cvar_Get("s_sdlMixSamps", "0", CVAR_ARCHIVE, "Missing description.");
 	}
 
 	Com_Printf( "SDL_Init( SDL_INIT_AUDIO )... " );

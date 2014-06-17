@@ -3267,15 +3267,15 @@ static void FS_Startup( const char *gameName )
 
 	fs_packFiles = 0;
 
-	fs_debug = Cvar_Get( "fs_debug", "0", 0 );
-	fs_basepath = Cvar_Get ("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED );
-	fs_basegame = Cvar_Get ("fs_basegame", "", CVAR_INIT );
+	fs_debug = Cvar_Get( "fs_debug", "0", 0, "Missing description." );
+	fs_basepath = Cvar_Get ("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED, "Missing description." );
+	fs_basegame = Cvar_Get ("fs_basegame", "", CVAR_INIT, "Missing description." );
 	homePath = Sys_DefaultHomePath();
 	if (!homePath || !homePath[0]) {
 		homePath = fs_basepath->string;
 	}
-	fs_homepath = Cvar_Get ("fs_homepath", homePath, CVAR_INIT|CVAR_PROTECTED );
-	fs_gamedirvar = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO );
+	fs_homepath = Cvar_Get ("fs_homepath", homePath, CVAR_INIT|CVAR_PROTECTED, "Missing description." );
+	fs_gamedirvar = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO, "Missing description." );
 
 	// add search path elements in reverse priority order
 	if (fs_basepath->string[0]) {
@@ -3284,7 +3284,7 @@ static void FS_Startup( const char *gameName )
 	// fs_homepath is somewhat particular to *nix systems, only add if relevant
 
 #ifdef MACOS_X
-	fs_apppath = Cvar_Get ("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED );
+	fs_apppath = Cvar_Get ("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED, "Missing description." );
 	// Make MacOSX also include the base path included with the .app bundle
 	if (fs_apppath->string[0])
 		FS_AddGameDirectory(fs_apppath->string, gameName);
@@ -3322,7 +3322,7 @@ static void FS_Startup( const char *gameName )
 		cvar_t	*fs;
 
 		Com_ReadCDKey(BASEGAME);
-		fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO );
+		fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO, "Missing description." );
 		if (fs && fs->string[0] != 0) {
 			Com_AppendCDKey( fs->string );
 		}

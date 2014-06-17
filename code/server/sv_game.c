@@ -922,7 +922,7 @@ void SV_InitGameProgs( void ) {
 	//FIXME these are temp while I make bots run in vm
 	extern int	bot_enable;
 
-	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
+	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH, "Missing description." );
 	if ( var ) {
 		bot_enable = var->integer;
 	}

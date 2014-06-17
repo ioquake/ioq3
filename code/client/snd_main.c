@@ -476,15 +476,15 @@ void S_Init( void )
 
 	Com_Printf( "------ Initializing Sound ------\n" );
 
-	s_volume = Cvar_Get( "s_volume", "0.8", CVAR_ARCHIVE );
-	s_musicVolume = Cvar_Get( "s_musicvolume", "0.25", CVAR_ARCHIVE );
-	s_muted = Cvar_Get("s_muted", "0", CVAR_ROM);
-	s_doppler = Cvar_Get( "s_doppler", "1", CVAR_ARCHIVE );
-	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
-	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
-	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
+	s_volume = Cvar_Get( "s_volume", "0.8", CVAR_ARCHIVE, "Missing description." );
+	s_musicVolume = Cvar_Get( "s_musicvolume", "0.25", CVAR_ARCHIVE, "Missing description." );
+	s_muted = Cvar_Get("s_muted", "0", CVAR_ROM, "Missing description.");
+	s_doppler = Cvar_Get( "s_doppler", "1", CVAR_ARCHIVE, "Missing description." );
+	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM, "Missing description." );
+	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE, "Missing description." );
+	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE, "Missing description." );
 
-	cv = Cvar_Get( "s_initsound", "1", 0 );
+	cv = Cvar_Get( "s_initsound", "1", 0, "Missing description." );
 	if( !cv->integer ) {
 		Com_Printf( "Sound disabled.\n" );
 	} else {
@@ -498,7 +498,7 @@ void S_Init( void )
 		Cmd_AddCommand( "s_stop", S_StopAllSounds );
 		Cmd_AddCommand( "s_info", S_SoundInfo );
 
-		cv = Cvar_Get( "s_useOpenAL", "1", CVAR_ARCHIVE );
+		cv = Cvar_Get( "s_useOpenAL", "1", CVAR_ARCHIVE, "Missing description." );
 		if( cv->integer ) {
 			//OpenAL
 			started = S_AL_Init( &si );

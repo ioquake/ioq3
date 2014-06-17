@@ -1638,7 +1638,7 @@ void CL_RequestAuthorization( void ) {
 	}
 	nums[j] = 0;
 
-	fs = Cvar_Get ("cl_anonymous", "0", CVAR_INIT|CVAR_SYSTEMINFO );
+	fs = Cvar_Get ("cl_anonymous", "0", CVAR_INIT|CVAR_SYSTEMINFO, "Missing description.");
 
 	NET_OutOfBandPrint(NS_CLIENT, cls.authorizeServer, "getKeyAuthorize %i %s", fs->integer, nums );
 }
@@ -3179,7 +3179,7 @@ void CL_InitRef( void ) {
 	Com_Printf( "----- Initializing Renderer ----\n" );
 
 #ifdef USE_RENDERER_DLOPEN
-	cl_renderer = Cvar_Get("cl_renderer", "opengl1", CVAR_ARCHIVE | CVAR_LATCH);
+	cl_renderer = Cvar_Get("cl_renderer", "opengl1", CVAR_ARCHIVE | CVAR_LATCH, "Missing description.");
 
 	Com_sprintf(dllName, sizeof(dllName), "renderer_%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
 
@@ -3431,93 +3431,93 @@ void CL_Init( void ) {
 	//
 	// register our variables
 	//
-	cl_noprint = Cvar_Get( "cl_noprint", "0", 0 );
+	cl_noprint = Cvar_Get( "cl_noprint", "0", 0, "Missing description." );
 #ifdef UPDATE_SERVER_NAME
-	cl_motd = Cvar_Get ("cl_motd", "1", 0);
+	cl_motd = Cvar_Get ("cl_motd", "1", 0, "Missing description.");
 #endif
 
-	cl_timeout = Cvar_Get ("cl_timeout", "200", 0);
+	cl_timeout = Cvar_Get ("cl_timeout", "200", 0, "Missing description.");
 
-	cl_timeNudge = Cvar_Get ("cl_timeNudge", "0", CVAR_TEMP );
-	cl_shownet = Cvar_Get ("cl_shownet", "0", CVAR_TEMP );
-	cl_showSend = Cvar_Get ("cl_showSend", "0", CVAR_TEMP );
-	cl_showTimeDelta = Cvar_Get ("cl_showTimeDelta", "0", CVAR_TEMP );
-	cl_freezeDemo = Cvar_Get ("cl_freezeDemo", "0", CVAR_TEMP );
-	rcon_client_password = Cvar_Get ("rconPassword", "", CVAR_TEMP );
-	cl_activeAction = Cvar_Get( "activeAction", "", CVAR_TEMP );
+	cl_timeNudge = Cvar_Get ("cl_timeNudge", "0", CVAR_TEMP, "Missing description." );
+	cl_shownet = Cvar_Get ("cl_shownet", "0", CVAR_TEMP, "Missing description." );
+	cl_showSend = Cvar_Get ("cl_showSend", "0", CVAR_TEMP, "Missing description." );
+	cl_showTimeDelta = Cvar_Get ("cl_showTimeDelta", "0", CVAR_TEMP, "Missing description." );
+	cl_freezeDemo = Cvar_Get ("cl_freezeDemo", "0", CVAR_TEMP, "Missing description." );
+	rcon_client_password = Cvar_Get ("rconPassword", "", CVAR_TEMP, "Missing description." );
+	cl_activeAction = Cvar_Get( "activeAction", "", CVAR_TEMP, "Missing description." );
 
-	cl_timedemo = Cvar_Get ("timedemo", "0", 0);
-	cl_timedemoLog = Cvar_Get ("cl_timedemoLog", "", CVAR_ARCHIVE);
-	cl_autoRecordDemo = Cvar_Get ("cl_autoRecordDemo", "0", CVAR_ARCHIVE);
-	cl_aviFrameRate = Cvar_Get ("cl_aviFrameRate", "25", CVAR_ARCHIVE);
-	cl_aviMotionJpeg = Cvar_Get ("cl_aviMotionJpeg", "1", CVAR_ARCHIVE);
-	cl_forceavidemo = Cvar_Get ("cl_forceavidemo", "0", 0);
+	cl_timedemo = Cvar_Get ("timedemo", "0", 0, "Missing description.");
+	cl_timedemoLog = Cvar_Get ("cl_timedemoLog", "", CVAR_ARCHIVE, "Missing description.");
+	cl_autoRecordDemo = Cvar_Get ("cl_autoRecordDemo", "0", CVAR_ARCHIVE, "Missing description.");
+	cl_aviFrameRate = Cvar_Get ("cl_aviFrameRate", "25", CVAR_ARCHIVE, "Missing description.");
+	cl_aviMotionJpeg = Cvar_Get ("cl_aviMotionJpeg", "1", CVAR_ARCHIVE, "Missing description.");
+	cl_forceavidemo = Cvar_Get ("cl_forceavidemo", "0", 0, "Missing description.");
 
-	rconAddress = Cvar_Get ("rconAddress", "", 0);
+	rconAddress = Cvar_Get ("rconAddress", "", 0, "Missing description.");
 
-	cl_yawspeed = Cvar_Get ("cl_yawspeed", "140", CVAR_ARCHIVE);
-	cl_pitchspeed = Cvar_Get ("cl_pitchspeed", "140", CVAR_ARCHIVE);
-	cl_anglespeedkey = Cvar_Get ("cl_anglespeedkey", "1.5", 0);
+	cl_yawspeed = Cvar_Get ("cl_yawspeed", "140", CVAR_ARCHIVE, "Missing description.");
+	cl_pitchspeed = Cvar_Get ("cl_pitchspeed", "140", CVAR_ARCHIVE, "Missing description.");
+	cl_anglespeedkey = Cvar_Get ("cl_anglespeedkey", "1.5", 0, "Missing description.");
 
-	cl_maxpackets = Cvar_Get ("cl_maxpackets", "30", CVAR_ARCHIVE );
-	cl_packetdup = Cvar_Get ("cl_packetdup", "1", CVAR_ARCHIVE );
+	cl_maxpackets = Cvar_Get ("cl_maxpackets", "30", CVAR_ARCHIVE, "Missing description." );
+	cl_packetdup = Cvar_Get ("cl_packetdup", "1", CVAR_ARCHIVE, "Missing description." );
 
-	cl_run = Cvar_Get ("cl_run", "1", CVAR_ARCHIVE);
-	cl_sensitivity = Cvar_Get ("sensitivity", "5", CVAR_ARCHIVE);
-	cl_mouseAccel = Cvar_Get ("cl_mouseAccel", "0", CVAR_ARCHIVE);
-	cl_freelook = Cvar_Get( "cl_freelook", "1", CVAR_ARCHIVE );
+	cl_run = Cvar_Get ("cl_run", "1", CVAR_ARCHIVE, "Missing description.");
+	cl_sensitivity = Cvar_Get ("sensitivity", "5", CVAR_ARCHIVE, "Missing description.");
+	cl_mouseAccel = Cvar_Get ("cl_mouseAccel", "0", CVAR_ARCHIVE, "Missing description.");
+	cl_freelook = Cvar_Get( "cl_freelook", "1", CVAR_ARCHIVE, "Missing description." );
 
 	// 0: legacy mouse acceleration
 	// 1: new implementation
-	cl_mouseAccelStyle = Cvar_Get( "cl_mouseAccelStyle", "0", CVAR_ARCHIVE );
+	cl_mouseAccelStyle = Cvar_Get( "cl_mouseAccelStyle", "0", CVAR_ARCHIVE, "Missing description." );
 	// offset for the power function (for style 1, ignored otherwise)
 	// this should be set to the max rate value
-	cl_mouseAccelOffset = Cvar_Get( "cl_mouseAccelOffset", "5", CVAR_ARCHIVE );
+	cl_mouseAccelOffset = Cvar_Get( "cl_mouseAccelOffset", "5", CVAR_ARCHIVE, "Missing description." );
 	Cvar_CheckRange(cl_mouseAccelOffset, 0.001f, 50000.0f, qfalse);
 
-	cl_showMouseRate = Cvar_Get ("cl_showmouserate", "0", 0);
+	cl_showMouseRate = Cvar_Get ("cl_showmouserate", "0", 0, "Missing description.");
 
-	cl_allowDownload = Cvar_Get ("cl_allowDownload", "0", CVAR_ARCHIVE);
+	cl_allowDownload = Cvar_Get ("cl_allowDownload", "0", CVAR_ARCHIVE, "Missing description.");
 #ifdef USE_CURL_DLOPEN
-	cl_cURLLib = Cvar_Get("cl_cURLLib", DEFAULT_CURL_LIB, CVAR_ARCHIVE);
+	cl_cURLLib = Cvar_Get("cl_cURLLib", DEFAULT_CURL_LIB, CVAR_ARCHIVE, "Missing description.");
 #endif
 
-	cl_conXOffset = Cvar_Get ("cl_conXOffset", "0", 0);
+	cl_conXOffset = Cvar_Get ("cl_conXOffset", "0", 0, "Missing description.");
 #ifdef MACOS_X
 	// In game video is REALLY slow in Mac OS X right now due to driver slowness
-	cl_inGameVideo = Cvar_Get ("r_inGameVideo", "0", CVAR_ARCHIVE);
+	cl_inGameVideo = Cvar_Get ("r_inGameVideo", "0", CVAR_ARCHIVE, "Missing description.");
 #else
-	cl_inGameVideo = Cvar_Get ("r_inGameVideo", "1", CVAR_ARCHIVE);
+	cl_inGameVideo = Cvar_Get ("r_inGameVideo", "1", CVAR_ARCHIVE, "Missing description.");
 #endif
 
-	cl_serverStatusResendTime = Cvar_Get ("cl_serverStatusResendTime", "750", 0);
+	cl_serverStatusResendTime = Cvar_Get ("cl_serverStatusResendTime", "750", 0, "Missing description.");
 
 	// init autoswitch so the ui will have it correctly even
 	// if the cgame hasn't been started
-	Cvar_Get ("cg_autoswitch", "1", CVAR_ARCHIVE);
+	Cvar_Get ("cg_autoswitch", "1", CVAR_ARCHIVE, "Missing description.");
 
-	m_pitch = Cvar_Get ("m_pitch", "0.022", CVAR_ARCHIVE);
-	m_yaw = Cvar_Get ("m_yaw", "0.022", CVAR_ARCHIVE);
-	m_forward = Cvar_Get ("m_forward", "0.25", CVAR_ARCHIVE);
-	m_side = Cvar_Get ("m_side", "0.25", CVAR_ARCHIVE);
+	m_pitch = Cvar_Get ("m_pitch", "0.022", CVAR_ARCHIVE, "Missing description.");
+	m_yaw = Cvar_Get ("m_yaw", "0.022", CVAR_ARCHIVE, "Missing description.");
+	m_forward = Cvar_Get ("m_forward", "0.25", CVAR_ARCHIVE, "Missing description.");
+	m_side = Cvar_Get ("m_side", "0.25", CVAR_ARCHIVE, "Missing description.");
 #ifdef MACOS_X
 	// Input is jittery on OS X w/o this
-	m_filter = Cvar_Get ("m_filter", "1", CVAR_ARCHIVE);
+	m_filter = Cvar_Get ("m_filter", "1", CVAR_ARCHIVE, "Missing description.");
 #else
-	m_filter = Cvar_Get ("m_filter", "0", CVAR_ARCHIVE);
+	m_filter = Cvar_Get ("m_filter", "0", CVAR_ARCHIVE, "Missing description.");
 #endif
 
-	j_pitch =        Cvar_Get ("j_pitch",        "0.022", CVAR_ARCHIVE);
-	j_yaw =          Cvar_Get ("j_yaw",          "-0.022", CVAR_ARCHIVE);
-	j_forward =      Cvar_Get ("j_forward",      "-0.25", CVAR_ARCHIVE);
-	j_side =         Cvar_Get ("j_side",         "0.25", CVAR_ARCHIVE);
-	j_up =           Cvar_Get ("j_up",           "1", CVAR_ARCHIVE);
+	j_pitch =        Cvar_Get ("j_pitch",        "0.022", CVAR_ARCHIVE, "Missing description.");
+	j_yaw =          Cvar_Get ("j_yaw",          "-0.022", CVAR_ARCHIVE, "Missing description.");
+	j_forward =      Cvar_Get ("j_forward",      "-0.25", CVAR_ARCHIVE, "Missing description.");
+	j_side =         Cvar_Get ("j_side",         "0.25", CVAR_ARCHIVE, "Missing description.");
+	j_up =           Cvar_Get ("j_up",           "1", CVAR_ARCHIVE, "Missing description.");
 
-	j_pitch_axis =   Cvar_Get ("j_pitch_axis",   "3", CVAR_ARCHIVE);
-	j_yaw_axis =     Cvar_Get ("j_yaw_axis",     "4", CVAR_ARCHIVE);
-	j_forward_axis = Cvar_Get ("j_forward_axis", "1", CVAR_ARCHIVE);
-	j_side_axis =    Cvar_Get ("j_side_axis",    "0", CVAR_ARCHIVE);
-	j_up_axis =      Cvar_Get ("j_up_axis",      "2", CVAR_ARCHIVE);
+	j_pitch_axis =   Cvar_Get ("j_pitch_axis",   "3", CVAR_ARCHIVE, "Missing description.");
+	j_yaw_axis =     Cvar_Get ("j_yaw_axis",     "4", CVAR_ARCHIVE, "Missing description.");
+	j_forward_axis = Cvar_Get ("j_forward_axis", "1", CVAR_ARCHIVE, "Missing description.");
+	j_side_axis =    Cvar_Get ("j_side_axis",    "0", CVAR_ARCHIVE, "Missing description.");
+	j_up_axis =      Cvar_Get ("j_up_axis",      "2", CVAR_ARCHIVE, "Missing description.");
 
 	Cvar_CheckRange(j_pitch_axis, 0, MAX_JOYSTICK_AXIS-1, qtrue);
 	Cvar_CheckRange(j_yaw_axis, 0, MAX_JOYSTICK_AXIS-1, qtrue);
@@ -3525,61 +3525,61 @@ void CL_Init( void ) {
 	Cvar_CheckRange(j_side_axis, 0, MAX_JOYSTICK_AXIS-1, qtrue);
 	Cvar_CheckRange(j_up_axis, 0, MAX_JOYSTICK_AXIS-1, qtrue);
 
-	cl_motdString = Cvar_Get( "cl_motdString", "", CVAR_ROM );
+	cl_motdString = Cvar_Get( "cl_motdString", "", CVAR_ROM, "Missing description." );
 
-	Cvar_Get( "cl_maxPing", "800", CVAR_ARCHIVE );
+	Cvar_Get( "cl_maxPing", "800", CVAR_ARCHIVE, "Missing description." );
 
-	cl_lanForcePackets = Cvar_Get ("cl_lanForcePackets", "1", CVAR_ARCHIVE);
+	cl_lanForcePackets = Cvar_Get ("cl_lanForcePackets", "1", CVAR_ARCHIVE, "Missing description.");
 
-	cl_guidServerUniq = Cvar_Get ("cl_guidServerUniq", "1", CVAR_ARCHIVE);
+	cl_guidServerUniq = Cvar_Get ("cl_guidServerUniq", "1", CVAR_ARCHIVE, "Missing description.");
 
 	// ~ and `, as keys and characters
-	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60", CVAR_ARCHIVE);
+	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60", CVAR_ARCHIVE, "Missing description.");
 
 	// userinfo
-	Cvar_Get ("name", "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE );
-	cl_rate = Cvar_Get ("rate", "25000", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("snaps", "20", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("model", "sarge", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("headmodel", "sarge", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("team_model", "james", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("team_headmodel", "*james", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("g_redTeam", "Stroggs", CVAR_SERVERINFO | CVAR_ARCHIVE);
-	Cvar_Get ("g_blueTeam", "Pagans", CVAR_SERVERINFO | CVAR_ARCHIVE);
-	Cvar_Get ("color1",  "4", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("color2", "5", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("handicap", "100", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("teamtask", "0", CVAR_USERINFO );
-	Cvar_Get ("sex", "male", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("cl_anonymous", "0", CVAR_USERINFO | CVAR_ARCHIVE );
+	Cvar_Get ("name", "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	cl_rate = Cvar_Get ("rate", "25000", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("snaps", "20", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("model", "sarge", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("headmodel", "sarge", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("team_model", "james", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("team_headmodel", "*james", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("g_redTeam", "Stroggs", CVAR_SERVERINFO | CVAR_ARCHIVE, "Missing description.");
+	Cvar_Get ("g_blueTeam", "Pagans", CVAR_SERVERINFO | CVAR_ARCHIVE, "Missing description.");
+	Cvar_Get ("color1",  "4", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("color2", "5", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("handicap", "100", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("teamtask", "0", CVAR_USERINFO, "Missing description." );
+	Cvar_Get ("sex", "male", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
+	Cvar_Get ("cl_anonymous", "0", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
 
-	Cvar_Get ("password", "", CVAR_USERINFO);
-	Cvar_Get ("cg_predictItems", "1", CVAR_USERINFO | CVAR_ARCHIVE );
+	Cvar_Get ("password", "", CVAR_USERINFO, "Missing description.");
+	Cvar_Get ("cg_predictItems", "1", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description." );
 
 #ifdef USE_MUMBLE
-	cl_useMumble = Cvar_Get ("cl_useMumble", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	cl_mumbleScale = Cvar_Get ("cl_mumbleScale", "0.0254", CVAR_ARCHIVE);
+	cl_useMumble = Cvar_Get ("cl_useMumble", "0", CVAR_ARCHIVE | CVAR_LATCH, "Missing description.");
+	cl_mumbleScale = Cvar_Get ("cl_mumbleScale", "0.0254", CVAR_ARCHIVE, "Missing description.");
 #endif
 
 #ifdef USE_VOIP
-	cl_voipSend = Cvar_Get ("cl_voipSend", "0", 0);
-	cl_voipSendTarget = Cvar_Get ("cl_voipSendTarget", "spatial", 0);
-	cl_voipGainDuringCapture = Cvar_Get ("cl_voipGainDuringCapture", "0.2", CVAR_ARCHIVE);
-	cl_voipCaptureMult = Cvar_Get ("cl_voipCaptureMult", "2.0", CVAR_ARCHIVE);
-	cl_voipUseVAD = Cvar_Get ("cl_voipUseVAD", "0", CVAR_ARCHIVE);
-	cl_voipVADThreshold = Cvar_Get ("cl_voipVADThreshold", "0.25", CVAR_ARCHIVE);
-	cl_voipShowMeter = Cvar_Get ("cl_voipShowMeter", "1", CVAR_ARCHIVE);
+	cl_voipSend = Cvar_Get ("cl_voipSend", "0", 0, "Missing description.");
+	cl_voipSendTarget = Cvar_Get ("cl_voipSendTarget", "spatial", 0, "Missing description.");
+	cl_voipGainDuringCapture = Cvar_Get ("cl_voipGainDuringCapture", "0.2", CVAR_ARCHIVE, "Missing description.");
+	cl_voipCaptureMult = Cvar_Get ("cl_voipCaptureMult", "2.0", CVAR_ARCHIVE, "Missing description.");
+	cl_voipUseVAD = Cvar_Get ("cl_voipUseVAD", "0", CVAR_ARCHIVE, "Missing description.");
+	cl_voipVADThreshold = Cvar_Get ("cl_voipVADThreshold", "0.25", CVAR_ARCHIVE, "Missing description.");
+	cl_voipShowMeter = Cvar_Get ("cl_voipShowMeter", "1", CVAR_ARCHIVE, "Missing description.");
 
 	// This is a protocol version number.
-	cl_voip = Cvar_Get ("cl_voip", "1", CVAR_USERINFO | CVAR_ARCHIVE);
+	cl_voip = Cvar_Get ("cl_voip", "1", CVAR_USERINFO | CVAR_ARCHIVE, "Missing description.");
 	Cvar_CheckRange( cl_voip, 0, 1, qtrue );
 #endif
 
 
 	// cgame might not be initialized before menu is used
-	Cvar_Get ("cg_viewsize", "100", CVAR_ARCHIVE );
+	Cvar_Get ("cg_viewsize", "100", CVAR_ARCHIVE, "Missing description." );
 	// Make sure cg_stereoSeparation is zero as that variable is deprecated and should not be used anymore.
-	Cvar_Get ("cg_stereoSeparation", "0", CVAR_ROM);
+	Cvar_Get ("cg_stereoSeparation", "0", CVAR_ROM, "Missing description.");
 
 	//
 	// register our commands
@@ -3618,7 +3618,7 @@ void CL_Init( void ) {
 	Cvar_Set( "cl_running", "1" );
 
 	CL_GenerateQKey();
-	Cvar_Get( "cl_guid", "", CVAR_USERINFO | CVAR_ROM );
+	Cvar_Get( "cl_guid", "", CVAR_USERINFO | CVAR_ROM, "Missing description." );
 	CL_UpdateGUID( NULL, 0 );
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );

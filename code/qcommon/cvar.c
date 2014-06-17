@@ -307,7 +307,7 @@ If the variable already exists, the value will not be set unless CVAR_ROM
 The flags will be or'ed in if the variable exists.
 ============
 */
-cvar_t *Cvar_Get( const char *var_name, const char *var_value, int flags ) {
+cvar_t *Cvar_Get( const char *var_name, const char *var_value, int flags, const char *var_description ) {
 	cvar_t	*var;
 	long	hash;
 	int	index;
@@ -399,6 +399,14 @@ cvar_t *Cvar_Get( const char *var_name, const char *var_value, int flags ) {
 			Z_Free( s );
 		}
 
+		if( var_description && var_description[0] != '\0' )
+		{
+			if( var->description != NULL )
+			{
+				Z_Free( var->description );
+			}
+			var->description = CopyString( var_description );
+		}
 		// ZOID--needs to be set so that cvars the game sets as 
 		// SERVERINFO get sent to clients
 		cvar_modifiedFlags |= flags;
@@ -461,6 +469,15 @@ cvar_t *Cvar_Get( const char *var_name, const char *var_value, int flags ) {
 	var->hashPrev = NULL;
 	hashTable[hash] = var;
 
+	if( var_description && var_description[0] != '\0' )
+	{
+		var->description = CopyString( var_description );
+	}
+	else
+	{
+		var->description = NULL;
+	}
+
 	return var;
 }
 
@@ -488,6 +505,9 @@ void Cvar_Print( cvar_t *v ) {
 
 	if ( v->latchedString ) {
 		Com_Printf( "latched: \"%s\"\n", v->latchedString );
+	}
+	if ( v->description ) {
+		Com_Printf( "%s\n", v->description );
 	}
 }
 
@@ -520,9 +540,9 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 		}
 		// create it
 		if ( !force ) {
-			return Cvar_Get( var_name, value, CVAR_USER_CREATED );
+			return Cvar_Get( var_name, value, CVAR_USER_CREATED, NULL );
 		} else {
-			return Cvar_Get (var_name, value, 0);
+			return Cvar_Get (var_name, value, 0, NULL);
 		}
 	}
 
@@ -1036,6 +1056,8 @@ cvar_t *Cvar_Unset(cvar_t *cv)
 		Z_Free(cv->latchedString);
 	if(cv->resetString)
 		Z_Free(cv->resetString);
+	if(cv->description)
+		Z_Free(cv->description);
 
 	if(cv->prev)
 		cv->prev->next = cv->next;
@@ -1226,7 +1248,7 @@ void Cvar_Register(vmCvar_t *vmCvar, const char *varName, const char *defaultVal
 		flags &= ~CVAR_ROM;
 	}
 
-	cv = Cvar_Get(varName, defaultValue, flags | CVAR_VM_CREATED);
+	cv = Cvar_Get(varName, defaultValue, flags | CVAR_VM_CREATED, NULL);
 
 	if (!vmCvar)
 		return;
@@ -1300,7 +1322,7 @@ void Cvar_Init (void)
 	Com_Memset(cvar_indexes, '\0', sizeof(cvar_indexes));
 	Com_Memset(hashTable, '\0', sizeof(hashTable));
 
-	cvar_cheats = Cvar_Get("sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO );
+	cvar_cheats = Cvar_Get("sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO, "Missing description." );
 
 	Cmd_AddCommand ("print", Cvar_Print_f);
 	Cmd_AddCommand ("toggle", Cvar_Toggle_f);
