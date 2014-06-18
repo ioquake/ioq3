@@ -182,7 +182,7 @@ void SV_GetChallenge(netadr_t from)
 			Com_DPrintf( "sending getIpAuthorize for %s\n", NET_AdrToString( from ));
 		
 			strcpy(game, BASEGAME);
-			fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO );
+			fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO, "Missing description." );
 			if (fs && fs->string[0] != 0) {
 				strcpy(game, fs->string);
 			}

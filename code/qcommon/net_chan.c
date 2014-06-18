@@ -71,9 +71,9 @@ Netchan_Init
 */
 void Netchan_Init( int port ) {
 	port &= 0xffff;
-	showpackets = Cvar_Get ("showpackets", "0", CVAR_TEMP );
-	showdrop = Cvar_Get ("showdrop", "0", CVAR_TEMP );
-	qport = Cvar_Get ("net_qport", va("%i", port), CVAR_INIT );
+	showpackets = Cvar_Get ("showpackets", "0", CVAR_TEMP, "Missing description." );
+	showdrop = Cvar_Get ("showdrop", "0", CVAR_TEMP, "Missing description." );
+	qport = Cvar_Get ("net_qport", va("%i", port), CVAR_INIT, "Missing description." );
 }
 
 /*
