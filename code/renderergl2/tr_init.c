@@ -1112,7 +1112,7 @@ R_Register
 void R_Register( void ) 
 {
 	#ifdef USE_RENDERER_DLOPEN
-	com_altivec = ri.Cvar_Get("com_altivec", "1", CVAR_ARCHIVE);
+	com_altivec = ri.Cvar_Get("com_altivec", "1", CVAR_ARCHIVE, "Missing description.");
 	#endif	
 
 	//
