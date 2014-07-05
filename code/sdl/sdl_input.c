@@ -1037,7 +1037,7 @@ void IN_Init( void )
 	in_keyboardDebug = Cvar_Get( "in_keyboardDebug", "0", CVAR_ARCHIVE, "Missing description." );
 
 	// mouse variables
-	in_mouse = Cvar_Get( "in_mouse", "1", CVAR_ARCHIVE, "Missing description." );
+	in_mouse = Cvar_Get( "in_mouse", "1", CVAR_ARCHIVE, "Enable mouse input." );
 	in_nograb = Cvar_Get( "in_nograb", "0", CVAR_ARCHIVE, "Missing description." );
 
 	in_joystick = Cvar_Get( "in_joystick", "0", CVAR_ARCHIVE|CVAR_LATCH, "Missing description." );

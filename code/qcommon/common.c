@@ -2670,7 +2670,7 @@ void Com_Init( char *commandLine ) {
 	Cmd_Init ();
 
 	// get the developer cvar set as early as possible
-	com_developer = Cvar_Get("developer", "0", CVAR_TEMP, "Missing description.");
+	com_developer = Cvar_Get("developer", "0", CVAR_TEMP, "Developer mode.");
 
 	// done early so bind command exists
 	CL_InitKeyCommands();
@@ -2727,12 +2727,12 @@ void Com_Init( char *commandLine ) {
 	com_maxfps = Cvar_Get ("com_maxfps", "85", CVAR_ARCHIVE, "Missing description.");
 	com_blood = Cvar_Get ("com_blood", "1", CVAR_ARCHIVE, "Missing description.");
 
-	com_logfile = Cvar_Get ("logfile", "0", CVAR_TEMP, "Missing description." );
+	com_logfile = Cvar_Get ("logfile", "0", CVAR_TEMP, "Writes to qconsole.log, 1 = buffer log, 2 = flush after each print." );
 
-	com_timescale = Cvar_Get ("timescale", "1", CVAR_CHEAT | CVAR_SYSTEMINFO, "Missing description." );
+	com_timescale = Cvar_Get ("timescale", "1", CVAR_CHEAT | CVAR_SYSTEMINFO, "Scales the time." );
 	com_fixedtime = Cvar_Get ("fixedtime", "0", CVAR_CHEAT, "Missing description.");
 	com_showtrace = Cvar_Get ("com_showtrace", "0", CVAR_CHEAT, "Missing description.");
-	com_speeds = Cvar_Get ("com_speeds", "0", 0, "Missing description.");
+	com_speeds = Cvar_Get ("com_speeds", "0", 0, "Show engine timings.");
 	com_timedemo = Cvar_Get ("timedemo", "0", CVAR_CHEAT, "Missing description.");
 	com_cameraMode = Cvar_Get ("com_cameraMode", "0", CVAR_CHEAT, "Missing description.");
 
