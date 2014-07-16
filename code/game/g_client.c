@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#ifdef __ZCAM__
+#include "zcam.h"
+#endif /* __ZCAM__ */
 
 // g_client.c -- client functions that don't happen every frame
 
@@ -1180,6 +1183,10 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.clientNum = index;
 
+#ifdef __ZCAM__
+	camera_begin (ent);
+#endif /* __ZCAM__ */
+
 	client->ps.stats[STAT_WEAPONS] = ( 1 << WP_MACHINEGUN );
 	if ( g_gametype.integer == GT_TEAM ) {
 		client->ps.ammo[WP_MACHINEGUN] = 50;
@@ -1293,6 +1300,10 @@ void ClientDisconnect( int clientNum ) {
 			StopFollowing( &g_entities[i] );
 		}
 	}
+
+#ifdef __ZCAM__
+	camera_disconnect (ent);
+#endif /* __ZCAM__ */
 
 	// send effect if they were completely connected
 	if ( ent->client->pers.connected == CON_CONNECTED 

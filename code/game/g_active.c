@@ -22,7 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
-
+#ifdef  __ZCAM__
+#include "zcam.h"
+#endif /* __ZCAM__ */
 
 /*
 ===============
@@ -320,6 +322,17 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 	client = ent->client;
 
+#ifdef  __ZCAM__
+	client->ps.commandTime = ucmd->serverTime;
+	client->oldbuttons = client->buttons;
+	client->buttons = ucmd->buttons;
+
+	if ( client->sess.spectatorState != SPECTATOR_FOLLOW )
+	{
+		camera_think(ent);
+		return;
+	}
+#else
 	if ( client->sess.spectatorState != SPECTATOR_FOLLOW ) {
 		client->ps.pm_type = PM_SPECTATOR;
 		client->ps.speed = 400;	// faster than normal
@@ -343,6 +356,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 	client->oldbuttons = client->buttons;
 	client->buttons = ucmd->buttons;
+#endif /* __ZCAM__ */
 
 	// attack button cycles through spectators
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) ) {
@@ -1023,14 +1037,30 @@ void ClientThink( int clientNum ) {
 	// phone jack if they don't get any for a while
 	ent->client->lastCmdTime = level.time;
 
+#ifdef  __ZCAM__
+	/* camera jitter fix (server side) */
+	if ( !(ent->r.svFlags & SVF_BOT) && !g_synchronousClients.integer
+		&& (ent->client->sess.sessionTeam != TEAM_SPECTATOR
+		|| (ent->client->sess.sessionTeam == TEAM_SPECTATOR
+		&& ent->client->sess.spectatorState == SPECTATOR_FOLLOW))) {
+#else
 	if ( !(ent->r.svFlags & SVF_BOT) && !g_synchronousClients.integer ) {
+#endif /* __ZCAM__ */
 		ClientThink_real( ent );
 	}
 }
 
 
 void G_RunClient( gentity_t *ent ) {
+#ifdef  __ZCAM__
+	if ( !(ent->r.svFlags & SVF_BOT) && !g_synchronousClients.integer
+		/* camera jitter fix (server side) */
+		&& (ent->client->sess.sessionTeam != TEAM_SPECTATOR
+		|| (ent->client->sess.sessionTeam == TEAM_SPECTATOR
+		&& ent->client->sess.spectatorState == SPECTATOR_FOLLOW)) ) {
+#else
 	if ( !(ent->r.svFlags & SVF_BOT) && !g_synchronousClients.integer ) {
+#endif /* __ZCAM__ */
 		return;
 	}
 	ent->client->pers.cmd.serverTime = level.time;

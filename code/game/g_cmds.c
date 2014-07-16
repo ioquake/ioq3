@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#ifdef __ZCAM__
+#include "zcam.h"
+#endif /* __ZACM__ */
 
 #ifdef MISSIONPACK
 #include "../../ui/menudef.h"			// for the voice chats
@@ -1742,6 +1745,10 @@ void ClientCommand( int clientNum ) {
 		Cmd_SetViewpos_f( ent );
 	else if (Q_stricmp (cmd, "stats") == 0)
 		Cmd_Stats_f( ent );
+#ifdef __ZCAM__
+	else if (Q_stricmp (cmd, "camera") == 0)
+		camera_cmd ( ent );
+#endif /* __ZACM__ */
 	else
 		trap_SendServerCommand( clientNum, va("print \"unknown cmd %s\n\"", cmd ) );
 }

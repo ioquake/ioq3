@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#ifdef __ZCAM__
+#include "zcam.h"
+#endif /* __ZCAM__ */
 
 
 /*
@@ -57,6 +60,9 @@ void G_WriteClientSessionData( gclient_t *client ) {
 	var = va( "session%i", (int)(client - level.clients) );
 
 	trap_Cvar_Set( var, s );
+#ifdef __ZCAM__
+	camera_state_save (client);
+#endif /* __ZCAM__ */
 }
 
 /*
@@ -89,6 +95,9 @@ void G_ReadSessionData( gclient_t *client ) {
 	client->sess.sessionTeam = (team_t)sessionTeam;
 	client->sess.spectatorState = (spectatorState_t)spectatorState;
 	client->sess.teamLeader = (qboolean)teamLeader;
+#ifdef __ZCAM__
+	camera_state_load (client);
+#endif /* __ZCAM__ */
 }
 
 

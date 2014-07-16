@@ -187,6 +187,10 @@ ifndef USE_FREETYPE
 USE_FREETYPE=0
 endif
 
+ifndef USE_ZCAM
+USE_ZCAM=0
+endif
+
 ifndef USE_INTERNAL_SPEEX
 USE_INTERNAL_SPEEX=1
 endif
@@ -912,6 +916,11 @@ TARGETS =
 
 ifeq ($(USE_FREETYPE),1)
   BASE_CFLAGS += -DBUILD_FREETYPE
+endif
+
+ifeq ($(USE_ZCAM),1)
+  BASEGAME_CFLAGS += -D__ZCAM__
+  MISSIONPACK_CFLAGS += -D__ZCAM__
 endif
 
 ifndef FULLBINEXT
@@ -2355,6 +2364,13 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
 
+ifeq ($(USE_ZCAM),1)
+  Q3GOBJ_ += \
+    $(B)/$(BASEGAME)/game/zcam.o \
+    $(B)/$(BASEGAME)/game/zcam_target.o 
+endif
+
+
 Q3GOBJ = $(Q3GOBJ_) $(B)/$(BASEGAME)/game/g_syscalls.o
 Q3GVMOBJ = $(Q3GOBJ_:%.o=%.asm)
 
@@ -2405,6 +2421,12 @@ MPGOBJ_ = \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
   $(B)/$(MISSIONPACK)/qcommon/q_shared.o
+
+ifeq ($(USE_ZCAM),1)
+  MPGOBJ_ += \
+    $(B)/$(MISSIONPACK)/game/zcam.o \
+    $(B)/$(MISSIONPACK)/game/zcam_target.o 
+endif
 
 MPGOBJ = $(MPGOBJ_) $(B)/$(MISSIONPACK)/game/g_syscalls.o
 MPGVMOBJ = $(MPGOBJ_:%.o=%.asm)

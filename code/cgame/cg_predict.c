@@ -428,7 +428,11 @@ void CG_PredictPlayerState( void ) {
 
 
 	// demo playback just copies the moves
+#ifdef  __ZCAM__
+	if ( cg.demoPlayback || (cg.snap->ps.pm_flags & PMF_FOLLOW) || (cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR) ) {
+#else
 	if ( cg.demoPlayback || (cg.snap->ps.pm_flags & PMF_FOLLOW) ) {
+#endif
 		CG_InterpolatePlayerState( qfalse );
 		return;
 	}

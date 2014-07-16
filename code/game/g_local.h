@@ -248,6 +248,9 @@ typedef struct {
 	qboolean	teamInfo;			// send team overlay updates?
 } clientPersistant_t;
 
+#ifdef  __ZCAM__
+struct camera_s;
+#endif /* __ZCAM__ */
 
 // this structure is cleared on each ClientSpawn(),
 // except for 'client->pers' and 'client->sess'
@@ -317,6 +320,9 @@ struct gclient_s {
 #endif
 
 	char		*areabits;
+#ifdef  __ZCAM__
+	struct camera_s *camera;
+#endif /* __ZCAM__ */
 };
 
 
