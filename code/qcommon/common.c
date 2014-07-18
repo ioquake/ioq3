@@ -3486,8 +3486,8 @@ void Field_CompleteCommand( char *cmd,
 		if( baseCmd[ 0 ] == '\\' || baseCmd[ 0 ] == '/' )
 			baseCmd++;
 #endif
-
-		if( ( p = Field_FindFirstSeparator( cmd ) ) )
+		p = Field_FindFirstSeparator( cmd );
+		if( p )
 			Field_CompleteCommand( p + 1, qtrue, qtrue ); // Compound command
 		else
 			Cmd_CompleteArgument( baseCmd, cmd, completionArgument ); 

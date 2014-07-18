@@ -2321,7 +2321,7 @@ static void CollapseStagesToLightall(shaderStage_t *diffuse,
 
 			VectorCopy4(normal->normalScale, diffuse->normalScale);
 		}
-		else if ((lightmap || useLightVector || useLightVertex) && (diffuseImg = diffuse->bundle[TB_DIFFUSEMAP].image[0]))
+		else if ((lightmap || useLightVector || useLightVertex) && NULL != (diffuseImg = diffuse->bundle[TB_DIFFUSEMAP].image[0]))
 		{
 			char normalName[MAX_QPATH];
 			image_t *normalImg;
@@ -3722,7 +3722,8 @@ static void ScanAndLoadShaderFiles( void )
 		{
 			char *ext;
 			Com_sprintf( filename, sizeof( filename ), "scripts/%s", shaderFiles[i] );
-			if ( (ext = strrchr(filename, '.')) )
+			ext = strrchr(filename, '.');
+			if ( ext )
 			{
 				strcpy(ext, ".mtr");
 			}

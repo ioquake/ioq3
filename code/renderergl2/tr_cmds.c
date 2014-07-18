@@ -400,7 +400,8 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	}
 
 	if (glConfig.stereoEnabled) {
-		if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
+		cmd = R_GetCommandBuffer(sizeof(*cmd));
+		if( !cmd )
 			return;
 			
 		cmd->commandId = RC_DRAW_BUFFER;
@@ -455,22 +456,26 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 			
 			if(stereoFrame == STEREO_LEFT)
 			{
-				if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
+				cmd = R_GetCommandBuffer(sizeof(*cmd));
+				if( !cmd )
 					return;
-				
-				if( !(colcmd = R_GetCommandBuffer(sizeof(*colcmd))) )
+
+				colcmd = R_GetCommandBuffer(sizeof(*colcmd));
+				if( !colcmd )
 					return;
 			}
 			else if(stereoFrame == STEREO_RIGHT)
 			{
 				clearDepthCommand_t *cldcmd;
 				
-				if( !(cldcmd = R_GetCommandBuffer(sizeof(*cldcmd))) )
+				cldcmd = R_GetCommandBuffer(sizeof(*cldcmd));
+				if( !cldcmd )
 					return;
 
 				cldcmd->commandId = RC_CLEARDEPTH;
 
-				if( !(colcmd = R_GetCommandBuffer(sizeof(*colcmd))) )
+				colcmd = R_GetCommandBuffer(sizeof(*colcmd));
+				if( !colcmd )
 					return;
 			}
 			else
@@ -484,7 +489,8 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 			if(stereoFrame != STEREO_CENTER)
 				ri.Error( ERR_FATAL, "RE_BeginFrame: Stereo is disabled, but stereoFrame was %i", stereoFrame );
 
-			if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
+			cmd = R_GetCommandBuffer(sizeof(*cmd));
+			if( !cmd )
 				return;
 		}
 

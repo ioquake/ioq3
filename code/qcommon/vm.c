@@ -551,7 +551,8 @@ vm_t *VM_Restart(vm_t *vm, qboolean unpure)
 	// load the image
 	Com_Printf("VM_Restart()\n");
 
-	if(!(header = VM_LoadQVM(vm, qfalse, unpure)))
+	header = VM_LoadQVM(vm, qfalse, unpure);
+	if(!header)
 	{
 		Com_Error(ERR_DROP, "VM_Restart failed");
 		return NULL;
@@ -629,7 +630,8 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 		else if(retval == VMI_COMPILED)
 		{
 			vm->searchPath = startSearch;
-			if((header = VM_LoadQVM(vm, qtrue, qfalse)))
+			header = VM_LoadQVM(vm, qtrue, qfalse);
+			if(header)
 				break;
 
 			// VM_Free overwrites the name on failed load
