@@ -217,7 +217,7 @@ void R_LoadTGA ( const char *name, byte **pic, int *width, int *height)
 								break;
 						default:
 							ri.Error( ERR_DROP, "LoadTGA: illegal pixel_size '%d' in file '%s'", targa_header.pixel_size, name );
-							break;
+							return;
 					}
 	
 					for(j=0;j<packetSize;j++) {
