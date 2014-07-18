@@ -341,7 +341,6 @@ METHODDEF(void)
 null_method (j_compress_ptr cinfo)
 {
   /* no work needed */
-  (void)cinfo;
 }
 
 
