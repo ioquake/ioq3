@@ -352,6 +352,7 @@ compress_output (j_compress_ptr cinfo, JSAMPIMAGE input_buf)
   JBLOCKROW buffer_ptr;
   jpeg_component_info *compptr;
 
+  (void)input_buf; //do nothing
   /* Align the virtual buffers for the components used in this scan.
    * NB: during first pass, this is safe only because the buffers will
    * already be aligned properly, so jmemmgr.c won't need to do any I/O.
