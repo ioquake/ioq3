@@ -95,11 +95,13 @@ qboolean CL_cURL_Init()
 
 
 	Com_Printf("Loading \"%s\"...", cl_cURLLib->string);
-	if(!(cURLLib = Sys_LoadDll(cl_cURLLib->string, qtrue)))
+	cURLLib = Sys_LoadDll(cl_cURLLib->string, qtrue);
+	if(!cURLLib)
 	{
 #ifdef ALTERNATE_CURL_LIB
 		// On some linux distributions there is no libcurl.so.3, but only libcurl.so.4. That one works too.
-		if(!(cURLLib = Sys_LoadDll(ALTERNATE_CURL_LIB, qtrue)))
+		cURLLib = Sys_LoadDll(ALTERNATE_CURL_LIB, qtrue);
+		if(!cURLLib)
 #endif
 			return qfalse;
 	}
