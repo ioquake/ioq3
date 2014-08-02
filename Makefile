@@ -1108,7 +1108,17 @@ $(echo_cmd) "REF_CC $<"
 $(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZE) -o $@ -c $<
 endef
 
+#trying to escape the string "\r\n" for the test
+ESCAPE_TEST=$(shell echo escape test|sed -e 's/escape test/\"\\r\\n\"/'|sed -e 's/\"\\r\\n\"/ok/')
+ifneq ($(ESCAPE_TEST),ok) 
+  ESCAPE_TEST_TEXT="Warning: Your console, terminal or sed command did not properly work with escape characters."
+  echo_escape_test=$(echo_cmd) $(ESCAPE_TEST_TEXT) 1>&2
+else
+  echo_escape_test=
+endif
+
 define DO_REF_STR
+$(echo_escape_test)
 $(echo_cmd) "REF_STR $<"
 $(Q)rm -f $@
 $(Q)echo "const char *fallbackShader_$(notdir $(basename $<)) =" >> $@
