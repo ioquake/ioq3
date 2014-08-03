@@ -3182,7 +3182,7 @@ void CL_InitRef( void ) {
 	cl_renderer = Cvar_Get("cl_renderer", "opengl1", CVAR_ARCHIVE | CVAR_LATCH);
 
 #ifdef USE_RENDERER_STATIC_OPENGL1
-	if( Q_stricmp( cl_renderer->string, "opengl1" ) == 0 )
+	if( strcmp( cl_renderer->string, "opengl1" ) == 0 )
 	{
 		GetRefAPI = GetRefAPIStatic;
 	} else
