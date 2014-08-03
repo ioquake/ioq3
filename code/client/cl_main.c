@@ -3171,8 +3171,8 @@ CL_InitRef
 void CL_InitRef( void ) {
 	refimport_t	ri;
 	refexport_t	*ret;
-#ifdef USE_RENDERER_DLOPEN
 	GetRefAPI_t		GetRefAPI;
+#ifdef USE_RENDERER_DLOPEN
 	char			dllName[MAX_OSPATH];
 #endif
 
@@ -3181,28 +3181,38 @@ void CL_InitRef( void ) {
 #ifdef USE_RENDERER_DLOPEN
 	cl_renderer = Cvar_Get("cl_renderer", "opengl1", CVAR_ARCHIVE | CVAR_LATCH);
 
-	Com_sprintf(dllName, sizeof(dllName), "renderer_%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
-
-	if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
+#ifdef USE_RENDERER_STATIC_OPENGL1
+	if( Q_stricmp( cl_renderer->string, "opengl1" ) == 0 )
 	{
-		Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
-		Cvar_ForceReset("cl_renderer");
-
-		Com_sprintf(dllName, sizeof(dllName), "renderer_opengl1_" ARCH_STRING DLL_EXT);
-		rendererLib = Sys_LoadDll(dllName, qfalse);
-	}
-
-	if(!rendererLib)
+		GetRefAPI = GetRefAPIStatic;
+	} else
+#endif
 	{
-		Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
-		Com_Error(ERR_FATAL, "Failed to load renderer");
-	}
+		Com_sprintf(dllName, sizeof(dllName), "renderer_%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
 
-	GetRefAPI = Sys_LoadFunction(rendererLib, "GetRefAPI");
-	if(!GetRefAPI)
-	{
-		Com_Error(ERR_FATAL, "Can't load symbol GetRefAPI: '%s'",  Sys_LibraryError());
+		if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
+		{
+			Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
+			Cvar_ForceReset("cl_renderer");
+
+			Com_sprintf(dllName, sizeof(dllName), "renderer_opengl1_" ARCH_STRING DLL_EXT);
+			rendererLib = Sys_LoadDll(dllName, qfalse);
+		}
+
+		if(!rendererLib)
+		{
+			Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
+			Com_Error(ERR_FATAL, "Failed to load renderer");
+		}
+
+		GetRefAPI = Sys_LoadFunction(rendererLib, "GetRefAPI");
+		if(!GetRefAPI)
+		{
+			Com_Error(ERR_FATAL, "Can't load symbol GetRefAPI: '%s'",  Sys_LibraryError());
+		}
 	}
+#else
+	GetRefAPI = GetRefAPIStatic;
 #endif
 
 	ri.Cmd_AddCommand = Cmd_AddCommand;
