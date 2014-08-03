@@ -3196,6 +3196,7 @@ void CL_InitRef( void ) {
 			GetRefAPI = GetRefAPIStatic;
 		} else
 		{
+			if( 0 )
 #else
 		{
 			if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
