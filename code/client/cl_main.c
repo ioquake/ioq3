@@ -3190,25 +3190,35 @@ void CL_InitRef( void ) {
 	{
 		Com_sprintf(dllName, sizeof(dllName), "renderer_%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
 
-		if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
+#ifdef USE_RENDERER_STATIC_OPENGL1
+		if(!(rendererLib = Sys_LoadDll(dllName, qfalse)))
 		{
-			Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
-			Cvar_ForceReset("cl_renderer");
-
-			Com_sprintf(dllName, sizeof(dllName), "renderer_opengl1_" ARCH_STRING DLL_EXT);
-			rendererLib = Sys_LoadDll(dllName, qfalse);
-		}
-
-		if(!rendererLib)
+			GetRefAPI = GetRefAPIStatic;
+		} else
 		{
-			Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
-			Com_Error(ERR_FATAL, "Failed to load renderer");
-		}
-
-		GetRefAPI = Sys_LoadFunction(rendererLib, "GetRefAPI");
-		if(!GetRefAPI)
+#else
 		{
-			Com_Error(ERR_FATAL, "Can't load symbol GetRefAPI: '%s'",  Sys_LibraryError());
+			if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
+#endif
+			{
+				Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
+				Cvar_ForceReset("cl_renderer");
+
+				Com_sprintf(dllName, sizeof(dllName), "renderer_opengl1_" ARCH_STRING DLL_EXT);
+				rendererLib = Sys_LoadDll(dllName, qfalse);
+			}
+
+			if(!rendererLib)
+			{
+				Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
+				Com_Error(ERR_FATAL, "Failed to load renderer");
+			}
+
+			GetRefAPI = Sys_LoadFunction(rendererLib, "GetRefAPI");
+			if(!GetRefAPI)
+			{
+				Com_Error(ERR_FATAL, "Can't load symbol GetRefAPI: '%s'",  Sys_LibraryError());
+			}
 		}
 	}
 #else
