@@ -403,8 +403,8 @@ extern	vec4_t		colorDkGrey;
 #define COLOR_CYAN	'5'
 #define COLOR_MAGENTA	'6'
 #define COLOR_WHITE	'7'
-#define ColorMap(c)	((c) & 0x07)
-#define ColorIndex(c)	(ColorMap((c) - '0'))
+#define ColorIndexForNumber(c)	((c) & 0x07)
+#define ColorIndex(c)	(ColorIndexForNumber((c) - '0'))
 
 #define S_COLOR_BLACK	"^0"
 #define S_COLOR_RED	"^1"
