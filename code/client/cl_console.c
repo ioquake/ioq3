@@ -51,6 +51,7 @@ typedef struct {
 	int		times[NUM_CON_TIMES];	// cls.realtime time the line was generated
 								// for transparent notify lines
 	vec4_t	color;
+	float	textscale;
 } console_t;
 
 console_t	con;
@@ -58,8 +59,11 @@ console_t	con;
 cvar_t		*con_conspeed;
 cvar_t		*con_notifytime;
 
+cvar_t		*con_textscale;
+
 #define	DEFAULT_CONSOLE_WIDTH	78
 
+#define CON_TEXT_LINE_COUNT		26
 
 /*
 ================
@@ -349,6 +353,8 @@ void Con_Init (void) {
 	con_notifytime = Cvar_Get ("con_notifytime", "3", 0);
 	con_conspeed = Cvar_Get ("scr_conspeed", "3", 0);
 
+	con_textscale = Cvar_Get ("scr_textscale", "-1.0", 0);
+
 	Field_Clear( &g_consoleField );
 	g_consoleField.widthInChars = g_console_field_width;
 	for ( i = 0 ; i < COMMAND_HISTORY ; i++ ) {
@@ -532,14 +538,14 @@ void Con_DrawInput (void) {
 		return;
 	}
 
-	y = con.vislines - ( SMALLCHAR_HEIGHT * 2 );
+	y = con.vislines - ( SMALLCHAR_HEIGHT * 2 * con.textscale );
 
 	re.SetColor( con.color );
 
-	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' );
+	SCR_DrawScaledSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH * con.textscale, y, con.textscale, ']' );
 
-	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH, y,
-		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue, qtrue );
+	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH * con.textscale, y,
+		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH * con.textscale, qtrue, qtrue );
 }
 
 
@@ -635,6 +641,7 @@ void Con_DrawSolidConsole( float frac ) {
 //	qhandle_t		conShader;
 	int				currentColor;
 	vec4_t			color;
+	int				charHeight, charWidth;
 
 	lines = cls.glconfig.vidHeight * frac;
 	if (lines <= 0)
@@ -662,6 +669,18 @@ void Con_DrawSolidConsole( float frac ) {
 	color[3] = 1;
 	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
 
+	if ( con_textscale->value == -1.0f ) {
+		con.textscale = lines / ( CON_TEXT_LINE_COUNT * frac * SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT );
+		//aligning to 4 pixels to avoid any unsmooth text
+		con.textscale = floor( con.textscale * 100 ) / 100.0f - ( (int)floor( con.textscale * 100 ) % 25 ) / 100.0f;
+		if( con.textscale < 1.0f )
+			con.textscale = 1.0f;
+	} else {
+		con.textscale = con_textscale->value;
+	}
+
+	charHeight = floor( SMALLCHAR_HEIGHT * con.textscale );
+	charWidth = floor( SMALLCHAR_WIDTH * con.textscale );
 
 	// draw the version number
 
@@ -670,16 +689,16 @@ void Con_DrawSolidConsole( float frac ) {
 	i = strlen( Q3_VERSION );
 
 	for (x=0 ; x<i ; x++) {
-		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * SMALLCHAR_WIDTH,
-			lines - SMALLCHAR_HEIGHT, Q3_VERSION[x] );
+		SCR_DrawScaledSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * charWidth,
+			lines - charHeight, con.textscale, Q3_VERSION[x] );
 	}
 
 
 	// draw the text
 	con.vislines = lines;
-	rows = (lines-SMALLCHAR_HEIGHT)/SMALLCHAR_HEIGHT;		// rows of text to draw
+	rows = (lines-charHeight)/charHeight;		// rows of text to draw
 
-	y = lines - (SMALLCHAR_HEIGHT*3);
+	y = lines - (charHeight*3);
 
 	// draw from the bottom up
 	if (con.display != con.current)
@@ -687,8 +706,8 @@ void Con_DrawSolidConsole( float frac ) {
 	// draw arrows to show the buffer is backscrolled
 		re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
 		for (x=0 ; x<con.linewidth ; x+=4)
-			SCR_DrawSmallChar( con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, '^' );
-		y -= SMALLCHAR_HEIGHT;
+			SCR_DrawScaledSmallChar( con.xadjust + (x+1)*charWidth, y, con.textscale, '^' );
+		y -= charHeight;
 		rows--;
 	}
 	
@@ -701,7 +720,7 @@ void Con_DrawSolidConsole( float frac ) {
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
 
-	for (i=0 ; i<rows ; i++, y -= SMALLCHAR_HEIGHT, row--)
+	for (i=0 ; i<rows ; i++, y -= charHeight, row--)
 	{
 		if (row < 0)
 			break;
@@ -721,7 +740,7 @@ void Con_DrawSolidConsole( float frac ) {
 				currentColor = ColorIndexForNumber( text[x]>>8 );
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawSmallChar(  con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, text[x] & 0xff );
+			SCR_DrawScaledSmallChar(  con.xadjust + (x+1)*charWidth, y, con.textscale, text[x] & 0xff );
 		}
 	}
 
