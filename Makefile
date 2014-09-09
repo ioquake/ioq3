@@ -487,7 +487,7 @@ ifeq ($(PLATFORM),darwin)
   CLIENT_LIBS += -framework IOKit \
     $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
   RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-  CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+  CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib $(LIBSDIR)/macosx/libopenal.dylib
 
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
@@ -631,14 +631,14 @@ ifeq ($(PLATFORM),mingw32)
     RENDERER_LIBS += $(LIBSDIR)/win32/libSDL2main.a \
                       $(LIBSDIR)/win32/libSDL2.dll.a
     SDLDLL=SDL2.dll
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/win32/SDL2.dll
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/win32/SDL2.dll $(LIBSDIR)/win32/OpenAL32.dll
     else
     CLIENT_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
                       $(LIBSDIR)/win64/libSDL264.dll.a
     RENDERER_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
                       $(LIBSDIR)/win64/libSDL264.dll.a
     SDLDLL=SDL264.dll
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll $(LIBSDIR)/win32/OpenAL64.dll
     endif
   else
     CLIENT_CFLAGS += $(SDL_CFLAGS)

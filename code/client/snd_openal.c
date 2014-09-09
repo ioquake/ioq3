@@ -2209,7 +2209,7 @@ static cvar_t *s_alCapture;
 #ifdef _WIN32
 #define ALDRIVER_DEFAULT "OpenAL32.dll"
 #elif defined(MACOS_X)
-#define ALDRIVER_DEFAULT "/System/Library/Frameworks/OpenAL.framework/OpenAL"
+#define ALDRIVER_DEFAULT "libopenal.dylib"
 #elif defined(__OpenBSD__)
 #define ALDRIVER_DEFAULT "libopenal.so"
 #else
@@ -2519,12 +2519,19 @@ qboolean S_AL_Init( soundInterface_t *si )
 
 	// Load QAL
 	if( !QAL_Init( s_alDriver->string ) )
-	{
-		Com_Printf( "Failed to load library: \"%s\".\n", s_alDriver->string );
-		if( !Q_stricmp( s_alDriver->string, ALDRIVER_DEFAULT ) || !QAL_Init( ALDRIVER_DEFAULT ) ) {
+ 	{
+#if defined( _WIN32 )
+		// Use OpenAL Soft on Windows 64-bit or fall back to Creative's old dll if present
+                if( !Q_stricmp( s_alDriver->string, ALDRIVER_DEFAULT ) && !QAL_Init( "OpenAL64.dll" ) ) {
+#elif defined ( MACOS_X )
+		// Fall back to Apple's OpenAL implementation if OpenAL Soft dylib isn't found
+                if( !Q_stricmp( s_alDriver->string, ALDRIVER_DEFAULT ) && !QAL_Init( "/System/Library/Frameworks/OpenAL.framework/OpenAL" ) ) {
+#else
+                if( !Q_stricmp( s_alDriver->string, ALDRIVER_DEFAULT ) || !QAL_Init( ALDRIVER_DEFAULT ) ) {
+#endif
 			return qfalse;
 		}
-	}
+ 	}
 
 	device = s_alDevice->string;
 	if(device && !*device)
