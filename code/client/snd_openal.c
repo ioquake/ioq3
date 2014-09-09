@@ -2430,7 +2430,11 @@ static void S_AL_SoundInfo(void)
 #ifdef USE_VOIP
 	if(capture_ext)
 	{
+#ifdef MACOS_X
+		Com_Printf("  Input Device:   %s\n", qalcGetString(alCaptureDevice, ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER));
+#else
 		Com_Printf("  Input Device:   %s\n", qalcGetString(alCaptureDevice, ALC_CAPTURE_DEVICE_SPECIFIER));
+#endif
 		Com_Printf("  Available Input Devices:\n%s", s_alAvailableInputDevices->string);
 	}
 #endif
