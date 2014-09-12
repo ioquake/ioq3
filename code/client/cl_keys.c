@@ -704,6 +704,19 @@ void Console_Key (int key) {
 		return;
 	}
 
+	if ( key == K_KP_PLUS && keys[K_CTRL].down && con_textscale->value != -1.0f ) {
+		Cvar_SetValue( con_textscale->name, con_textscale->value + 0.25f );
+		return;
+	}
+
+	if ( key == K_KP_MINUS && keys[K_CTRL].down && con_textscale->value != -1.0f ) {
+		if( con_textscale->value - 0.25f >= 0 )
+		{
+			Cvar_SetValue( con_textscale->name, con_textscale->value - 0.25f );
+		}
+		return;
+	}
+
 	// pass to the normal editline routine
 	Field_KeyDownEvent( &g_consoleField, key );
 }
