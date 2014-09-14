@@ -278,7 +278,7 @@ void Con_CheckResize (void)
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	short	tbuf[CON_TEXTSIZE];
 
-	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH) - 2;
+	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH * con.textscale) - 2;
 
 	if (width == con.linewidth)
 		return;
@@ -686,16 +686,6 @@ void Con_DrawSolidConsole( float frac ) {
 	color[3] = 1;
 	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
 
-	if ( con_textscale->value == -1.0f ) {
-		con.textscale = lines / ( CON_TEXT_LINE_COUNT * frac * SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT );
-		//aligning to 4 pixels to avoid any unsmooth text
-		con.textscale = floor( con.textscale * 100 ) / 100.0f - ( (int)floor( con.textscale * 100 ) % 25 ) / 100.0f;
-		if( con.textscale < 1.0f )
-			con.textscale = 1.0f;
-	} else {
-		con.textscale = con_textscale->value;
-	}
-
 	charHeight = floor( SMALLCHAR_HEIGHT * con.textscale );
 	charWidth = floor( SMALLCHAR_WIDTH * con.textscale );
 
@@ -775,6 +765,17 @@ Con_DrawConsole
 ==================
 */
 void Con_DrawConsole( void ) {
+
+	if ( con_textscale->value == -1.0f ) {
+		con.textscale = cls.glconfig.vidHeight / ( CON_TEXT_LINE_COUNT * SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT );
+		//aligning to 4 pixels to avoid any unsmooth text
+		con.textscale = floor( con.textscale * 100 ) / 100.0f - ( (int)floor( con.textscale * 100 ) % 25 ) / 100.0f;
+		if( con.textscale < 1.0f )
+			con.textscale = 1.0f;
+	} else {
+		con.textscale = con_textscale->value;
+	}
+
 	// check for console width changes from a vid mode change
 	Con_CheckResize ();
 
