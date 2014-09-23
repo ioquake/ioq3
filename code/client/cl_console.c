@@ -60,7 +60,6 @@ cvar_t		*con_conspeed;
 cvar_t		*con_notifytime;
 
 cvar_t		*con_textscale;
-cvar_t		*con_notify_textscale;
 
 #define	DEFAULT_CONSOLE_WIDTH	78
 
@@ -355,7 +354,6 @@ void Con_Init (void) {
 	con_conspeed = Cvar_Get ("scr_conspeed", "3", 0);
 
 	con_textscale = Cvar_Get ("con_textscale", "-1.0", 0);
-	con_notify_textscale = Cvar_Get ("con_notify_textscale", "-1.0", 0);
 
 	Field_Clear( &g_consoleField );
 	g_consoleField.widthInChars = g_console_field_width;
@@ -567,23 +565,12 @@ void Con_DrawNotify (void)
 	int		skip;
 	int		currentColor;
 	int		charHeight, charWidth;
-	float	scale;
 
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
 
-	if ( con_notify_textscale->value == -1.0f ) {
-		scale = cls.glconfig.vidHeight / ( CON_TEXT_LINE_COUNT * SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT );
-		//aligning to 4 pixels to avoid any unsmooth text
-		scale = floor( scale * 100 ) / 100.0f - ( (int)floor( scale * 100 ) % 25 ) / 100.0f;
-		if( scale < 1.0f )
-			scale = 1.0f;
-	} else {
-		scale = con_notify_textscale->value;
-	}
-
-	charHeight = floor( SMALLCHAR_HEIGHT * scale );
-	charWidth = floor( SMALLCHAR_WIDTH * scale );
+	charHeight = floor( SMALLCHAR_HEIGHT * con.textscale );
+	charWidth = floor( SMALLCHAR_WIDTH * con.textscale );
 
 	v = 0;
 	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
@@ -610,7 +597,7 @@ void Con_DrawNotify (void)
 				currentColor = ColorIndexForNumber( text[x]>>8 );
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawScaledSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*charWidth, v, scale, text[x] & 0xff );
+			SCR_DrawScaledSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*charWidth, v, con.textscale, text[x] & 0xff );
 		}
 
 		v += charHeight;
