@@ -544,8 +544,9 @@ void Con_DrawInput (void) {
 
 	SCR_DrawScaledSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH * con.textscale, y, con.textscale, ']' );
 
-	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH * con.textscale, y,
-		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH * con.textscale, qtrue, qtrue );
+	Field_VariableSizeDraw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH * con.textscale, y,
+		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH * con.textscale, SMALLCHAR_WIDTH, con.textscale,
+		qtrue, qtrue );
 }
 
 

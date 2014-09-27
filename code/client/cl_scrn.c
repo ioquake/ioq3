@@ -321,6 +321,35 @@ void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, 
 }
 
 
+void SCR_DrawScaledSmallStringExt( int x, int y, float scale, const char *string, float *setColor, qboolean forceColor,
+		qboolean noColorEscape ) {
+	vec4_t		color;
+	const char	*s;
+	int			xx;
+
+	// draw the colored text
+	s = string;
+	xx = x;
+	re.SetColor( setColor );
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			if ( !forceColor ) {
+				Com_Memcpy( color, g_color_table[ColorIndex(*(s+1))], sizeof( color ) );
+				color[3] = setColor[3];
+				re.SetColor( color );
+			}
+			if ( !noColorEscape ) {
+				s += 2;
+				continue;
+			}
+		}
+		SCR_DrawScaledSmallChar( xx, y, scale, *s );
+		xx += SMALLCHAR_WIDTH * scale;
+		s++;
+	}
+	re.SetColor( NULL );
+}
+
 
 /*
 ** SCR_Strlen -- skips color escape codes
