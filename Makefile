@@ -638,7 +638,7 @@ ifeq ($(PLATFORM),mingw32)
     RENDERER_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
                       $(LIBSDIR)/win64/libSDL264.dll.a
     SDLDLL=SDL264.dll
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll $(LIBSDIR)/win32/OpenAL64.dll
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll $(LIBSDIR)/win64/OpenAL64.dll
     endif
   else
     CLIENT_CFLAGS += $(SDL_CFLAGS)
