@@ -315,6 +315,27 @@ void Cmd_Vstr_f( void ) {
 	Cbuf_InsertText( va("%s\n", v ) );
 }
 
+/*
+===============
+Cmd_Find_f
+
+find command with substring
+===============
+*/
+void Cmd_Find_f( void ) {
+	if (Cmd_Argc () != 2) {
+		Com_Printf ("find <substring> : find all commands containing substring\n");
+		return;
+	}
+
+	if( Cmd_Argc () == 2 )
+	{
+		char *p = Cmd_Argv(1);
+		Com_Printf ("Commands containing \"%s\": \n", p);
+		Field_FindCommand(p);
+	}
+}
+
 
 /*
 ===============
@@ -865,5 +886,6 @@ void Cmd_Init (void) {
 	Cmd_SetCommandCompletionFunc( "vstr", Cvar_CompleteCvarName );
 	Cmd_AddCommand ("echo",Cmd_Echo_f);
 	Cmd_AddCommand ("wait", Cmd_Wait_f);
+	Cmd_AddCommand ("find",Cmd_Find_f);
 }
 
