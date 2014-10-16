@@ -125,8 +125,7 @@ typedef struct vao_s
 	int             vertexesSize;	// amount of memory data allocated for all vertices in bytes
 	vaoAttrib_t     attribs[VAO_MAX_ATTRIBS];
 
-	uint32_t        size_xyz;
-	uint32_t        size_normal;
+	uint32_t        frameSize;      // bytes to skip per frame when doing vertex animation
 
 	uint32_t        indexesIBO;
 	int             indexesSize;	// amount of memory data allocated for all triangles in bytes
@@ -2006,7 +2005,7 @@ typedef struct stageVars
 	vec2_t		texcoords[NUM_TEXTURE_BUNDLES][SHADER_MAX_VERTEXES];
 } stageVars_t;
 
-#define MAX_MULTIDRAW_PRIMITIVES	16384
+#define MAX_MULTIDRAW_PRIMITIVES	256
 
 typedef struct shaderCommands_s 
 {
@@ -2046,7 +2045,6 @@ typedef struct shaderCommands_s
 	int         multiDrawPrimitives;
 	GLsizei     multiDrawNumIndexes[MAX_MULTIDRAW_PRIMITIVES];
 	glIndex_t  *multiDrawFirstIndex[MAX_MULTIDRAW_PRIMITIVES];
-	glIndex_t  *multiDrawLastIndex[MAX_MULTIDRAW_PRIMITIVES];
 	glIndex_t   multiDrawMinIndex[MAX_MULTIDRAW_PRIMITIVES];
 	glIndex_t   multiDrawMaxIndex[MAX_MULTIDRAW_PRIMITIVES];
 
