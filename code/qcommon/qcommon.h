@@ -447,6 +447,7 @@ void Cmd_SetCommandCompletionFunc( const char *command,
 	completionFunc_t complete );
 void Cmd_CompleteArgument( const char *command, char *args, int argNum );
 void Cmd_CompleteCfgName( char *args, int argNum );
+void Cmd_Find( char *args, int argNum );
 
 int		Cmd_Argc (void);
 char	*Cmd_Argv (int arg);
@@ -760,6 +761,7 @@ void Field_CompleteFilename( const char *dir,
 		const char *ext, qboolean stripExt, qboolean allowNonPureFilesOnDisk );
 void Field_CompleteCommand( char *cmd,
 		qboolean doCommands, qboolean doCvars );
+void Field_FindCommand( char *cmd);
 
 /*
 ==============================================================
