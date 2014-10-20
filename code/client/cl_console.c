@@ -51,7 +51,7 @@ typedef struct {
 	int		times[NUM_CON_TIMES];	// cls.realtime time the line was generated
 								// for transparent notify lines
 	vec4_t	color;
-	float	textscale;
+	int		charWidth, charHeight;
 } console_t;
 
 console_t	con;
@@ -277,7 +277,7 @@ void Con_CheckResize (void)
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	short	tbuf[CON_TEXTSIZE];
 
-	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH * con.textscale) - 2;
+	width = (SCREEN_WIDTH / con.charWidth ) - 2;
 
 	if (width == con.linewidth)
 		return;
@@ -451,6 +451,8 @@ void CL_ConsolePrint( char *txt ) {
 		con.color[2] =
 		con.color[3] = 1.0f;
 		con.linewidth = -1;
+		con.charWidth = SMALLCHAR_WIDTH;
+		con.charHeight = SMALLCHAR_HEIGHT;
 		Con_CheckResize ();
 		con.initialized = qtrue;
 	}
@@ -538,14 +540,14 @@ void Con_DrawInput (void) {
 		return;
 	}
 
-	y = con.vislines - ( SMALLCHAR_HEIGHT * 2 * con.textscale );
+	y = con.vislines - ( con.charHeight * 2 );
 
 	re.SetColor( con.color );
 
-	SCR_DrawScaledSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH * con.textscale, y, con.textscale, ']' );
+	SCR_DrawSmallChar( con.xadjust + 1 * con.charWidth, y, con.charWidth, con.charHeight, ']' );
 
-	Field_VariableSizeDraw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH * con.textscale, y,
-		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH * con.textscale, SMALLCHAR_WIDTH, con.textscale,
+	Field_VariableSizeDraw( &g_consoleField, con.xadjust + 2 * con.charWidth, y,
+		con.charWidth, con.charHeight, qfalse, SMALLCHAR_WIDTH, 
 		qtrue, qtrue );
 }
 
@@ -565,13 +567,9 @@ void Con_DrawNotify (void)
 	int		time;
 	int		skip;
 	int		currentColor;
-	int		charHeight, charWidth;
 
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
-
-	charHeight = floor( SMALLCHAR_HEIGHT * con.textscale );
-	charWidth = floor( SMALLCHAR_WIDTH * con.textscale );
 
 	v = 0;
 	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
@@ -598,10 +596,10 @@ void Con_DrawNotify (void)
 				currentColor = ColorIndexForNumber( text[x]>>8 );
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawScaledSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*charWidth, v, con.textscale, text[x] & 0xff );
+			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*con.charWidth, v, con.charWidth, con.charHeight, text[x] & 0xff );
 		}
 
-		v += charHeight;
+		v += con.charHeight;
 	}
 
 	re.SetColor( NULL );
@@ -646,7 +644,6 @@ void Con_DrawSolidConsole( float frac ) {
 //	qhandle_t		conShader;
 	int				currentColor;
 	vec4_t			color;
-	int				charHeight, charWidth;
 
 	lines = cls.glconfig.vidHeight * frac;
 	if (lines <= 0)
@@ -674,9 +671,6 @@ void Con_DrawSolidConsole( float frac ) {
 	color[3] = 1;
 	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
 
-	charHeight = floor( SMALLCHAR_HEIGHT * con.textscale );
-	charWidth = floor( SMALLCHAR_WIDTH * con.textscale );
-
 	// draw the version number
 
 	re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
@@ -684,16 +678,16 @@ void Con_DrawSolidConsole( float frac ) {
 	i = strlen( Q3_VERSION );
 
 	for (x=0 ; x<i ; x++) {
-		SCR_DrawScaledSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * charWidth,
-			lines - charHeight, con.textscale, Q3_VERSION[x] );
+		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * con.charWidth,
+			lines - con.charHeight, con.charWidth, con.charHeight, Q3_VERSION[x] );
 	}
 
 
 	// draw the text
 	con.vislines = lines;
-	rows = (lines-charHeight)/charHeight;		// rows of text to draw
+	rows = (lines-con.charHeight)/con.charHeight;		// rows of text to draw
 
-	y = lines - (charHeight*3);
+	y = lines - (con.charHeight*3);
 
 	// draw from the bottom up
 	if (con.display != con.current)
@@ -701,8 +695,8 @@ void Con_DrawSolidConsole( float frac ) {
 	// draw arrows to show the buffer is backscrolled
 		re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
 		for (x=0 ; x<con.linewidth ; x+=4)
-			SCR_DrawScaledSmallChar( con.xadjust + (x+1)*charWidth, y, con.textscale, '^' );
-		y -= charHeight;
+			SCR_DrawSmallChar( con.xadjust + (x+1)*con.charWidth, y, con.charWidth, con.charHeight, '^' );
+		y -= con.charHeight;
 		rows--;
 	}
 	
@@ -715,7 +709,7 @@ void Con_DrawSolidConsole( float frac ) {
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
 
-	for (i=0 ; i<rows ; i++, y -= charHeight, row--)
+	for (i=0 ; i<rows ; i++, y -= con.charHeight, row--)
 	{
 		if (row < 0)
 			break;
@@ -735,7 +729,7 @@ void Con_DrawSolidConsole( float frac ) {
 				currentColor = ColorIndexForNumber( text[x]>>8 );
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawScaledSmallChar(  con.xadjust + (x+1)*charWidth, y, con.textscale, text[x] & 0xff );
+			SCR_DrawSmallChar(  con.xadjust + (x+1)*con.charWidth, y, con.charWidth, con.charHeight, text[x] & 0xff );
 		}
 	}
 
@@ -755,13 +749,25 @@ Con_DrawConsole
 void Con_DrawConsole( void ) {
 
 	if ( con_textscale->value == -1.0f ) {
-		con.textscale = cls.glconfig.vidHeight / ( CON_TEXT_LINE_COUNT * SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT );
-		//aligning to 4 pixels to avoid any unsmooth text
-		con.textscale = floor( con.textscale * 100 ) / 100.0f - ( (int)floor( con.textscale * 100 ) % 25 ) / 100.0f;
-		if( con.textscale < 1.0f )
-			con.textscale = 1.0f;
+		float charWidth, charHeight;
+
+		charWidth = SMALLCHAR_WIDTH;
+		charHeight = SMALLCHAR_HEIGHT;
+
+		SCR_AdjustFrom640( NULL, NULL, &charWidth, &charHeight );
+
+		con.charWidth = floor( charWidth );
+		con.charHeight = floor( charHeight );
+
 	} else {
-		con.textscale = con_textscale->value;
+		con.charWidth = floor( SMALLCHAR_WIDTH * con_textscale->value );
+		con.charHeight = floor( SMALLCHAR_HEIGHT * con_textscale->value );
+	}
+	if ( con.charWidth < 1 ) {
+		con.charWidth = SMALLCHAR_WIDTH;
+	}
+	if ( con.charHeight < 1 ) {
+		con.charHeight = SMALLCHAR_HEIGHT;
 	}
 
 	// check for console width changes from a vid mode change
