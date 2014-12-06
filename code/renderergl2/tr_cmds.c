@@ -66,8 +66,8 @@ void R_PerformanceCounters( void ) {
 	}
 	else if (r_speeds->integer == 7 )
 	{
-		ri.Printf( PRINT_ALL, "VBO draws: static %i dynamic %i\nMultidraws: %i merged %i\n",
-			backEnd.pc.c_staticVboDraws, backEnd.pc.c_dynamicVboDraws, backEnd.pc.c_multidraws, backEnd.pc.c_multidrawsMerged );
+		ri.Printf( PRINT_ALL, "VAO draws: static %i dynamic %i\nMultidraws: %i merged %i\n",
+			backEnd.pc.c_staticVaoDraws, backEnd.pc.c_dynamicVaoDraws, backEnd.pc.c_multidraws, backEnd.pc.c_multidrawsMerged );
 		ri.Printf( PRINT_ALL, "GLSL binds: %i  draws: gen %i light %i fog %i dlight %i\n",
 			backEnd.pc.c_glslShaderBinds, backEnd.pc.c_genericDraws, backEnd.pc.c_lightallDraws, backEnd.pc.c_fogDraws, backEnd.pc.c_dlightDraws);
 	}
@@ -425,7 +425,6 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 				backEnd.colorMask[1] = GL_FALSE;
 				backEnd.colorMask[2] = GL_FALSE;
 				backEnd.colorMask[3] = GL_FALSE;
-				qglClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 								
 				if (glRefConfig.framebufferObject)
 				{

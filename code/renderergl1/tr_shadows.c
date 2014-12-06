@@ -44,6 +44,7 @@ typedef struct {
 static	edgeDef_t	edgeDefs[SHADER_MAX_VERTEXES][MAX_EDGE_DEFS];
 static	int			numEdgeDefs[SHADER_MAX_VERTEXES];
 static	int			facing[SHADER_MAX_INDEXES/3];
+static	vec3_t		shadowXyz[SHADER_MAX_VERTEXES];
 
 void R_AddEdgeDef( int i1, int i2, int facing ) {
 	int		c;
@@ -80,13 +81,13 @@ void R_RenderShadowEdges( void ) {
 
 		qglBegin( GL_TRIANGLE_STRIP );
 		qglVertex3fv( tess.xyz[ i1 ] );
-		qglVertex3fv( tess.xyz[ i1 + tess.numVertexes ] );
+		qglVertex3fv( shadowXyz[ i1 ] );
 		qglVertex3fv( tess.xyz[ i2 ] );
-		qglVertex3fv( tess.xyz[ i2 + tess.numVertexes ] );
+		qglVertex3fv( shadowXyz[ i2 ] );
 		qglVertex3fv( tess.xyz[ i3 ] );
-		qglVertex3fv( tess.xyz[ i3 + tess.numVertexes ] );
+		qglVertex3fv( shadowXyz[ i3 ] );
 		qglVertex3fv( tess.xyz[ i1 ] );
-		qglVertex3fv( tess.xyz[ i1 + tess.numVertexes ] );
+		qglVertex3fv( shadowXyz[ i1 ] );
 		qglEnd();
 	}
 #else
@@ -126,9 +127,9 @@ void R_RenderShadowEdges( void ) {
 			if ( hit[ 1 ] == 0 ) {
 				qglBegin( GL_TRIANGLE_STRIP );
 				qglVertex3fv( tess.xyz[ i ] );
-				qglVertex3fv( tess.xyz[ i + tess.numVertexes ] );
+				qglVertex3fv( shadowXyz[ i ] );
 				qglVertex3fv( tess.xyz[ i2 ] );
-				qglVertex3fv( tess.xyz[ i2 + tess.numVertexes ] );
+				qglVertex3fv( shadowXyz[ i2 ] );
 				qglEnd();
 				c_edges++;
 			} else {
@@ -157,11 +158,6 @@ void RB_ShadowTessEnd( void ) {
 	vec3_t	lightDir;
 	GLboolean rgba[4];
 
-	// we can only do this if we have enough space in the vertex buffers
-	if ( tess.numVertexes >= SHADER_MAX_VERTEXES / 2 ) {
-		return;
-	}
-
 	if ( glConfig.stencilBits < 4 ) {
 		return;
 	}
@@ -170,7 +166,7 @@ void RB_ShadowTessEnd( void ) {
 
 	// project vertexes away from light direction
 	for ( i = 0 ; i < tess.numVertexes ; i++ ) {
-		VectorMA( tess.xyz[i], -512, lightDir, tess.xyz[i+tess.numVertexes] );
+		VectorMA( tess.xyz[i], -512, lightDir, shadowXyz[i] );
 	}
 
 	// decide which triangles face the light
@@ -211,7 +207,6 @@ void RB_ShadowTessEnd( void ) {
 	// draw the silhouette edges
 
 	GL_Bind( tr.whiteImage );
-	qglEnable( GL_CULL_FACE );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
 	qglColor3f( 0.2f, 0.2f, 0.2f );
 
@@ -222,28 +217,15 @@ void RB_ShadowTessEnd( void ) {
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	// mirrors have the culling order reversed
-	if ( backEnd.viewParms.isMirror ) {
-		qglCullFace( GL_FRONT );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
+	GL_Cull( CT_BACK_SIDED );
+	qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
 
-		R_RenderShadowEdges();
+	R_RenderShadowEdges();
 
-		qglCullFace( GL_BACK );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
+	GL_Cull( CT_FRONT_SIDED );
+	qglStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
 
-		R_RenderShadowEdges();
-	} else {
-		qglCullFace( GL_BACK );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
-
-		R_RenderShadowEdges();
-
-		qglCullFace( GL_FRONT );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
-
-		R_RenderShadowEdges();
-	}
+	R_RenderShadowEdges();
 
 
 	// reenable writing to the color buffer
@@ -272,7 +254,7 @@ void RB_ShadowFinish( void ) {
 	qglStencilFunc( GL_NOTEQUAL, 0, 255 );
 
 	qglDisable (GL_CLIP_PLANE0);
-	qglDisable (GL_CULL_FACE);
+	GL_Cull( CT_TWO_SIDED );
 
 	GL_Bind( tr.whiteImage );
 

@@ -101,9 +101,11 @@ cvar_t  *r_ext_multi_draw_arrays;
 cvar_t  *r_ext_framebuffer_object;
 cvar_t  *r_ext_texture_float;
 cvar_t  *r_arb_half_float_pixel;
+cvar_t  *r_arb_half_float_vertex;
 cvar_t  *r_ext_framebuffer_multisample;
 cvar_t  *r_arb_seamless_cube_map;
 cvar_t  *r_arb_vertex_type_2_10_10_10_rev;
+cvar_t  *r_arb_vertex_array_object;
 
 cvar_t  *r_mergeMultidraws;
 cvar_t  *r_mergeLeafSurfaces;
@@ -943,16 +945,20 @@ void GL_SetDefaultState( void )
 	// make sure our GL state vector is set correctly
 	//
 	glState.glStateBits = GLS_DEPTHTEST_DISABLE | GLS_DEPTHMASK_TRUE;
+	glState.storedGlState = 0;
+	glState.faceCulling = CT_TWO_SIDED;
+	glState.faceCullFront = qtrue;
 
-	glState.vertexAttribsState = 0;
-	glState.vertexAttribPointersSet = 0;
 	glState.currentProgram = 0;
 	qglUseProgramObjectARB(0);
 
+	if (glRefConfig.vertexArrayObject)
+		qglBindVertexArrayARB(0);
+
 	qglBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	qglBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-	glState.currentVBO = NULL;
-	glState.currentIBO = NULL;
+	glState.currentVao = NULL;
+	glState.vertexAttribsEnabled = 0;
 
 	qglPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
 	qglDepthMask( GL_TRUE );
@@ -963,6 +969,11 @@ void GL_SetDefaultState( void )
 
 	if (glRefConfig.seamlessCubeMap)
 		qglEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+	// GL_POLYGON_OFFSET_FILL will be glEnable()d when this is used
+	qglPolygonOffset( r_offsetFactor->value, r_offsetUnits->value );
+
+	qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	// FIXME: get color of sky
 }
 
 /*
@@ -1133,9 +1144,11 @@ void R_Register( void )
 	r_ext_framebuffer_object = ri.Cvar_Get( "r_ext_framebuffer_object", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_texture_float = ri.Cvar_Get( "r_ext_texture_float", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_half_float_pixel = ri.Cvar_Get( "r_arb_half_float_pixel", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_arb_half_float_vertex = ri.Cvar_Get( "r_arb_half_float_vertex", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_framebuffer_multisample = ri.Cvar_Get( "r_ext_framebuffer_multisample", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_seamless_cube_map = ri.Cvar_Get( "r_arb_seamless_cube_map", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_vertex_type_2_10_10_10_rev = ri.Cvar_Get( "r_arb_vertex_type_2_10_10_10_rev", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_arb_vertex_array_object = ri.Cvar_Get( "r_arb_vertex_array_object", "1", CVAR_ARCHIVE | CVAR_LATCH);
 
 	r_ext_texture_filter_anisotropic = ri.Cvar_Get( "r_ext_texture_filter_anisotropic",
 			"0", CVAR_ARCHIVE | CVAR_LATCH );
@@ -1442,7 +1455,7 @@ void R_Init( void ) {
 
 	GLSL_InitGPUShaders();
 
-	R_InitVBOs();
+	R_InitVaos();
 
 	R_InitShaders();
 
@@ -1492,7 +1505,7 @@ void RE_Shutdown( qboolean destroyWindow ) {
 		if (glRefConfig.framebufferObject)
 			FBO_Shutdown();
 		R_DeleteTextures();
-		R_ShutdownVBOs();
+		R_ShutdownVaos();
 		GLSL_ShutdownGPUShaders();
 	}
 

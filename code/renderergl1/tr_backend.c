@@ -474,7 +474,7 @@ void RB_BeginDrawingView (void) {
 	// clip to the plane of the portal
 	if ( backEnd.viewParms.isPortal ) {
 		float	plane[4];
-		double	plane2[4];
+		GLdouble	plane2[4];
 
 		plane[0] = backEnd.viewParms.portalPlane.normal[0];
 		plane[1] = backEnd.viewParms.portalPlane.normal[1];
@@ -710,7 +710,7 @@ void	RB_SetGL2D (void) {
 			  GLS_SRCBLEND_SRC_ALPHA |
 			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 
-	qglDisable( GL_CULL_FACE );
+	GL_Cull( CT_TWO_SIDED );
 	qglDisable( GL_CLIP_PLANE0 );
 
 	// set time for 2D shaders

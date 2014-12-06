@@ -178,6 +178,12 @@ void (APIENTRY * qglRenderbufferStorageMultisampleEXT)(GLenum target, GLsizei sa
 // GL_ARB_draw_buffers
 void (APIENTRY * qglDrawBuffersARB)(GLsizei n, const GLenum *bufs);
 
+// GL_ARB_vertex_array_object
+void (APIENTRY * qglBindVertexArrayARB)(GLuint array);
+void (APIENTRY * qglDeleteVertexArraysARB)(GLsizei n, const GLuint *arrays);
+void (APIENTRY * qglGenVertexArraysARB)(GLsizei n, GLuint *arrays);
+GLboolean (APIENTRY * qglIsVertexArrayARB)(GLuint array);
+
 static qboolean GLimp_HaveExtension(const char *ext)
 {
 	const char *ptr = Q_stristr( glConfig.extensions_string, ext );
@@ -667,11 +673,11 @@ void GLimp_InitExtraExtensions()
 
 	// GL_ARB_vertex_type_2_10_10_10_rev
 	extension = "GL_ARB_vertex_type_2_10_10_10_rev";
-	glRefConfig.packedNormalDataType = GL_UNSIGNED_BYTE;
+	glRefConfig.packedNormalDataType = GL_BYTE;
 	if( GLimp_HaveExtension( extension ) )
 	{
 		if (r_arb_vertex_type_2_10_10_10_rev->integer)
-			glRefConfig.packedNormalDataType = GL_UNSIGNED_INT_2_10_10_10_REV;
+			glRefConfig.packedNormalDataType = GL_INT_2_10_10_10_REV;
 
 		ri.Printf(PRINT_ALL, result[r_arb_vertex_type_2_10_10_10_rev->integer ? 1 : 0], extension);
 	}
@@ -682,4 +688,48 @@ void GLimp_InitExtraExtensions()
 
 	// use float lightmaps?
 	glRefConfig.floatLightmap = (glRefConfig.textureFloat && glRefConfig.halfFloatPixel && r_floatLightmap->integer && r_hdr->integer);
+
+	// GL_ARB_vertex_array_object
+	extension = "GL_ARB_vertex_array_object";
+	glRefConfig.vertexArrayObject = qfalse;
+	if( GLimp_HaveExtension( extension ) )
+	{
+		qglBindVertexArrayARB = (void *) SDL_GL_GetProcAddress("glBindVertexArray");
+		qglDeleteVertexArraysARB = (void *) SDL_GL_GetProcAddress("glDeleteVertexArrays");
+		qglGenVertexArraysARB = (void *) SDL_GL_GetProcAddress("glGenVertexArrays");
+		qglIsVertexArrayARB = (void *) SDL_GL_GetProcAddress("glIsVertexArray");
+
+		if (r_arb_vertex_array_object->integer)
+			glRefConfig.vertexArrayObject = qtrue;
+
+		ri.Printf(PRINT_ALL, result[glRefConfig.vertexArrayObject ? 1 : 0], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
+	// GL_ARB_half_float_vertex
+	extension = "GL_ARB_half_float_vertex";
+	glRefConfig.packedTexcoordDataType = GL_FLOAT;
+	glRefConfig.packedTexcoordDataSize = sizeof(float) * 2;
+	glRefConfig.packedColorDataType    = GL_FLOAT;
+	glRefConfig.packedColorDataSize    = sizeof(float) * 4;
+	if( GLimp_HaveExtension( extension ) )
+	{
+		if (r_arb_half_float_vertex->integer)
+		{
+			glRefConfig.packedTexcoordDataType = GL_HALF_FLOAT;
+			glRefConfig.packedTexcoordDataSize = sizeof(uint16_t) * 2;
+			glRefConfig.packedColorDataType    = GL_HALF_FLOAT;
+			glRefConfig.packedColorDataSize    = sizeof(uint16_t) * 4;
+		}
+
+		ri.Printf(PRINT_ALL, result[r_arb_half_float_vertex->integer ? 1 : 0], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
 }
