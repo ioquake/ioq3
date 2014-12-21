@@ -440,7 +440,7 @@ CG_MapRestart
 The server has issued a map_restart, so the next snapshot
 is completely new and should not be interpolated to.
 
-A tournement restart will clear everything, but doesn't
+A tournament restart will clear everything, but doesn't
 require a reload of all the media
 ===============
 */

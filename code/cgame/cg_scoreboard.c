@@ -446,7 +446,7 @@ static void CG_CenterGiantLine( float y, const char *string ) {
 =================
 CG_DrawTourneyScoreboard
 
-Draw the oversize scoreboard for tournements
+Draw the oversize scoreboard for tournaments
 =================
 */
 void CG_DrawOldTourneyScoreboard( void ) {

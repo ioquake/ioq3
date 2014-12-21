@@ -42,7 +42,7 @@ static		int	markTotal;
 ===================
 CG_InitMarkPolys
 
-This is called at startup and for tournement restarts
+This is called at startup and for tournament restarts
 ===================
 */
 void	CG_InitMarkPolys( void ) {

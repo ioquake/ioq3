@@ -991,7 +991,7 @@ typedef struct {
 
 // The client game static (cgs) structure hold everything
 // loaded or calculated from the gamestate.  It will NOT
-// be cleared when a tournement restart is done, allowing
+// be cleared when a tournament restart is done, allowing
 // all clients to begin playing instantly
 typedef struct {
 	gameState_t		gameState;			// gamestate from server
