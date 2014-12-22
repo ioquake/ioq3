@@ -688,7 +688,7 @@ aas_trace_t AAS_TraceClientBBox(vec3_t start, vec3_t end, int presencetype,
 			side = front < 0;
 			//first put the end part of the line on the stack (back side)
 			VectorCopy(cur_mid, tstack_p->start);
-			//not necesary to store because still on stack
+			//not necessary to store because still on stack
 			//VectorCopy(cur_end, tstack_p->end);
 			tstack_p->planenum = aasnode->planenum;
 			tstack_p->nodenum = aasnode->children[!side];
@@ -874,7 +874,7 @@ int AAS_TraceAreas(vec3_t start, vec3_t end, int *areas, vec3_t *points, int max
 			side = front < 0;
 			//first put the end part of the line on the stack (back side)
 			VectorCopy(cur_mid, tstack_p->start);
-			//not necesary to store because still on stack
+			//not necessary to store because still on stack
 			//VectorCopy(cur_end, tstack_p->end);
 			tstack_p->planenum = aasnode->planenum;
 			tstack_p->nodenum = aasnode->children[!side];
