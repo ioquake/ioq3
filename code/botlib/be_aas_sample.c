@@ -959,7 +959,7 @@ qboolean AAS_InsideFace(aas_face_t *face, vec3_t pnormal, vec3_t point, float ep
 		//edge) and through both the edge vector and the normal vector
 		//of the plane
 		AAS_OrthogonalToVectors(edgevec, pnormal, sepnormal);
-		//check on wich side of the above plane the point is
+		//check on which side of the above plane the point is
 		//this is done by checking the sign of the dot product of the
 		//vector orthogonal vector from above and the vector from the
 		//origin (first vertex of edge) to the point 
