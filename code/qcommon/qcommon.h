@@ -638,7 +638,7 @@ int		FS_GetModList(  char *listbuf, int bufsize );
 fileHandle_t	FS_FOpenFileWrite( const char *qpath );
 fileHandle_t	FS_FOpenFileAppend( const char *filename );
 fileHandle_t	FS_FCreateOpenPipeFile( const char *filename );
-// will properly create any needed paths and deal with seperater character issues
+// will properly create any needed paths and deal with separater character issues
 
 fileHandle_t FS_SV_FOpenFileWrite( const char *filename );
 long		FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp );

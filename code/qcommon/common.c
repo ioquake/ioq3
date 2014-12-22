@@ -377,7 +377,7 @@ void Com_Quit_f( void ) {
 
 COMMAND LINE FUNCTIONS
 
-+ characters seperate the commandLine string into multiple console
++ characters separate the commandLine string into multiple console
 command lines.
 
 All of these are valid:
@@ -486,7 +486,7 @@ void Com_StartupVariable( const char *match ) {
 Com_AddStartupCommands
 
 Adds command line parameters as script statements
-Commands are seperated by + signs
+Commands are separated by + signs
 
 Returns qtrue if any late commands were added, which
 will keep the demoloop from immediately starting

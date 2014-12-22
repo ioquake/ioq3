@@ -740,7 +740,7 @@ static void ProjectDlightTexture_scalar( void ) {
 static void ProjectDlightTexture( void ) {
 #if idppc_altivec
 	if (com_altivec->integer) {
-		// must be in a seperate function or G3 systems will crash.
+		// must be in a separate function or G3 systems will crash.
 		ProjectDlightTexture_altivec();
 		return;
 	}

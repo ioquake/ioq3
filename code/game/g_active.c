@@ -279,7 +279,7 @@ void	G_TouchTriggers( gentity_t *ent ) {
 			}
 		}
 
-		// use seperate code for determining if an item is picked up
+		// use separate code for determining if an item is picked up
 		// so you don't have to actually contact its bounding box
 		if ( hit->s.eType == ET_ITEM ) {
 			if ( !BG_PlayerTouchesItem( &ent->client->ps, &hit->s, level.time ) ) {

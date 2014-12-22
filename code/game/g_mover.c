@@ -718,7 +718,7 @@ void InitMover( gentity_t *ent ) {
 	qboolean	lightSet, colorSet;
 	char		*sound;
 
-	// if the "model2" key is set, use a seperate model
+	// if the "model2" key is set, use a separate model
 	// for drawing, but clip against the brushes
 	if ( ent->model2 ) {
 		ent->s.modelindex2 = G_ModelIndex( ent->model2 );

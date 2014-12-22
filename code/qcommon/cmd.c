@@ -489,7 +489,7 @@ void Cmd_Args_Sanitize(void)
 Cmd_TokenizeString
 
 Parses the given string into command line tokens.
-The text is copied to a seperate buffer and 0 characters
+The text is copied to a separate buffer and 0 characters
 are inserted in the apropriate place, The argv array
 will point into this temporary buffer.
 ============
