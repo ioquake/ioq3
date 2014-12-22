@@ -1980,7 +1980,7 @@ bot_moveresult_t BotTravel_Ladder(bot_movestate_t *ms, aas_reachability_t *reach
 		//elementary action
 		EA_Move(ms->client, origin, 0);
 		EA_MoveForward(ms->client);
-		//set movement view flag so the AI can see the view is focussed
+		//set movement view flag so the AI can see the view is focused
 		result.flags |= MOVERESULT_MOVEMENTVIEW;
 	} //end if
 /*	else
