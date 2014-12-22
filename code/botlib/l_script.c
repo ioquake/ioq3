@@ -99,7 +99,7 @@ punctuation_t default_punctuations[] =
 	{"<=",P_LOGIC_LEQ, NULL},
 	{"==",P_LOGIC_EQ, NULL},
 	{"!=",P_LOGIC_UNEQ, NULL},
-	//arithmatic operators
+	//arithmetic operators
 	{"*=",P_MUL_ASSIGN, NULL},
 	{"/=",P_DIV_ASSIGN, NULL},
 	{"%=",P_MOD_ASSIGN, NULL},
@@ -118,7 +118,7 @@ punctuation_t default_punctuations[] =
 	//C++
 	{"::",P_CPP1, NULL},
 	{".*",P_CPP2, NULL},
-	//arithmatic operators
+	//arithmetic operators
 	{"*",P_MUL, NULL},
 	{"/",P_DIV, NULL},
 	{"%",P_MOD, NULL},
