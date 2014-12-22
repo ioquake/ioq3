@@ -699,7 +699,7 @@ aas_trace_t AAS_TraceClientBBox(vec3_t start, vec3_t end, int presencetype,
 				return trace;
 			} //end if
 			//now put the part near the start of the line on the stack so we will
-			//continue with thats part first. This way we'll find the first
+			//continue with that part first. This way we'll find the first
 			//hit of the bbox
 			VectorCopy(cur_start, tstack_p->start);
 			VectorCopy(cur_mid, tstack_p->end);
@@ -885,7 +885,7 @@ int AAS_TraceAreas(vec3_t start, vec3_t end, int *areas, vec3_t *points, int max
 				return numareas;
 			} //end if
 			//now put the part near the start of the line on the stack so we will
-			//continue with thats part first. This way we'll find the first
+			//continue with that part first. This way we'll find the first
 			//hit of the bbox
 			VectorCopy(cur_start, tstack_p->start);
 			VectorCopy(cur_mid, tstack_p->end);
