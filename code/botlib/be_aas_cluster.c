@@ -1479,7 +1479,7 @@ void AAS_InitClustering(void)
 	AAS_RemoveClusterAreas();
 	//find possible cluster portals
 	AAS_FindPossiblePortals();
-	//craete portals to for the bot view
+	//create portals to for the bot view
 	AAS_CreateViewPortals();
 	//remove all portals that are not closing a cluster
 	//AAS_RemoveNotClusterClosingPortals();
