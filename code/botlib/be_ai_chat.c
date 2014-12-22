@@ -557,7 +557,7 @@ void StringReplaceWords(char *string, char *synonym, char *replacement)
 	while(str)
 	{
 		//if the synonym isn't part of the replacement which is already in the string
-		//usefull for abreviations
+		//useful for abreviations
 		str2 = StringContainsWord(string, replacement, qfalse);
 		while(str2)
 		{
