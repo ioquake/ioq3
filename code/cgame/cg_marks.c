@@ -82,7 +82,7 @@ void CG_FreeMarkPoly( markPoly_t *le ) {
 ===================
 CG_AllocMark
 
-Will allways succeed, even if it requires freeing an old active mark
+Will always succeed, even if it requires freeing an old active mark
 ===================
 */
 markPoly_t	*CG_AllocMark( void ) {

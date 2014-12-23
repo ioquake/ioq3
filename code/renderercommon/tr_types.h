@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	REFENTITYNUM_WORLD	((1<<REFENTITYNUM_BITS) - 1)
 
 // renderfx flags
-#define	RF_MINLIGHT		0x0001		// allways have some light (viewmodel, some items)
+#define	RF_MINLIGHT		0x0001		// always have some light (viewmodel, some items)
 #define	RF_THIRD_PERSON		0x0002		// don't draw through eyes, only mirrors (player bodies, chat sprites)
 #define	RF_FIRST_PERSON		0x0004		// only draw through eyes (view weapon, damage blood blob)
 #define	RF_DEPTHHACK		0x0008		// for view weapon Z crunching

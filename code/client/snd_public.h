@@ -58,7 +58,7 @@ void S_DisableSounds( void );
 
 void S_BeginRegistration( void );
 
-// RegisterSound will allways return a valid sample, even if it
+// RegisterSound will always return a valid sample, even if it
 // has to create a placeholder.  This prevents continuous filesystem
 // checks for missing files
 sfxHandle_t	S_RegisterSound( const char *sample, qboolean compressed );

@@ -1040,7 +1040,7 @@ typedef struct {
 
 // sound channels
 // channel 0 never willingly overrides
-// other channels will allways override a playing sound on that channel
+// other channels will always override a playing sound on that channel
 typedef enum {
 	CHAN_AUTO,
 	CHAN_LOCAL,		// menu sounds, etc
