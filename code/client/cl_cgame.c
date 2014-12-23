@@ -1036,7 +1036,7 @@ void CL_SetCGameTime( void ) {
 	}
 
 	// if we are playing a demo back, we can just keep reading
-	// messages from the demo file until the cgame definately
+	// messages from the demo file until the cgame definitely
 	// has valid snapshots to interpolate between
 
 	// a timedemo will always use a deterministic set of time samples

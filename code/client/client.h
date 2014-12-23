@@ -121,7 +121,7 @@ typedef struct {
 
 	// cmds[cmdNumber] is the predicted command, [cmdNumber-1] is the last
 	// properly generated command
-	usercmd_t	cmds[CMD_BACKUP];	// each mesage will send several old cmds
+	usercmd_t	cmds[CMD_BACKUP];	// each message will send several old cmds
 	int			cmdNumber;			// incremented each frame, because multiple
 									// frames may need to be packed into a single packet
 
