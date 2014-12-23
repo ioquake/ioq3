@@ -1654,7 +1654,7 @@ static void CG_DrawLagometer( void ) {
 
 	vscale = range / MAX_LAGOMETER_RANGE;
 
-	// draw the frame interpoalte / extrapolate graph
+	// draw the frame interpolate / extrapolate graph
 	for ( a = 0 ; a < aw ; a++ ) {
 		i = ( lagometer.frameCount - 1 - a ) & (LAG_SAMPLES - 1);
 		v = lagometer.frameSamples[i];
