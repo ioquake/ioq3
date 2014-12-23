@@ -54,7 +54,7 @@ typedef struct {
 
 	int				messageNum;		// copied from netchan->incoming_sequence
 	int				deltaNum;		// messageNum the delta is from
-	int				ping;			// time from when cmdNum-1 was sent to time packet was reeceived
+	int				ping;			// time from when cmdNum-1 was sent to time packet was received
 	byte			areamask[MAX_MAP_AREA_BYTES];		// portalarea visibility bits
 
 	int				cmdNum;			// the next cmdNum the server is expecting
