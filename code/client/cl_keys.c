@@ -889,7 +889,7 @@ void Key_SetBinding( int keynum, const char *binding ) {
 	keys[keynum].binding = CopyString( binding );
 
 	// consider this like modifying an archived cvar, so the
-	// file write will be triggered at the next oportunity
+	// file write will be triggered at the next opportunity
 	cvar_modifiedFlags |= CVAR_ARCHIVE;
 }
 
