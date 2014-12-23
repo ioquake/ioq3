@@ -1279,7 +1279,7 @@ void Reached_Train( gentity_t *ent ) {
 	vec3_t			move;
 	float			length;
 
-	// copy the apropriate values
+	// copy the appropriate values
 	next = ent->nextTrain;
 	if ( !next || !next->nextTrain ) {
 		return;		// just stop

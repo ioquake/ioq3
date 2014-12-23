@@ -1270,7 +1270,7 @@ void CL_KeyDownEvent( int key, unsigned time )
 	// send the bound action
 	CL_ParseBinding( key, qtrue, time );
 
-	// distribute the key down event to the apropriate handler
+	// distribute the key down event to the appropriate handler
 	if ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) {
 		Console_Key( key );
 	} else if ( Key_GetCatcher( ) & KEYCATCH_UI ) {
@@ -1352,7 +1352,7 @@ void CL_CharEvent( int key ) {
 		return;
 	}
 
-	// distribute the key down event to the apropriate handler
+	// distribute the key down event to the appropriate handler
 	if ( Key_GetCatcher( ) & KEYCATCH_CONSOLE )
 	{
 		Field_CharEvent( &g_consoleField, key );
