@@ -141,7 +141,7 @@ void PC_RemoveAllGlobalDefines(void);
 void PC_AddBuiltinDefines(source_t *source);
 //set the source include path
 void PC_SetIncludePath(source_t *source, char *path);
-//set the punction set
+//set the punctuation set
 void PC_SetPunctuations(source_t *source, punctuation_t *p);
 //set the base folder to load files from
 void PC_SetBaseFolder(char *path);
