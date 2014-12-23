@@ -2255,7 +2255,7 @@ void S_AL_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int 
 	lastListenerNumber = entityNum;
 	VectorCopy( sorigin, lastListenerOrigin );
 
-	// Set OpenAL listener paramaters
+	// Set OpenAL listener parameters
 	qalListenerfv(AL_POSITION, (ALfloat *)sorigin);
 	qalListenerfv(AL_VELOCITY, vec3_origin);
 	qalListenerfv(AL_ORIENTATION, orientation);
