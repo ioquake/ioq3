@@ -982,7 +982,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		slash = strchr( newInfo.modelName, '/' );
 		if ( !slash ) {
-			// modelName didn not include a skin name
+			// modelName did not include a skin name
 			Q_strncpyz( newInfo.skinName, "default", sizeof( newInfo.skinName ) );
 		} else {
 			Q_strncpyz( newInfo.skinName, slash + 1, sizeof( newInfo.skinName ) );
@@ -1026,7 +1026,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		slash = strchr( newInfo.headModelName, '/' );
 		if ( !slash ) {
-			// modelName didn not include a skin name
+			// modelName did not include a skin name
 			Q_strncpyz( newInfo.headSkinName, "default", sizeof( newInfo.headSkinName ) );
 		} else {
 			Q_strncpyz( newInfo.headSkinName, slash + 1, sizeof( newInfo.headSkinName ) );
