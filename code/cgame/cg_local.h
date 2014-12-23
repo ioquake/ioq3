@@ -293,7 +293,7 @@ typedef struct {
 	int				accuracy;
 	int				impressiveCount;
 	int				excellentCount;
-	int				guantletCount;
+	int				gauntletCount;
 	int				defendCount;
 	int				assistCount;
 	int				captures;
