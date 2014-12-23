@@ -69,7 +69,7 @@ int ReadStructure(source_t *source, structdef_t *def, char *structure);
 int WriteStructure(FILE *fp, structdef_t *def, char *structure);
 //writes indents
 int WriteIndent(FILE *fp, int indent);
-//writes a float without traling zeros
+//writes a float without trailing zeros
 int WriteFloat(FILE *fp, float value);
 
 
