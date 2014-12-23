@@ -381,7 +381,7 @@ void CG_UpdateCvars( void ) {
 		trap_Cvar_Update( cv->vmCvar );
 	}
 
-	// check for modications here
+	// check for modifications here
 
 	// If team overlay is on, ask for updates from the server.  If it's off,
 	// let the server know so we don't receive it
