@@ -162,7 +162,7 @@ typedef struct {
 
 
 
-// centity_t have a direct corespondence with gentity_t in the game, but
+// centity_t have a direct correspondence with gentity_t in the game, but
 // only the entityState_t is directly communicated to the cgame
 typedef struct centity_s {
 	entityState_t	currentState;	// from cg.frame
