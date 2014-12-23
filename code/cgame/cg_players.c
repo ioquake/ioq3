@@ -1042,7 +1042,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		forceDefer = trap_MemoryRemaining() < 4000000;
 
-		// if we are defering loads, just have it pick the first valid
+		// if we are deferring loads, just have it pick the first valid
 		if ( forceDefer || (cg_deferPlayers.integer && !cg_buildScript.integer && !cg.loading ) ) {
 			// keep whatever they had if it won't violate team skins
 			CG_SetDeferredClientInfo( clientNum, &newInfo );
