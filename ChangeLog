@@ -433,9 +433,9 @@
 		
 2002-8-05 Timothee Besset <ttimo@idsoftware.com>
 	+ removed sv_allowanonymous, was dummy and polluting the serverinfo
-		(sv_allowanonymous was designed to flag wether server was public or not, but that's replaced by g_needpass)
+		(sv_allowanonymous was designed to flag whether server was public or not, but that's replaced by g_needpass)
 	+ https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=514
-		sv_strictAuth (default 1): server variable to control wether strict CDKEY auth should be performed
+		sv_strictAuth (default 1): server variable to control whether strict CDKEY auth should be performed
 			this is required if you want reliable cl_guid on the server
 		extended the getIpAuthorize (server->auth message) syntax
 		sending the fs_game at all times (default 'baseq3'), dummy sv_allowAnonymous 0, strict auth flag

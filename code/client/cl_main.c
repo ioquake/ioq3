@@ -2267,7 +2267,7 @@ void CL_InitDownloads(void) {
     if (FS_ComparePaks( missingfiles, sizeof( missingfiles ), qfalse ) )
     {      
       // NOTE TTimo I would rather have that printed as a modal message box
-      //   but at this point while joining the game we don't know wether we will successfully join or not
+      //   but at this point while joining the game we don't know whether we will successfully join or not
       Com_Printf( "\nWARNING: You are missing some files referenced by the server:\n%s"
                   "You might not be able to join the game\n"
                   "Go to the setting menu to turn on autodownload, or get the file elsewhere\n\n", missingfiles );

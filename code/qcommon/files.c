@@ -286,7 +286,7 @@ typedef struct {
 static fileHandleData_t	fsh[MAX_FILE_HANDLES];
 
 // TTimo - https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=540
-// wether we did a reorder on the current search path when joining the server
+// whether we did a reorder on the current search path when joining the server
 static qboolean fs_reordered;
 
 // never load anything from pk3 files that are not present at the server when pure
@@ -2524,7 +2524,7 @@ int	FS_GetModList( char *listbuf, int bufsize ) {
 			path = FS_BuildOSPath( fs_basepath->string, name, "" );
 			nPaks = 0;
 			pPaks = Sys_ListFiles(path, ".pk3", NULL, &nPaks, qfalse); 
-			Sys_FreeFileList( pPaks ); // we only use Sys_ListFiles to check wether .pk3 files are present
+			Sys_FreeFileList( pPaks ); // we only use Sys_ListFiles to check whether .pk3 files are present
 
 			/* try on home path */
 			if ( nPaks <= 0 )
