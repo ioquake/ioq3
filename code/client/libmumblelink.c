@@ -35,7 +35,11 @@
 #endif
 
 #include <fcntl.h>
+#ifdef WIN32
+#include <stdint.h>
+#else
 #include <inttypes.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
