@@ -3,6 +3,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cpp.h"
+#include <sys/stat.h> //S_IRUSR, S_IWUSR
+#ifdef WIN32
+	#ifndef S_IRUSR
+		#define S_IRUSR _S_IREAD
+	#endif
+	#ifndef S_IWUSR
+		#define S_IWUSR _S_IWRITE
+	#endif
+#endif
+#if defined S_IRUSR && defined S_IWUSR
+	#define DEFAULT_PERM ( S_IRUSR | S_IWUSR )
+#else
+	#define DEFAULT_PERM ( 0666 )
+#endif
 
 extern	int lcc_getopt(int, char *const *, const char *);
 extern	char	*optarg, rcsid[];
@@ -66,7 +80,7 @@ setup(int argc, char **argv)
 			error(FATAL, "Can't open input file %s", fp);
 	}
 	if (optind+1<argc) {
-		int fdo = creat(argv[optind+1], 0666);
+		int fdo = creat(argv[optind+1], DEFAULT_PERM);
 		if (fdo<0)
 			error(FATAL, "Can't open output file %s", argv[optind+1]);
 		dup2(fdo, 1);
