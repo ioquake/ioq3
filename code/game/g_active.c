@@ -627,7 +627,7 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 		case EV_USE_ITEM3:		// kamikaze
 			// make sure the invulnerability is off
 			ent->client->invulnerabilityTime = 0;
-			// start the kamikze
+			// start the kamikaze
 			G_StartKamikaze( ent );
 			break;
 

@@ -1337,7 +1337,7 @@ void BotClearPath(bot_state_t *bs, bot_moveresult_t *moveresult) {
 	bsp_trace_t bsptrace;
 	entityState_t state;
 
-	// if there is a dead body wearing kamikze nearby
+	// if there is a dead body wearing kamikaze nearby
 	if (bs->kamikazebody) {
 		// if the bot's view angles and weapon are not used for movement
 		if ( !(moveresult->flags & (MOVERESULT_MOVEMENTVIEW | MOVERESULT_MOVEMENTWEAPON)) ) {

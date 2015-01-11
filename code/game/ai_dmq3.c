@@ -285,7 +285,7 @@ qboolean EntityHasQuad(aas_entityinfo_t *entinfo) {
 #ifdef MISSIONPACK
 /*
 ==================
-EntityHasKamikze
+EntityHasKamikaze
 ==================
 */
 qboolean EntityHasKamikaze(aas_entityinfo_t *entinfo) {
