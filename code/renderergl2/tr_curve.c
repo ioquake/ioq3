@@ -584,7 +584,7 @@ srfBspSurface_t *R_SubdividePatchToGrid( int width, int height,
 	}
 
 
-	// put all the aproximating points on the curve
+	// put all the approximating points on the curve
 	PutPointsOnCurve( ctrl, width, height );
 
 	// cull out any rows or columns that are colinear
@@ -680,7 +680,7 @@ srfBspSurface_t *R_GridInsertColumn( srfBspSurface_t *grid, int column, int row,
 	for (j = 0; j < grid->height; j++) {
 		errorTable[1][j] = grid->heightLodError[j];
 	}
-	// put all the aproximating points on the curve
+	// put all the approximating points on the curve
 	//PutPointsOnCurve( ctrl, width, height );
 
 	// calculate indexes
@@ -740,7 +740,7 @@ srfBspSurface_t *R_GridInsertRow( srfBspSurface_t *grid, int row, int column, ve
 	for (j = 0; j < grid->width; j++) {
 		errorTable[0][j] = grid->widthLodError[j];
 	}
-	// put all the aproximating points on the curve
+	// put all the approximating points on the curve
 	//PutPointsOnCurve( ctrl, width, height );
 
 	// calculate indexes

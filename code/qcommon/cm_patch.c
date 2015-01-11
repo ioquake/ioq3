@@ -282,7 +282,7 @@ static void CM_SetGridWrapWidth( cGrid_t *grid ) {
 CM_SubdivideGridColumns
 
 Adds columns as necessary to the grid until
-all the aproximating points are within SUBDIVIDE_DISTANCE
+all the approximating points are within SUBDIVIDE_DISTANCE
 from the true curve
 =================
 */
@@ -291,11 +291,11 @@ static void CM_SubdivideGridColumns( cGrid_t *grid ) {
 
 	for ( i = 0 ; i < grid->width - 2 ;  ) {
 		// grid->points[i][x] is an interpolating control point
-		// grid->points[i+1][x] is an aproximating control point
+		// grid->points[i+1][x] is an approximating control point
 		// grid->points[i+2][x] is an interpolating control point
 
 		//
-		// first see if we can collapse the aproximating collumn away
+		// first see if we can collapse the approximating collumn away
 		//
 		for ( j = 0 ; j < grid->height ; j++ ) {
 			if ( CM_NeedsSubdivision( grid->points[i][j], grid->points[i+1][j], grid->points[i+2][j] ) ) {
@@ -343,7 +343,7 @@ static void CM_SubdivideGridColumns( cGrid_t *grid ) {
 
 		grid->width += 2;
 
-		// the new aproximating point at i+1 may need to be removed
+		// the new approximating point at i+1 may need to be removed
 		// or subdivided farther, so don't advance i
 	}
 }
@@ -1205,7 +1205,7 @@ struct patchCollide_s	*CM_GeneratePatchCollide( int width, int height, vec3_t *p
 	CM_RemoveDegenerateColumns( &grid );
 
 	// we now have a grid of points exactly on the curve
-	// the aproximate surface defined by these points will be
+	// the approximate surface defined by these points will be
 	// collided against
 	pf = Hunk_Alloc( sizeof( *pf ), h_high );
 	ClearBounds( pf->bounds[0], pf->bounds[1] );

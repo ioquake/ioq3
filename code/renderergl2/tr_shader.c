@@ -2678,7 +2678,7 @@ static shader_t *GeneratePermanentShader( void ) {
 VertexLightingCollapse
 
 If vertex lighting is enabled, only render a single
-pass, trying to guess which is the correct one to best aproximate
+pass, trying to guess which is the correct one to best approximate
 what it is supposed to look like.
 =================
 */
