@@ -251,7 +251,7 @@ typedef int		clipHandle_t;
 
 #define	MAX_SAY_TEXT	150
 
-// paramters for command buffer stuffing
+// parameters for command buffer stuffing
 typedef enum {
 	EXEC_NOW,			// don't return until completed, a VM should NEVER use this,
 						// because some commands might cause the VM to be unloaded...
