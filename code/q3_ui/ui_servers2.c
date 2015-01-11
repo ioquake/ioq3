@@ -796,7 +796,7 @@ void ArenaServers_LoadFavorites( void )
 
 		if (j < numtempitems)
 		{
-			// found server - add exisiting results
+			// found server - add existing results
 			memcpy( &g_favoriteserverlist[g_numfavoriteservers], &templist[j], sizeof(servernode_t) );
 			found = qtrue;
 		}
