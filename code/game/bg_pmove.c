@@ -1875,7 +1875,7 @@ void PmoveSingle (pmove_t *pmove) {
 		pm->ps->pm_flags &= ~PMF_RESPAWNED;
 	}
 
-	// if talk button is down, dissallow all other input
+	// if talk button is down, disallow all other input
 	// this is to prevent any possible intercept proxy from
 	// adding fake talk balloons
 	if ( pmove->cmd.buttons & BUTTON_TALK ) {
