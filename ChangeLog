@@ -634,7 +634,7 @@
     #1 current directory
     #2 fs_homepath
     #3 fs_basepath
-    this was needed to make mod developement easier
+    this was needed to make mod development easier
 
 2001-10-09  Timothee Besset <ttimo@idsoftware.com>
   + https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=51
@@ -861,7 +861,7 @@
 2001-04-23  Timothee Besset <ttimo@idsoftware.com>
 
 	* cleanup the mod selection code, remove duplicates
-	* some issues with release builds, my main developement box doesn't build stable binaries with release settings
+	* some issues with release builds, my main development box doesn't build stable binaries with release settings
 	  removing -fomit-frame-pointer seems to fix (there's probably a performance hit)
 	  see OMIT-FRAME-POINTER.txt
 
