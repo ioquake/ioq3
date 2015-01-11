@@ -180,7 +180,7 @@ qboolean	G_TryPushingEntity( gentity_t *check, gentity_t *pusher, vec3_t move, v
 	}
 
 	// if it is ok to leave in the old position, do it
-	// this is only relevent for riding entities, not pushed
+	// this is only relevant for riding entities, not pushed
 	// Sliding trapdoors can cause this.
 	VectorCopy( (pushed_p-1)->origin, check->s.pos.trBase);
 	if ( check->client ) {
