@@ -470,7 +470,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 		Com_Memset(vm->dataBase, 0, dataLength);
 	}
 
-	// copy the intialized data
+	// copy the initialized data
 	Com_Memcpy( vm->dataBase, (byte *)header.h + header.h->dataOffset,
 		header.h->dataLength + header.h->litLength );
 
