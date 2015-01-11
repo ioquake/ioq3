@@ -3684,7 +3684,7 @@ const char *FS_ReferencedPakPureChecksums( void ) {
 	numPaks = 0;
 	for (nFlags = FS_CGAME_REF; nFlags; nFlags = nFlags >> 1) {
 		if (nFlags & FS_GENERAL_REF) {
-			// add a delimter between must haves and general refs
+			// add a delimiter between must haves and general refs
 			//Q_strcat(info, sizeof(info), "@ ");
 			info[strlen(info)+1] = '\0';
 			info[strlen(info)+2] = '\0';
