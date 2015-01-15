@@ -580,10 +580,6 @@ ifeq ($(PLATFORM),mingw32)
 
   BINEXT=.exe
 
-  ifeq ($(CROSS_COMPILING),0)
-    TOOLS_BINEXT=.exe
-  endif
-
   LIBS= -lws2_32 -lwinmm -lpsapi
   # clang 3.4 doesn't support this
   ifneq ("$(CC)", $(findstring "$(CC)", "clang" "clang++"))
@@ -591,7 +587,12 @@ ifeq ($(PLATFORM),mingw32)
   endif
   CLIENT_LIBS = -lgdi32 -lole32
   RENDERER_LIBS = -lgdi32 -lole32 -lopengl32
-
+  
+  ifeq ($(CROSS_COMPILING),0)
+    TOOLS_BINEXT=.exe
+    RENDERER_LIBS += -static-libgcc	
+  endif
+  
   ifeq ($(USE_FREETYPE),1)
     FREETYPE_CFLAGS = -Ifreetype2
   endif
