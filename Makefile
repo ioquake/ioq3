@@ -584,6 +584,10 @@ ifeq ($(PLATFORM),mingw32)
     TOOLS_BINEXT=.exe
   endif
 
+  ifeq ($(COMPILE_PLATFORM),cygwin)
+    TOOLS_BINEXT=.exe
+  endif
+
   LIBS= -lws2_32 -lwinmm -lpsapi
   # clang 3.4 doesn't support this
   ifneq ("$(CC)", $(findstring "$(CC)", "clang" "clang++"))
@@ -1363,8 +1367,12 @@ makedirs:
 #############################################################################
 
 ifndef TOOLS_CC
-  # A compiler which probably produces native binaries
+  # A compiler which probably produces native binaries (Cygwin does not use symbolic links to 'gcc')
+  ifeq ($(COMPILE_PLATFORM),cygwin)
+  TOOLS_CC = $(CC)
+  else
   TOOLS_CC = gcc
+  endif
 endif
 
 TOOLS_OPTIMIZE = -g -Wall -fno-strict-aliasing

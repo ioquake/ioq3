@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "../../../qcommon/q_platform.h"
 
-#ifdef _WIN32
+#if defined _WIN32 || defined __CYGWIN__
 #define BINEXT ".exe"
 #else
 #define BINEXT ""
@@ -36,7 +36,12 @@ void UpdatePaths( const char *lccBinary )
 	char *p;
 
 	strncpy( basepath, lccBinary, 1024 );
+
+#if defined( __CYGWIN__ )
+	p = strrchr( basepath, '/' );
+#else
 	p = strrchr( basepath, PATH_SEP );
+#endif
 
 	if( p )
 	{
