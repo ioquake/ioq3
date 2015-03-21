@@ -631,7 +631,7 @@ void SV_FreeClient(client_t *client)
 SV_DropClient
 
 Called when the player is totally leaving the server, either willingly
-or unwillingly.  This is NOT called if the entire server is quiting
+or unwillingly.  This is NOT called if the entire server is quitting
 or crashing -- SV_FinalMessage() will handle that
 =====================
 */

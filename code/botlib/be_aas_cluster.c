@@ -1138,7 +1138,7 @@ void AAS_RemoveNotClusterClosingPortals(void)
 
 void AAS_RemoveNotClusterClosingPortals(void)
 {
-	int i, j, facenum, otherareanum, nonclosingportals, numseperatedclusters;
+	int i, j, facenum, otherareanum, nonclosingportals, numseparatedclusters;
 	aas_area_t *area;
 	aas_face_t *face;
 
@@ -1149,7 +1149,7 @@ void AAS_RemoveNotClusterClosingPortals(void)
 	{
 		if (!(aasworld.areasettings[i].contents & AREACONTENTS_CLUSTERPORTAL)) continue;
 		//
-		numseperatedclusters = 0;
+		numseparatedclusters = 0;
 		//reset all cluster fields
 		AAS_RemoveClusterAreas();
 		//find a non-portal area adjacent to the portal area and flood
@@ -1168,11 +1168,11 @@ void AAS_RemoveNotClusterClosingPortals(void)
 			if (aasworld.areasettings[otherareanum].contents & AREACONTENTS_CLUSTERPORTAL) continue;
 			//if the area already has a cluster set
 			if (aasworld.areasettings[otherareanum].cluster) continue;
-			//another cluster is seperated by this portal
-			numseperatedclusters++;
+			//another cluster is separated by this portal
+			numseparatedclusters++;
 			//flood the cluster
-			AAS_FloodCluster_r(otherareanum, numseperatedclusters);
-			AAS_FloodClusterReachabilities(numseperatedclusters);
+			AAS_FloodCluster_r(otherareanum, numseparatedclusters);
+			AAS_FloodClusterReachabilities(numseparatedclusters);
 		} //end for
 		//use the reachabilities to flood into other areas
 		for (j = 0; j < aasworld.areasettings[i].numreachableareas; j++)
@@ -1185,14 +1185,14 @@ void AAS_RemoveNotClusterClosingPortals(void)
 			if (aasworld.areasettings[otherareanum].contents & AREACONTENTS_CLUSTERPORTAL) continue;
 			//if the area already has a cluster set
 			if (aasworld.areasettings[otherareanum].cluster) continue;
-			//another cluster is seperated by this portal
-			numseperatedclusters++;
+			//another cluster is separated by this portal
+			numseparatedclusters++;
 			//flood the cluster
-			AAS_FloodCluster_r(otherareanum, numseperatedclusters);
-			AAS_FloodClusterReachabilities(numseperatedclusters);
+			AAS_FloodCluster_r(otherareanum, numseparatedclusters);
+			AAS_FloodClusterReachabilities(numseparatedclusters);
 		} //end for
-		//a portal must seperate no more and no less than 2 clusters
-		if (numseperatedclusters != 2)
+		//a portal must separate no more and no less than 2 clusters
+		if (numseparatedclusters != 2)
 		{
 			aasworld.areasettings[i].contents &= ~AREACONTENTS_CLUSTERPORTAL;
 			nonclosingportals++;
@@ -1479,7 +1479,7 @@ void AAS_InitClustering(void)
 	AAS_RemoveClusterAreas();
 	//find possible cluster portals
 	AAS_FindPossiblePortals();
-	//craete portals to for the bot view
+	//create portals to for the bot view
 	AAS_CreateViewPortals();
 	//remove all portals that are not closing a cluster
 	//AAS_RemoveNotClusterClosingPortals();

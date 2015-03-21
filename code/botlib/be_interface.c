@@ -210,7 +210,7 @@ int Export_BotLibShutdown(void)
 	BotShutdownCharacters();	//be_ai_char.c
 	//shud down aas
 	AAS_Shutdown();
-	//shut down bot elemantary actions
+	//shut down bot elementary actions
 	EA_Shutdown();
 	//free all libvars
 	LibVarDeAllocAll();

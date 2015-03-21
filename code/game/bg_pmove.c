@@ -899,7 +899,7 @@ static void PM_NoclipMove( void ) {
 ================
 PM_FootstepForSurface
 
-Returns an event number apropriate for the groundsurface
+Returns an event number appropriate for the groundsurface
 ================
 */
 static int PM_FootstepForSurface( void ) {
@@ -1402,7 +1402,7 @@ static void PM_Footsteps( void ) {
 	old = pm->ps->bobCycle;
 	pm->ps->bobCycle = (int)( old + bobmove * pml.msec ) & 255;
 
-	// if we just crossed a cycle boundary, play an apropriate footstep event
+	// if we just crossed a cycle boundary, play an appropriate footstep event
 	if ( ( ( old + 64 ) ^ ( pm->ps->bobCycle + 64 ) ) & 128 ) {
 		if ( pm->waterlevel == 0 ) {
 			// on ground will only play sounds if running
@@ -1614,7 +1614,7 @@ static void PM_Weapon( void ) {
 
 	// start the animation even if out of ammo
 	if ( pm->ps->weapon == WP_GAUNTLET ) {
-		// the guantlet only "fires" when it actually hits something
+		// the gauntlet only "fires" when it actually hits something
 		if ( !pm->gauntletHit ) {
 			pm->ps->weaponTime = 0;
 			pm->ps->weaponstate = WEAPON_READY;
@@ -1875,7 +1875,7 @@ void PmoveSingle (pmove_t *pmove) {
 		pm->ps->pm_flags &= ~PMF_RESPAWNED;
 	}
 
-	// if talk button is down, dissallow all other input
+	// if talk button is down, disallow all other input
 	// this is to prevent any possible intercept proxy from
 	// adding fake talk balloons
 	if ( pmove->cmd.buttons & BUTTON_TALK ) {

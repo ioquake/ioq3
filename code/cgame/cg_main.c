@@ -381,7 +381,7 @@ void CG_UpdateCvars( void ) {
 		trap_Cvar_Update( cv->vmCvar );
 	}
 
-	// check for modications here
+	// check for modifications here
 
 	// If team overlay is on, ask for updates from the server.  If it's off,
 	// let the server know so we don't receive it
@@ -495,7 +495,7 @@ static void CG_RegisterItemSounds( int itemNum ) {
 		trap_S_RegisterSound( item->pickup_sound, qfalse );
 	}
 
-	// parse the space seperated precache string for other media
+	// parse the space separated precache string for other media
 	s = item->sounds;
 	if (!s || !s[0])
 		return;

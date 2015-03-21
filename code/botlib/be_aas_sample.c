@@ -688,7 +688,7 @@ aas_trace_t AAS_TraceClientBBox(vec3_t start, vec3_t end, int presencetype,
 			side = front < 0;
 			//first put the end part of the line on the stack (back side)
 			VectorCopy(cur_mid, tstack_p->start);
-			//not necesary to store because still on stack
+			//not necessary to store because still on stack
 			//VectorCopy(cur_end, tstack_p->end);
 			tstack_p->planenum = aasnode->planenum;
 			tstack_p->nodenum = aasnode->children[!side];
@@ -699,7 +699,7 @@ aas_trace_t AAS_TraceClientBBox(vec3_t start, vec3_t end, int presencetype,
 				return trace;
 			} //end if
 			//now put the part near the start of the line on the stack so we will
-			//continue with thats part first. This way we'll find the first
+			//continue with that part first. This way we'll find the first
 			//hit of the bbox
 			VectorCopy(cur_start, tstack_p->start);
 			VectorCopy(cur_mid, tstack_p->end);
@@ -874,7 +874,7 @@ int AAS_TraceAreas(vec3_t start, vec3_t end, int *areas, vec3_t *points, int max
 			side = front < 0;
 			//first put the end part of the line on the stack (back side)
 			VectorCopy(cur_mid, tstack_p->start);
-			//not necesary to store because still on stack
+			//not necessary to store because still on stack
 			//VectorCopy(cur_end, tstack_p->end);
 			tstack_p->planenum = aasnode->planenum;
 			tstack_p->nodenum = aasnode->children[!side];
@@ -885,7 +885,7 @@ int AAS_TraceAreas(vec3_t start, vec3_t end, int *areas, vec3_t *points, int max
 				return numareas;
 			} //end if
 			//now put the part near the start of the line on the stack so we will
-			//continue with thats part first. This way we'll find the first
+			//continue with that part first. This way we'll find the first
 			//hit of the bbox
 			VectorCopy(cur_start, tstack_p->start);
 			VectorCopy(cur_mid, tstack_p->end);
@@ -959,7 +959,7 @@ qboolean AAS_InsideFace(aas_face_t *face, vec3_t pnormal, vec3_t point, float ep
 		//edge) and through both the edge vector and the normal vector
 		//of the plane
 		AAS_OrthogonalToVectors(edgevec, pnormal, sepnormal);
-		//check on wich side of the above plane the point is
+		//check on which side of the above plane the point is
 		//this is done by checking the sign of the dot product of the
 		//vector orthogonal vector from above and the vector from the
 		//origin (first vertex of edge) to the point 
@@ -1083,7 +1083,7 @@ aas_face_t *AAS_TraceEndFace(aas_trace_t *trace)
 		//if the face is in the same plane as the trace end point
 		if ((face->planenum & ~1) == (trace->planenum & ~1))
 		{
-			//firstface is used for optimization, if theres only one
+			//firstface is used for optimization, if there is only one
 			//face in the plane then it has to be the good one
 			//if there are more faces in the same plane then always
 			//check the one with the fewest edges first

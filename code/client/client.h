@@ -54,7 +54,7 @@ typedef struct {
 
 	int				messageNum;		// copied from netchan->incoming_sequence
 	int				deltaNum;		// messageNum the delta is from
-	int				ping;			// time from when cmdNum-1 was sent to time packet was reeceived
+	int				ping;			// time from when cmdNum-1 was sent to time packet was received
 	byte			areamask[MAX_MAP_AREA_BYTES];		// portalarea visibility bits
 
 	int				cmdNum;			// the next cmdNum the server is expecting
@@ -92,7 +92,7 @@ typedef struct {
 extern int g_console_field_width;
 
 typedef struct {
-	int			timeoutcount;		// it requres several frames in a timeout condition
+	int			timeoutcount;		// it requires several frames in a timeout condition
 									// to disconnect, preventing debugging breaks from
 									// causing immediate disconnects on continue
 	clSnapshot_t	snap;			// latest received from server
@@ -121,7 +121,7 @@ typedef struct {
 
 	// cmds[cmdNumber] is the predicted command, [cmdNumber-1] is the last
 	// properly generated command
-	usercmd_t	cmds[CMD_BACKUP];	// each mesage will send several old cmds
+	usercmd_t	cmds[CMD_BACKUP];	// each message will send several old cmds
 	int			cmdNumber;			// incremented each frame, because multiple
 									// frames may need to be packed into a single packet
 

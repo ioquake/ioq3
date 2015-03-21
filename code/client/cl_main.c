@@ -1926,7 +1926,7 @@ void CL_Vid_Restart_f( void ) {
 		CL_ShutdownCGame();
 		// shutdown the renderer and clear the renderer interface
 		CL_ShutdownRef();
-		// client is no longer pure untill new checksums are sent
+		// client is no longer pure until new checksums are sent
 		CL_ResetPureClientAtServer();
 		// clear pak references
 		FS_ClearPakReferences( FS_UI_REF | FS_CGAME_REF );
@@ -1937,7 +1937,7 @@ void CL_Vid_Restart_f( void ) {
 		cls.cgameStarted = qfalse;
 		cls.soundRegistered = qfalse;
 
-		// unpause so the cgame definately gets a snapshot and renders a frame
+		// unpause so the cgame definitely gets a snapshot and renders a frame
 		Cvar_Set("cl_paused", "0");
 
 		// initialize the renderer interface
@@ -2267,7 +2267,7 @@ void CL_InitDownloads(void) {
     if (FS_ComparePaks( missingfiles, sizeof( missingfiles ), qfalse ) )
     {      
       // NOTE TTimo I would rather have that printed as a modal message box
-      //   but at this point while joining the game we don't know wether we will successfully join or not
+      //   but at this point while joining the game we don't know whether we will successfully join or not
       Com_Printf( "\nWARNING: You are missing some files referenced by the server:\n%s"
                   "You might not be able to join the game\n"
                   "Go to the setting menu to turn on autodownload, or get the file elsewhere\n\n", missingfiles );
@@ -3273,7 +3273,7 @@ void CL_InitRef( void ) {
 
 	re = *ret;
 
-	// unpause so the cgame definately gets a snapshot and renders a frame
+	// unpause so the cgame definitely gets a snapshot and renders a frame
 	Cvar_Set( "cl_paused", "0" );
 }
 

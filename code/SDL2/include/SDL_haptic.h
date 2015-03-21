@@ -897,7 +897,7 @@ extern DECLSPEC int SDLCALL SDL_JoystickIsHaptic(SDL_Joystick * joystick);
 /**
  *  \brief Opens a Haptic device for usage from a Joystick device.
  *
- *  You must still close the haptic device seperately.  It will not be closed
+ *  You must still close the haptic device separately.  It will not be closed
  *  with the joystick.
  *
  *  When opening from a joystick you should first close the haptic device before

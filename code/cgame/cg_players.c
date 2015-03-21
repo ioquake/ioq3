@@ -982,7 +982,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		slash = strchr( newInfo.modelName, '/' );
 		if ( !slash ) {
-			// modelName didn not include a skin name
+			// modelName did not include a skin name
 			Q_strncpyz( newInfo.skinName, "default", sizeof( newInfo.skinName ) );
 		} else {
 			Q_strncpyz( newInfo.skinName, slash + 1, sizeof( newInfo.skinName ) );
@@ -1026,7 +1026,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		slash = strchr( newInfo.headModelName, '/' );
 		if ( !slash ) {
-			// modelName didn not include a skin name
+			// modelName did not include a skin name
 			Q_strncpyz( newInfo.headSkinName, "default", sizeof( newInfo.headSkinName ) );
 		} else {
 			Q_strncpyz( newInfo.headSkinName, slash + 1, sizeof( newInfo.headSkinName ) );
@@ -1042,7 +1042,7 @@ void CG_NewClientInfo( int clientNum ) {
 
 		forceDefer = trap_MemoryRemaining() < 4000000;
 
-		// if we are defering loads, just have it pick the first valid
+		// if we are deferring loads, just have it pick the first valid
 		if ( forceDefer || (cg_deferPlayers.integer && !cg_buildScript.integer && !cg.loading ) ) {
 			// keep whatever they had if it won't violate team skins
 			CG_SetDeferredClientInfo( clientNum, &newInfo );
@@ -1371,7 +1371,7 @@ static void CG_AddPainTwitch( centity_t *cent, vec3_t torsoAngles ) {
 ===============
 CG_PlayerAngles
 
-Handles seperate torso motion
+Handles separate torso motion
 
   legs pivot based on direction of movement
 
@@ -1482,7 +1482,7 @@ static void CG_PlayerAngles( centity_t *cent, vec3_t legs[3], vec3_t torso[3], v
 	// pain twitch
 	CG_AddPainTwitch( cent, torsoAngles );
 
-	// pull the angles back out of the hierarchial chain
+	// pull the angles back out of the hierarchical chain
 	AnglesSubtract( headAngles, torsoAngles, headAngles );
 	AnglesSubtract( torsoAngles, legsAngles, torsoAngles );
 	AnglesToAxis( legsAngles, legs );

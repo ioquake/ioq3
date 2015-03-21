@@ -99,7 +99,7 @@ punctuation_t default_punctuations[] =
 	{"<=",P_LOGIC_LEQ, NULL},
 	{"==",P_LOGIC_EQ, NULL},
 	{"!=",P_LOGIC_UNEQ, NULL},
-	//arithmatic operators
+	//arithmetic operators
 	{"*=",P_MUL_ASSIGN, NULL},
 	{"/=",P_DIV_ASSIGN, NULL},
 	{"%=",P_MOD_ASSIGN, NULL},
@@ -118,7 +118,7 @@ punctuation_t default_punctuations[] =
 	//C++
 	{"::",P_CPP1, NULL},
 	{".*",P_CPP2, NULL},
-	//arithmatic operators
+	//arithmetic operators
 	{"*",P_MUL, NULL},
 	{"/",P_DIV, NULL},
 	{"%",P_MOD, NULL},
@@ -475,7 +475,7 @@ int PS_ReadString(script_t *script, token_t *token, int quote)
 			//
 			tmpscript_p = script->script_p;
 			tmpline = script->line;
-			//read unusefull stuff between possible two following strings
+			//read unuseful stuff between possible two following strings
 			if (!PS_ReadWhiteSpace(script))
 			{
 				script->script_p = tmpscript_p;
@@ -838,7 +838,7 @@ int PS_ReadPrimitive(script_t *script, token_t *token)
 	token->string[len] = 0;
 	//copy the token into the script structure
 	Com_Memcpy(&script->token, token, sizeof(token_t));
-	//primitive reading successfull
+	//primitive reading successful
 	return 1;
 } //end of the function PS_ReadPrimitive
 //============================================================================
@@ -865,7 +865,7 @@ int PS_ReadToken(script_t *script, token_t *token)
 	//start of the white space
 	script->whitespace_p = script->script_p;
 	token->whitespace_p = script->script_p;
-	//read unusefull stuff
+	//read unuseful stuff
 	if (!PS_ReadWhiteSpace(script)) return 0;
 	//end of the white space
 	script->endwhitespace_p = script->script_p;

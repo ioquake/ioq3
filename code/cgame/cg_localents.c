@@ -35,7 +35,7 @@ localEntity_t	*cg_freeLocalEntities;		// single linked list
 ===================
 CG_InitLocalEntities
 
-This is called at startup and for tournement restarts
+This is called at startup and for tournament restarts
 ===================
 */
 void	CG_InitLocalEntities( void ) {

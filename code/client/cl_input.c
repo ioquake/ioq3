@@ -129,7 +129,7 @@ void IN_KeyUp( kbutton_t *b ) {
 	} else if ( b->down[1] == k ) {
 		b->down[1] = 0;
 	} else {
-		return;		// key up without coresponding down (menu pass through)
+		return;		// key up without corresponding down (menu pass through)
 	}
 	if ( b->down[0] || b->down[1] ) {
 		return;		// some other key is still holding it down
@@ -320,8 +320,8 @@ void CL_KeyMove( usercmd_t *cmd ) {
 
 	//
 	// adjust for speed key / running
-	// the walking flag is to keep animations consistant
-	// even during acceleration and develeration
+	// the walking flag is to keep animations consistent
+	// even during acceleration and deceleration
 	//
 	if ( in_speed.active ^ cl_run->integer ) {
 		movespeed = 127;

@@ -162,7 +162,7 @@ typedef struct {
 
 
 
-// centity_t have a direct corespondence with gentity_t in the game, but
+// centity_t have a direct correspondence with gentity_t in the game, but
 // only the entityState_t is directly communicated to the cgame
 typedef struct centity_s {
 	entityState_t	currentState;	// from cg.frame
@@ -293,7 +293,7 @@ typedef struct {
 	int				accuracy;
 	int				impressiveCount;
 	int				excellentCount;
-	int				guantletCount;
+	int				gauntletCount;
 	int				defendCount;
 	int				assistCount;
 	int				captures;
@@ -462,7 +462,7 @@ typedef struct {
 	qboolean	loading;			// don't defer players at initial startup
 	qboolean	intermissionStarted;	// don't play voice rewards, because game will end shortly
 
-	// there are only one or two snapshot_t that are relevent at a time
+	// there are only one or two snapshot_t that are relevant at a time
 	int			latestSnapshotNum;	// the number of snapshots the client system has received
 	int			latestSnapshotTime;	// the time from latestSnapshotNum, so we don't need to read the snapshot yet
 
@@ -605,7 +605,7 @@ typedef struct {
 
 	int			itemPickup;
 	int			itemPickupTime;
-	int			itemPickupBlendTime;	// the pulse around the crosshair is timed seperately
+	int			itemPickupBlendTime;	// the pulse around the crosshair is timed separately
 
 	int			weaponSelectTime;
 	int			weaponAnimation;
@@ -991,7 +991,7 @@ typedef struct {
 
 // The client game static (cgs) structure hold everything
 // loaded or calculated from the gamestate.  It will NOT
-// be cleared when a tournement restart is done, allowing
+// be cleared when a tournament restart is done, allowing
 // all clients to begin playing instantly
 typedef struct {
 	gameState_t		gameState;			// gamestate from server
@@ -1615,7 +1615,7 @@ void		trap_GetGlconfig( glconfig_t *glconfig );
 void		trap_GetGameState( gameState_t *gamestate );
 
 // cgame will poll each frame to see if a newer snapshot has arrived
-// that it is interested in.  The time is returned seperately so that
+// that it is interested in.  The time is returned separately so that
 // snapshot latency can be calculated.
 void		trap_GetCurrentSnapshotNumber( int *snapshotNumber, int *serverTime );
 

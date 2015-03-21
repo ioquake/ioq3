@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 // cg_servercmds.c -- reliably sequenced text commands sent by the server
-// these are processed at snapshot transition time, so there will definately
+// these are processed at snapshot transition time, so there will definitely
 // be a valid snapshot this frame
 
 #include "cg_local.h"
@@ -87,7 +87,7 @@ static void CG_ParseScores( void ) {
 		cg.scores[i].accuracy = atoi(CG_Argv(i * 14 + 10));
 		cg.scores[i].impressiveCount = atoi(CG_Argv(i * 14 + 11));
 		cg.scores[i].excellentCount = atoi(CG_Argv(i * 14 + 12));
-		cg.scores[i].guantletCount = atoi(CG_Argv(i * 14 + 13));
+		cg.scores[i].gauntletCount = atoi(CG_Argv(i * 14 + 13));
 		cg.scores[i].defendCount = atoi(CG_Argv(i * 14 + 14));
 		cg.scores[i].assistCount = atoi(CG_Argv(i * 14 + 15));
 		cg.scores[i].perfect = atoi(CG_Argv(i * 14 + 16));
@@ -440,7 +440,7 @@ CG_MapRestart
 The server has issued a map_restart, so the next snapshot
 is completely new and should not be interpolated to.
 
-A tournement restart will clear everything, but doesn't
+A tournament restart will clear everything, but doesn't
 require a reload of all the media
 ===============
 */

@@ -274,9 +274,9 @@ static void CG_Item( centity_t *cent ) {
 	}
 
 	wi = NULL;
-	// the weapons have their origin where they attatch to player
+	// the weapons have their origin where they attach to player
 	// models, so we need to offset them or they will rotate
-	// eccentricly
+	// eccentrically
 	if ( item->giType == IT_WEAPON ) {
 		wi = &cg_weapons[item->giTag];
 		cent->lerpOrigin[0] -= 

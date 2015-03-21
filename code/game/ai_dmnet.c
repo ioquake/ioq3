@@ -329,7 +329,7 @@ int BotGetItemLongTermGoal(bot_state_t *bs, int tfl, bot_goal_t *goal) {
 ==================
 BotGetLongTermGoal
 
-we could also create a seperate AI node for every long term goal type
+we could also create a separate AI node for every long term goal type
 however this saves us a lot of code
 ==================
 */
@@ -1337,7 +1337,7 @@ void BotClearPath(bot_state_t *bs, bot_moveresult_t *moveresult) {
 	bsp_trace_t bsptrace;
 	entityState_t state;
 
-	// if there is a dead body wearing kamikze nearby
+	// if there is a dead body wearing kamikaze nearby
 	if (bs->kamikazebody) {
 		// if the bot's view angles and weapon are not used for movement
 		if ( !(moveresult->flags & (MOVERESULT_MOVEMENTVIEW | MOVERESULT_MOVEMENTWEAPON)) ) {

@@ -286,7 +286,7 @@ typedef struct {
 static fileHandleData_t	fsh[MAX_FILE_HANDLES];
 
 // TTimo - https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=540
-// wether we did a reorder on the current search path when joining the server
+// whether we did a reorder on the current search path when joining the server
 static qboolean fs_reordered;
 
 // never load anything from pk3 files that are not present at the server when pure
@@ -2517,14 +2517,14 @@ int	FS_GetModList( char *listbuf, int bufsize ) {
 		// we drop "baseq3" "." and ".."
 		if (Q_stricmp(name, com_basegame->string) && Q_stricmpn(name, ".", 1)) {
 			// now we need to find some .pk3 files to validate the mod
-			// NOTE TTimo: (actually I'm not sure why .. what if it's a mod under developement with no .pk3?)
+			// NOTE TTimo: (actually I'm not sure why .. what if it's a mod under development with no .pk3?)
 			// we didn't keep the information when we merged the directory names, as to what OS Path it was found under
 			//   so it could be in base path, cd path or home path
 			//   we will try each three of them here (yes, it's a bit messy)
 			path = FS_BuildOSPath( fs_basepath->string, name, "" );
 			nPaks = 0;
 			pPaks = Sys_ListFiles(path, ".pk3", NULL, &nPaks, qfalse); 
-			Sys_FreeFileList( pPaks ); // we only use Sys_ListFiles to check wether .pk3 files are present
+			Sys_FreeFileList( pPaks ); // we only use Sys_ListFiles to check whether .pk3 files are present
 
 			/* try on home path */
 			if ( nPaks <= 0 )
@@ -3684,7 +3684,7 @@ const char *FS_ReferencedPakPureChecksums( void ) {
 	numPaks = 0;
 	for (nFlags = FS_CGAME_REF; nFlags; nFlags = nFlags >> 1) {
 		if (nFlags & FS_GENERAL_REF) {
-			// add a delimter between must haves and general refs
+			// add a delimiter between must haves and general refs
 			//Q_strcat(info, sizeof(info), "@ ");
 			info[strlen(info)+1] = '\0';
 			info[strlen(info)+2] = '\0';

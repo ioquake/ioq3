@@ -1637,10 +1637,10 @@ static void Controls_MenuInit( void )
 	// initialize the current config
 	Controls_GetConfig();
 
-	// intialize the model
+	// initialize the model
 	Controls_InitModel();
 
-	// intialize the weapons
+	// initialize the weapons
 	Controls_InitWeapons ();
 
 	// initial default section

@@ -285,7 +285,7 @@ qboolean EntityHasQuad(aas_entityinfo_t *entinfo) {
 #ifdef MISSIONPACK
 /*
 ==================
-EntityHasKamikze
+EntityHasKamikaze
 ==================
 */
 qboolean EntityHasKamikaze(aas_entityinfo_t *entinfo) {
@@ -2763,7 +2763,7 @@ bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl) {
 		bs->flags ^= BFL_STRAFERIGHT;
 		bs->attackstrafe_time = 0;
 	}
-	//bot couldn't do any usefull movement
+	//bot couldn't do any useful movement
 //	bs->attackchase_time = AAS_Time() + 6;
 	return moveresult;
 }

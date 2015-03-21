@@ -1206,7 +1206,7 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 {
 #if idppc_altivec
 	if (com_altivec->integer) {
-		// must be in a seperate function or G3 systems will crash.
+		// must be in a separate function or G3 systems will crash.
 		RB_CalcDiffuseColor_altivec( colors );
 		return;
 	}

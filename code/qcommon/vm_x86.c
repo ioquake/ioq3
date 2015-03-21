@@ -1583,7 +1583,7 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 			break;
 		case OP_CVFI:
 #ifndef FTOL_PTR // WHENHELLISFROZENOVER
-			// not IEEE complient, but simple and fast
+			// not IEEE compliant, but simple and fast
 			EmitString("D9 04 9F");				// fld dword ptr [edi + ebx * 4]
 			EmitString("DB 1C 9F");				// fistp dword ptr [edi + ebx * 4]
 #else // FTOL_PTR
