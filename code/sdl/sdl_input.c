@@ -776,7 +776,7 @@ static void IN_ProcessEvents( void )
 						else if( ( *c & 0xF8 ) == 0xF0 ) // 1111 0xxx
 						{
 							utf32 |= ( *c++ & 0x07 ) << 18;
-							utf32 |= ( *c++ & 0x3F ) << 6;
+							utf32 |= ( *c++ & 0x3F ) << 12;
 							utf32 |= ( *c++ & 0x3F ) << 6;
 							utf32 |= ( *c++ & 0x3F );
 						}
@@ -802,7 +802,11 @@ static void IN_ProcessEvents( void )
 
 			case SDL_MOUSEMOTION:
 				if( mouseActive )
+				{
+					if( !e.motion.xrel && !e.motion.yrel )
+						break;
 					Com_QueueEvent( 0, SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
+				}
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
@@ -829,7 +833,7 @@ static void IN_ProcessEvents( void )
 					Com_QueueEvent( 0, SE_KEY, K_MWHEELUP, qtrue, 0, NULL );
 					Com_QueueEvent( 0, SE_KEY, K_MWHEELUP, qfalse, 0, NULL );
 				}
-				else
+				else if( e.wheel.y < 0 )
 				{
 					Com_QueueEvent( 0, SE_KEY, K_MWHEELDOWN, qtrue, 0, NULL );
 					Com_QueueEvent( 0, SE_KEY, K_MWHEELDOWN, qfalse, 0, NULL );
@@ -845,11 +849,19 @@ static void IN_ProcessEvents( void )
 				{
 					case SDL_WINDOWEVENT_RESIZED:
 						{
-							char width[32], height[32];
-							Com_sprintf( width, sizeof( width ), "%d", e.window.data1 );
-							Com_sprintf( height, sizeof( height ), "%d", e.window.data2 );
-							Cvar_Set( "r_customwidth", width );
-							Cvar_Set( "r_customheight", height );
+							int width, height;
+
+							width = e.window.data1;
+							height = e.window.data2;
+
+							// check if size actually changed
+							if( cls.glconfig.vidWidth == width && cls.glconfig.vidHeight == height )
+							{
+								break;
+							}
+
+							Cvar_SetValue( "r_customwidth", width );
+							Cvar_SetValue( "r_customheight", height );
 							Cvar_Set( "r_mode", "-1" );
 
 							// Wait until user stops dragging for 1 second, so
@@ -883,7 +895,6 @@ void IN_Frame( void )
 	qboolean loading;
 
 	IN_JoyMove( );
-	IN_ProcessEvents( );
 
 	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
 	loading = ( clc.state != CA_DISCONNECTED && clc.state != CA_ACTIVE );
@@ -905,6 +916,8 @@ void IN_Frame( void )
 	}
 	else
 		IN_ActivateMouse( );
+
+	IN_ProcessEvents( );
 
 	// In case we had to delay actual restart of video system
 	if( ( vidRestartTime != 0 ) && ( vidRestartTime < Sys_Milliseconds( ) ) )
