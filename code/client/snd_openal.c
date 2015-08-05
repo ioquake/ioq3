@@ -769,8 +769,6 @@ void S_AL_SrcShutdown( void )
 	{
 		curSource = &srcList[i];
 
-		srcList[i].isLocked = qfalse;
-		
 		if(curSource->isLocked)
 		{
 			srcList[i].isLocked = qfalse;
