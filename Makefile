@@ -463,7 +463,12 @@ ifeq ($(PLATFORM),darwin)
 
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
-      CLIENT_LIBS += -framework OpenAL
+      ifneq ($(USE_INTERNAL_LIBS),1)
+        CLIENT_CFLAGS += $(OPENAL_CFLAGS)
+        CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
+      else
+        CLIENT_LIBS += -framework OpenAL
+      endif
     endif
   endif
 
@@ -478,16 +483,25 @@ ifeq ($(PLATFORM),darwin)
 
   ifeq ($(USE_LOCAL_HEADERS),1)
     BASE_CFLAGS += -I$(SDLHDIR)/include
+  else
+    BASE_CFLAGS += $(SDL_CFLAGS)
   endif
 
   # We copy sdlmain before ranlib'ing it so that subversion doesn't think
   #  the file has been modified by each build.
-  LIBSDLMAIN=$(B)/libSDL2main.a
-  LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
-  CLIENT_LIBS += -framework IOKit \
-    $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-  RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-  CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib $(LIBSDIR)/macosx/libopenal.dylib
+  ifeq ($(USE_INTERNAL_LIBS),1)
+    LIBSDLMAIN=$(B)/libSDL2main.a
+    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
+    CLIENT_LIBS += -framework IOKit $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+    RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+  else
+    CLIENT_LIBS += -framework IOKit $(SDL_LIBS)
+    RENDERER_LIBS += -framework OpenGL $(SDL_LIBS)
+  endif
+
+  ifeq ($(USE_INTERNAL_LIBS),1)
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib $(LIBSDIR)/macosx/libopenal.dylib
+  endif
 
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
