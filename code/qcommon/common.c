@@ -3348,6 +3348,35 @@ static void PrintCvarMatches( const char *s ) {
 
 /*
 ===============
+PrintSubstringMatches
+
+===============
+*/
+static void PrintSubstringMatches( const char *s ) {
+	if( Q_stristr(s, completionString) ){
+	//if ( !Q_stricmpn( s, shortestMatch, strlen( shortestMatch ) ) ) {
+		Com_Printf( "    %s\n", s );
+	}
+}
+
+/*
+===============
+PrintCvarSubstringMatches
+
+===============
+*/
+static void PrintCvarSubstringMatches( const char *s ) {
+	char value[ TRUNCATE_LENGTH ];
+
+	if( Q_stristr(s, completionString) ){
+	//if ( !Q_stricmpn( s, shortestMatch, strlen( shortestMatch ) ) ) {
+		Com_TruncateLongString( value, Cvar_VariableString( s ) );
+		Com_Printf( "    %s = \"%s\"\n", s, value );
+	}
+}
+
+/*
+===============
 Field_FindFirstSeparator
 ===============
 */
@@ -3520,6 +3549,34 @@ void Field_CompleteCommand( char *cmd,
 				Cvar_CommandCompletion( PrintCvarMatches );
 		}
 	}
+}
+
+/*
+===============
+Field_FindCommand
+===============
+*/
+void Field_FindCommand( char *cmd)
+{
+	int		completionArgument = 0;
+
+	// Skip leading whitespace and quotes
+	cmd = Com_SkipCharset(cmd, " \"");
+
+	Cmd_TokenizeStringIgnoreQuotes(cmd);
+	completionArgument = Cmd_Argc();
+
+	//TODO
+	// If there is trailing whitespace on the cmd
+	if (*(cmd + strlen(cmd) - 1) == ' ')
+	{
+		completionString = "";
+		completionArgument++;
+	} else
+		completionString = Cmd_Argv(completionArgument - 1);
+
+	Cmd_CommandCompletion( PrintSubstringMatches );
+	Cvar_CommandCompletion( PrintCvarSubstringMatches );
 }
 
 /*
