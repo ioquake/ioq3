@@ -39,6 +39,10 @@ static	byte		*fileBase;
 int			c_subdivisions;
 int			c_gridVerts;
 
+const	float	RED_WEIGHT = 0.299;
+const	float	GREEN_WEIGHT = 0.587;
+const	float	BLUE_WEIGHT = 0.114;
+
 //===============================================================================
 
 static void HSVtoRGB( float h, float s, float v, float rgb[3] )
@@ -98,7 +102,8 @@ R_ColorShiftLightingBytes
 ===============
 */
 static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
-	int		shift, r, g, b;
+	int		shift, r, g, b, gray;
+	float	g_level;
 
 	// shift the color data based on overbright range
 #if defined(USE_OVERBRIGHT)
@@ -123,9 +128,23 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		b = b * 255 / max;
 	}
 
-	out[0] = r;
-	out[1] = g;
-	out[2] = b;
+	// apply grayscale conversion
+	g_level = r_mapGrayScaleLevel->value;
+	if (g_level >= 1) {
+		gray = RED_WEIGHT * r + GREEN_WEIGHT * g + BLUE_WEIGHT * b;
+		out[0] = out[1] = out[2] = gray;
+	}
+	else if (g_level > 0 && g_level < 1) {
+		gray = RED_WEIGHT * r + GREEN_WEIGHT * g + BLUE_WEIGHT * b;
+		out[0] = r + ((gray - r) * g_level);
+		out[1] = g + ((gray - g) * g_level);
+		out[2] = b + ((gray - b) * g_level);
+	}
+	else {
+		out[0] = r;
+		out[1] = g;
+		out[2] = b;
+	}
 	out[3] = in[3];
 }
 
@@ -138,7 +157,7 @@ R_ColorShiftLightingFloats
 */
 static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 {
-	float	r, g, b;
+	float	r, g, b, gray, g_level;
 
 #if defined(USE_OVERBRIGHT)
 	scale *= pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
@@ -159,9 +178,23 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 		b = b / max;
 	}
 
-	out[0] = r;
-	out[1] = g;
-	out[2] = b;
+	// apply grayscale conversion
+	g_level = r_mapGrayScaleLevel->value;
+	if (g_level >= 1) {
+		gray = RED_WEIGHT * r + GREEN_WEIGHT * g + BLUE_WEIGHT * b;
+		out[0] = out[1] = out[2] = gray;
+	}
+	else if (g_level > 0 && g_level < 1) {
+		gray = RED_WEIGHT * r + GREEN_WEIGHT * g + BLUE_WEIGHT * b;
+		out[0] = r + ((gray - r) * g_level);
+		out[1] = g + ((gray - g) * g_level);
+		out[2] = b + ((gray - b) * g_level);
+	}
+	else {
+		out[0] = r;
+		out[1] = g;
+		out[2] = b;
+	}
 	out[3] = in[3];
 }
 

@@ -219,6 +219,7 @@ cvar_t	*r_customPixelAspect;
 
 cvar_t	*r_overBrightBits;
 cvar_t	*r_mapOverBrightBits;
+cvar_t	*r_mapGrayScaleLevel;
 
 cvar_t	*r_debugSurface;
 cvar_t	*r_simpleMipMaps;
@@ -1284,6 +1285,7 @@ void R_Register( void )
 	r_mapOverBrightBits = ri.Cvar_Get ("r_mapOverBrightBits", "2", CVAR_LATCH );
 	r_intensity = ri.Cvar_Get ("r_intensity", "1", CVAR_LATCH );
 	r_singleShader = ri.Cvar_Get ("r_singleShader", "0", CVAR_CHEAT | CVAR_LATCH );
+	r_mapGrayScaleLevel = ri.Cvar_Get ("r_mapGrayScaleLevel", "0", CVAR_LATCH );
 
 	//
 	// archived variables that can change at any time

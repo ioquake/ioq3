@@ -282,6 +282,8 @@ The defaults for these variables differ depending on the target platform.
                                       cl_aviMotionJpeg is enabled
   r_mode -2                         - This new video mode automatically uses the
                                       desktop resolution.
+  r_mapGrayScaleLevel               - enable map grayscale conversion
+                                      (works like r_mapOverBrightBits)
 ```
 
 ## New commands
