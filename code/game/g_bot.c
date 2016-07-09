@@ -762,19 +762,23 @@ void Svcmd_BotList_f( void ) {
 
 	trap_Print("^1name             model            aifile              funname\n");
 	for (i = 0; i < g_numBots; i++) {
-		strcpy(name, Info_ValueForKey( g_botInfos[i], "name" ));
+		strncpy(name, Info_ValueForKey( g_botInfos[i], "name" ), sizeof(name));
+		name[MAX_TOKEN_CHARS - 1] = 0;
 		if ( !*name ) {
 			strcpy(name, "UnnamedPlayer");
 		}
-		strcpy(funname, Info_ValueForKey( g_botInfos[i], "funname" ));
+		strncpy(funname, Info_ValueForKey( g_botInfos[i], "funname" ), sizeof(funname));
+		funname[MAX_TOKEN_CHARS - 1] = 0;
 		if ( !*funname ) {
 			strcpy(funname, "");
 		}
-		strcpy(model, Info_ValueForKey( g_botInfos[i], "model" ));
+		strncpy(model, Info_ValueForKey( g_botInfos[i], "model" ), sizeof(model));
+		model[MAX_TOKEN_CHARS - 1] = 0;
 		if ( !*model ) {
 			strcpy(model, "visor/default");
 		}
-		strcpy(aifile, Info_ValueForKey( g_botInfos[i], "aifile"));
+		strncpy(aifile, Info_ValueForKey( g_botInfos[i], "aifile"), sizeof(aifile));
+		aifile[MAX_TOKEN_CHARS - 1] = 0;
 		if (!*aifile ) {
 			strcpy(aifile, "bots/default_c.c");
 		}

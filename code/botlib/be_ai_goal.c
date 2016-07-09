@@ -282,6 +282,7 @@ itemconfig_t *LoadItemConfig(char *filename)
 	}
 
 	strncpy( path, filename, MAX_PATH );
+	path[MAX_PATH - 1] = 0;
 	PC_SetBaseFolder(BOTFILESBASEFOLDER);
 	source = LoadSourceFile( path );
 	if( !source ) {

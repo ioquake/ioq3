@@ -107,7 +107,7 @@ Nlist	*lookup(Token *, int);
 void	control(Tokenrow *);
 void	dodefine(Tokenrow *);
 void	doadefine(Tokenrow *, int);
-void	doinclude(Tokenrow *);
+void	doinclude(Tokenrow *, char **);
 void	appendDirToIncludeList( char *dir );
 void	doif(Tokenrow *, enum kwtype);
 void	expand(Tokenrow *, Nlist *);

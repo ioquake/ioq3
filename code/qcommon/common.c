@@ -2461,6 +2461,7 @@ void Com_ReadCDKey( const char *filename ) {
 
 	FS_Read( buffer, 16, f );
 	FS_FCloseFile( f );
+	buffer[16] = 0;
 
 	if (CL_CDKeyValidate(buffer, NULL)) {
 		Q_strncpyz( cl_cdkey, buffer, 17 );
@@ -2491,6 +2492,7 @@ void Com_AppendCDKey( const char *filename ) {
 
 	FS_Read( buffer, 16, f );
 	FS_FCloseFile( f );
+	buffer[16] = 0;
 
 	if (CL_CDKeyValidate(buffer, NULL)) {
 		strcat( &cl_cdkey[16], buffer );

@@ -1061,7 +1061,6 @@ Info_ValueForKey
 
 Searches the string for the given
 key and returns the associated value, or an empty string.
-FIXME: overflow check?
 ===============
 */
 char *Info_ValueForKey( const char *s, const char *key ) {
@@ -1069,13 +1068,14 @@ char *Info_ValueForKey( const char *s, const char *key ) {
 	static	char value[2][BIG_INFO_VALUE];	// use two buffers so compares
 											// work without stomping on each other
 	static	int	valueindex = 0;
+	size_t  nlen = 0;
 	char	*o;
 	
 	if ( !s || !key ) {
 		return "";
 	}
 
-	if ( strlen( s ) >= BIG_INFO_STRING ) {
+	if ( strlen( s ) >= BIG_INFO_STRING) {
 		Com_Error( ERR_DROP, "Info_ValueForKey: oversize infostring" );
 	}
 
@@ -1096,7 +1096,7 @@ char *Info_ValueForKey( const char *s, const char *key ) {
 
 		o = value[valueindex];
 
-		while (*s != '\\' && *s)
+		while (nlen++ < BIG_INFO_VALUE && *s != '\\' && *s)
 		{
 			*o++ = *s++;
 		}

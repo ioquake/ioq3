@@ -860,11 +860,15 @@ void ClientUserinfoChanged( int clientNum ) {
 	teamLeader = client->sess.teamLeader;
 
 	// colors
-	strcpy(c1, Info_ValueForKey( userinfo, "color1" ));
-	strcpy(c2, Info_ValueForKey( userinfo, "color2" ));
+	strncpy(c1, Info_ValueForKey( userinfo, "color1" ), sizeof(c1));
+	c1[MAX_INFO_STRING - 1] = 0;
+	strncpy(c2, Info_ValueForKey( userinfo, "color2" ), sizeof(c2));
+	c2[MAX_INFO_STRING - 1] = 0;
 
-	strcpy(redTeam, Info_ValueForKey( userinfo, "g_redteam" ));
-	strcpy(blueTeam, Info_ValueForKey( userinfo, "g_blueteam" ));
+	strncpy(redTeam, Info_ValueForKey( userinfo, "g_redteam" ), sizeof(redTeam));
+	redTeam[MAX_INFO_STRING - 1] = 0;
+	strncpy(blueTeam, Info_ValueForKey( userinfo, "g_blueteam" ), sizeof(blueTeam));
+	blueTeam[MAX_INFO_STRING - 1] = 0;
 	
 	// send over a subset of the userinfo keys so other clients can
 	// print scoreboards, display models, and play custom sounds
