@@ -238,8 +238,7 @@ int AAS_LoadFiles(const char *mapname)
 		return errnum;
 
 	botimport.Print(PRT_MESSAGE, "loaded %s\n", aasfile);
-	strncpy(aasworld.filename, aasfile, MAX_PATH);
-	aasworld.filename[MAX_PATH - 1] = 0;
+	Q_strncpyz(aasworld.filename, aasfile, MAX_PATH);
 	return BLERR_NOERROR;
 } //end of the function AAS_LoadFiles
 //===========================================================================
