@@ -181,7 +181,7 @@ float CL_KeyState( kbutton_t *key ) {
 	}
 #endif
 
-	val = (float)msec / frame_msec;
+	val = frame_msec != 0 ? (float)msec / frame_msec : 0;
 	if ( val < 0 ) {
 		val = 0;
 	}
