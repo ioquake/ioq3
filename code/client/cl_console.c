@@ -278,7 +278,7 @@ void Con_CheckResize (void)
 	if (width == con.linewidth)
 		return;
 
-	if (width < 1)			// video hasn't been initialized yet
+	if (con.linewidth < 1)			// video hasn't been initialized yet
 	{
 		width = DEFAULT_CONSOLE_WIDTH;
 		con.linewidth = width;
