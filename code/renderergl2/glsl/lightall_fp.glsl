@@ -196,6 +196,7 @@ float CalcLightAttenuation(float point, float normDist)
 	return attenuation;
 }
 
+#if defined(USE_LIGHT)
 // from http://www.thetenthplanet.de/archives/1180
 mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
 {
@@ -215,6 +216,7 @@ mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
 	float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
 	return mat3( T * invmax, B * invmax, N );
 }
+#endif
 
 void main()
 {
