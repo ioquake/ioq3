@@ -185,12 +185,9 @@ typedef int intptr_t;
 
 
 #include "q_platform.h"
+#include "q_types.h"
 
 //=============================================================
-
-typedef unsigned char 		byte;
-
-typedef enum {qfalse, qtrue}	qboolean;
 
 typedef union {
 	float f;
