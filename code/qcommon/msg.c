@@ -120,6 +120,10 @@ void MSG_WriteBits( msg_t *msg, int value, int bits ) {
 		Com_Error( ERR_DROP, "MSG_WriteBits: bad bits %i", bits );
 	}
 
+	if ( bits < 0 ) {
+		bits = -bits;
+	}
+
 	// check for overflows
 	if ( bits != 32 ) {
 		if ( bits > 0 ) {
@@ -135,9 +139,6 @@ void MSG_WriteBits( msg_t *msg, int value, int bits ) {
 				overflows++;
 			}
 		}
-	}
-	if ( bits < 0 ) {
-		bits = -bits;
 	}
 	if (msg->oob) {
 		if(bits==8)
