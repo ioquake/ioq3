@@ -105,11 +105,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	int		shift, r, g, b;
 
 	// shift the color data based on overbright range
-#if defined(USE_OVERBRIGHT)
 	shift = r_mapOverBrightBits->integer - tr.overbrightBits;
-#else
-	shift = 0;
-#endif
 
 	// shift the data based on overbright range
 	r = in[0] << shift;
@@ -144,9 +140,7 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 {
 	float	r, g, b;
 
-#if defined(USE_OVERBRIGHT)
 	scale *= 1 << (r_mapOverBrightBits->integer - tr.overbrightBits);
-#endif
 
 	r = in[0] * scale;
 	g = in[1] * scale;
@@ -667,13 +661,16 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 	return shader;
 }
 
-void LoadDrawVertToSrfVert(srfVert_t *s, drawVert_t *d, int realLightmapNum, float hdrVertColors[3])
+void LoadDrawVertToSrfVert(srfVert_t *s, drawVert_t *d, int realLightmapNum, float hdrVertColors[3], vec3_t *bounds)
 {
 	vec4_t v;
 
 	s->xyz[0] = LittleFloat(d->xyz[0]);
 	s->xyz[1] = LittleFloat(d->xyz[1]);
 	s->xyz[2] = LittleFloat(d->xyz[2]);
+
+	if (bounds)
+		AddPointToBounds(s->xyz, bounds[0], bounds[1]);
 
 	s->st[0] = LittleFloat(d->st[0]);
 	s->st[1] = LittleFloat(d->st[1]);
@@ -771,7 +768,7 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 	ClearBounds(surf->cullinfo.bounds[0], surf->cullinfo.bounds[1]);
 	verts += LittleLong(ds->firstVert);
 	for(i = 0; i < numVerts; i++)
-		LoadDrawVertToSrfVert(&cv->verts[i], &verts[i], realLightmapNum, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL);
+		LoadDrawVertToSrfVert(&cv->verts[i], &verts[i], realLightmapNum, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL, surf->cullinfo.bounds);
 
 	// copy triangles
 	badTriangles = 0;
@@ -812,7 +809,6 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 
 	surf->data = (surfaceType_t *)cv;
 
-#ifdef USE_VERT_TANGENT_SPACE
 	// Calculate tangent spaces
 	{
 		srfVert_t      *dv[3];
@@ -826,7 +822,6 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 			R_CalcTangentVectors(dv);
 		}
 	}
-#endif
 }
 
 
@@ -872,7 +867,7 @@ static void ParseMesh ( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors,
 	verts += LittleLong( ds->firstVert );
 	numPoints = width * height;
 	for(i = 0; i < numPoints; i++)
-		LoadDrawVertToSrfVert(&points[i], &verts[i], realLightmapNum, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL);
+		LoadDrawVertToSrfVert(&points[i], &verts[i], realLightmapNum, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL, NULL);
 
 	// pre-tesseleate
 	R_SubdividePatchToGrid( grid, width, height, points );
@@ -936,7 +931,7 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, float *hdrVertColor
 	ClearBounds(surf->cullinfo.bounds[0], surf->cullinfo.bounds[1]);
 	verts += LittleLong(ds->firstVert);
 	for(i = 0; i < numVerts; i++)
-		LoadDrawVertToSrfVert(&cv->verts[i], &verts[i], -1, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL);
+		LoadDrawVertToSrfVert(&cv->verts[i], &verts[i], -1, hdrVertColors ? hdrVertColors + (ds->firstVert + i) * 3 : NULL, surf->cullinfo.bounds);
 
 	// copy triangles
 	badTriangles = 0;
@@ -966,7 +961,6 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, float *hdrVertColor
 		cv->numIndexes -= badTriangles * 3;
 	}
 
-#ifdef USE_VERT_TANGENT_SPACE
 	// Calculate tangent spaces
 	{
 		srfVert_t      *dv[3];
@@ -980,7 +974,6 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, float *hdrVertColor
 			R_CalcTangentVectors(dv);
 		}
 	}
-#endif
 }
 
 /*
@@ -1776,9 +1769,7 @@ static int BSPSurfaceCompare(const void *a, const void *b)
 static void CopyVert(const srfVert_t * in, srfVert_t * out)
 {
 	VectorCopy(in->xyz,      out->xyz);
-#ifdef USE_VERT_TANGENT_SPACE
 	VectorCopy4(in->tangent, out->tangent);
-#endif
 	VectorCopy4(in->normal,   out->normal);
 	VectorCopy4(in->lightdir, out->lightdir);
 
@@ -2683,11 +2674,7 @@ void R_LoadLightGrid( lump_t *l ) {
 
 		if (hdrLightGrid)
 		{
-#if defined(USE_OVERBRIGHT)
 			float lightScale = 1 << (r_mapOverBrightBits->integer - tr.overbrightBits);
-#else
-			float lightScale = 1.0f;
-#endif
 
 			//ri.Printf(PRINT_ALL, "found!\n");
 
@@ -3162,7 +3149,6 @@ void RE_LoadWorldMap( const char *name ) {
 	}
 
 	// set default map light scale
-	tr.mapLightScale  = 1.0f;
 	tr.sunShadowScale = 0.5f;
 
 	// set default sun direction to be used if it isn't

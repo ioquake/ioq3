@@ -55,9 +55,6 @@ typedef unsigned int glIndex_t;
 #define MAX_DRAWN_PSHADOWS    16 // do not increase past 32, because bit flags are used on surfaces
 #define PSHADOW_MAP_SIZE      512
 
-#define USE_VERT_TANGENT_SPACE
-#define USE_OVERBRIGHT
-
 typedef struct cubemap_s {
 	char name[MAX_QPATH];
 	vec3_t origin;
@@ -761,7 +758,6 @@ typedef struct {
 	float       sunDir[4];
 	float       sunCol[4];
 	float       sunAmbCol[4];
-	float       colorScale;
 
 	float       autoExposureMinMax[2];
 	float       toneMinAvgMaxLinear[3];
@@ -896,9 +892,7 @@ typedef struct
 	vec2_t          st;
 	vec2_t          lightmap;
 	int16_t         normal[4];
-#ifdef USE_VERT_TANGENT_SPACE
 	int16_t         tangent[4];
-#endif
 	int16_t         lightdir[4];
 	vec4_t			vertexColors;
 
@@ -907,11 +901,7 @@ typedef struct
 #endif
 } srfVert_t;
 
-#ifdef USE_VERT_TANGENT_SPACE
 #define srfVert_t_cleared(x) srfVert_t (x) = {{0, 0, 0}, {0, 0}, {0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
-#else
-#define srfVert_t_cleared(x) srfVert_t (x) = {{0, 0, 0}, {0, 0}, {0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
-#endif
 
 // srfBspSurface_t covers SF_GRID, SF_TRIANGLES, SF_POLY, and SF_VAO_MESH
 typedef struct srfBspSurface_s
@@ -1202,9 +1192,7 @@ typedef struct
 {
 	vec3_t          xyz;
 	int16_t         normal[4];
-#ifdef USE_VERT_TANGENT_SPACE
 	int16_t         tangent[4];
-#endif
 } mdvVertex_t;
 
 typedef struct
@@ -1608,7 +1596,6 @@ typedef struct {
 
 	int						viewCluster;
 
-	float                   mapLightScale;
 	float                   sunShadowScale;
 
 	qboolean                sunShadows;
@@ -1801,7 +1788,6 @@ extern  cvar_t  *r_imageUpsampleMaxSize;
 extern  cvar_t  *r_imageUpsampleType;
 extern  cvar_t  *r_genNormalMaps;
 extern  cvar_t  *r_forceSun;
-extern  cvar_t  *r_forceSunMapLightScale;
 extern  cvar_t  *r_forceSunLightScale;
 extern  cvar_t  *r_forceSunAmbientScale;
 extern  cvar_t  *r_sunlightMode;
@@ -2006,9 +1992,7 @@ typedef struct shaderCommands_s
 	glIndex_t	indexes[SHADER_MAX_INDEXES] QALIGN(16);
 	vec4_t		xyz[SHADER_MAX_VERTEXES] QALIGN(16);
 	int16_t		normal[SHADER_MAX_VERTEXES][4] QALIGN(16);
-#ifdef USE_VERT_TANGENT_SPACE
 	int16_t		tangent[SHADER_MAX_VERTEXES][4] QALIGN(16);
-#endif
 	vec2_t		texCoords[SHADER_MAX_VERTEXES][2] QALIGN(16);
 	vec4_t		vertexColors[SHADER_MAX_VERTEXES] QALIGN(16);
 	int16_t		lightdir[SHADER_MAX_VERTEXES][4] QALIGN(16);
@@ -2153,7 +2137,6 @@ void R_SubdividePatchToGrid( srfBspSurface_t *grid, int width, int height,
 								srfVert_t points[MAX_PATCH_SIZE*MAX_PATCH_SIZE] );
 void R_GridInsertColumn( srfBspSurface_t *grid, int column, int row, vec3_t point, float loderror );
 void R_GridInsertRow( srfBspSurface_t *grid, int row, int column, vec3_t point, float loderror );
-void R_FreeSurfaceGridMeshData( srfBspSurface_t *grid );
 
 /*
 ============================================================

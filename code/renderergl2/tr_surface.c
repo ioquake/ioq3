@@ -128,10 +128,10 @@ void RB_AddQuadStampExt( vec3_t origin, vec3_t left, vec3_t up, float color[4], 
 
 	R_VaoPackNormal(iNormal, normal);
 
-	VectorCopy4(tess.normal[ndx], iNormal);
-	VectorCopy4(tess.normal[ndx+1], iNormal);
-	VectorCopy4(tess.normal[ndx+2], iNormal);
-	VectorCopy4(tess.normal[ndx+3], iNormal);
+	VectorCopy4(iNormal, tess.normal[ndx]);
+	VectorCopy4(iNormal, tess.normal[ndx + 1]);
+	VectorCopy4(iNormal, tess.normal[ndx + 2]);
+	VectorCopy4(iNormal, tess.normal[ndx + 3]);
 
 	// standard square texture coordinates
 	VectorSet2(tess.texCoords[ndx  ][0], s1, t1);
@@ -323,9 +323,7 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 	float          *xyz, *texCoords, *lightCoords;
 	int16_t        *lightdir;
 	int16_t        *normal;
-#ifdef USE_VERT_TANGENT_SPACE
 	int16_t        *tangent;
-#endif
 	glIndex_t      *outIndex;
 	float          *color;
 
@@ -356,7 +354,6 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 			VectorCopy4(dv->normal, normal);
 	}
 
-#ifdef USE_VERT_TANGENT_SPACE
 	if ( tess.shader->vertexAttribs & ATTR_TANGENT )
 	{
 		dv = verts;
@@ -364,7 +361,6 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 		for ( i = 0 ; i < numVerts ; i++, dv++, tangent+=4 )
 			VectorCopy4(dv->tangent, tangent);
 	}
-#endif
 
 	if ( tess.shader->vertexAttribs & ATTR_TEXCOORD )
 	{
@@ -1013,9 +1009,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 	float	*xyz;
 	float	*texCoords, *lightCoords;
 	int16_t *normal;
-#ifdef USE_VERT_TANGENT_SPACE
 	int16_t *tangent;
-#endif
 	float   *color;
 	int16_t *lightdir;
 	srfVert_t	*dv;
@@ -1103,9 +1097,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 
 		xyz = tess.xyz[numVertexes];
 		normal = tess.normal[numVertexes];
-#ifdef USE_VERT_TANGENT_SPACE
 		tangent = tess.tangent[numVertexes];
-#endif
 		texCoords = tess.texCoords[numVertexes][0];
 		lightCoords = tess.texCoords[numVertexes][1];
 		color = tess.vertexColors[numVertexes];
@@ -1125,17 +1117,16 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 
 				if ( tess.shader->vertexAttribs & ATTR_NORMAL )
 				{
-					VectorCopy4(normal, dv->normal);
+					VectorCopy4(dv->normal, normal);
 					normal += 4;
 				}
 
-#ifdef USE_VERT_TANGENT_SPACE
 				if ( tess.shader->vertexAttribs & ATTR_TANGENT )
 				{
-					VectorCopy4(tangent, dv->tangent);
+					VectorCopy4(dv->tangent, tangent);
 					tangent += 4;
 				}
-#endif
+
 				if ( tess.shader->vertexAttribs & ATTR_TEXCOORD )
 				{
 					VectorCopy2(dv->st, texCoords);
@@ -1156,7 +1147,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 
 				if ( tess.shader->vertexAttribs & ATTR_LIGHTDIRECTION )
 				{
-					VectorCopy4(lightdir, dv->lightdir);
+					VectorCopy4(dv->lightdir, lightdir);
 					lightdir += 4;
 				}
 
