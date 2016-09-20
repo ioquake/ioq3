@@ -934,9 +934,18 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for specular reflectance in shader '%s'\n", shader.name );
 				continue;
 			}
-			stage->specularScale[0] = 
-			stage->specularScale[1] = 
-			stage->specularScale[2] = atof( token );
+
+			if (r_pbr->integer)
+			{
+				// interpret specularReflectance < 0.5 as nonmetal
+				stage->specularScale[1] = (atof(token) < 0.5f) ? 0.0f : 1.0f;
+			}
+			else
+			{
+				stage->specularScale[0] =
+				stage->specularScale[1] =
+				stage->specularScale[2] = atof( token );
+			}
 		}
 		//
 		// specularExponent <value>
@@ -954,17 +963,23 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 
 			exponent = atof( token );
 
-			// Change shininess to gloss
-			// FIXME: assumes max exponent of 8192 and min of 1, must change here if altered in lightall_fp.glsl
-			exponent = CLAMP(exponent, 1.0, 8192.0);
-
-			stage->specularScale[3] = log(exponent) / log(8192.0);
+			if (r_pbr->integer)
+				stage->specularScale[0] = 1.0f - powf(2.0f / (exponent + 2.0), 0.25);
+			else
+			{
+				// Change shininess to gloss
+				// Assumes max exponent of 8190 and min of 0, must change here if altered in lightall_fp.glsl
+				exponent = CLAMP(exponent, 0.0f, 8190.0f);
+				stage->specularScale[3] = (log2f(exponent + 2.0f) - 1.0f) / 12.0f;
+			}
 		}
 		//
 		// gloss <value>
 		//
 		else if (!Q_stricmp(token, "gloss"))
 		{
+			float gloss;
+
 			token = COM_ParseExt(text, qfalse);
 			if ( token[0] == 0 )
 			{
@@ -972,7 +987,38 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 				continue;
 			}
 
-			stage->specularScale[3] = atof( token );
+			gloss = atof(token);
+
+			if (r_pbr->integer)
+				stage->specularScale[0] = 1.0f - exp2f(-3.0f * gloss);
+			else
+				stage->specularScale[3] = gloss;
+		}
+		//
+		// roughness <value>
+		//
+		else if (!Q_stricmp(token, "roughness"))
+		{
+			float roughness;
+
+			token = COM_ParseExt(text, qfalse);
+			if (token[0] == 0)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: missing parameter for roughness in shader '%s'\n", shader.name);
+				continue;
+			}
+
+			roughness = atof(token);
+
+			if (r_pbr->integer)
+				stage->specularScale[0] = 1.0 - roughness;
+			else
+			{
+				if (roughness >= 0.125)
+					stage->specularScale[3] = log2f(1.0f / roughness) / 3.0f;
+				else
+					stage->specularScale[3] = 1.0f;
+			}
 		}
 		//
 		// parallaxDepth <value>
@@ -1025,6 +1071,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 		}
 		//
 		// specularScale <rgb> <gloss>
+		// or specularScale <metallic> <smoothness> with r_pbr 1
 		// or specularScale <r> <g> <b>
 		// or specularScale <r> <g> <b> <gloss>
 		//
@@ -1051,10 +1098,19 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			token = COM_ParseExt(text, qfalse);
 			if ( token[0] == 0 )
 			{
-				// two values, rgb then gloss
-				stage->specularScale[3] = stage->specularScale[1];
-				stage->specularScale[1] =
-				stage->specularScale[2] = stage->specularScale[0];
+				if (r_pbr->integer)
+				{
+					// two values, metallic then smoothness
+					float smoothness = stage->specularScale[1];
+					stage->specularScale[1] = (stage->specularScale[0] < 0.5f) ? 0.0f : 1.0f;
+					stage->specularScale[0] = smoothness;
+				}
+				{
+					// two values, rgb then gloss
+					stage->specularScale[3] = stage->specularScale[1];
+					stage->specularScale[1] =
+					stage->specularScale[2] = stage->specularScale[0];
+				}
 				continue;
 			}
 
@@ -1771,10 +1827,12 @@ static qboolean ParseShader( char **text )
 			if (isGL2Sun)
 			{
 				token = COM_ParseExt( text, qfalse );
-				tr.mapLightScale = atof(token);
-
-				token = COM_ParseExt( text, qfalse );
 				tr.sunShadowScale = atof(token);
+
+				// parse twice, since older shaders may include mapLightScale before sunShadowScale
+				token = COM_ParseExt( text, qfalse );
+				if (token[0])
+					tr.sunShadowScale = atof(token);
 			}
 
 			SkipRestOfLine( text );
@@ -1854,6 +1912,23 @@ static qboolean ParseShader( char **text )
 		{
 			if ( !ParseVector( text, 3, shader.fogParms.color ) ) {
 				return qfalse;
+			}
+
+			if ( r_greyscale->integer )
+			{
+				float luminance;
+
+				luminance = LUMA( shader.fogParms.color[0], shader.fogParms.color[1], shader.fogParms.color[2] );
+				VectorSet( shader.fogParms.color, luminance, luminance, luminance );
+			}
+			else if ( r_greyscale->value )
+			{
+				float luminance;
+
+				luminance = LUMA( shader.fogParms.color[0], shader.fogParms.color[1], shader.fogParms.color[2] );
+				shader.fogParms.color[0] = LERP( shader.fogParms.color[0], luminance, r_greyscale->value );
+				shader.fogParms.color[1] = LERP( shader.fogParms.color[1], luminance, r_greyscale->value );
+				shader.fogParms.color[2] = LERP( shader.fogParms.color[2], luminance, r_greyscale->value );
 			}
 
 			token = COM_ParseExt( text, qfalse );
@@ -2045,12 +2120,10 @@ static void ComputeVertexAttribs(void)
 		{
 			shader.vertexAttribs |= ATTR_NORMAL;
 
-#ifdef USE_VERT_TANGENT_SPACE
 			if ((pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) && !(r_normalMapping->integer == 0 && r_specularMapping->integer == 0))
 			{
 				shader.vertexAttribs |= ATTR_TANGENT;
 			}
-#endif
 
 			switch (pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
 			{
@@ -2195,11 +2268,32 @@ static void CollapseStagesToLightall(shaderStage_t *diffuse,
 
 	if (r_specularMapping->integer)
 	{
+		image_t *diffuseImg;
 		if (specular)
 		{
 			//ri.Printf(PRINT_ALL, ", specularmap %s", specular->bundle[0].image[0]->imgName);
 			diffuse->bundle[TB_SPECULARMAP] = specular->bundle[0];
 			VectorCopy4(specular->specularScale, diffuse->specularScale);
+		}
+		else if ((lightmap || useLightVector || useLightVertex) && (diffuseImg = diffuse->bundle[TB_DIFFUSEMAP].image[0]))
+		{
+			char specularName[MAX_QPATH];
+			image_t *specularImg;
+			imgFlags_t specularFlags = (diffuseImg->flags & ~(IMGFLAG_GENNORMALMAP | IMGFLAG_SRGB)) | IMGFLAG_NOLIGHTSCALE;
+
+			COM_StripExtension(diffuseImg->imgName, specularName, MAX_QPATH);
+			Q_strcat(specularName, MAX_QPATH, "_s");
+
+			specularImg = R_FindImageFile(specularName, IMGTYPE_COLORALPHA, specularFlags);
+
+			if (specularImg)
+			{
+				diffuse->bundle[TB_SPECULARMAP] = diffuse->bundle[0];
+				diffuse->bundle[TB_SPECULARMAP].numImageAnimations = 0;
+				diffuse->bundle[TB_SPECULARMAP].image[0] = specularImg;
+
+				VectorSet4(diffuse->specularScale, 1.0f, 1.0f, 1.0f, 1.0f);
+			}
 		}
 	}
 
@@ -2782,10 +2876,17 @@ static void InitShader( const char *name, int lightmapIndex ) {
 
 		// default normal/specular
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
-		stages[i].specularScale[0] =
-		stages[i].specularScale[1] =
-		stages[i].specularScale[2] = r_baseSpecular->value;
-		stages[i].specularScale[3] = r_baseGloss->value;
+		if (r_pbr->integer)
+		{
+			stages[i].specularScale[0] = r_baseGloss->value;
+		}
+		else
+		{
+			stages[i].specularScale[0] =
+			stages[i].specularScale[1] =
+			stages[i].specularScale[2] = r_baseSpecular->value;
+			stages[i].specularScale[3] = r_baseGloss->value;
+		}
 	}
 }
 

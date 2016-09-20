@@ -183,7 +183,7 @@ void RB_BokehBlur(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, float 
 					FBO_Blit(tr.textureScratchFbo[0], NULL, blurTexScale, tr.textureScratchFbo[1], NULL, &tr.bokehShader, color, 0);
 			}
 
-			FBO_Blit(tr.textureScratchFbo[1], NULL, NULL, dst, dstBox, &tr.textureColorShader, NULL, 0);
+			FBO_Blit(tr.textureScratchFbo[1], NULL, NULL, dst, dstBox, NULL, NULL, 0);
 		}
 #else // higher quality blur, but slower
 		else if (blur > 1.0f)
@@ -217,7 +217,7 @@ void RB_BokehBlur(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, float 
 				FBO_Blit(tr.quarterFbo[0], NULL, blurTexScale, tr.quarterFbo[1], NULL, &tr.bokehShader, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
 			}
 
-			FBO_Blit(tr.quarterFbo[1], NULL, NULL, dst, dstBox, &tr.textureColorShader, NULL, 0);
+			FBO_Blit(tr.quarterFbo[1], NULL, NULL, dst, dstBox, NULL, NULL, 0);
 		}
 #endif
 	}
@@ -227,54 +227,40 @@ void RB_BokehBlur(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, float 
 static void RB_RadialBlur(FBO_t *srcFbo, FBO_t *dstFbo, int passes, float stretch, float x, float y, float w, float h, float xcenter, float ycenter, float alpha)
 {
 	ivec4_t srcBox, dstBox;
+	int srcWidth, srcHeight;
 	vec4_t color;
 	const float inc = 1.f / passes;
 	const float mul = powf(stretch, inc);
 	float scale;
 
+	alpha *= inc;
+	VectorSet4(color, alpha, alpha, alpha, 1.0f);
+
+	srcWidth  = srcFbo ? srcFbo->width  : glConfig.vidWidth;
+	srcHeight = srcFbo ? srcFbo->height : glConfig.vidHeight;
+
+	VectorSet4(srcBox, 0, 0, srcWidth, srcHeight);
+
+	VectorSet4(dstBox, x, y, w, h);
+	FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, 0);
+
+	--passes;
+	scale = mul;
+	while (passes > 0)
 	{
-		vec2_t texScale;
+		float iscale = 1.f / scale;
+		float s0 = xcenter * (1.f - iscale);
+		float t0 = (1.0f - ycenter) * (1.f - iscale);
 
-		texScale[0] = 
-		texScale[1] = 1.0f;
-
-		alpha *= inc;
-		VectorSet4(color, alpha, alpha, alpha, 1.0f);
-
-		VectorSet4(srcBox, 0, 0, srcFbo->width, srcFbo->height);
-		VectorSet4(dstBox, x, y, w, h);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, 0);
-
-		--passes;
-		scale = mul;
-		while (passes > 0)
-		{
-			float iscale = 1.f / scale;
-			float s0 = xcenter * (1.f - iscale);
-			float t0 = (1.0f - ycenter) * (1.f - iscale);
-			float s1 = iscale + s0;
-			float t1 = iscale + t0;
-
-			if (srcFbo)
-			{
-				srcBox[0] = s0 * srcFbo->width;
-				srcBox[1] = t0 * srcFbo->height;
-				srcBox[2] = (s1 - s0) * srcFbo->width;
-				srcBox[3] = (t1 - t0) * srcFbo->height;
-			}
-			else
-			{
-				srcBox[0] = s0 * glConfig.vidWidth;
-				srcBox[1] = t0 * glConfig.vidHeight;
-				srcBox[2] = (s1 - s0) * glConfig.vidWidth;
-				srcBox[3] = (t1 - t0) * glConfig.vidHeight;
-			}
+		srcBox[0] = s0 * srcWidth;
+		srcBox[1] = t0 * srcHeight;
+		srcBox[2] = iscale * srcWidth;
+		srcBox[3] = iscale * srcHeight;
 			
-			FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
 
-			scale *= mul;
-			--passes;
-		}
+		scale *= mul;
+		--passes;
 	}
 }
 
@@ -296,7 +282,7 @@ static qboolean RB_UpdateSunFlareVis(void)
 		for (iter=0 ; ; ++iter)
 		{
 			GLint available = 0;
-			qglGetQueryObjectivARB(tr.sunFlareQuery[tr.sunFlareQueryIndex], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
+			qglGetQueryObjectiv(tr.sunFlareQuery[tr.sunFlareQueryIndex], GL_QUERY_RESULT_AVAILABLE, &available);
 			if (available)
 				break;
 		}
@@ -304,7 +290,7 @@ static qboolean RB_UpdateSunFlareVis(void)
 		ri.Printf(PRINT_DEVELOPER, "Waited %d iterations\n", iter);
 	}
 	
-	qglGetQueryObjectuivARB(tr.sunFlareQuery[tr.sunFlareQueryIndex], GL_QUERY_RESULT_ARB, &sampleCount);
+	qglGetQueryObjectuiv(tr.sunFlareQuery[tr.sunFlareQueryIndex], GL_QUERY_RESULT, &sampleCount);
 	return sampleCount > 0;
 }
 
@@ -329,7 +315,7 @@ void RB_SunRays(FBO_t *srcFbo, ivec4_t srcBox, FBO_t *dstFbo, ivec4_t dstBox)
 	// From RB_DrawSun()
 	{
 		float dist;
-		mat4_t trans, model, mvp;
+		mat4_t trans, model;
 
 		Mat4Translation( backEnd.viewParms.or.origin, trans );
 		Mat4Multiply( backEnd.viewParms.world.modelMatrix, trans, model );
@@ -353,28 +339,16 @@ void RB_SunRays(FBO_t *srcFbo, ivec4_t srcBox, FBO_t *dstFbo, ivec4_t dstBox)
 	// initialize quarter buffers
 	{
 		float mul = 1.f;
-		vec2_t texScale;
 		ivec4_t rayBox, quarterBox;
-
-		texScale[0] = 
-		texScale[1] = 1.0f;
+		int srcWidth  = srcFbo ? srcFbo->width  : glConfig.vidWidth;
+		int srcHeight = srcFbo ? srcFbo->height : glConfig.vidHeight;
 
 		VectorSet4(color, mul, mul, mul, 1);
 
-		if (srcFbo)
-		{
-			rayBox[0] = srcBox[0] * tr.sunRaysFbo->width  / srcFbo->width;
-			rayBox[1] = srcBox[1] * tr.sunRaysFbo->height / srcFbo->height;
-			rayBox[2] = srcBox[2] * tr.sunRaysFbo->width  / srcFbo->width;
-			rayBox[3] = srcBox[3] * tr.sunRaysFbo->height / srcFbo->height;
-		}
-		else
-		{
-			rayBox[0] = srcBox[0] * tr.sunRaysFbo->width  / glConfig.vidWidth;
-			rayBox[1] = srcBox[1] * tr.sunRaysFbo->height / glConfig.vidHeight;
-			rayBox[2] = srcBox[2] * tr.sunRaysFbo->width  / glConfig.vidWidth;
-			rayBox[3] = srcBox[3] * tr.sunRaysFbo->height / glConfig.vidHeight;
-		}
+		rayBox[0] = srcBox[0] * tr.sunRaysFbo->width  / srcWidth;
+		rayBox[1] = srcBox[1] * tr.sunRaysFbo->height / srcHeight;
+		rayBox[2] = srcBox[2] * tr.sunRaysFbo->width  / srcWidth;
+		rayBox[3] = srcBox[3] * tr.sunRaysFbo->height / srcHeight;
 
 		quarterBox[0] = 0;
 		quarterBox[1] = tr.quarterFbo[0]->height;
@@ -408,14 +382,10 @@ void RB_SunRays(FBO_t *srcFbo, ivec4_t srcBox, FBO_t *dstFbo, ivec4_t dstBox)
 	// add result back on top of the main buffer
 	{
 		float mul = 1.f;
-		vec2_t texScale;
-
-		texScale[0] = 
-		texScale[1] = 1.0f;
 
 		VectorSet4(color, mul, mul, mul, 1);
 
-		FBO_Blit(tr.quarterFbo[0], NULL, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
+		FBO_Blit(tr.quarterFbo[0], NULL, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 	}
 }
 
@@ -443,31 +413,27 @@ static void RB_BlurAxis(FBO_t *srcFbo, FBO_t *dstFbo, float strength, qboolean h
 	{
 		ivec4_t srcBox, dstBox;
 		vec4_t color;
-		vec2_t texScale;
-
-		texScale[0] = 
-		texScale[1] = 1.0f;
 
 		VectorSet4(color, weights[0], weights[0], weights[0], 1.0f);
 		VectorSet4(srcBox, 0, 0, srcFbo->width, srcFbo->height);
 		VectorSet4(dstBox, 0, 0, dstFbo->width, dstFbo->height);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, 0 );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, 0);
 
 		VectorSet4(color, weights[1], weights[1], weights[1], 1.0f);
 		dx = offsets[1] * xmul;
 		dy = offsets[1] * ymul;
 		VectorSet4(srcBox, dx, dy, srcFbo->width, srcFbo->height);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 		VectorSet4(srcBox, -dx, -dy, srcFbo->width, srcFbo->height);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 
 		VectorSet4(color, weights[2], weights[2], weights[2], 1.0f);
 		dx = offsets[2] * xmul;
 		dy = offsets[2] * ymul;
 		VectorSet4(srcBox, dx, dy, srcFbo->width, srcFbo->height);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 		VectorSet4(srcBox, -dx, -dy, srcFbo->width, srcFbo->height);
-		FBO_Blit(srcFbo, srcBox, texScale, dstFbo, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		FBO_Blit(srcFbo, srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 	}
 }
 
@@ -492,10 +458,6 @@ void RB_GaussianBlur(float blur)
 	{
 		ivec4_t srcBox, dstBox;
 		vec4_t color;
-		vec2_t texScale;
-
-		texScale[0] = 
-		texScale[1] = 1.0f;
 
 		VectorSet4(color, 1, 1, 1, 1);
 
@@ -504,10 +466,8 @@ void RB_GaussianBlur(float blur)
 		FBO_FastBlit(tr.quarterFbo[0], NULL, tr.textureScratchFbo[0], NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		// set the alpha channel
-		VectorSet4(srcBox, 0, 0, tr.whiteImage->width, tr.whiteImage->height);
-		VectorSet4(dstBox, 0, 0, tr.textureScratchFbo[0]->width, tr.textureScratchFbo[0]->height);
 		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-		FBO_BlitFromTexture(tr.whiteImage, srcBox, texScale, tr.textureScratchFbo[0], dstBox, &tr.textureColorShader, color, GLS_DEPTHTEST_DISABLE);
+		FBO_BlitFromTexture(tr.whiteImage, NULL, NULL, tr.textureScratchFbo[0], NULL, NULL, color, GLS_DEPTHTEST_DISABLE);
 		qglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 		// blur the tiny buffer horizontally and vertically
@@ -518,6 +478,6 @@ void RB_GaussianBlur(float blur)
 		VectorSet4(srcBox, 0, 0, tr.textureScratchFbo[0]->width, tr.textureScratchFbo[0]->height);
 		VectorSet4(dstBox, 0, 0, glConfig.vidWidth,              glConfig.vidHeight);
 		color[3] = factor;
-		FBO_Blit(tr.textureScratchFbo[0], srcBox, texScale, NULL, dstBox, &tr.textureColorShader, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
+		FBO_Blit(tr.textureScratchFbo[0], srcBox, NULL, NULL, dstBox, NULL, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
 	}
 }

@@ -2,6 +2,7 @@ build
 Makefile.local
 *.swp
 *tags
+*~
 
 # OS X
 ####################
@@ -36,3 +37,5 @@ profile
 # Microsoft Visual Studio
 ####################
 *.sdf
+*.opensdf
+*.suo

@@ -46,7 +46,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define idppc 1
 #if defined(__VEC__)
 #define idppc_altivec 1
-#ifdef MACOS_X  // Apple's GCC does this differently than the FSF.
+#ifdef __APPLE__  // Apple's GCC does this differently than the FSF.
 #define VECCONST_UINT8(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) \
 	(vector unsigned char) (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)
 #else
@@ -139,12 +139,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 //============================================================== MAC OS X ===
 
-#if defined(MACOS_X) || defined(__APPLE_CC__)
-
-// make sure this is defined, just for sanity's sake...
-#ifndef MACOS_X
-#define MACOS_X
-#endif
+#if defined(__APPLE__) || defined(__APPLE_CC__)
 
 #define OS_STRING "macosx"
 #define ID_INLINE inline
@@ -169,50 +164,29 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 //================================================================= LINUX ===
 
-#if defined(__linux__) || defined(__FreeBSD_kernel__)
+#if defined(__linux__) || defined(__FreeBSD_kernel__) || defined(__GNU__)
 
 #include <endian.h>
 
 #if defined(__linux__)
 #define OS_STRING "linux"
-#else
+#elif defined(__FreeBSD_kernel__)
 #define OS_STRING "kFreeBSD"
+#else
+#define OS_STRING "GNU"
 #endif
 
 #define ID_INLINE inline
 
 #define PATH_SEP '/'
 
-#if defined __i386__
-#define ARCH_STRING "x86"
-#elif defined __x86_64__
+#if !defined(ARCH_STRING)
+# error ARCH_STRING should be defined by the Makefile
+#endif
+
+#if defined __x86_64__
 #undef idx64
 #define idx64 1
-#define ARCH_STRING "x86_64"
-#elif defined __powerpc64__
-#define ARCH_STRING "ppc64"
-#elif defined __powerpc__
-#define ARCH_STRING "ppc"
-#elif defined __s390__
-#define ARCH_STRING "s390"
-#elif defined __s390x__
-#define ARCH_STRING "s390x"
-#elif defined __ia64__
-#define ARCH_STRING "ia64"
-#elif defined __alpha__
-#define ARCH_STRING "alpha"
-#elif defined __sparc__
-#define ARCH_STRING "sparc"
-#elif defined __arm__
-#define ARCH_STRING "arm"
-#elif defined __cris__
-#define ARCH_STRING "cris"
-#elif defined __hppa__
-#define ARCH_STRING "hppa"
-#elif defined __mips__
-#define ARCH_STRING "mips"
-#elif defined __sh__
-#define ARCH_STRING "sh"
 #endif
 
 #if __FLOAT_WORD_ORDER == __BIG_ENDIAN

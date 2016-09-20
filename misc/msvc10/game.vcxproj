@@ -41,34 +41,42 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release TA|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -180,6 +188,7 @@
       </DataExecutionPrevention>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|x64'">
@@ -276,6 +285,7 @@
       </DataExecutionPrevention>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -1241,17 +1251,17 @@
     <ClInclude Include="..\..\code\game\ai_main.h" />
     <ClInclude Include="..\..\code\game\ai_team.h" />
     <ClInclude Include="..\..\code\game\ai_vcmd.h" />
-    <ClInclude Include="..\..\code\game\be_aas.h" />
-    <ClInclude Include="..\..\code\game\be_ai_char.h" />
-    <ClInclude Include="..\..\code\game\be_ai_chat.h" />
-    <ClInclude Include="..\..\code\game\be_ai_gen.h" />
-    <ClInclude Include="..\..\code\game\be_ai_goal.h" />
-    <ClInclude Include="..\..\code\game\be_ai_move.h" />
-    <ClInclude Include="..\..\code\game\be_ai_weap.h" />
-    <ClInclude Include="..\..\code\game\be_ea.h" />
+    <ClInclude Include="..\..\code\botlib\be_aas.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_char.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_chat.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_gen.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_goal.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_move.h" />
+    <ClInclude Include="..\..\code\botlib\be_ai_weap.h" />
+    <ClInclude Include="..\..\code\botlib\be_ea.h" />
     <ClInclude Include="..\..\code\game\bg_local.h" />
     <ClInclude Include="..\..\code\game\bg_public.h" />
-    <ClInclude Include="..\..\code\game\botlib.h" />
+    <ClInclude Include="..\..\code\botlib\botlib.h" />
     <ClInclude Include="..\..\code\game\chars.h" />
     <ClInclude Include="..\..\code\game\g_local.h" />
     <ClInclude Include="..\..\code\game\g_public.h" />

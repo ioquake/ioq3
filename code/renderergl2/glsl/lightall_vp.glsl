@@ -6,16 +6,12 @@ attribute vec4 attr_Color;
 
 attribute vec3 attr_Position;
 attribute vec3 attr_Normal;
-#if defined(USE_VERT_TANGENT_SPACE)
 attribute vec4 attr_Tangent;
-#endif
 
 #if defined(USE_VERTEX_ANIMATION)
 attribute vec3 attr_Position2;
 attribute vec3 attr_Normal2;
-  #if defined(USE_VERT_TANGENT_SPACE)
 attribute vec4 attr_Tangent2;
-  #endif
 #endif
 
 #if defined(USE_LIGHT) && !defined(USE_LIGHT_VECTOR)
@@ -57,10 +53,8 @@ uniform float  u_VertexLerp;
 #if defined(USE_LIGHT_VECTOR)
 uniform vec4   u_LightOrigin;
 uniform float  u_LightRadius;
-  #if defined(USE_FAST_LIGHT)
 uniform vec3   u_DirectedLight;
 uniform vec3   u_AmbientLight;
-  #endif
 #endif
 
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
@@ -71,16 +65,14 @@ uniform float u_PrimaryLightRadius;
 varying vec4   var_TexCoords;
 
 varying vec4   var_Color;
+#if defined(USE_LIGHT_VECTOR) && !defined(USE_FAST_LIGHT)
+varying vec4   var_ColorAmbient;
+#endif
 
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
-  #if defined(USE_VERT_TANGENT_SPACE)
 varying vec4   var_Normal;
 varying vec4   var_Tangent;
 varying vec4   var_Bitangent;
-  #else
-varying vec3   var_Normal;
-varying vec3   var_ViewDir;
-  #endif
 #endif
 
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
@@ -156,13 +148,13 @@ void main()
 #if defined(USE_VERTEX_ANIMATION)
 	vec3 position  = mix(attr_Position,    attr_Position2,    u_VertexLerp);
 	vec3 normal    = mix(attr_Normal,      attr_Normal2,      u_VertexLerp);
-  #if defined(USE_VERT_TANGENT_SPACE) && defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+  #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	vec3 tangent   = mix(attr_Tangent.xyz, attr_Tangent2.xyz, u_VertexLerp);
   #endif
 #else
 	vec3 position  = attr_Position;
 	vec3 normal    = attr_Normal;
-  #if defined(USE_VERT_TANGENT_SPACE) && defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+  #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	vec3 tangent   = attr_Tangent.xyz;
   #endif
 #endif
@@ -184,12 +176,12 @@ void main()
 #if defined(USE_MODELMATRIX)
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal    = (u_ModelMatrix * vec4(normal,   0.0)).xyz;
-  #if defined(USE_VERT_TANGENT_SPACE) && defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+  #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	tangent   = (u_ModelMatrix * vec4(tangent,  0.0)).xyz;
   #endif
 #endif
 
-#if defined(USE_VERT_TANGENT_SPACE) && defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+#if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	vec3 bitangent = cross(normal, tangent) * attr_Tangent.w;
 #endif
 
@@ -208,12 +200,24 @@ void main()
 
 	var_Color = u_VertColor * attr_Color + u_BaseColor;
 
-#if defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
+#if defined(USE_LIGHT_VECTOR)
+  #if defined(USE_FAST_LIGHT)
 	float sqrLightDist = dot(L, L);
-	float attenuation = CalcLightAttenuation(u_LightOrigin.w, u_LightRadius * u_LightRadius / sqrLightDist);
 	float NL = clamp(dot(normalize(normal), L) / sqrt(sqrLightDist), 0.0, 1.0);
+	float attenuation = CalcLightAttenuation(u_LightOrigin.w, u_LightRadius * u_LightRadius / sqrLightDist);
 
 	var_Color.rgb *= u_DirectedLight * (attenuation * NL) + u_AmbientLight;
+  #else
+	var_ColorAmbient.rgb = u_AmbientLight * var_Color.rgb;
+	var_Color.rgb *= u_DirectedLight;
+    #if defined(USE_PBR)
+	var_ColorAmbient.rgb *= var_ColorAmbient.rgb;
+    #endif
+  #endif
+#endif
+
+#if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT) && defined(USE_PBR)
+	var_Color.rgb *= var_Color.rgb;
 #endif
 
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
@@ -234,14 +238,9 @@ void main()
 
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	vec3 viewDir = u_ViewOrigin - position;
-  #if defined(USE_VERT_TANGENT_SPACE)
 	// store view direction in tangent space to save on varyings
 	var_Normal    = vec4(normal,    viewDir.x);
 	var_Tangent   = vec4(tangent,   viewDir.y);
 	var_Bitangent = vec4(bitangent, viewDir.z);
-  #else
-	var_Normal = normal;
-	var_ViewDir = viewDir;
-  #endif
 #endif
 }

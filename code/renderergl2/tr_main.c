@@ -70,229 +70,10 @@ qboolean R_CompareVert(srfVert_t * v1, srfVert_t * v2, qboolean checkST)
 
 /*
 =============
-R_CalcNormalForTriangle
+R_CalcTexDirs
+
+Lengyel, Eric. “Computing Tangent Space Basis Vectors for an Arbitrary Mesh”. Terathon Software 3D Graphics Library, 2001. http://www.terathon.com/code/tangent.html
 =============
-*/
-void R_CalcNormalForTriangle(vec3_t normal, const vec3_t v0, const vec3_t v1, const vec3_t v2)
-{
-	vec3_t          udir, vdir;
-
-	// compute the face normal based on vertex points
-	VectorSubtract(v2, v0, udir);
-	VectorSubtract(v1, v0, vdir);
-	CrossProduct(udir, vdir, normal);
-
-	VectorNormalize(normal);
-}
-
-/*
-=============
-R_CalcTangentsForTriangle
-http://members.rogers.com/deseric/tangentspace.htm
-=============
-*/
-void R_CalcTangentsForTriangle(vec3_t tangent, vec3_t bitangent,
-							   const vec3_t v0, const vec3_t v1, const vec3_t v2,
-							   const vec2_t t0, const vec2_t t1, const vec2_t t2)
-{
-	int             i;
-	vec3_t          planes[3];
-	vec3_t          u, v;
-
-	for(i = 0; i < 3; i++)
-	{
-		VectorSet(u, v1[i] - v0[i], t1[0] - t0[0], t1[1] - t0[1]);
-		VectorSet(v, v2[i] - v0[i], t2[0] - t0[0], t2[1] - t0[1]);
-
-		VectorNormalize(u);
-		VectorNormalize(v);
-
-		CrossProduct(u, v, planes[i]);
-	}
-
-	//So your tangent space will be defined by this :
-	//Normal = Normal of the triangle or Tangent X Bitangent (careful with the cross product,
-	// you have to make sure the normal points in the right direction)
-	//Tangent = ( dp(Fx(s,t)) / ds,  dp(Fy(s,t)) / ds, dp(Fz(s,t)) / ds )   or     ( -Bx/Ax, -By/Ay, - Bz/Az )
-	//Bitangent =  ( dp(Fx(s,t)) / dt,  dp(Fy(s,t)) / dt, dp(Fz(s,t)) / dt )  or     ( -Cx/Ax, -Cy/Ay, -Cz/Az )
-
-	// tangent...
-	tangent[0] = -planes[0][1] / planes[0][0];
-	tangent[1] = -planes[1][1] / planes[1][0];
-	tangent[2] = -planes[2][1] / planes[2][0];
-	VectorNormalize(tangent);
-
-	// bitangent...
-	bitangent[0] = -planes[0][2] / planes[0][0];
-	bitangent[1] = -planes[1][2] / planes[1][0];
-	bitangent[2] = -planes[2][2] / planes[2][0];
-	VectorNormalize(bitangent);
-}
-
-
-
-
-/*
-=============
-R_CalcTangentSpace
-=============
-*/
-void R_CalcTangentSpace(vec3_t tangent, vec3_t bitangent, vec3_t normal,
-						const vec3_t v0, const vec3_t v1, const vec3_t v2, const vec2_t t0, const vec2_t t1, const vec2_t t2)
-{
-	vec3_t          cp, u, v;
-	vec3_t          faceNormal;
-
-	VectorSet(u, v1[0] - v0[0], t1[0] - t0[0], t1[1] - t0[1]);
-	VectorSet(v, v2[0] - v0[0], t2[0] - t0[0], t2[1] - t0[1]);
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[0] = -cp[1] / cp[0];
-		bitangent[0] = -cp[2] / cp[0];
-	}
-
-	u[0] = v1[1] - v0[1];
-	v[0] = v2[1] - v0[1];
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[1] = -cp[1] / cp[0];
-		bitangent[1] = -cp[2] / cp[0];
-	}
-
-	u[0] = v1[2] - v0[2];
-	v[0] = v2[2] - v0[2];
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[2] = -cp[1] / cp[0];
-		bitangent[2] = -cp[2] / cp[0];
-	}
-
-	VectorNormalize(tangent);
-	VectorNormalize(bitangent);
-
-	// compute the face normal based on vertex points
-	if ( normal[0] == 0.0f && normal[1] == 0.0f && normal[2] == 0.0f )
-	{
-		VectorSubtract(v2, v0, u);
-		VectorSubtract(v1, v0, v);
-		CrossProduct(u, v, faceNormal);
-	}
-	else
-	{
-		VectorCopy(normal, faceNormal);
-	}
-
-	VectorNormalize(faceNormal);
-
-#if 1
-	// Gram-Schmidt orthogonalize
-	//tangent[a] = (t - n * Dot(n, t)).Normalize();
-	VectorMA(tangent, -DotProduct(faceNormal, tangent), faceNormal, tangent);
-	VectorNormalize(tangent);
-
-	// compute the cross product B=NxT
-	//CrossProduct(normal, tangent, bitangent);
-#else
-	// normal, compute the cross product N=TxB
-	CrossProduct(tangent, bitangent, normal);
-	VectorNormalize(normal);
-
-	if(DotProduct(normal, faceNormal) < 0)
-	{
-		//VectorInverse(normal);
-		//VectorInverse(tangent);
-		//VectorInverse(bitangent);
-
-		// compute the cross product T=BxN
-		CrossProduct(bitangent, faceNormal, tangent);
-
-		// compute the cross product B=NxT
-		//CrossProduct(normal, tangent, bitangent);
-	}
-#endif
-
-	VectorCopy(faceNormal, normal);
-}
-
-void R_CalcTangentSpaceFast(vec3_t tangent, vec3_t bitangent, vec3_t normal,
-						const vec3_t v0, const vec3_t v1, const vec3_t v2, const vec2_t t0, const vec2_t t1, const vec2_t t2)
-{
-	vec3_t          cp, u, v;
-	vec3_t          faceNormal;
-
-	VectorSet(u, v1[0] - v0[0], t1[0] - t0[0], t1[1] - t0[1]);
-	VectorSet(v, v2[0] - v0[0], t2[0] - t0[0], t2[1] - t0[1]);
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[0] = -cp[1] / cp[0];
-		bitangent[0] = -cp[2] / cp[0];
-	}
-
-	u[0] = v1[1] - v0[1];
-	v[0] = v2[1] - v0[1];
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[1] = -cp[1] / cp[0];
-		bitangent[1] = -cp[2] / cp[0];
-	}
-
-	u[0] = v1[2] - v0[2];
-	v[0] = v2[2] - v0[2];
-
-	CrossProduct(u, v, cp);
-	if(fabs(cp[0]) > 10e-6)
-	{
-		tangent[2] = -cp[1] / cp[0];
-		bitangent[2] = -cp[2] / cp[0];
-	}
-
-	VectorNormalizeFast(tangent);
-	VectorNormalizeFast(bitangent);
-
-	// compute the face normal based on vertex points
-	VectorSubtract(v2, v0, u);
-	VectorSubtract(v1, v0, v);
-	CrossProduct(u, v, faceNormal);
-
-	VectorNormalizeFast(faceNormal);
-
-#if 0
-	// normal, compute the cross product N=TxB
-	CrossProduct(tangent, bitangent, normal);
-	VectorNormalizeFast(normal);
-
-	if(DotProduct(normal, faceNormal) < 0)
-	{
-		VectorInverse(normal);
-		//VectorInverse(tangent);
-		//VectorInverse(bitangent);
-
-		CrossProduct(normal, tangent, bitangent);
-	}
-
-	VectorCopy(faceNormal, normal);
-#else
-	// Gram-Schmidt orthogonalize
-		//tangent[a] = (t - n * Dot(n, t)).Normalize();
-	VectorMA(tangent, -DotProduct(faceNormal, tangent), faceNormal, tangent);
-	VectorNormalizeFast(tangent);
-#endif
-
-	VectorCopy(faceNormal, normal);
-}
-
-/*
-http://www.terathon.com/code/tangent.html
 */
 void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2,
 				   const vec3_t v3, const vec2_t w1, const vec2_t w2, const vec2_t w3)
@@ -312,13 +93,21 @@ void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2,
 	t1 = w2[1] - w1[1];
 	t2 = w3[1] - w1[1];
 
-	r = 1.0f / (s1 * t2 - s2 * t1);
+	r = s1 * t2 - s2 * t1;
+	if (r) r = 1.0f / r;
 
 	VectorSet(sdir, (t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r, (t2 * z1 - t1 * z2) * r);
 	VectorSet(tdir, (s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r, (s1 * z2 - s2 * z1) * r);
 }
 
-void R_CalcTbnFromNormalAndTexDirs(vec3_t tangent, vec3_t bitangent, vec3_t normal, vec3_t sdir, vec3_t tdir)
+/*
+=============
+R_CalcTangentSpace
+
+Lengyel, Eric. “Computing Tangent Space Basis Vectors for an Arbitrary Mesh”. Terathon Software 3D Graphics Library, 2001. http://www.terathon.com/code/tangent.html
+=============
+*/
+vec_t R_CalcTangentSpace(vec3_t tangent, vec3_t bitangent, const vec3_t normal, const vec3_t sdir, const vec3_t tdir)
 {
 	vec3_t n_cross_t;
 	vec_t n_dot_t, handedness;
@@ -332,114 +121,13 @@ void R_CalcTbnFromNormalAndTexDirs(vec3_t tangent, vec3_t bitangent, vec3_t norm
 	CrossProduct(normal, sdir, n_cross_t);
 	handedness = (DotProduct(n_cross_t, tdir) < 0.0f) ? -1.0f : 1.0f;
 
-	// Calculate bitangent
-	CrossProduct(normal, tangent, bitangent);
-	VectorScale(bitangent, handedness, bitangent);
+	// Calculate orthogonal bitangent, if necessary
+	if (bitangent)
+		CrossProduct(normal, tangent, bitangent);
+
+	return handedness;
 }
 
-void R_CalcTBN2(vec3_t tangent, vec3_t bitangent, vec3_t normal,
-						const vec3_t v1, const vec3_t v2, const vec3_t v3, const vec2_t t1, const vec2_t t2, const vec2_t t3)
-{
-	vec3_t			v2v1;
-	vec3_t			v3v1;
-
-	float			c2c1_T;
-	float			c2c1_B;
-
-	float			c3c1_T;
-	float			c3c1_B;
-
-	float			denominator;
-	float			scale1, scale2;
-
-	vec3_t			T, B, N, C;
-
-
-	// Calculate the tangent basis for each vertex of the triangle
-	// UPDATE: In the 3rd edition of the accompanying article, the for-loop located here has
-	// been removed as it was redundant (the entire TBN matrix was calculated three times
-	// instead of just one).
-	//
-	// Please note, that this function relies on the fact that the input geometry are triangles
-	// and the tangent basis for each vertex thus is identical!
-	//
-
-	// Calculate the vectors from the current vertex to the two other vertices in the triangle
-	VectorSubtract(v2, v1, v2v1);
-	VectorSubtract(v3, v1, v3v1);
-
-	// The equation presented in the article states that:
-	// c2c1_T = V2.texcoord.x - V1.texcoord.x
-	// c2c1_B = V2.texcoord.y - V1.texcoord.y
-	// c3c1_T = V3.texcoord.x - V1.texcoord.x
-	// c3c1_B = V3.texcoord.y - V1.texcoord.y
-
-	// Calculate c2c1_T and c2c1_B
-	c2c1_T = t2[0] - t1[0];
-	c2c1_B = t2[1] - t2[1];
-
-	// Calculate c3c1_T and c3c1_B
-	c3c1_T = t3[0] - t1[0];
-	c3c1_B = t3[1] - t1[1];
-
-	denominator = c2c1_T * c3c1_B - c3c1_T * c2c1_B;
-	//if(ROUNDOFF(fDenominator) == 0.0f)
-	if(denominator == 0.0f)
-	{
-		// We won't risk a divide by zero, so set the tangent matrix to the identity matrix
-		VectorSet(tangent, 1, 0, 0);
-		VectorSet(bitangent, 0, 1, 0);
-		VectorSet(normal, 0, 0, 1);
-	}
-	else
-	{
-		// Calculate the reciprocal value once and for all (to achieve speed)
-		scale1 = 1.0f / denominator;
-
-		// T and B are calculated just as the equation in the article states
-		VectorSet(T, (c3c1_B * v2v1[0] - c2c1_B * v3v1[0]) * scale1,
-					 (c3c1_B * v2v1[1] - c2c1_B * v3v1[1]) * scale1,
-					 (c3c1_B * v2v1[2] - c2c1_B * v3v1[2]) * scale1);
-
-		VectorSet(B, (-c3c1_T * v2v1[0] + c2c1_T * v3v1[0]) * scale1,
-					 (-c3c1_T * v2v1[1] + c2c1_T * v3v1[1]) * scale1,
-					 (-c3c1_T * v2v1[2] + c2c1_T * v3v1[2]) * scale1);
-
-		// The normal N is calculated as the cross product between T and B
-		CrossProduct(T, B, N);
-
-#if 0
-		VectorCopy(T, tangent);
-		VectorCopy(B, bitangent);
-		VectorCopy(N, normal);
-#else
-		// Calculate the reciprocal value once and for all (to achieve speed)
-		scale2 = 1.0f / ((T[0] * B[1] * N[2] - T[2] * B[1] * N[0]) +
-					(B[0] * N[1] * T[2] - B[2] * N[1] * T[0]) +
-					(N[0] * T[1] * B[2] - N[2] * T[1] * B[0]));
-
-		// Calculate the inverse if the TBN matrix using the formula described in the article.
-		// We store the basis vectors directly in the provided TBN matrix: pvTBNMatrix
-		CrossProduct(B, N, C); tangent[0] = C[0] * scale2;
-		CrossProduct(N, T, C); tangent[1] = -C[0] * scale2;
-		CrossProduct(T, B, C); tangent[2] = C[0] * scale2;
-		VectorNormalize(tangent);
-
-		CrossProduct(B, N, C); bitangent[0] = -C[1] * scale2;
-		CrossProduct(N, T, C); bitangent[1] = C[1] * scale2;
-		CrossProduct(T, B, C); bitangent[2] = -C[1] * scale2;
-		VectorNormalize(bitangent);
-
-		CrossProduct(B, N, C); normal[0] = C[2] * scale2;
-		CrossProduct(N, T, C); normal[1] = -C[2] * scale2;
-		CrossProduct(T, B, C); normal[2] = C[2] * scale2;
-		VectorNormalize(normal);
-#endif
-	}
-}
-
-
-#ifdef USE_VERT_TANGENT_SPACE
 qboolean R_CalcTangentVectors(srfVert_t * dv[3])
 {
 	int             i;
@@ -455,7 +143,8 @@ qboolean R_CalcTangentVectors(srfVert_t * dv[3])
 	/* do each vertex */
 	for(i = 0; i < 3; i++)
 	{
-		vec3_t bitangent, nxt;
+		vec4_t tangent;
+		vec3_t normal, bitangent, nxt;
 
 		// calculate s tangent vector
 		s = dv[i]->st[0] + 10.0f;
@@ -464,12 +153,12 @@ qboolean R_CalcTangentVectors(srfVert_t * dv[3])
 		bary[1] = ((dv[2]->st[0] - s) * (dv[0]->st[1] - t) - (dv[0]->st[0] - s) * (dv[2]->st[1] - t)) / bb;
 		bary[2] = ((dv[0]->st[0] - s) * (dv[1]->st[1] - t) - (dv[1]->st[0] - s) * (dv[0]->st[1] - t)) / bb;
 
-		dv[i]->tangent[0] = bary[0] * dv[0]->xyz[0] + bary[1] * dv[1]->xyz[0] + bary[2] * dv[2]->xyz[0];
-		dv[i]->tangent[1] = bary[0] * dv[0]->xyz[1] + bary[1] * dv[1]->xyz[1] + bary[2] * dv[2]->xyz[1];
-		dv[i]->tangent[2] = bary[0] * dv[0]->xyz[2] + bary[1] * dv[1]->xyz[2] + bary[2] * dv[2]->xyz[2];
+		tangent[0] = bary[0] * dv[0]->xyz[0] + bary[1] * dv[1]->xyz[0] + bary[2] * dv[2]->xyz[0];
+		tangent[1] = bary[0] * dv[0]->xyz[1] + bary[1] * dv[1]->xyz[1] + bary[2] * dv[2]->xyz[1];
+		tangent[2] = bary[0] * dv[0]->xyz[2] + bary[1] * dv[1]->xyz[2] + bary[2] * dv[2]->xyz[2];
 
-		VectorSubtract(dv[i]->tangent, dv[i]->xyz, dv[i]->tangent);
-		VectorNormalize(dv[i]->tangent);
+		VectorSubtract(tangent, dv[i]->xyz, tangent);
+		VectorNormalize(tangent);
 
 		// calculate t tangent vector
 		s = dv[i]->st[0];
@@ -486,8 +175,11 @@ qboolean R_CalcTangentVectors(srfVert_t * dv[3])
 		VectorNormalize(bitangent);
 
 		// store bitangent handedness
-		CrossProduct(dv[i]->normal, dv[i]->tangent, nxt);
-		dv[i]->tangent[3] = (DotProduct(nxt, bitangent) < 0.0f) ? -1.0f : 1.0f;
+		R_VaoUnpackNormal(normal, dv[i]->normal);
+		CrossProduct(normal, tangent, nxt);
+		tangent[3] = (DotProduct(nxt, bitangent) < 0.0f) ? -1.0f : 1.0f;
+
+		R_VaoPackTangent(dv[i]->tangent, tangent);
 
 		// debug code
 		//% Sys_FPrintf( SYS_VRB, "%d S: (%f %f %f) T: (%f %f %f)\n", i,
@@ -496,7 +188,6 @@ qboolean R_CalcTangentVectors(srfVert_t * dv[3])
 
 	return qtrue;
 }
-#endif
 
 
 /*
@@ -1679,6 +1370,10 @@ int R_SpriteFogNum( trRefEntity_t *ent ) {
 		return 0;
 	}
 
+	if ( ent->e.renderfx & RF_CROSSHAIR ) {
+		return 0;
+	}
+
 	for ( i = 1 ; i < tr.world->numfogs ; i++ ) {
 		fog = &tr.world->fogs[i];
 		for ( j = 0 ; j < 3 ; j++ ) {
@@ -1814,13 +1509,6 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		// we still need to add it for hyperspace cases
 		R_AddDrawSurfCmd( drawSurfs, numDrawSurfs );
 		return;
-	}
-
-	// if we overflowed MAX_DRAWSURFS, the drawsurfs
-	// wrapped around in the buffer and we will be missing
-	// the first surfaces, not the last ones
-	if ( numDrawSurfs > MAX_DRAWSURFS ) {
-		numDrawSurfs = MAX_DRAWSURFS;
 	}
 
 	// sort the drawsurfs by sort type, then orientation, then shader
@@ -2033,7 +1721,7 @@ void R_DebugGraphics( void ) {
 
 	R_IssuePendingRenderCommands();
 
-	GL_Bind( tr.whiteImage);
+	GL_BindToTMU(tr.whiteImage, TB_COLORMAP);
 	GL_Cull( CT_FRONT_SIDED );
 	ri.CM_DrawDebugSurface( R_DebugPolygon );
 }
@@ -2049,6 +1737,7 @@ or a mirror / remote location
 */
 void R_RenderView (viewParms_t *parms) {
 	int		firstDrawSurf;
+	int		numDrawSurfs;
 
 	if ( parms->viewportWidth <= 0 || parms->viewportHeight <= 0 ) {
 		return;
@@ -2071,7 +1760,15 @@ void R_RenderView (viewParms_t *parms) {
 
 	R_GenerateDrawSurfs();
 
-	R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf );
+	// if we overflowed MAX_DRAWSURFS, the drawsurfs
+	// wrapped around in the buffer and we will be missing
+	// the first surfaces, not the last ones
+	numDrawSurfs = tr.refdef.numDrawSurfs;
+	if ( numDrawSurfs > MAX_DRAWSURFS ) {
+		numDrawSurfs = MAX_DRAWSURFS;
+	}
+
+	R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, numDrawSurfs - firstDrawSurf );
 
 	// draw main system development information (surface outlines, etc)
 	R_DebugGraphics();
@@ -2356,7 +2053,7 @@ void R_RenderPshadowMaps(const refdef_t *fd)
 		VectorScale(lightDir, -1.0f, shadow->lightViewAxis[0]);
 		VectorSet(up, 0, 0, -1);
 
-		if ( abs(DotProduct(up, shadow->lightViewAxis[0])) > 0.9f )
+		if ( fabsf(DotProduct(up, shadow->lightViewAxis[0])) > 0.9f )
 		{
 			VectorSet(up, -1, 0, 0);
 		}
@@ -2599,7 +2296,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 	}
 
 	// Check if too close to parallel to light direction
-	if (abs(DotProduct(lightViewAxis[2], lightViewAxis[0])) > 0.9f)
+	if (fabsf(DotProduct(lightViewAxis[2], lightViewAxis[0])) > 0.9f)
 	{
 		if (level == 3 || lightViewIndependentOfCameraView)
 		{
@@ -2852,11 +2549,10 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 {
 	refdef_t refdef;
 	viewParms_t	parms;
-	float oldColorScale = tr.refdef.colorScale;
 
 	memset( &refdef, 0, sizeof( refdef ) );
 	refdef.rdflags = 0;
-	VectorCopy(tr.cubemapOrigins[cubemapIndex], refdef.vieworg);
+	VectorCopy(tr.cubemaps[cubemapIndex].origin, refdef.vieworg);
 
 	switch(cubemapSide)
 	{
@@ -2925,12 +2621,15 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 
 	{
 		vec3_t ambient, directed, lightDir;
+		float scale;
+
 		R_LightForPoint(tr.refdef.vieworg, ambient, directed, lightDir);
-		tr.refdef.colorScale = 1.0f; //766.0f / (directed[0] + directed[1] + directed[2] + 1.0f);
+		scale = directed[0] + directed[1] + directed[2] + ambient[0] + ambient[1] + ambient[2] + 1.0f;
+
 		// only print message for first side
-		if (directed[0] + directed[1] + directed[2] == 0 && cubemapSide == 0)
+		if (scale < 1.0001f && cubemapSide == 0)
 		{
-			ri.Printf(PRINT_ALL, "cubemap %d (%f, %f, %f) is outside the lightgrid!\n", cubemapIndex, tr.refdef.vieworg[0], tr.refdef.vieworg[1], tr.refdef.vieworg[2]);
+			ri.Printf(PRINT_ALL, "cubemap %d %s (%f, %f, %f) is outside the lightgrid or inside a wall!\n", cubemapIndex, tr.cubemaps[cubemapIndex].name, tr.refdef.vieworg[0], tr.refdef.vieworg[1], tr.refdef.vieworg[2]);
 		}
 	}
 
@@ -2967,12 +2666,6 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 
 	R_RenderView(&parms);
 
-	if (subscene)
-	{
-		tr.refdef.colorScale = oldColorScale;
-	}
-	else
-	{
+	if (!subscene)
 		RE_EndScene();
-	}
 }

@@ -3,18 +3,12 @@
 #
 # GNU Make required
 #
-
-COMPILE_PLATFORM=$(shell uname|sed -e s/_.*//|tr '[:upper:]' '[:lower:]'|sed -e 's/\//_/g')
-
-COMPILE_ARCH=$(shell uname -m | sed -e s/i.86/x86/)
+COMPILE_PLATFORM=$(shell uname | sed -e 's/_.*//' | tr '[:upper:]' '[:lower:]' | sed -e 's/\//_/g')
+COMPILE_ARCH=$(shell uname -m | sed -e 's/i.86/x86/' | sed -e 's/^arm.*/arm/')
 
 ifeq ($(COMPILE_PLATFORM),sunos)
   # Solaris uname and GNU uname differ
-  COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
-endif
-ifeq ($(COMPILE_PLATFORM),darwin)
-  # Apple does some things a little differently...
-  COMPILE_ARCH=$(shell uname -p | sed -e s/i.86/x86/)
+  COMPILE_ARCH=$(shell uname -p | sed -e 's/i.86/x86/')
 endif
 
 ifndef BUILD_STANDALONE
@@ -202,10 +196,6 @@ ifndef USE_INTERNAL_LIBS
 USE_INTERNAL_LIBS=1
 endif
 
-ifndef USE_INTERNAL_SPEEX
-USE_INTERNAL_SPEEX=$(USE_INTERNAL_LIBS)
-endif
-
 ifndef USE_INTERNAL_OGG
 USE_INTERNAL_OGG=$(USE_INTERNAL_LIBS)
 endif
@@ -234,8 +224,12 @@ ifndef USE_RENDERER_DLOPEN
 USE_RENDERER_DLOPEN=1
 endif
 
+ifndef USE_YACC
+USE_YACC=0
+endif
+
 ifndef DEBUG_CFLAGS
-DEBUG_CFLAGS=-g -O0
+DEBUG_CFLAGS=-ggdb -O0
 endif
 
 #############################################################################
@@ -258,7 +252,6 @@ NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
 Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-8c
-SPEEXDIR=$(MOUNT_DIR)/libspeex
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.1
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.4
 OPUSDIR=$(MOUNT_DIR)/opus-1.1
@@ -317,30 +310,18 @@ endif
 # SETUP AND BUILD -- LINUX
 #############################################################################
 
-## Defaults
-LIB=lib
-
 INSTALL=install
 MKDIR=mkdir
 EXTRA_FILES=
 CLIENT_EXTRA_FILES=
 
-ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
+ifneq (,$(findstring "$(COMPILE_PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
+  TOOLS_CFLAGS += -DARCH_STRING=\"$(COMPILE_ARCH)\"
+endif
 
-  ifeq ($(ARCH),x86_64)
-    LIB=lib64
-  else
-  ifeq ($(ARCH),ppc64)
-    LIB=lib64
-  else
-  ifeq ($(ARCH),s390x)
-    LIB=lib64
-  endif
-  endif
-  endif
-
+ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
   BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
-    -pipe -DUSE_ICON
+    -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS)
 
   OPTIMIZEVM = -O3
@@ -425,8 +406,7 @@ ifeq ($(PLATFORM),darwin)
   RENDERER_LIBS=
   OPTIMIZEVM=
 
-  BASE_CFLAGS = -Wall -Wimplicit -Wstrict-prototypes -mmacosx-version-min=10.5 \
-    -DMAC_OS_X_VERSION_MIN_REQUIRED=1050
+  BASE_CFLAGS += -mmacosx-version-min=10.7 -DMAC_OS_X_VERSION_MIN_REQUIRED=1070
 
   ifeq ($(ARCH),ppc)
     BASE_CFLAGS += -arch ppc -faltivec
@@ -464,11 +444,9 @@ ifeq ($(PLATFORM),darwin)
         $(error Architecture $(ARCH) is not supported when cross compiling)
       endif
     endif
-  else
-    TOOLS_CFLAGS += -DMACOS_X
   endif
 
-  BASE_CFLAGS += -fno-strict-aliasing -DMACOS_X -fno-common -pipe
+  BASE_CFLAGS += -fno-strict-aliasing -fno-common -pipe
 
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
@@ -485,6 +463,9 @@ ifeq ($(PLATFORM),darwin)
 
   BASE_CFLAGS += -D_THREAD_SAFE=1
 
+  # FIXME: It is not possible to build using system SDL2 framework
+  #  1. IF you try, this Makefile will still drop libSDL-2.0.0.dylib into the builddir
+  #  2. Debugger warns that you have 2- which one will be used is undefined
   ifeq ($(USE_LOCAL_HEADERS),1)
     BASE_CFLAGS += -I$(SDLHDIR)/include
   endif
@@ -531,13 +512,13 @@ ifdef MINGW
     endif
 
     ifndef CC
-      CC=$(strip $(foreach MINGW_PREFIX, $(MINGW_PREFIXES), \
-         $(call bin_path, $(MINGW_PREFIX)-gcc)))
+      CC=$(firstword $(strip $(foreach MINGW_PREFIX, $(MINGW_PREFIXES), \
+         $(call bin_path, $(MINGW_PREFIX)-gcc))))
     endif
 
     ifndef WINDRES
-      WINDRES=$(strip $(foreach MINGW_PREFIX, $(MINGW_PREFIXES), \
-         $(call bin_path, $(MINGW_PREFIX)-windres)))
+      WINDRES=$(firstword $(strip $(foreach MINGW_PREFIX, $(MINGW_PREFIXES), \
+         $(call bin_path, $(MINGW_PREFIX)-windres))))
     endif
   else
     # Some MinGW installations define CC to cc, but don't actually provide cc,
@@ -820,6 +801,7 @@ else # ifeq netbsd
 #############################################################################
 
 ifeq ($(PLATFORM),irix64)
+  LIB=lib
 
   ARCH=mips
 
@@ -1002,8 +984,18 @@ ifeq ($(USE_CURL),1)
   endif
 endif
 
+ifeq ($(USE_VOIP),1)
+  CLIENT_CFLAGS += -DUSE_VOIP
+  SERVER_CFLAGS += -DUSE_VOIP
+  NEED_OPUS=1
+endif
+
 ifeq ($(USE_CODEC_OPUS),1)
   CLIENT_CFLAGS += -DUSE_CODEC_OPUS
+  NEED_OPUS=1
+endif
+
+ifeq ($(NEED_OPUS),1)
   ifeq ($(USE_INTERNAL_OPUS),1)
     OPUS_CFLAGS = -DOPUS_BUILD -DHAVE_LRINTF -DFLOATING_POINT -DUSE_ALLOCA \
       -I$(OPUSDIR)/include -I$(OPUSDIR)/celt -I$(OPUSDIR)/silk \
@@ -1047,19 +1039,6 @@ endif
 
 ifeq ($(USE_MUMBLE),1)
   CLIENT_CFLAGS += -DUSE_MUMBLE
-endif
-
-ifeq ($(USE_VOIP),1)
-  CLIENT_CFLAGS += -DUSE_VOIP
-  SERVER_CFLAGS += -DUSE_VOIP
-  ifeq ($(USE_INTERNAL_SPEEX),1)
-    SPEEX_CFLAGS += -DFLOATING_POINT -DUSE_ALLOCA -I$(SPEEXDIR)/include
-  else
-    SPEEX_CFLAGS ?= $(shell pkg-config --silence-errors --cflags speex speexdsp || true)
-    SPEEX_LIBS ?= $(shell pkg-config --silence-errors --libs speex speexdsp || echo -lspeex -lspeexdsp)
-  endif
-  CLIENT_CFLAGS += $(SPEEX_CFLAGS)
-  CLIENT_LIBS += $(SPEEX_LIBS)
 endif
 
 ifeq ($(USE_INTERNAL_ZLIB),1)
@@ -1242,7 +1221,7 @@ release:
 	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V)
 
 ifneq ($(call bin_path, tput),)
-  TERM_COLUMNS=$(shell echo $$((`tput cols`-4)))
+  TERM_COLUMNS=$(shell if c=`tput cols`; then echo $$(($$c-4)); else echo 76; fi)
 else
   TERM_COLUMNS=76
 endif
@@ -1272,7 +1251,7 @@ endif
 
 NAKED_TARGETS=$(shell echo $(TARGETS) | sed -e "s!$(B)/!!g")
 
-print_list=@for i in $(1); \
+print_list=-@for i in $(1); \
      do \
              echo "    $$i"; \
      done
@@ -1376,6 +1355,10 @@ ifndef TOOLS_CC
   TOOLS_CC = gcc
 endif
 
+ifndef YACC
+  YACC = yacc
+endif
+
 TOOLS_OPTIMIZE = -g -Wall -fno-strict-aliasing
 TOOLS_CFLAGS += $(TOOLS_OPTIMIZE) \
                 -DTEMPDIR=\"$(TEMPDIR)\" -DSYSTEM=\"\" \
@@ -1387,6 +1370,12 @@ TOOLS_LDFLAGS =
 ifeq ($(GENERATE_DEPENDENCIES),1)
   TOOLS_CFLAGS += -MMD
 endif
+
+define DO_YACC
+$(echo_cmd) "YACC $<"
+$(Q)$(YACC) $<
+$(Q)mv -f y.tab.c $@
+endef
 
 define DO_TOOLS_CC
 $(echo_cmd) "TOOLS_CC $<"
@@ -1408,6 +1397,12 @@ Q3ASM       = $(B)/tools/q3asm$(TOOLS_BINEXT)
 LBURGOBJ= \
   $(B)/tools/lburg/lburg.o \
   $(B)/tools/lburg/gram.o
+
+# override GNU Make built-in rule for converting gram.y to gram.c
+%.c: %.y
+ifeq ($(USE_YACC),1)
+	$(DO_YACC)
+endif
 
 $(B)/tools/lburg/%.o: $(LBURGDIR)/%.c
 	$(DO_TOOLS_CC)
@@ -1663,6 +1658,7 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_bsp.o \
   $(B)/renderergl2/tr_cmds.o \
   $(B)/renderergl2/tr_curve.o \
+  $(B)/renderergl2/tr_dsa.o \
   $(B)/renderergl2/tr_extramath.o \
   $(B)/renderergl2/tr_extensions.o \
   $(B)/renderergl2/tr_fbo.o \
@@ -1675,6 +1671,7 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_image_pcx.o \
   $(B)/renderergl2/tr_image_png.o \
   $(B)/renderergl2/tr_image_tga.o \
+  $(B)/renderergl2/tr_image_dds.o \
   $(B)/renderergl2/tr_init.o \
   $(B)/renderergl2/tr_light.o \
   $(B)/renderergl2/tr_main.o \
@@ -1838,53 +1835,7 @@ ifeq ($(ARCH),x86_64)
     $(B)/client/ftola.o
 endif
 
-ifeq ($(USE_VOIP),1)
-ifeq ($(USE_INTERNAL_SPEEX),1)
-Q3OBJ += \
-  $(B)/client/bits.o \
-  $(B)/client/buffer.o \
-  $(B)/client/cb_search.o \
-  $(B)/client/exc_10_16_table.o \
-  $(B)/client/exc_10_32_table.o \
-  $(B)/client/exc_20_32_table.o \
-  $(B)/client/exc_5_256_table.o \
-  $(B)/client/exc_5_64_table.o \
-  $(B)/client/exc_8_128_table.o \
-  $(B)/client/fftwrap.o \
-  $(B)/client/filterbank.o \
-  $(B)/client/filters.o \
-  $(B)/client/gain_table.o \
-  $(B)/client/gain_table_lbr.o \
-  $(B)/client/hexc_10_32_table.o \
-  $(B)/client/hexc_table.o \
-  $(B)/client/high_lsp_tables.o \
-  $(B)/client/jitter.o \
-  $(B)/client/kiss_fft.o \
-  $(B)/client/kiss_fftr.o \
-  $(B)/client/lpc.o \
-  $(B)/client/lsp.o \
-  $(B)/client/lsp_tables_nb.o \
-  $(B)/client/ltp.o \
-  $(B)/client/mdf.o \
-  $(B)/client/modes.o \
-  $(B)/client/modes_wb.o \
-  $(B)/client/nb_celp.o \
-  $(B)/client/preprocess.o \
-  $(B)/client/quant_lsp.o \
-  $(B)/client/resample.o \
-  $(B)/client/sb_celp.o \
-  $(B)/client/smallft.o \
-  $(B)/client/speex.o \
-  $(B)/client/speex_callbacks.o \
-  $(B)/client/speex_header.o \
-  $(B)/client/stereo.o \
-  $(B)/client/vbr.o \
-  $(B)/client/vq.o \
-  $(B)/client/window.o
-endif
-endif
-
-ifeq ($(USE_CODEC_OPUS),1)
+ifeq ($(NEED_OPUS),1)
 ifeq ($(USE_INTERNAL_OPUS),1)
 Q3OBJ += \
   $(B)/client/opus/analysis.o \
@@ -2591,9 +2542,6 @@ $(B)/client/%.o: $(CMDIR)/%.c
 $(B)/client/%.o: $(BLIBDIR)/%.c
 	$(DO_BOT_CC)
 
-$(B)/client/%.o: $(SPEEXDIR)/%.c
-	$(DO_CC)
-
 $(B)/client/%.o: $(OGGDIR)/src/%.c
 	$(DO_CC)
 
@@ -2884,7 +2832,6 @@ ifdef MINGW
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
 		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \
-		USE_INTERNAL_SPEEX=$(USE_INTERNAL_SPEEX) \
 		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB) \
 		USE_INTERNAL_JPEG=$(USE_INTERNAL_JPEG)
 else

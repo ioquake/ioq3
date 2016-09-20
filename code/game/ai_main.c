@@ -256,7 +256,7 @@ void BotTestAAS(vec3_t origin) {
 	if (bot_testsolid.integer) {
 		if (!trap_AAS_Initialized()) return;
 		areanum = BotPointAreaNum(origin);
-		if (areanum) BotAI_Print(PRT_MESSAGE, "\remtpy area");
+		if (areanum) BotAI_Print(PRT_MESSAGE, "\rempty area");
 		else BotAI_Print(PRT_MESSAGE, "\r^1SOLID area");
 	}
 	else if (bot_testclusters.integer) {
@@ -781,7 +781,7 @@ void BotChangeViewAngles(bot_state_t *bs, float thinktime) {
 		//
 		if (bot_challenge.integer) {
 			//smooth slowdown view model
-			diff = abs(AngleDifference(bs->viewangles[i], bs->ideal_viewangles[i]));
+			diff = fabs(AngleDifference(bs->viewangles[i], bs->ideal_viewangles[i]));
 			anglespeed = diff * factor;
 			if (anglespeed > maxchange) anglespeed = maxchange;
 			bs->viewangles[i] = BotChangeViewAngle(bs->viewangles[i],
@@ -878,7 +878,7 @@ void BotInputToUserCommand(bot_input_t *bi, usercmd_t *ucmd, int delta_angles[3]
 	//set the view independent movement
 	f = DotProduct(forward, bi->dir);
 	r = DotProduct(right, bi->dir);
-	u = abs(forward[2]) * bi->dir[2];
+	u = fabs(forward[2]) * bi->dir[2];
 	m = fabs(f);
 
 	if (fabs(r) > m) {

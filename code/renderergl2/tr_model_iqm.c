@@ -1024,10 +1024,8 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 	int		i;
 
 	vec4_t		*outXYZ;
-	uint32_t	*outNormal;
-#ifdef USE_VERT_TANGENT_SPACE
-	uint32_t	*outTangent;
-#endif
+	int16_t	*outNormal;
+	int16_t	*outTangent;
 	vec2_t		(*outTexCoord)[2];
 	vec4_t	*outColor;
 
@@ -1042,10 +1040,8 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 	RB_CHECKOVERFLOW( surf->num_vertexes, surf->num_triangles * 3 );
 
 	outXYZ = &tess.xyz[tess.numVertexes];
-	outNormal = &tess.normal[tess.numVertexes];
-#ifdef USE_VERT_TANGENT_SPACE
-	outTangent = &tess.tangent[tess.numVertexes];
-#endif
+	outNormal = tess.normal[tess.numVertexes];
+	outTangent = tess.tangent[tess.numVertexes];
 	outTexCoord = &tess.texCoords[tess.numVertexes];
 	outColor = &tess.vertexColors[tess.numVertexes];
 
@@ -1056,7 +1052,7 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 
 	// transform vertexes and fill other data
 	for( i = 0; i < surf->num_vertexes;
-	     i++, outXYZ++, outNormal++, outTexCoord++, outColor++ ) {
+	     i++, outXYZ++, outNormal+=4, outTexCoord++, outColor++ ) {
 		int	j, k;
 		float	vtxMat[12];
 		float	nrmMat[9];
@@ -1130,16 +1126,15 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 			normal[1] = DotProduct(&nrmMat[3], &data->normals[3*vtx]);
 			normal[2] = DotProduct(&nrmMat[6], &data->normals[3*vtx]);
 
-			R_VaoPackNormal((byte *)outNormal, normal);
+			R_VaoPackNormal(outNormal, normal);
 
-#ifdef USE_VERT_TANGENT_SPACE
 			tangent[0] = DotProduct(&nrmMat[0], &data->tangents[4*vtx]);
 			tangent[1] = DotProduct(&nrmMat[3], &data->tangents[4*vtx]);
 			tangent[2] = DotProduct(&nrmMat[6], &data->tangents[4*vtx]);
 			tangent[3] = data->tangents[4*vtx+3];
 
-			R_VaoPackTangent((byte *)outTangent++, tangent);
-#endif
+			R_VaoPackTangent(outTangent, tangent);
+			outTangent+=4;
 		}
 
 		(*outColor)[0] = data->colors[4*vtx+0] / 255.0f;

@@ -329,37 +329,30 @@ void RE_BeginScene(const refdef_t *fd)
 
 	VectorCopy(tr.sunDirection, tr.refdef.sunDir);
 	if ( (tr.refdef.rdflags & RDF_NOWORLDMODEL) || !(r_depthPrepass->value) ){
-		tr.refdef.colorScale = 1.0f;
 		VectorSet(tr.refdef.sunCol, 0, 0, 0);
 		VectorSet(tr.refdef.sunAmbCol, 0, 0, 0);
 	}
 	else
 	{
-		tr.refdef.colorScale = r_forceSun->integer ? r_forceSunMapLightScale->value : tr.mapLightScale;
+		float scale = (1 << r_mapOverBrightBits->integer) / 255.0f;
+
+		if (r_forceSun->integer)
+			VectorScale(tr.sunLight, scale * r_forceSunLightScale->value, tr.refdef.sunCol);
+		else
+			VectorScale(tr.sunLight, scale, tr.refdef.sunCol);
 
 		if (r_sunlightMode->integer == 1)
 		{
-			tr.refdef.sunCol[0] =
-			tr.refdef.sunCol[1] =
-			tr.refdef.sunCol[2] = 1.0f;
-
 			tr.refdef.sunAmbCol[0] =
 			tr.refdef.sunAmbCol[1] =
 			tr.refdef.sunAmbCol[2] = r_forceSun->integer ? r_forceSunAmbientScale->value : tr.sunShadowScale;
 		}
 		else
 		{
-			float scale = pow(2, r_mapOverBrightBits->integer - tr.overbrightBits - 8);
 			if (r_forceSun->integer)
-			{
-				VectorScale(tr.sunLight, scale * r_forceSunLightScale->value,   tr.refdef.sunCol);
 				VectorScale(tr.sunLight, scale * r_forceSunAmbientScale->value, tr.refdef.sunAmbCol);
-			}
 			else
-			{
-				VectorScale(tr.sunLight, scale,                     tr.refdef.sunCol);
 				VectorScale(tr.sunLight, scale * tr.sunShadowScale, tr.refdef.sunAmbCol);
-			}
 		}
 	}
 

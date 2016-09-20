@@ -428,23 +428,28 @@ Returns waterlevel for entity origin
 int CG_WaterLevel(centity_t *cent) {
 	vec3_t point;
 	int contents, sample1, sample2, anim, waterlevel;
+	int viewheight;
 
-	// get waterlevel, accounting for ducking
-	waterlevel = 0;
-	VectorCopy(cent->lerpOrigin, point);
-	point[2] += MINS_Z + 1;
 	anim = cent->currentState.legsAnim & ~ANIM_TOGGLEBIT;
 
 	if (anim == LEGS_WALKCR || anim == LEGS_IDLECR) {
-		point[2] += CROUCH_VIEWHEIGHT;
+		viewheight = CROUCH_VIEWHEIGHT;
 	} else {
-		point[2] += DEFAULT_VIEWHEIGHT;
+		viewheight = DEFAULT_VIEWHEIGHT;
 	}
 
+	//
+	// get waterlevel, accounting for ducking
+	//
+	waterlevel = 0;
+
+	point[0] = cent->lerpOrigin[0];
+	point[1] = cent->lerpOrigin[1];
+	point[2] = cent->lerpOrigin[2] + MINS_Z + 1;
 	contents = CG_PointContents(point, -1);
 
 	if (contents & MASK_WATER) {
-		sample2 = point[2] - MINS_Z;
+		sample2 = viewheight - MINS_Z;
 		sample1 = sample2 / 2;
 		waterlevel = 1;
 		point[2] = cent->lerpOrigin[2] + MINS_Z + sample1;
@@ -489,7 +494,7 @@ void CG_PainEvent( centity_t *cent, int health ) {
 		snd = "*pain100_1.wav";
 	}
 	// play a gurp sound instead of a normal pain sound
-	if (CG_WaterLevel(cent) >= 1) {
+	if (CG_WaterLevel(cent) == 3) {
 		if (rand()&1) {
 			trap_S_StartSound(NULL, cent->currentState.number, CHAN_VOICE, CG_CustomSound(cent->currentState.number, "sound/player/gurp1.wav"));
 		} else {
@@ -1164,7 +1169,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 	case EV_DEATH3:
 		DEBUGNAME("EV_DEATHx");
 
-		if (CG_WaterLevel(cent) >= 1) {
+		if (CG_WaterLevel(cent) == 3) {
 			trap_S_StartSound(NULL, es->number, CHAN_VOICE, CG_CustomSound(es->number, "*drown.wav"));
 		} else {
 			trap_S_StartSound(NULL, es->number, CHAN_VOICE, CG_CustomSound(es->number, va("*death%i.wav", event - EV_DEATH1 + 1)));

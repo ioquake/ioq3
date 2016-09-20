@@ -130,21 +130,26 @@ static void GLimp_DetectAvailableModes(void)
 {
 	int i, j;
 	char buf[ MAX_STRING_CHARS ] = { 0 };
-	size_t numSDLModes;
+	int numSDLModes;
 	SDL_Rect *modes;
 	int numModes = 0;
 
-	int display = SDL_GetWindowDisplayIndex( SDL_window );
 	SDL_DisplayMode windowMode;
-
-	if( SDL_GetWindowDisplayMode( SDL_window, &windowMode ) < 0 )
+	int display = SDL_GetWindowDisplayIndex( SDL_window );
+	if( display < 0 )
 	{
-		ri.Printf( PRINT_WARNING, "Couldn't get window display mode, no resolutions detected\n" );
+		ri.Printf( PRINT_WARNING, "Couldn't get window display index, no resolutions detected: %s\n", SDL_GetError() );
+		return;
+	}
+	numSDLModes = SDL_GetNumDisplayModes( display );
+
+	if( SDL_GetWindowDisplayMode( SDL_window, &windowMode ) < 0 || numSDLModes <= 0 )
+	{
+		ri.Printf( PRINT_WARNING, "Couldn't get window display mode, no resolutions detected: %s\n", SDL_GetError() );
 		return;
 	}
 
-	numSDLModes = SDL_GetNumDisplayModes( display );
-	modes = SDL_calloc( numSDLModes, sizeof( SDL_Rect ) );
+	modes = SDL_calloc( (size_t)numSDLModes, sizeof( SDL_Rect ) );
 	if ( !modes )
 	{
 		ri.Error( ERR_FATAL, "Out of memory" );
@@ -245,9 +250,15 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 
 	// If a window exists, note its display index
 	if( SDL_window != NULL )
+	{
 		display = SDL_GetWindowDisplayIndex( SDL_window );
+		if( display < 0 )
+		{
+			ri.Printf( PRINT_DEVELOPER, "SDL_GetWindowDisplayIndex() failed: %s\n", SDL_GetError() );
+		}
+	}
 
-	if( SDL_GetDesktopDisplayMode( display, &desktopMode ) == 0 )
+	if( display >= 0 && SDL_GetDesktopDisplayMode( display, &desktopMode ) == 0 )
 	{
 		displayAspect = (float)desktopMode.w / (float)desktopMode.h;
 
@@ -435,7 +446,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 #endif
 
 		if( ( SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, x, y,
-				glConfig.vidWidth, glConfig.vidHeight, flags ) ) == 0 )
+				glConfig.vidWidth, glConfig.vidHeight, flags ) ) == NULL )
 		{
 			ri.Printf( PRINT_DEVELOPER, "SDL_CreateWindow failed: %s\n", SDL_GetError( ) );
 			continue;
@@ -476,7 +487,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		qglClear( GL_COLOR_BUFFER_BIT );
 		SDL_GL_SwapWindow( SDL_window );
 
-		SDL_GL_SetSwapInterval( r_swapInterval->integer );
+		if( SDL_GL_SetSwapInterval( r_swapInterval->integer ) == -1 )
+		{
+			ri.Printf( PRINT_DEVELOPER, "SDL_GL_SetSwapInterval failed: %s\n", SDL_GetError( ) );
+		}
 
 		glConfig.colorBits = testColorBits;
 		glConfig.depthBits = testDepthBits;
@@ -516,7 +530,7 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 	{
 		const char *driverName;
 
-		if (SDL_Init(SDL_INIT_VIDEO) == -1)
+		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
 			ri.Printf( PRINT_ALL, "SDL_Init( SDL_INIT_VIDEO ) FAILED (%s)\n", SDL_GetError());
 			return qfalse;

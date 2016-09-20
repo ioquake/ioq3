@@ -41,34 +41,42 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>Static</UseOfMfc>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>Static</UseOfMfc>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>Static</UseOfMfc>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release TA|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseOfMfc>Static</UseOfMfc>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -154,10 +162,10 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;MISSIONPACK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -175,24 +183,26 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>..\..\code\libs\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- release-TA"</Command>
+      <Message>copy SDL2.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win32\SDL2.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release TA|x64'">
@@ -207,7 +217,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_WIN64;__WIN64__;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;MISSIONPACK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -228,24 +238,25 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <AdditionalLibraryDirectories>..\..\code\libs\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- release-TA"</Command>
+      <Message>copy SDL264.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win64\SDL264.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -260,7 +271,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -283,7 +294,7 @@
       <ResourceOutputFileName>..\winquake.res</ResourceOutputFileName>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreSpecificDefaultLibraries>
@@ -292,16 +303,18 @@
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>..\..\code\libs\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- debug"</Command>
+      <Message>copy SDL2.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win32\SDL2.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -315,7 +328,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_WIN64;__WIN64__;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -339,7 +352,7 @@
       <ResourceOutputFileName>..\winquake.res</ResourceOutputFileName>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreSpecificDefaultLibraries>
@@ -348,15 +361,16 @@
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
+      <AdditionalLibraryDirectories>..\..\code\libs\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- debug"</Command>
+      <Message>copy SDL264.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win64\SDL264.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -372,10 +386,10 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -393,21 +407,27 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>..\..\code\libs\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Message>copy SDL2.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win32\SDL2.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
@@ -421,10 +441,10 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_WIN64;__WIN64__;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -442,20 +462,25 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>..\..\code\libs\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Message>copy SDL264.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win64\SDL264.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|Win32'">
     <Midl>
@@ -469,7 +494,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;MISSIONPACK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -492,14 +517,14 @@
       <ResourceOutputFileName>..\winquake.res</ResourceOutputFileName>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -507,10 +532,12 @@
       <TargetMachine>MachineX86</TargetMachine>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>..\..\code\libs\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- debug-TA"</Command>
+      <Message>copy SDL2.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win32\SDL2.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug TA|x64'">
@@ -524,7 +551,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL12\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl-7.35.0;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_WIN64;__WIN64__;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;USE_INTERNAL_JPEG;HAVE_CONFIG_H;MISSIONPACK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -547,22 +574,23 @@
       <ResourceOutputFileName>..\winquake.res</ResourceOutputFileName>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDLmain.lib;SDL.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;advapi32.lib;winmm.lib;psapi.lib;wsock32.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)quake3.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)quake3.map</MapFileName>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <StackReserveSize>8388608</StackReserveSize>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
+      <AdditionalLibraryDirectories>..\..\code\libs\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Message>Post build processing..</Message>
-      <Command>rem bash -c "perl ./unix/cons -- debug-TA"</Command>
+      <Message>copy SDL264.dll</Message>
+      <Command>xcopy /Y /S "$(SolutionDir)..\..\code\libs\win64\SDL264.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -976,6 +1004,41 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\code\renderercommon\tr_font.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_image_bmp.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_image_jpg.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_image_pcx.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_image_png.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_image_tga.c" />
+    <ClCompile Include="..\..\code\renderercommon\tr_noise.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_animation.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_backend.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_bsp.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_cmds.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_curve.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_flares.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_image.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_init.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_light.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_main.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_marks.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_mesh.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_model.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_model_iqm.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_scene.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_shade.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_shader.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_shade_calc.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_shadows.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_sky.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_subs.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug TA|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\code\renderergl1\tr_surface.c" />
+    <ClCompile Include="..\..\code\renderergl1\tr_world.c" />
     <ClCompile Include="..\..\code\sys\con_log.c" />
     <ClCompile Include="..\..\code\sys\con_passive.c" />
     <ClCompile Include="..\..\code\qcommon\cvar.c">
@@ -1695,35 +1758,6 @@
     <ClCompile Include="..\..\code\botlib\l_precomp.c" />
     <ClCompile Include="..\..\code\botlib\l_script.c" />
     <ClCompile Include="..\..\code\botlib\l_struct.c" />
-    <ClCompile Include="..\..\code\renderer\tr_animation.c" />
-    <ClCompile Include="..\..\code\renderer\tr_backend.c" />
-    <ClCompile Include="..\..\code\renderer\tr_bsp.c" />
-    <ClCompile Include="..\..\code\renderer\tr_cmds.c" />
-    <ClCompile Include="..\..\code\renderer\tr_curve.c" />
-    <ClCompile Include="..\..\code\renderer\tr_flares.c" />
-    <ClCompile Include="..\..\code\renderer\tr_font.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image_bmp.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image_jpg.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image_pcx.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image_png.c" />
-    <ClCompile Include="..\..\code\renderer\tr_image_tga.c" />
-    <ClCompile Include="..\..\code\renderer\tr_init.c" />
-    <ClCompile Include="..\..\code\renderer\tr_light.c" />
-    <ClCompile Include="..\..\code\renderer\tr_main.c" />
-    <ClCompile Include="..\..\code\renderer\tr_marks.c" />
-    <ClCompile Include="..\..\code\renderer\tr_mesh.c" />
-    <ClCompile Include="..\..\code\renderer\tr_model.c" />
-    <ClCompile Include="..\..\code\renderer\tr_model_iqm.c" />
-    <ClCompile Include="..\..\code\renderer\tr_noise.c" />
-    <ClCompile Include="..\..\code\renderer\tr_scene.c" />
-    <ClCompile Include="..\..\code\renderer\tr_shade.c" />
-    <ClCompile Include="..\..\code\renderer\tr_shade_calc.c" />
-    <ClCompile Include="..\..\code\renderer\tr_shader.c" />
-    <ClCompile Include="..\..\code\renderer\tr_shadows.c" />
-    <ClCompile Include="..\..\code\renderer\tr_sky.c" />
-    <ClCompile Include="..\..\code\renderer\tr_surface.c" />
-    <ClCompile Include="..\..\code\renderer\tr_world.c" />
     <ClCompile Include="..\..\code\libspeex\bits.c" />
     <ClCompile Include="..\..\code\libspeex\buffer.c" />
     <ClCompile Include="..\..\code\libspeex\cb_search.c" />
@@ -1781,38 +1815,35 @@
     <ClInclude Include="..\..\code\qcommon\cm_polylib.h" />
     <ClInclude Include="..\..\code\qcommon\cm_public.h" />
     <ClInclude Include="..\..\code\game\g_public.h" />
-    <ClInclude Include="..\..\code\ui\keycodes.h" />
+    <ClInclude Include="..\..\code\renderercommon\iqm.h" />
+    <ClInclude Include="..\..\code\renderercommon\tr_common.h" />
+    <ClInclude Include="..\..\code\renderercommon\tr_public.h" />
+    <ClInclude Include="..\..\code\renderercommon\tr_types.h" />
+    <ClInclude Include="..\..\code\client\keycodes.h" />
     <ClInclude Include="..\..\code\client\keys.h" />
     <ClInclude Include="..\..\code\qcommon\puff.h" />
     <ClInclude Include="..\..\code\qcommon\q_shared.h" />
     <ClInclude Include="..\..\code\client\qal.h" />
     <ClInclude Include="..\..\code\qcommon\qcommon.h" />
     <ClInclude Include="..\..\code\qcommon\qfiles.h" />
-    <ClInclude Include="..\..\code\renderer\qgl.h" />
-    <ClInclude Include="..\..\code\win32\resource.h" />
     <ClInclude Include="..\..\code\server\server.h" />
     <ClInclude Include="..\..\code\client\snd_local.h" />
     <ClInclude Include="..\..\code\client\snd_public.h" />
     <ClInclude Include="..\..\code\qcommon\surfaceflags.h" />
-    <ClInclude Include="..\..\code\renderer\tr_local.h" />
-    <ClInclude Include="..\..\code\renderer\tr_public.h" />
-    <ClInclude Include="..\..\code\cgame\tr_types.h" />
+    <ClInclude Include="..\..\code\renderergl1\tr_local.h" />
     <ClInclude Include="..\..\code\ui\ui_public.h" />
     <ClInclude Include="..\..\code\qcommon\unzip.h" />
     <ClInclude Include="..\..\code\qcommon\vm_local.h" />
-    <ClInclude Include="..\..\code\win32\win_local.h" />
-    <ClInclude Include="..\..\code\sys\win_resource.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jchuff.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jconfig.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jdct.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jdhuff.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jerror.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jinclude.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jmemsys.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jmorecfg.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jpegint.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jpeglib.h" />
-    <ClInclude Include="..\..\code\jpeg-6b\jversion.h" />
+    <ClInclude Include="..\..\code\sys\sys_local.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jconfig.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jdct.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jerror.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jinclude.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jmemsys.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jmorecfg.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jpegint.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jpeglib.h" />
+    <ClInclude Include="..\..\code\jpeg-8c\jversion.h" />
     <ClInclude Include="..\..\code\botlib\aasfile.h" />
     <ClInclude Include="..\..\code\botlib\be_aas_bsp.h" />
     <ClInclude Include="..\..\code\botlib\be_aas_cluster.h" />

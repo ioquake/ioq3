@@ -156,7 +156,7 @@ static void R_SetupEntityLightingGrid( trRefEntity_t *ent, world_t *world ) {
 		frac[i] = v - pos[i];
 		if ( pos[i] < 0 ) {
 			pos[i] = 0;
-		} else if ( pos[i] >= world->lightGridBounds[i] - 1 ) {
+		} else if ( pos[i] > world->lightGridBounds[i] - 1 ) {
 			pos[i] = world->lightGridBounds[i] - 1;
 		}
 	}
@@ -180,18 +180,15 @@ static void R_SetupEntityLightingGrid( trRefEntity_t *ent, world_t *world ) {
 		byte	*data;
 		int		lat, lng;
 		vec3_t	normal;
-		qboolean ignore;
 		#if idppc
 		float d0, d1, d2, d3, d4, d5;
 		#endif
 		factor = 1.0;
 		data = gridData;
-		ignore = qfalse;
 		for ( j = 0 ; j < 3 ; j++ ) {
 			if ( i & (1<<j) ) {
-				if ((pos[j] + 1) >= world->lightGridBounds[j] - 1)
-				{
-					ignore = qtrue; // ignore values outside lightgrid
+				if ( pos[j] + 1 > world->lightGridBounds[j] - 1 ) {
+					break; // ignore values outside lightgrid
 				}
 				factor *= frac[j];
 				data += gridStep[j];
@@ -200,8 +197,9 @@ static void R_SetupEntityLightingGrid( trRefEntity_t *ent, world_t *world ) {
 			}
 		}
 
-		if ( ignore )
+		if ( j != 3 ) {
 			continue;
+		}
 
 		if (world->hdrLightGrid)
 		{
@@ -387,15 +385,41 @@ void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent ) {
 		VectorMA( lightDir, d, dir, lightDir );
 	}
 
-	// clamp ambient
-	if ( !r_hdr->integer )
+	// clamp lights
+	// FIXME: old renderer clamps (ambient + NL * directed) per vertex
+	//        check if that's worth implementing
 	{
-		for ( i = 0 ; i < 3 ; i++ ) {
-			if ( ent->ambientLight[i] > tr.identityLightByte ) {
-				ent->ambientLight[i] = tr.identityLightByte;
-			}
+		float r, g, b, max;
+
+		r = ent->ambientLight[0];
+		g = ent->ambientLight[1];
+		b = ent->ambientLight[2];
+
+		max = MAX(MAX(r, g), b);
+
+		if (max > 255.0f)
+		{
+			max = 255.0f / max;
+			ent->ambientLight[0] *= max;
+			ent->ambientLight[1] *= max;
+			ent->ambientLight[2] *= max;
+		}
+
+		r = ent->directedLight[0];
+		g = ent->directedLight[1];
+		b = ent->directedLight[2];
+
+		max = MAX(MAX(r, g), b);
+
+		if (max > 255.0f)
+		{
+			max = 255.0f / max;
+			ent->directedLight[0] *= max;
+			ent->directedLight[1] *= max;
+			ent->directedLight[2] *= max;
 		}
 	}
+
 
 	if ( r_debugLight->integer ) {
 		LogLight( ent );
@@ -473,7 +497,7 @@ int R_CubemapForPoint( vec3_t point )
 			vec3_t diff;
 			vec_t length;
 
-			VectorSubtract(point, tr.cubemapOrigins[i], diff);
+			VectorSubtract(point, tr.cubemaps[i].origin, diff);
 			length = DotProduct(diff, diff);
 
 			if (shortest > length)

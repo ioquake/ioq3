@@ -36,8 +36,14 @@ use a modern copy from http://icculus.org/gtkradiant/.
 
 The original id software readme that accompanied the Q3 source release has been
 renamed to id-readme.txt so as to prevent confusion. Please refer to the
-web-site for updated status.
+website for updated status.
 
+More documentation including a Player's Guide and Sysadmin Guide is on:
+http://wiki.ioquake3.org/
+
+If you've got issues that you aren't sure are worth filing as bugs, or just
+want to chat, please visit our forums:
+http://discourse.ioquake.org
 
 # Compilation and installation
 
@@ -87,6 +93,7 @@ Makefile.local:
   SERVERBIN            - rename 'ioq3ded' server binary
   CLIENTBIN            - rename 'ioquake3' client binary
   USE_RENDERER_DLOPEN  - build and use the renderer in a library
+  USE_YACC             - use yacc to update code/tools/lcc/lburg/gram.c
   BASEGAME             - rename 'baseq3'
   BASEGAME_CFLAGS      - custom CFLAGS for basegame
   MISSIONPACK          - rename 'missionpack'
@@ -242,7 +249,7 @@ The defaults for these variables differ depending on the target platform.
                                       ipv6 servers on the local network
   net_mcastiface                    - outgoing interface to use for scan
 
-  r_allowResize                     - make window resizable (SDL only)
+  r_allowResize                     - make window resizable
   r_ext_texture_filter_anisotropic  - anisotropic texture filtering
   r_zProj                           - distance of observer camera to projection
                                       plane in quake3 standard units
@@ -323,204 +330,6 @@ The defaults for these variables differ depending on the target platform.
   cvar_modified [filter]  - list modified cvars, can filter results (such as "r*"
                             for renderer cvars) like cvarlist which lists all cvars
 ```
-
-
-# README for Users
-
-## Using shared libraries instead of qvm
-
-To force Q3 to use shared libraries instead of qvms run it with the following
-parameters: `+set sv_pure 0 +set vm_cgame 0 +set vm_game 0 +set vm_ui 0`
-
-## Using Demo Data Files
-
-Copy demoq3/pak0.pk3 from the demo installer to your baseq3 directory. The
-qvm files in this pak0.pk3 will not work, so you have to use the native
-shared libraries or qvms from this project. To use the new qvms, they must be
-put into a pk3 file. A pk3 file is just a zip file, so any compression tool
-that can create such files will work. The shared libraries should already be
-in the correct place. Use the instructions above to use them.
-
-Please bear in mind that you will not be able to play online using the demo
-data, nor is it something that we like to spend much time maintaining or
-supporting.
-
-## Help! Ioquake3 won't give me an fps of X anymore when setting com_maxfps!
-
-Ioquake3 now uses the select() system call to wait for the rendering of the
-next frame when com_maxfps was hit. This will improve your CPU load
-considerably in these cases. However, not all systems may support a
-granularity for its timing functions that is required to perform this waiting
-correctly. For instance, ioquake3 tells select() to wait 2 milliseconds, but
-really it can only wait for a multiple of 5ms, i.e. 5, 10, 15, 20... ms.
-In this case you can always revert back to the old behaviour by setting the
-cvar com_busyWait to 1.
-
-## Using HTTP/FTP Download Support (Server)
-
-You can enable redirected downloads on your server even if it's not
-an ioquake3 server.  You simply need to use the 'sets' command to put
-the sv_dlURL cvar into your SERVERINFO string and ensure sv_allowDownloads
-is set to 1
-
-sv_dlURL is the base of the URL that contains your custom .pk3 files
-the client will append both fs_game and the filename to the end of
-this value.  For example, if you have sv_dlURL set to
-`"http://ioquake3.org"`, fs_game is `"baseq3"`, and the client is
-missing `"test.pk3"`, it will attempt to download from the URL
-`"http://ioquake3.org/baseq3/test.pk3"`
-
-sv_allowDownload's value is now a bitmask made up of the following
-flags:
-
-  * 1 - ENABLE
-  * 4 - do not use UDP downloads
-  * 8 - do not ask the client to disconnect when using HTTP/FTP
-
-Server operators who are concerned about potential "leeching" from their
-HTTP servers from other ioquake3 servers can make use of the HTTP_REFERER
-that ioquake3 sets which is `"ioQ3://{SERVER_IP}:{SERVER_PORT}"`.  For,
-example, Apache's mod_rewrite can restrict access based on HTTP_REFERER.
-
-On a sidenote, downloading via UDP has been improved and yields higher data
-rates now. You can configure the maximum bandwidth for UDP downloads via the
-cvar sv_dlRate. Due to system-specific limits the download rate is capped
-at about 1 Mbyte/s per client, so curl downloading may still be faster.
-
-## Using HTTP/FTP Download Support (Client)
-
-Simply setting cl_allowDownload to 1 will enable HTTP/FTP downloads
-assuming ioquake3 was compiled with USE_CURL=1 (the default).
-like sv_allowDownload, cl_allowDownload also uses a bitmask value
-supporting the following flags:
-
-  * 1 - ENABLE
-  * 2 - do not use HTTP/FTP downloads
-  * 4 - do not use UDP downloads
-
-When ioquake3 is built with USE_CURL_DLOPEN=1 (default on some platforms),
-it will use the value of the cvar cl_cURLLib as the filename of the cURL
-library to dynamically load.
-
-## Multiuser Support on Windows systems
-On Windows, all user specific files such as autogenerated configuration,
-demos, videos, screenshots, and autodownloaded pk3s are now saved in a
-directory specific to the user who is running ioquake3.
-
-On NT-based such as Windows XP, this is usually a directory named:
-
-    C:\Documents and Settings\%USERNAME%\Application Data\Quake3\
-
-Windows 95, Windows 98, and Windows ME will use a directory like:
-
-    C:\Windows\Application Data\Quake3
-
-in single-user mode, or:
-
-    C:\Windows\Profiles\%USERNAME%\Application Data\Quake3
-
-if multiple logins have been enabled.
-
-In order to access this directory more easily, the installer may create a
-Shortcut which has its target set to:
-
-    %APPDATA%\Quake3\
-
-This Shortcut would work for all users on the system regardless of the
-locale settings.  Unfortunately, this environment variable is only
-present on Windows NT based systems.
-
-You can revert to the old single-user behaviour by setting the fs_homepath
-cvar to the directory where ioquake3 is installed.  For example:
-
-    ioquake3.exe +set fs_homepath "c:\ioquake3"
-
-Note that this cvar MUST be set as a command line parameter.
-
-## SDL Keyboard Differences
-
-ioquake3 clients have different keyboard behaviour compared to the original
-Quake3 clients.
-
-  * SDL > 1.2.9 does not support disabling dead key recognition. In order to
-      send dead key characters (e.g. ~, ', `, and ^), you must key a Space (or
-      sometimes the same character again) after the character to send it on
-      many international keyboard layouts.
-
-  * The SDL client supports many more keys than the original Quake3 client.
-      For example the keys: "Windows", "SysReq", "ScrollLock", and "Break".
-      For non-US keyboards, all of the so called "World" keys are now supported
-      as well as F13, F14, F15, and the country-specific mode/meta keys.
-
-On many international layouts the default console toggle keys are also dead
-keys, meaning that dropping the console potentially results in
-unintentionally initiating the keying of a dead key. Furthermore SDL 1.2's
-dead key support is broken by design and Q3 doesn't support non-ASCII text
-entry, so the chances are you won't get the correct character anyway.
-
-If you use such a keyboard layout, you can set the cvar cl_consoleKeys. This
-is a space delimited list of key names that will toggle the console. The key
-names are the usual Q3 names e.g. "~", "`", "c", "BACKSPACE", "PAUSE",
-"WINDOWS" etc. It's also possible to use ASCII characters, by hexadecimal
-number. Some example values for cl_consoleKeys:
-
-    "~ ` 0x7e 0x60"           Toggle on ~ or ` (the default)
-    "WINDOWS"                 Toggle on the Windows key
-    "c"                       Toggle on the c key
-    "0x43"                    Toggle on the C character (Shift-c)
-    "PAUSE F1 PGUP"           Toggle on the Pause, F1 or Page Up keys
-
-Note that when you elect a set of console keys or characters, they cannot
-then be used for binding, nor will they generate characters when entering
-text. Also, in addition to the nominated console keys, Shift-ESC is hard
-coded to always toggle the console.
-
-## QuakeLive mouse acceleration
-(patch and this text written by TTimo from id)
-
-I've been using an experimental mouse acceleration code for a while, and
-decided to make it available to everyone. Don't be too worried if you don't
-understand the explanations below, this is mostly intended for advanced
-players:
-To enable it, set cl_mouseAccelStyle 1 (0 is the default/legacy behavior)
-
-New style is controlled with 3 cvars:
-
-sensitivity
-cl_mouseAccel
-cl_mouseAccelOffset
-
-The old code (cl_mouseAccelStyle 0) can be difficult to calibrate because if
-you have a base sensitivity setup, as soon as you set a non zero acceleration
-your base sensitivity at low speeds will change as well. The other problem
-with style 0 is that you are stuck on a square (power of two) acceleration
-curve.
-
-The new code tries to solve both problems:
-
-Once you setup your sensitivity to feel comfortable and accurate enough for
-low mouse deltas with no acceleration (cl_mouseAccel 0), you can start
-increasing cl_mouseAccel and tweaking cl_mouseAccelOffset to get the
-amplification you want for high deltas with little effect on low mouse deltas.
-
-cl_mouseAccel is a power value. Should be >= 1, 2 will be the same power curve
-as style 0. The higher the value, the faster the amplification grows with the
-mouse delta.
-
-cl_mouseAccelOffset sets how much base mouse delta will be doubled by
-acceleration. The closer to zero you bring it, the more acceleration will
-happen at low speeds. This is also very useful if you are changing to a new
-mouse with higher dpi, if you go from 500 to 1000 dpi, you can divide your
-cl_mouseAccelOffset by two to keep the same overall 'feel' (you will likely
-gain in precision when you do that, but that is not related to mouse
-acceleration).
-
-Mouse acceleration is tricky to configure, and when you do you'll have to
-re-learn your aiming. But you will find that it's very much forth it in the
-long run.
-
-If you try the new acceleration code and start using it, I'd be very
-interested by your feedback.
 
 
 # README for Developers
@@ -635,55 +444,6 @@ not prohibit commercial exploitation and all assets (e.g. textures, sounds,
 maps) created by yourself are your property and can be sold like every other
 game you find in stores.
 
-## Network protocols
-
-There are now two cvars that give you some degree of freedom over the reported
-protocol versions between clients and servers: "com_protocol" and
-"com_legacyprotocol".
-The reason for this is that some standalone games increased the protocol
-number even though nothing really changed in their protocol and the ioquake3
-engine is still fully compatible.
-
-In order to harden the network protocol against UDP spoofing attacks a new
-network protocol was introduced that defends against such attacks.
-Unfortunately, this protocol will be incompatible to the original quake3 1.32c
-which is the latest official release from id.
-Luckily, ioquake3 has backwards compatibility, on the client as well as on the
-server. This means ioquake3 players can play on old servers just as ioquake3
-servers are able to service old clients.
-
-The cvar "com_protocol" denotes the protocol version for the new hardened
-protocol, whereas the "com_legacyprotocol" cvar denotes the protocol version
-for the legacy protocol.
-If the value for "com_protocol" and "com_legacyprotocol" is identical, then
-the legacy protocol is always used. If "com_legacyprotocol" is set to 0, then
-support for the legacy protocol is disabled.
-
-Mods that use a standalone engine obviously do not require dual protocol
-support, and it is turned off if the engine is compiled with STANDALONE per
-default. If you desire backwards compatibility to older versions of your
-game you can still enable it in q_shared.h by defining
-LEGACY_PROTOCOL.
-
-## cl_guid Support
-
-cl_guid is a cvar which is part of the client's USERINFO string.  Its value
-is a 32 character string made up of [a-f] and [0-9] characters.  This
-value is pseudo-unique for every player.  Id's Quake 3 Arena client also
-sets cl_guid, but only if Punkbuster is enabled on the client.
-
-If cl_guidServerUniq is non-zero (the default), then this value is also
-pseudo-unique for each server a client connects to (based on IP:PORT of
-the server).
-
-The purpose of cl_guid is to add an identifier for each player on
-a server.  This value can be reset by the client at any time so it's not
-useful for blocking access.  However, it can have at least two uses in
-your mod's game code:
-
-  1. improve logging to allow statistical tools to index players by more
-       than just name
-  2. granting some weak admin rights to players without requiring passwords
 
 ## PNG support
 
@@ -718,18 +478,14 @@ directory, this restriction is lifted.
 
 # Contributing
 
-Please send all patches to bugzilla (https://bugzilla.icculus.org), or join the
-mailing list (http://lists.ioquake.org/listinfo.cgi/ioquake3-ioquake.org) and
-submit your patch there.  The best case scenario is that you submit your patch
-to bugzilla, and then post the URL to the mailing list.
+Please send all patches to bugzilla (https://bugzilla.icculus.org), or as a GitHub pull request and
+submit your patch there.
 
 The focus for ioq3 is to develop a stable base suitable for further development
-and provide players with the same Quake 3 experience they've had for years. As
-such ioq3 does not have any significant graphical enhancements and none are
-planned at this time. However, improved graphics and sound patches will be
-accepted as long as they are entirely optional, do not require new media and
-are off by default.
+and provide players with the same Quake 3 experience they've had for years.
 
+We do have graphical improvements with the new renderer, but they are off by default.
+See opengl2-readme.md for more information.
 
 # Building Official Installers
 
@@ -752,12 +508,10 @@ but we have some general guidelines:
     providing pak0.pk3 and the patch pk3s are not referred to or included in the
     installer.
 
-  * Please include at least an SDL so/dylib/dll on every platform.
+  * Please include at least a libSDL2 so/dylib/dll on every platform.
 
   * Please include an OpenAL so/dylib/dll, since every platform should be using
     it by now.
-
-  * Please contact the mailing list when you've made your installer.
 
   * Please be prepared to alter your installer on the whim of the maintainers.
 
@@ -788,4 +542,3 @@ Significant contributions from
   * Aaron Gyes <floam@aaron.gy>
 
 
-[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/6d196bd663b47049a25dcb8caef95949 "githalytics.com")](http://githalytics.com/ioquake/ioq3)

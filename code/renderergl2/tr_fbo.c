@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_fbo.c
 #include "tr_local.h"
 
+#include "tr_dsa.h"
+
 /*
 =============
 R_CheckFBO
@@ -30,26 +32,14 @@ R_CheckFBO
 */
 qboolean R_CheckFBO(const FBO_t * fbo)
 {
-	int             code;
-	int             id;
-
-	qglGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &id);
-	qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->frameBuffer);
-
-	code = qglCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	GLenum code = qglCheckNamedFramebufferStatusEXT(fbo->frameBuffer, GL_FRAMEBUFFER_EXT);
 
 	if(code == GL_FRAMEBUFFER_COMPLETE_EXT)
-	{
-		qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, id);
 		return qtrue;
-	}
 
 	// an error occured
 	switch (code)
 	{
-		case GL_FRAMEBUFFER_COMPLETE_EXT:
-			break;
-
 		case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
 			ri.Printf(PRINT_WARNING, "R_CheckFBO: (%s) Unsupported framebuffer format\n", fbo->name);
 			break;
@@ -86,12 +76,8 @@ qboolean R_CheckFBO(const FBO_t * fbo)
 
 		default:
 			ri.Printf(PRINT_WARNING, "R_CheckFBO: (%s) unknown error 0x%X\n", fbo->name, code);
-			//ri.Error(ERR_FATAL, "R_CheckFBO: (%s) unknown error 0x%X", fbo->name, code);
-			//assert(0);
 			break;
 	}
-
-	qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, id);
 
 	return qfalse;
 }
@@ -136,6 +122,11 @@ FBO_t          *FBO_Create(const char *name, int width, int height)
 	return fbo;
 }
 
+/*
+=================
+FBO_CreateBuffer
+=================
+*/
 void FBO_CreateBuffer(FBO_t *fbo, int format, int index, int multisample)
 {
 	uint32_t *pRenderBuffer;
@@ -192,115 +183,45 @@ void FBO_CreateBuffer(FBO_t *fbo, int format, int index, int multisample)
 	if (absent)
 		qglGenRenderbuffersEXT(1, pRenderBuffer);
 
-	qglBindRenderbufferEXT(GL_RENDERBUFFER_EXT, *pRenderBuffer);
 	if (multisample && glRefConfig.framebufferMultisample)
-	{
-		qglRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, format, fbo->width, fbo->height);
-	}
+		qglNamedRenderbufferStorageMultisampleEXT(*pRenderBuffer, multisample, format, fbo->width, fbo->height);
 	else
-	{
-		qglRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, format, fbo->width, fbo->height);
-	}
+		qglNamedRenderbufferStorageEXT(*pRenderBuffer, format, fbo->width, fbo->height);
 
 	if(absent)
 	{
 		if (attachment == 0)
 		{
-			qglFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,   GL_RENDERBUFFER_EXT, *pRenderBuffer);
-			qglFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, *pRenderBuffer);
+			qglNamedFramebufferRenderbufferEXT(fbo->frameBuffer, GL_DEPTH_ATTACHMENT_EXT,   GL_RENDERBUFFER_EXT, *pRenderBuffer);
+			qglNamedFramebufferRenderbufferEXT(fbo->frameBuffer, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, *pRenderBuffer);
 		}
 		else
-			qglFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, attachment, GL_RENDERBUFFER_EXT, *pRenderBuffer);
+		{
+			qglNamedFramebufferRenderbufferEXT(fbo->frameBuffer, attachment, GL_RENDERBUFFER_EXT, *pRenderBuffer);
+		}
 	}
 }
 
 
 /*
 =================
-R_AttachFBOTexture1D
+FBO_AttachImage
 =================
 */
-void R_AttachFBOTexture1D(int texId, int index)
+void FBO_AttachImage(FBO_t *fbo, image_t *image, GLenum attachment, GLuint cubemapside)
 {
-	if(index < 0 || index >= glRefConfig.maxColorAttachments)
-	{
-		ri.Printf(PRINT_WARNING, "R_AttachFBOTexture1D: invalid attachment index %i\n", index);
-		return;
-	}
+	GLenum target = GL_TEXTURE_2D;
+	int index;
 
-	qglFramebufferTexture1DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + index, GL_TEXTURE_1D, texId, 0);
+	if (image->flags & IMGFLAG_CUBEMAP)
+		target = GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB + cubemapside;
+
+	qglNamedFramebufferTexture2DEXT(fbo->frameBuffer, attachment, target, image->texnum, 0);
+	index = attachment - GL_COLOR_ATTACHMENT0_EXT;
+	if (index >= 0 && index <= 15)
+		fbo->colorImage[index] = image;
 }
 
-/*
-=================
-R_AttachFBOTexture2D
-=================
-*/
-void R_AttachFBOTexture2D(int target, int texId, int index)
-{
-	if(target != GL_TEXTURE_2D && (target < GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB || target > GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_ARB))
-	{
-		ri.Printf(PRINT_WARNING, "R_AttachFBOTexture2D: invalid target %i\n", target);
-		return;
-	}
-
-	if(index < 0 || index >= glRefConfig.maxColorAttachments)
-	{
-		ri.Printf(PRINT_WARNING, "R_AttachFBOTexture2D: invalid attachment index %i\n", index);
-		return;
-	}
-
-	qglFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + index, target, texId, 0);
-}
-
-/*
-=================
-R_AttachFBOTexture3D
-=================
-*/
-void R_AttachFBOTexture3D(int texId, int index, int zOffset)
-{
-	if(index < 0 || index >= glRefConfig.maxColorAttachments)
-	{
-		ri.Printf(PRINT_WARNING, "R_AttachFBOTexture3D: invalid attachment index %i\n", index);
-		return;
-	}
-
-	qglFramebufferTexture3DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + index, GL_TEXTURE_3D_EXT, texId, 0, zOffset);
-}
-
-/*
-=================
-R_AttachFBOTextureDepth
-=================
-*/
-void R_AttachFBOTextureDepth(int texId)
-{
-	qglFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texId, 0);
-}
-
-/*
-=================
-R_AttachFBOTexturePackedDepthStencil
-=================
-*/
-void R_AttachFBOTexturePackedDepthStencil(int texId)
-{
-	qglFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texId, 0);
-	qglFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D, texId, 0);
-}
-
-void FBO_AttachTextureImage(image_t *img, int index)
-{
-	if (!glState.currentFBO)
-	{
-		ri.Printf(PRINT_WARNING, "FBO: attempted to attach a texture image with no FBO bound!\n");
-		return;
-	}
-
-	R_AttachFBOTexture2D(GL_TEXTURE_2D, img->texnum, index);
-	glState.currentFBO->colorImage[index] = img;
-}
 
 /*
 ============
@@ -315,38 +236,10 @@ void FBO_Bind(FBO_t * fbo)
 	if (r_logFile->integer)
 	{
 		// don't just call LogComment, or we will get a call to va() every frame!
-		if (fbo)
-			GLimp_LogComment(va("--- FBO_Bind( %s ) ---\n", fbo->name));
-		else
-			GLimp_LogComment("--- FBO_Bind ( NULL ) ---\n");
+		GLimp_LogComment(va("--- FBO_Bind( %s ) ---\n", fbo ? fbo->name : "NULL"));
 	}
 
-	if (!fbo)
-	{
-		qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		//qglBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-		glState.currentFBO = NULL;
-		
-		return;
-	}
-		
-	qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->frameBuffer);
-
-	/*
-	   if(fbo->colorBuffers[0])
-	   {
-	   qglBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo->colorBuffers[0]);
-	   }
-	 */
-
-	/*
-	   if(fbo->depthBuffer)
-	   {
-	   qglBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo->depthBuffer);
-	   qglFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo->depthBuffer);
-	   }
-	 */
-
+	GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, fbo ? fbo->frameBuffer : 0);
 	glState.currentFBO = fbo;
 }
 
@@ -358,8 +251,7 @@ FBO_Init
 void FBO_Init(void)
 {
 	int             i;
-	// int             width, height, hdrFormat, multisample;
-	int             hdrFormat, multisample;
+	int             hdrFormat, multisample = 0;
 
 	ri.Printf(PRINT_ALL, "------- FBO_Init -------\n");
 
@@ -372,73 +264,41 @@ void FBO_Init(void)
 
 	R_IssuePendingRenderCommands();
 
-/*	if(glRefConfig.textureNonPowerOfTwo)
-	{
-		width = glConfig.vidWidth;
-		height = glConfig.vidHeight;
-	}
-	else
-	{
-		width = NextPowerOfTwo(glConfig.vidWidth);
-		height = NextPowerOfTwo(glConfig.vidHeight);
-	} */
-
 	hdrFormat = GL_RGBA8;
 	if (r_hdr->integer && glRefConfig.framebufferObject && glRefConfig.textureFloat)
-	{
 		hdrFormat = GL_RGBA16F_ARB;
-	}
 
-	qglGetIntegerv(GL_MAX_SAMPLES_EXT, &multisample);
+	if (glRefConfig.framebufferMultisample)
+		qglGetIntegerv(GL_MAX_SAMPLES_EXT, &multisample);
 
 	if (r_ext_framebuffer_multisample->integer < multisample)
-	{
 		multisample = r_ext_framebuffer_multisample->integer;
-	}
 
 	if (multisample < 2 || !glRefConfig.framebufferBlit)
 		multisample = 0;
 
 	if (multisample != r_ext_framebuffer_multisample->integer)
-	{
 		ri.Cvar_SetValue("r_ext_framebuffer_multisample", (float)multisample);
-	}
 	
 	// only create a render FBO if we need to resolve MSAA or do HDR
 	// otherwise just render straight to the screen (tr.renderFbo = NULL)
 	if (multisample && glRefConfig.framebufferMultisample)
 	{
 		tr.renderFbo = FBO_Create("_render", tr.renderDepthImage->width, tr.renderDepthImage->height);
-		FBO_Bind(tr.renderFbo);
-
 		FBO_CreateBuffer(tr.renderFbo, hdrFormat, 0, multisample);
 		FBO_CreateBuffer(tr.renderFbo, GL_DEPTH_COMPONENT24_ARB, 0, multisample);
-
 		R_CheckFBO(tr.renderFbo);
 
-
 		tr.msaaResolveFbo = FBO_Create("_msaaResolve", tr.renderDepthImage->width, tr.renderDepthImage->height);
-		FBO_Bind(tr.msaaResolveFbo);
-
-		//FBO_CreateBuffer(tr.msaaResolveFbo, hdrFormat, 0, 0);
-		FBO_AttachTextureImage(tr.renderImage, 0);
-
-		//FBO_CreateBuffer(tr.msaaResolveFbo, GL_DEPTH_COMPONENT24_ARB, 0, 0);
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
-
+		FBO_AttachImage(tr.msaaResolveFbo, tr.renderImage, GL_COLOR_ATTACHMENT0_EXT, 0);
+		FBO_AttachImage(tr.msaaResolveFbo, tr.renderDepthImage, GL_DEPTH_ATTACHMENT_EXT, 0);
 		R_CheckFBO(tr.msaaResolveFbo);
 	}
 	else if (r_hdr->integer)
 	{
 		tr.renderFbo = FBO_Create("_render", tr.renderDepthImage->width, tr.renderDepthImage->height);
-		FBO_Bind(tr.renderFbo);
-
-		//FBO_CreateBuffer(tr.renderFbo, hdrFormat, 0, 0);
-		FBO_AttachTextureImage(tr.renderImage, 0);
-
-		//FBO_CreateBuffer(tr.renderFbo, GL_DEPTH_COMPONENT24_ARB, 0, 0);
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
-
+		FBO_AttachImage(tr.renderFbo, tr.renderImage, GL_COLOR_ATTACHMENT0_EXT, 0);
+		FBO_AttachImage(tr.renderFbo, tr.renderDepthImage, GL_DEPTH_ATTACHMENT_EXT, 0);
 		R_CheckFBO(tr.renderFbo);
 	}
 
@@ -446,20 +306,23 @@ void FBO_Init(void)
 	// this fixes the corrupt screen bug with r_hdr 1 on older hardware
 	if (tr.renderFbo)
 	{
-		FBO_Bind(tr.renderFbo);
+		GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, tr.renderFbo->frameBuffer);
 		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		FBO_Bind(NULL);
 	}
 
-	if (r_drawSunRays->integer)
+	if (tr.screenScratchImage)
+	{
+		tr.screenScratchFbo = FBO_Create("screenScratch", tr.screenScratchImage->width, tr.screenScratchImage->height);
+		FBO_AttachImage(tr.screenScratchFbo, tr.screenScratchImage, GL_COLOR_ATTACHMENT0_EXT, 0);
+		FBO_AttachImage(tr.screenScratchFbo, tr.renderDepthImage, GL_DEPTH_ATTACHMENT_EXT, 0);
+		R_CheckFBO(tr.screenScratchFbo);
+	}
+
+	if (tr.sunRaysImage)
 	{
 		tr.sunRaysFbo = FBO_Create("_sunRays", tr.renderDepthImage->width, tr.renderDepthImage->height);
-		FBO_Bind(tr.sunRaysFbo);
-
-		FBO_AttachTextureImage(tr.sunRaysImage, 0);
-
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
-
+		FBO_AttachImage(tr.sunRaysFbo, tr.sunRaysImage, GL_COLOR_ATTACHMENT0_EXT, 0);
+		FBO_AttachImage(tr.sunRaysFbo, tr.renderDepthImage, GL_DEPTH_ATTACHMENT_EXT, 0);
 		R_CheckFBO(tr.sunRaysFbo);
 	}
 
@@ -469,121 +332,92 @@ void FBO_Init(void)
 		for( i = 0; i < MAX_DRAWN_PSHADOWS; i++)
 		{
 			tr.pshadowFbos[i] = FBO_Create(va("_shadowmap%d", i), tr.pshadowMaps[i]->width, tr.pshadowMaps[i]->height);
-			FBO_Bind(tr.pshadowFbos[i]);
-
-			//FBO_CreateBuffer(tr.pshadowFbos[i], GL_RGBA8, 0, 0);
-			FBO_AttachTextureImage(tr.pshadowMaps[i], 0);
-
+			FBO_AttachImage(tr.pshadowFbos[i], tr.pshadowMaps[i], GL_COLOR_ATTACHMENT0_EXT, 0);
 			FBO_CreateBuffer(tr.pshadowFbos[i], GL_DEPTH_COMPONENT24_ARB, 0, 0);
-			//R_AttachFBOTextureDepth(tr.textureDepthImage->texnum);
-
 			R_CheckFBO(tr.pshadowFbos[i]);
 		}
 	}
 
 	if (tr.sunShadowDepthImage[0])
 	{
-		for ( i = 0; i < 4; i++)
+		for (i = 0; i < 4; i++)
 		{
 			tr.sunShadowFbo[i] = FBO_Create("_sunshadowmap", tr.sunShadowDepthImage[i]->width, tr.sunShadowDepthImage[i]->height);
-			FBO_Bind(tr.sunShadowFbo[i]);
-
-			//FBO_CreateBuffer(tr.sunShadowFbo[i], GL_RGBA8, 0, 0);
-			//FBO_AttachTextureImage(tr.sunShadowImage, 0);
-			qglDrawBuffer(GL_NONE);
-			qglReadBuffer(GL_NONE);
-
-			//FBO_CreateBuffer(tr.sunShadowFbo, GL_DEPTH_COMPONENT24_ARB, 0, 0);
-			R_AttachFBOTextureDepth(tr.sunShadowDepthImage[i]->texnum);
-
+			// FIXME: this next line wastes 16mb with 4x1024x1024 sun shadow maps, skip if OpenGL 4.3+ or ARB_framebuffer_no_attachments
+			// This at least gets sun shadows working on older GPUs (Intel)
+			FBO_CreateBuffer(tr.sunShadowFbo[i], GL_RGBA8, 0, 0);
+			FBO_AttachImage(tr.sunShadowFbo[i], tr.sunShadowDepthImage[i], GL_DEPTH_ATTACHMENT_EXT, 0);
 			R_CheckFBO(tr.sunShadowFbo[i]);
-
 		}
+	}
 
+	if (tr.screenShadowImage)
+	{
 		tr.screenShadowFbo = FBO_Create("_screenshadow", tr.screenShadowImage->width, tr.screenShadowImage->height);
-		FBO_Bind(tr.screenShadowFbo);
-
-		FBO_AttachTextureImage(tr.screenShadowImage, 0);
-
+		FBO_AttachImage(tr.screenShadowFbo, tr.screenShadowImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		R_CheckFBO(tr.screenShadowFbo);
 	}
 
-	for (i = 0; i < 2; i++)
+	if (tr.textureScratchImage[0])
 	{
-		tr.textureScratchFbo[i] = FBO_Create(va("_texturescratch%d", i), tr.textureScratchImage[i]->width, tr.textureScratchImage[i]->height);
-		FBO_Bind(tr.textureScratchFbo[i]);
-
-		//FBO_CreateBuffer(tr.textureScratchFbo[i], GL_RGBA8, 0, 0);
-		FBO_AttachTextureImage(tr.textureScratchImage[i], 0);
-
-		R_CheckFBO(tr.textureScratchFbo[i]);
+		for (i = 0; i < 2; i++)
+		{
+			tr.textureScratchFbo[i] = FBO_Create(va("_texturescratch%d", i), tr.textureScratchImage[i]->width, tr.textureScratchImage[i]->height);
+			FBO_AttachImage(tr.textureScratchFbo[i], tr.textureScratchImage[i], GL_COLOR_ATTACHMENT0_EXT, 0);
+			R_CheckFBO(tr.textureScratchFbo[i]);
+		}
 	}
 
+	if (tr.calcLevelsImage)
 	{
 		tr.calcLevelsFbo = FBO_Create("_calclevels", tr.calcLevelsImage->width, tr.calcLevelsImage->height);
-		FBO_Bind(tr.calcLevelsFbo);
-
-		//FBO_CreateBuffer(tr.calcLevelsFbo, hdrFormat, 0, 0);
-		FBO_AttachTextureImage(tr.calcLevelsImage, 0);
-
+		FBO_AttachImage(tr.calcLevelsFbo, tr.calcLevelsImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		R_CheckFBO(tr.calcLevelsFbo);
 	}
 
+	if (tr.targetLevelsImage)
 	{
 		tr.targetLevelsFbo = FBO_Create("_targetlevels", tr.targetLevelsImage->width, tr.targetLevelsImage->height);
-		FBO_Bind(tr.targetLevelsFbo);
-
-		//FBO_CreateBuffer(tr.targetLevelsFbo, hdrFormat, 0, 0);
-		FBO_AttachTextureImage(tr.targetLevelsImage, 0);
-
+		FBO_AttachImage(tr.targetLevelsFbo, tr.targetLevelsImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		R_CheckFBO(tr.targetLevelsFbo);
 	}
 
-	for (i = 0; i < 2; i++)
+	if (tr.quarterImage[0])
 	{
-		tr.quarterFbo[i] = FBO_Create(va("_quarter%d", i), tr.quarterImage[i]->width, tr.quarterImage[i]->height);
-		FBO_Bind(tr.quarterFbo[i]);
-
-		//FBO_CreateBuffer(tr.quarterFbo[i], hdrFormat, 0, 0);
-		FBO_AttachTextureImage(tr.quarterImage[i], 0);
-
-		R_CheckFBO(tr.quarterFbo[i]);
+		for (i = 0; i < 2; i++)
+		{
+			tr.quarterFbo[i] = FBO_Create(va("_quarter%d", i), tr.quarterImage[i]->width, tr.quarterImage[i]->height);
+			FBO_AttachImage(tr.quarterFbo[i], tr.quarterImage[i], GL_COLOR_ATTACHMENT0_EXT, 0);
+			R_CheckFBO(tr.quarterFbo[i]);
+		}
 	}
 
-	if (r_ssao->integer)
+	if (tr.hdrDepthImage)
 	{
 		tr.hdrDepthFbo = FBO_Create("_hdrDepth", tr.hdrDepthImage->width, tr.hdrDepthImage->height);
-		FBO_Bind(tr.hdrDepthFbo);
-
-		FBO_AttachTextureImage(tr.hdrDepthImage, 0);
-
+		FBO_AttachImage(tr.hdrDepthFbo, tr.hdrDepthImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		R_CheckFBO(tr.hdrDepthFbo);
+	}
 
+	if (tr.screenSsaoImage)
+	{
 		tr.screenSsaoFbo = FBO_Create("_screenssao", tr.screenSsaoImage->width, tr.screenSsaoImage->height);
-		FBO_Bind(tr.screenSsaoFbo);
-		
-		FBO_AttachTextureImage(tr.screenSsaoImage, 0);
-
+		FBO_AttachImage(tr.screenSsaoFbo, tr.screenSsaoImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		R_CheckFBO(tr.screenSsaoFbo);
 	}
 
 	if (tr.renderCubeImage)
 	{
 		tr.renderCubeFbo = FBO_Create("_renderCubeFbo", tr.renderCubeImage->width, tr.renderCubeImage->height);
-		FBO_Bind(tr.renderCubeFbo);
-		
-		//FBO_AttachTextureImage(tr.renderCubeImage, 0);
-		R_AttachFBOTexture2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB, tr.renderCubeImage->texnum, 0);
-		glState.currentFBO->colorImage[0] = tr.renderCubeImage;
-
+		FBO_AttachImage(tr.renderCubeFbo, tr.renderCubeImage, GL_COLOR_ATTACHMENT0_EXT, 0);
 		FBO_CreateBuffer(tr.renderCubeFbo, GL_DEPTH_COMPONENT24_ARB, 0, 0);
-
 		R_CheckFBO(tr.renderCubeFbo);
 	}
 
 	GL_CheckErrors();
 
-	FBO_Bind(NULL);
+	GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+	glState.currentFBO = NULL;
 }
 
 /*
@@ -653,10 +487,9 @@ void R_FBOList_f(void)
 	ri.Printf(PRINT_ALL, " %i FBOs\n", tr.numFBOs);
 }
 
-void FBO_BlitFromTexture(struct image_s *src, ivec4_t inSrcBox, vec2_t inSrcTexScale, FBO_t *dst, ivec4_t inDstBox, struct shaderProgram_s *shaderProgram, vec4_t inColor, int blend)
+void FBO_BlitFromTexture(struct image_s *src, vec4_t inSrcTexCorners, vec2_t inSrcTexScale, FBO_t *dst, ivec4_t inDstBox, struct shaderProgram_s *shaderProgram, vec4_t inColor, int blend)
 {
-	ivec4_t dstBox, srcBox;
-	vec2_t srcTexScale;
+	ivec4_t dstBox;
 	vec4_t color;
 	vec4_t quadVerts[4];
 	vec2_t texCoords[4];
@@ -666,51 +499,49 @@ void FBO_BlitFromTexture(struct image_s *src, ivec4_t inSrcBox, vec2_t inSrcTexS
 	int width, height;
 
 	if (!src)
-		return;
-
-	if (inSrcBox)
 	{
-		VectorSet4(srcBox, inSrcBox[0], inSrcBox[1], inSrcBox[0] + inSrcBox[2],  inSrcBox[1] + inSrcBox[3]);
+		ri.Printf(PRINT_WARNING, "Tried to blit from a NULL texture!\n");
+		return;
+	}
+
+	width  = dst ? dst->width  : glConfig.vidWidth;
+	height = dst ? dst->height : glConfig.vidHeight;
+
+	if (inSrcTexCorners)
+	{
+		VectorSet2(texCoords[0], inSrcTexCorners[0], inSrcTexCorners[1]);
+		VectorSet2(texCoords[1], inSrcTexCorners[2], inSrcTexCorners[1]);
+		VectorSet2(texCoords[2], inSrcTexCorners[2], inSrcTexCorners[3]);
+		VectorSet2(texCoords[3], inSrcTexCorners[0], inSrcTexCorners[3]);
 	}
 	else
 	{
-		VectorSet4(srcBox, 0, 0, src->width, src->height);
+		VectorSet2(texCoords[0], 0.0f, 1.0f);
+		VectorSet2(texCoords[1], 1.0f, 1.0f);
+		VectorSet2(texCoords[2], 1.0f, 0.0f);
+		VectorSet2(texCoords[3], 0.0f, 0.0f);
 	}
 
 	// framebuffers are 0 bottom, Y up.
 	if (inDstBox)
 	{
-		if (dst)
-		{
-			dstBox[0] = inDstBox[0];
-			dstBox[1] = dst->height - inDstBox[1] - inDstBox[3];
-			dstBox[2] = inDstBox[0] + inDstBox[2];
-			dstBox[3] = dst->height - inDstBox[1];
-		}
-		else
-		{
-			dstBox[0] = inDstBox[0];
-			dstBox[1] = glConfig.vidHeight - inDstBox[1] - inDstBox[3];
-			dstBox[2] = inDstBox[0] + inDstBox[2];
-			dstBox[3] = glConfig.vidHeight - inDstBox[1];
-		}
-	}
-	else if (dst)
-	{
-		VectorSet4(dstBox, 0, dst->height, dst->width, 0);
+		dstBox[0] = inDstBox[0];
+		dstBox[1] = height - inDstBox[1] - inDstBox[3];
+		dstBox[2] = inDstBox[0] + inDstBox[2];
+		dstBox[3] = height - inDstBox[1];
 	}
 	else
 	{
-		VectorSet4(dstBox, 0, glConfig.vidHeight, glConfig.vidWidth, 0);
+		VectorSet4(dstBox, 0, height, width, 0);
 	}
 
 	if (inSrcTexScale)
 	{
-		VectorCopy2(inSrcTexScale, srcTexScale);
+		VectorCopy2(inSrcTexScale, invTexRes);
 	}
 	else
 	{
-		srcTexScale[0] = srcTexScale[1] = 1.0f;
+		VectorSet2(invTexRes, 1.0f, 1.0f);
 	}
 
 	if (inColor)
@@ -729,17 +560,6 @@ void FBO_BlitFromTexture(struct image_s *src, ivec4_t inSrcBox, vec2_t inSrcTexS
 
 	FBO_Bind(dst);
 
-	if (glState.currentFBO)
-	{
-		width = glState.currentFBO->width;
-		height = glState.currentFBO->height;
-	}
-	else
-	{
-		width = glConfig.vidWidth;
-		height = glConfig.vidHeight;
-	}
-
 	qglViewport( 0, 0, width, height );
 	qglScissor( 0, 0, width, height );
 
@@ -749,18 +569,13 @@ void FBO_BlitFromTexture(struct image_s *src, ivec4_t inSrcBox, vec2_t inSrcTexS
 
 	GL_BindToTMU(src, TB_COLORMAP);
 
-	VectorSet4(quadVerts[0], dstBox[0], dstBox[1], 0, 1);
-	VectorSet4(quadVerts[1], dstBox[2], dstBox[1], 0, 1);
-	VectorSet4(quadVerts[2], dstBox[2], dstBox[3], 0, 1);
-	VectorSet4(quadVerts[3], dstBox[0], dstBox[3], 0, 1);
+	VectorSet4(quadVerts[0], dstBox[0], dstBox[1], 0.0f, 1.0f);
+	VectorSet4(quadVerts[1], dstBox[2], dstBox[1], 0.0f, 1.0f);
+	VectorSet4(quadVerts[2], dstBox[2], dstBox[3], 0.0f, 1.0f);
+	VectorSet4(quadVerts[3], dstBox[0], dstBox[3], 0.0f, 1.0f);
 
-	texCoords[0][0] = srcBox[0] / (float)src->width; texCoords[0][1] = 1.0f - srcBox[1] / (float)src->height;
-	texCoords[1][0] = srcBox[2] / (float)src->width; texCoords[1][1] = 1.0f - srcBox[1] / (float)src->height;
-	texCoords[2][0] = srcBox[2] / (float)src->width; texCoords[2][1] = 1.0f - srcBox[3] / (float)src->height;
-	texCoords[3][0] = srcBox[0] / (float)src->width; texCoords[3][1] = 1.0f - srcBox[3] / (float)src->height;
-
-	invTexRes[0] = 1.0f / src->width  * srcTexScale[0];
-	invTexRes[1] = 1.0f / src->height * srcTexScale[1];
+	invTexRes[0] /= src->width;
+	invTexRes[1] /= src->height;
 
 	GL_State( blend );
 
@@ -772,14 +587,14 @@ void FBO_BlitFromTexture(struct image_s *src, ivec4_t inSrcBox, vec2_t inSrcTexS
 	GLSL_SetUniformVec2(shaderProgram, UNIFORM_AUTOEXPOSUREMINMAX, tr.refdef.autoExposureMinMax);
 	GLSL_SetUniformVec3(shaderProgram, UNIFORM_TONEMINAVGMAXLINEAR, tr.refdef.toneMinAvgMaxLinear);
 
-	RB_InstantQuad2(quadVerts, texCoords); //, color, shaderProgram, invTexRes);
+	RB_InstantQuad2(quadVerts, texCoords);
 
 	FBO_Bind(oldFbo);
 }
 
 void FBO_Blit(FBO_t *src, ivec4_t inSrcBox, vec2_t srcTexScale, FBO_t *dst, ivec4_t dstBox, struct shaderProgram_s *shaderProgram, vec4_t color, int blend)
 {
-	ivec4_t srcBox;
+	vec4_t srcTexCorners;
 
 	if (!src)
 	{
@@ -787,20 +602,19 @@ void FBO_Blit(FBO_t *src, ivec4_t inSrcBox, vec2_t srcTexScale, FBO_t *dst, ivec
 		return;
 	}
 
-	// framebuffers are 0 bottom, Y up.
 	if (inSrcBox)
 	{
-		srcBox[0] = inSrcBox[0];
-		srcBox[1] = src->height - inSrcBox[1] - inSrcBox[3];
-		srcBox[2] = inSrcBox[2];
-		srcBox[3] = inSrcBox[3];
+		srcTexCorners[0] =  inSrcBox[0]                / (float)src->width;
+		srcTexCorners[1] = (inSrcBox[1] + inSrcBox[3]) / (float)src->height;
+		srcTexCorners[2] = (inSrcBox[0] + inSrcBox[2]) / (float)src->width;
+		srcTexCorners[3] =  inSrcBox[1]                / (float)src->height;
 	}
 	else
 	{
-		VectorSet4(srcBox, 0, src->height, src->width, -src->height);
+		VectorSet4(srcTexCorners, 0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
-	FBO_BlitFromTexture(src->colorImage[0], srcBox, srcTexScale, dst, dstBox, shaderProgram, color, blend | GLS_DEPTHTEST_DISABLE);
+	FBO_BlitFromTexture(src->colorImage[0], srcTexCorners, srcTexScale, dst, dstBox, shaderProgram, color, blend | GLS_DEPTHTEST_DISABLE);
 }
 
 void FBO_FastBlit(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, int buffers, int filter)
@@ -814,22 +628,15 @@ void FBO_FastBlit(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, int bu
 		return;
 	}
 
-	// get to a neutral state first
-	//FBO_Bind(NULL);
-
 	srcFb = src ? src->frameBuffer : 0;
 	dstFb = dst ? dst->frameBuffer : 0;
 
 	if (!srcBox)
 	{
-		if (src)
-		{
-			VectorSet4(srcBoxFinal, 0, 0, src->width, src->height);
-		}
-		else
-		{
-			VectorSet4(srcBoxFinal, 0, 0, glConfig.vidWidth, glConfig.vidHeight);
-		}
+		int width =  src ? src->width  : glConfig.vidWidth;
+		int height = src ? src->height : glConfig.vidHeight;
+
+		VectorSet4(srcBoxFinal, 0, 0, width, height);
 	}
 	else
 	{
@@ -838,26 +645,22 @@ void FBO_FastBlit(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, int bu
 
 	if (!dstBox)
 	{
-		if (dst)
-		{
-			VectorSet4(dstBoxFinal, 0, 0, dst->width, dst->height);
-		}
-		else
-		{
-			VectorSet4(dstBoxFinal, 0, 0, glConfig.vidWidth, glConfig.vidHeight);
-		}
+		int width  = dst ? dst->width  : glConfig.vidWidth;
+		int height = dst ? dst->height : glConfig.vidHeight;
+
+		VectorSet4(dstBoxFinal, 0, 0, width, height);
 	}
 	else
 	{
 		VectorSet4(dstBoxFinal, dstBox[0], dstBox[1], dstBox[0] + dstBox[2], dstBox[1] + dstBox[3]);
 	}
 
-	qglBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, srcFb);
-	qglBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, dstFb);
+	GL_BindFramebuffer(GL_READ_FRAMEBUFFER_EXT, srcFb);
+	GL_BindFramebuffer(GL_DRAW_FRAMEBUFFER_EXT, dstFb);
 	qglBlitFramebufferEXT(srcBoxFinal[0], srcBoxFinal[1], srcBoxFinal[2], srcBoxFinal[3],
 	                      dstBoxFinal[0], dstBoxFinal[1], dstBoxFinal[2], dstBoxFinal[3],
 						  buffers, filter);
 
-	qglBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 	glState.currentFBO = NULL;
 }
