@@ -186,10 +186,7 @@ typedef struct {
 // this is the only function actually exported at the linker level
 // If the module can't init to a valid rendering state, NULL will be
 // returned.
-#ifdef USE_RENDERER_DLOPEN
 typedef	refexport_t* (QDECL *GetRefAPI_t) (int apiVersion, refimport_t * rimp);
-#else
-refexport_t*GetRefAPI( int apiVersion, refimport_t *rimp );
-#endif
+refexport_t*GetRefAPIStatic( int apiVersion, refimport_t *rimp );
 
 #endif	// __TR_PUBLIC_H
