@@ -115,6 +115,7 @@ int			com_frameNumber;
 qboolean	com_errorEntered = qfalse;
 qboolean	com_fullyInitialized = qfalse;
 qboolean	com_gameRestarting = qfalse;
+qboolean	com_gameClientRestarting = qfalse;
 
 char	com_errorMessage[MAXPRINTMSG];
 
@@ -264,6 +265,7 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	static int	lastErrorTime;
 	static int	errorCount;
 	int			currentTime;
+	qboolean	restartClient;
 
 	if(com_errorEntered)
 		Sys_Error("recursive error after: %s", com_errorMessage);
@@ -296,9 +298,17 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	if (code != ERR_DISCONNECT && code != ERR_NEED_CD)
 		Cvar_Set("com_errorMessage", com_errorMessage);
 
+	restartClient = com_gameClientRestarting && !( com_cl_running && com_cl_running->integer );
+
+	com_gameRestarting = qfalse;
+	com_gameClientRestarting = qfalse;
+
 	if (code == ERR_DISCONNECT || code == ERR_SERVERDISCONNECT) {
 		VM_Forced_Unload_Start();
 		SV_Shutdown( "Server disconnected" );
+		if ( restartClient ) {
+			CL_Init();
+		}
 		CL_Disconnect( qtrue );
 		CL_FlushMemory( );
 		VM_Forced_Unload_Done();
@@ -310,6 +320,9 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		Com_Printf ("********************\nERROR: %s\n********************\n", com_errorMessage);
 		VM_Forced_Unload_Start();
 		SV_Shutdown (va("Server crashed: %s",  com_errorMessage));
+		if ( restartClient ) {
+			CL_Init();
+		}
 		CL_Disconnect( qtrue );
 		CL_FlushMemory( );
 		VM_Forced_Unload_Done();
@@ -319,6 +332,9 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	} else if ( code == ERR_NEED_CD ) {
 		VM_Forced_Unload_Start();
 		SV_Shutdown( "Server didn't have CD" );
+		if ( restartClient ) {
+			CL_Init();
+		}
 		if ( com_cl_running && com_cl_running->integer ) {
 			CL_Disconnect( qtrue );
 			CL_FlushMemory( );
@@ -411,7 +427,7 @@ void Com_ParseCommandLine( char *commandLine ) {
         if (*commandLine == '"') {
             inq = !inq;
         }
-        // look for a + seperating character
+        // look for a + separating character
         // if commandLine came from a file, we might have real line seperators
         if ( (*commandLine == '+' && !inq) || *commandLine == '\n'  || *commandLine == '\r' ) {
             if ( com_numConsoleLines == MAX_CONSOLE_LINES ) {
@@ -2362,16 +2378,14 @@ void Com_GameRestart(int checksumFeed, qboolean disconnect)
 	// make sure no recursion can be triggered
 	if(!com_gameRestarting && com_fullyInitialized)
 	{
-		int clWasRunning;
-		
 		com_gameRestarting = qtrue;
-		clWasRunning = com_cl_running->integer;
-		
+		com_gameClientRestarting = com_cl_running->integer;
+
 		// Kill server if we have one
 		if(com_sv_running->integer)
 			SV_Shutdown("Game directory changed");
 
-		if(clWasRunning)
+		if(com_gameClientRestarting)
 		{
 			if(disconnect)
 				CL_Disconnect(qfalse);
@@ -2393,13 +2407,14 @@ void Com_GameRestart(int checksumFeed, qboolean disconnect)
 			NET_Restart_f();
 		}
 
-		if(clWasRunning)
+		if(com_gameClientRestarting)
 		{
 			CL_Init();
 			CL_StartHunkUsers(qfalse);
 		}
 		
 		com_gameRestarting = qfalse;
+		com_gameClientRestarting = qfalse;
 	}
 }
 
@@ -2639,7 +2654,7 @@ void Com_Init( char *commandLine ) {
 	char	*s;
 	int	qport;
 
-	Com_Printf( "%s %s %s\n", Q3_VERSION, PLATFORM_STRING, __DATE__ );
+	Com_Printf( "%s %s %s\n", Q3_VERSION, PLATFORM_STRING, PRODUCT_DATE );
 
 	if ( setjmp (abortframe) ) {
 		Sys_Error ("Error during initialization");
@@ -2760,7 +2775,7 @@ void Com_Init( char *commandLine ) {
 	com_introPlayed = Cvar_Get( "com_introplayed", "0", CVAR_ARCHIVE);
 #endif
 
-	s = va("%s %s %s", Q3_VERSION, PLATFORM_STRING, __DATE__ );
+	s = va("%s %s %s", Q3_VERSION, PLATFORM_STRING, PRODUCT_DATE );
 	com_version = Cvar_Get ("version", s, CVAR_ROM | CVAR_SERVERINFO );
 	com_gamename = Cvar_Get("com_gamename", GAMENAME_FOR_MASTER, CVAR_SERVERINFO | CVAR_INIT);
 	com_protocol = Cvar_Get("com_protocol", va("%i", PROTOCOL_VERSION), CVAR_SERVERINFO | CVAR_INIT);
@@ -2776,17 +2791,7 @@ void Com_Init( char *commandLine ) {
 
 	Sys_Init();
 
-	if( Sys_WritePIDFile( ) ) {
-#ifndef DEDICATED
-		const char *message = "The last time " CLIENT_WINDOW_TITLE " ran, "
-			"it didn't exit properly. This may be due to inappropriate video "
-			"settings. Would you like to start with \"safe\" video settings?";
-
-		if( Sys_Dialog( DT_YES_NO, message, "Abnormal Exit" ) == DR_YES ) {
-			Cvar_Set( "com_abnormalExit", "1" );
-		}
-#endif
-	}
+	Sys_InitPIDFile( FS_GetCurrentGameDir() );
 
 	// Pick a random port value
 	Com_RandomBytes( (byte*)&qport, sizeof(int) );

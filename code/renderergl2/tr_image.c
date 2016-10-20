@@ -150,12 +150,12 @@ void R_ImageList_f( void ) {
 	int i;
 	int estTotalSize = 0;
 
-	ri.Printf(PRINT_ALL, "\n      -w-- -h-- type  -size- --name-------\n");
+	ri.Printf(PRINT_ALL, "\n      -w-- -h-- -type-- -size- --name-------\n");
 
 	for ( i = 0 ; i < tr.numImages ; i++ )
 	{
 		image_t *image = tr.images[i];
-		char *format = "???? ";
+		char *format = "????   ";
 		char *sizeSuffix;
 		int estSize;
 		int displaySize;
@@ -165,94 +165,120 @@ void R_ImageList_f( void ) {
 		switch(image->internalFormat)
 		{
 			case GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT:
-				format = "sDXT1";
+				format = "sDXT1  ";
 				// 64 bits per 16 pixels, so 4 bits per pixel
 				estSize /= 2;
 				break;
 			case GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT:
-				format = "sDXT5";
+				format = "sDXT5  ";
 				// 128 bits per 16 pixels, so 1 byte per pixel
 				break;
 			case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB:
-				format = "sBPTC";
+				format = "sBPTC  ";
 				// 128 bits per 16 pixels, so 1 byte per pixel
 				break;
 			case GL_COMPRESSED_RG_RGTC2:
-				format = "RGTC2";
+				format = "RGTC2  ";
 				// 128 bits per 16 pixels, so 1 byte per pixel
 				break;
 			case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-				format = "DXT1 ";
+				format = "DXT1   ";
 				// 64 bits per 16 pixels, so 4 bits per pixel
 				estSize /= 2;
 				break;
 			case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-				format = "DXT1a";
+				format = "DXT1a  ";
 				// 64 bits per 16 pixels, so 4 bits per pixel
 				estSize /= 2;
 				break;
 			case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-				format = "DXT5 ";
+				format = "DXT5   ";
 				// 128 bits per 16 pixels, so 1 byte per pixel
 				break;
 			case GL_COMPRESSED_RGBA_BPTC_UNORM_ARB:
-				format = "BPTC ";
+				format = "BPTC   ";
 				// 128 bits per 16 pixels, so 1 byte per pixel
 				break;
 			case GL_RGB4_S3TC:
-				format = "S3TC ";
+				format = "S3TC   ";
 				// same as DXT1?
 				estSize /= 2;
+				break;
+			case GL_RGBA16F:
+				format = "RGBA16F";
+				// 8 bytes per pixel
+				estSize *= 8;
+				break;
+			case GL_RGBA16:
+				format = "RGBA16 ";
+				// 8 bytes per pixel
+				estSize *= 8;
 				break;
 			case GL_RGBA4:
 			case GL_RGBA8:
 			case GL_RGBA:
-				format = "RGBA ";
+				format = "RGBA   ";
 				// 4 bytes per pixel
 				estSize *= 4;
 				break;
 			case GL_LUMINANCE8:
 			case GL_LUMINANCE16:
 			case GL_LUMINANCE:
-				format = "L    ";
+				format = "L      ";
 				// 1 byte per pixel?
 				break;
 			case GL_RGB5:
 			case GL_RGB8:
 			case GL_RGB:
-				format = "RGB  ";
+				format = "RGB    ";
 				// 3 bytes per pixel?
 				estSize *= 3;
 				break;
 			case GL_LUMINANCE8_ALPHA8:
 			case GL_LUMINANCE16_ALPHA16:
 			case GL_LUMINANCE_ALPHA:
-				format = "LA   ";
+				format = "LA     ";
 				// 2 bytes per pixel?
 				estSize *= 2;
 				break;
 			case GL_SRGB_EXT:
 			case GL_SRGB8_EXT:
-				format = "sRGB ";
+				format = "sRGB   ";
 				// 3 bytes per pixel?
 				estSize *= 3;
 				break;
 			case GL_SRGB_ALPHA_EXT:
 			case GL_SRGB8_ALPHA8_EXT:
-				format = "sRGBA";
+				format = "sRGBA  ";
 				// 4 bytes per pixel?
 				estSize *= 4;
 				break;
 			case GL_SLUMINANCE_EXT:
 			case GL_SLUMINANCE8_EXT:
-				format = "sL   ";
+				format = "sL     ";
 				// 1 byte per pixel?
 				break;
 			case GL_SLUMINANCE_ALPHA_EXT:
 			case GL_SLUMINANCE8_ALPHA8_EXT:
-				format = "sLA  ";
+				format = "sLA    ";
 				// 2 byte per pixel?
 				estSize *= 2;
+				break;
+			case GL_DEPTH_COMPONENT16:
+				format = "Depth16";
+				// 2 bytes per pixel
+				estSize *= 2;
+				break;
+			case GL_DEPTH_COMPONENT24:
+				format = "Depth24";
+				// 3 bytes per pixel
+				estSize *= 3;
+				break;
+			case GL_DEPTH_COMPONENT:
+			case GL_DEPTH_COMPONENT32:
+				format = "Depth32";
+				// 4 bytes per pixel
+				estSize *= 4;
 				break;
 		}
 
@@ -1461,7 +1487,7 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 	qboolean picmip = flags & IMGFLAG_PICMIP;
 	qboolean mipmap = flags & IMGFLAG_MIPMAP;
 	qboolean clampToEdge = flags & IMGFLAG_CLAMPTOEDGE;
-	qboolean notScaled;
+	qboolean scaled;
 
 	//
 	// convert to exact power of 2 sizes
@@ -1572,7 +1598,7 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 	scaled_width  = MAX(1, scaled_width);
 	scaled_height = MAX(1, scaled_height);
 
-	notScaled = (width == scaled_width) && (height == scaled_height);
+	scaled = (width != scaled_width) || (height != scaled_height);
 
 	//
 	// rescale texture to new size using existing mipmap functions
@@ -1594,7 +1620,7 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 	*inout_width  = width;
 	*inout_height = height;
 
-	return notScaled;
+	return scaled;
 }
 
 
@@ -1628,7 +1654,7 @@ static GLenum RawImage_GetFormat(const byte *data, int numPixels, GLenum picForm
 
 	if(normalmap)
 	{
-		if ((type == IMGTYPE_NORMALHEIGHT) && RawImage_HasAlpha(data, numPixels))
+		if ((type == IMGTYPE_NORMALHEIGHT) && RawImage_HasAlpha(data, numPixels) && r_parallaxMapping->integer)
 		{
 			if (!forceNoCompression && glRefConfig.textureCompression & TCR_BPTC)
 			{
@@ -1818,9 +1844,9 @@ static void CompressMonoBlock(byte outdata[8], const byte indata[16])
 	}
 }
 
-static void RawImage_UploadToRgtc2Texture(GLuint texture, byte *data, int width, int height, int mip)
+static void RawImage_UploadToRgtc2Texture(GLuint texture, int miplevel, int x, int y, int width, int height, byte *data)
 {
-	int wBlocks, hBlocks, y, x, size;
+	int wBlocks, hBlocks, iy, ix, size;
 	byte *compressedData, *p;
 
 	wBlocks = (width + 3) / 4;
@@ -1828,16 +1854,16 @@ static void RawImage_UploadToRgtc2Texture(GLuint texture, byte *data, int width,
 	size = wBlocks * hBlocks * 16;
 
 	p = compressedData = ri.Hunk_AllocateTempMemory(size);
-	for (y = 0; y < height; y += 4)
+	for (iy = 0; iy < height; iy += 4)
 	{
-		int oh = MIN(4, height - y);
+		int oh = MIN(4, height - iy);
 
-		for (x = 0; x < width; x += 4)
+		for (ix = 0; ix < width; ix += 4)
 		{
 			byte workingData[16];
 			int component;
 
-			int ow = MIN(4, width - x);
+			int ow = MIN(4, width - ix);
 
 			for (component = 0; component < 2; component++)
 			{
@@ -1845,7 +1871,7 @@ static void RawImage_UploadToRgtc2Texture(GLuint texture, byte *data, int width,
 
 				for (oy = 0; oy < oh; oy++)
 					for (ox = 0; ox < ow; ox++)
-						workingData[oy * 4 + ox] = data[((y + oy) * width + x + ox) * 4 + component];
+						workingData[oy * 4 + ox] = data[((iy + oy) * width + ix + ox) * 4 + component];
 
 				// dupe data to fill
 				for (oy = 0; oy < 4; oy++)
@@ -1858,7 +1884,8 @@ static void RawImage_UploadToRgtc2Texture(GLuint texture, byte *data, int width,
 		}
 	}
 
-	qglCompressedTextureImage2DEXT(texture, GL_TEXTURE_2D, mip, GL_COMPRESSED_RG_RGTC2, width, height, 0, size, compressedData);
+	// FIXME: Won't work for x/y that aren't multiples of 4.
+	qglCompressedTextureSubImage2DEXT(texture, GL_TEXTURE_2D, miplevel, x, y, width, height, GL_COMPRESSED_RG_RGTC2, size, compressedData);
 
 	ri.Hunk_FreeTempMemory(compressedData);
 }
@@ -1903,63 +1930,46 @@ static int CalculateMipSize(int width, int height, GLenum picFormat)
 }
 
 
-static void RawImage_UploadTexture(GLuint texture, byte *data, int x, int y, int width, int height, GLenum target, GLenum picFormat, int numMips, GLenum internalFormat, imgType_t type, imgFlags_t flags, qboolean subtexture )
+static GLenum PixelDataFormatFromInternalFormat(GLenum internalFormat)
 {
-	int dataFormat, dataType;
-	qboolean rgtc = (internalFormat == GL_COMPRESSED_RG_RGTC2);
-	qboolean compressed = (!(picFormat == GL_RGBA8) || (picFormat == GL_SRGB8_ALPHA8_EXT));
-	qboolean mipmap = !!(flags & IMGFLAG_MIPMAP);
-	qboolean picmip = !!(flags & IMGFLAG_PICMIP);
-	int size, miplevel;
-	qboolean lastMip = qfalse;
-
 	switch (internalFormat)
 	{
 		case GL_DEPTH_COMPONENT:
 		case GL_DEPTH_COMPONENT16_ARB:
 		case GL_DEPTH_COMPONENT24_ARB:
 		case GL_DEPTH_COMPONENT32_ARB:
-			dataFormat = GL_DEPTH_COMPONENT;
-			dataType = GL_UNSIGNED_BYTE;
+			return GL_DEPTH_COMPONENT;
+		default:
+			return GL_RGBA;
 			break;
+	}
+}
+
+static void RawImage_UploadTexture(GLuint texture, byte *data, int x, int y, int width, int height, GLenum target, GLenum picFormat, int numMips, GLenum internalFormat, imgType_t type, imgFlags_t flags, qboolean subtexture )
+{
+	GLenum dataFormat, dataType;
+	qboolean rgtc = (internalFormat == GL_COMPRESSED_RG_RGTC2);
+	qboolean compressed = (!(picFormat == GL_RGBA8) || (picFormat == GL_SRGB8_ALPHA8_EXT));
+	qboolean mipmap = !!(flags & IMGFLAG_MIPMAP);
+	int size, miplevel;
+	qboolean lastMip = qfalse;
+
+	dataFormat = PixelDataFormatFromInternalFormat(internalFormat);
+
+	// FIXME: This is an old hack to use half floats with lightmaps, use picFormat to determine this instead.
+	switch (internalFormat)
+	{
 		case GL_RGBA16F_ARB:
-			dataFormat = GL_RGBA;
 			dataType = GL_HALF_FLOAT_ARB;
 			break;
+
+		case GL_RGBA16:
+			dataType = GL_UNSIGNED_SHORT;
+			break;
+
 		default:
-			dataFormat = GL_RGBA;
 			dataType = GL_UNSIGNED_BYTE;
 			break;
-	}
-
-	if (!data)
-	{
-		miplevel = 0;
-		do
-		{
-			lastMip = (width == 1 && height == 1) || !mipmap;
-			qglTextureImage2DEXT(texture, target, miplevel, internalFormat, width, height, 0, dataFormat, dataType, NULL);
-
-			width = MAX(1, width >> 1);
-			height = MAX(1, height >> 1);
-			miplevel++;
-		}
-		while (!lastMip);
-
-		return;
-	}
-
-	if (compressed && picmip)
-	{
-		for (miplevel = r_picmip->integer; miplevel > 0 && numMips > 1; miplevel--, numMips--)
-		{
-			size = CalculateMipSize(width, height, picFormat);
-			x >>= 1;
-			y >>= 1;
-			width = MAX(1, width >> 1);
-			height = MAX(1, height >> 1);
-			data += size;
-		}
 	}
 
 	miplevel = 0;
@@ -1970,10 +1980,7 @@ static void RawImage_UploadTexture(GLuint texture, byte *data, int x, int y, int
 
 		if (compressed)
 		{
-			if (subtexture)
-				qglCompressedTextureSubImage2DEXT(texture, target, miplevel, x, y, width, height, picFormat, size, data);
-			else
-				qglCompressedTextureImage2DEXT(texture, target, miplevel, picFormat, width, height, 0, size, data);
+			qglCompressedTextureSubImage2DEXT(texture, target, miplevel, x, y, width, height, picFormat, size, data);
 		}
 		else
 		{
@@ -1981,11 +1988,9 @@ static void RawImage_UploadTexture(GLuint texture, byte *data, int x, int y, int
 				R_BlendOverTexture((byte *)data, width * height, mipBlendColors[miplevel]);
 
 			if (rgtc)
-				RawImage_UploadToRgtc2Texture(texture, data, width, height, miplevel);
-			else if (subtexture)
-				qglTextureSubImage2DEXT(texture, target, miplevel, x, y, width, height, dataFormat, dataType, data);
+				RawImage_UploadToRgtc2Texture(texture, miplevel, x, y, width, height, data);
 			else
-				qglTextureImage2DEXT(texture, target, miplevel, internalFormat, width, height, 0, dataFormat, dataType, data);
+				qglTextureSubImage2DEXT(texture, target, miplevel, x, y, width, height, dataFormat, dataType, data);
 
 			if (!lastMip && numMips < 2)
 			{
@@ -2018,135 +2023,76 @@ Upload32
 
 ===============
 */
-static void Upload32(byte *data, int x, int y, int width, int height, GLenum picFormat, int numMips, image_t *image)
+static void Upload32(byte *data, int x, int y, int width, int height, GLenum picFormat, int numMips, image_t *image, qboolean scaled)
 {
-	byte		*resampledBuffer = NULL;
 	int			i, c;
 	byte		*scan;
 
 	imgType_t type = image->type;
 	imgFlags_t flags = image->flags;
 	GLenum internalFormat = image->internalFormat;
-	qboolean subtexture = (x != 0) || (y != 0) || (width != image->width) || (height != image->height);
-	qboolean notScaled = qtrue;
 	qboolean compressed = (picFormat != GL_RGBA8 && picFormat != GL_SRGB8_ALPHA8_EXT);
 	qboolean mipmap = !!(flags & IMGFLAG_MIPMAP) && (!compressed || numMips > 1);
 	qboolean cubemap = !!(flags & IMGFLAG_CUBEMAP);
-	GLenum uploadTarget = cubemap ? GL_TEXTURE_CUBE_MAP_POSITIVE_X : GL_TEXTURE_2D;
-	GLenum textureTarget = cubemap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
-	int depth = cubemap ? 6 : 1;
 
-	if (!data)
+	// These operations cannot be performed on pre-compressed images.
+	if (!compressed && !cubemap)
 	{
-		RawImage_ScaleToPower2(NULL, &width, &height, type, flags, NULL);
-		for (i = 0; i < depth; i++)
-			RawImage_UploadTexture(image->texnum, NULL, 0, 0, width, height, uploadTarget + i, GL_RGBA8, 0, internalFormat, type, flags, qfalse);
-		goto done;
-	}
-	else if (!subtexture)
-	{
-		if (compressed || cubemap)
+		c = width*height;
+		scan = data;
+
+		if (type == IMGTYPE_COLORALPHA)
 		{
-			for (i = 0; i < depth; i++)
+			if( r_greyscale->integer )
 			{
-				int w2 = width, h2 = height;
-				RawImage_UploadTexture(image->texnum, data, 0, 0, width, height, uploadTarget + i, picFormat, numMips, internalFormat, type, flags, qfalse);
-				for (c = numMips; c; c--)
+				for ( i = 0; i < c; i++ )
 				{
-					data += CalculateMipSize(w2, h2, picFormat);
-					w2 = MAX(1, w2 >> 1);
-					h2 = MAX(1, h2 >> 1);
+					byte luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
+					scan[i*4] = luma;
+					scan[i*4 + 1] = luma;
+					scan[i*4 + 2] = luma;
 				}
 			}
-			goto done;
+			else if( r_greyscale->value )
+			{
+				for ( i = 0; i < c; i++ )
+				{
+					float luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
+					scan[i*4] = LERP(scan[i*4], luma, r_greyscale->value);
+					scan[i*4 + 1] = LERP(scan[i*4 + 1], luma, r_greyscale->value);
+					scan[i*4 + 2] = LERP(scan[i*4 + 2], luma, r_greyscale->value);
+				}
+			}
+
+			// This corresponds to what the OpenGL1 renderer does.
+			if (!(flags & IMGFLAG_NOLIGHTSCALE) && (scaled || mipmap))
+				R_LightScaleTexture(data, width, height, !mipmap);
 		}
-		notScaled = RawImage_ScaleToPower2(&data, &width, &height, type, flags, &resampledBuffer);
+
+		if (glRefConfig.swizzleNormalmap && (type == IMGTYPE_NORMAL || type == IMGTYPE_NORMALHEIGHT))
+			RawImage_SwizzleRA(data, width, height);
 	}
 
-	c = width*height;
-	scan = data;
-	
-	if( r_greyscale->integer )
+	if (cubemap)
 	{
-		for ( i = 0; i < c; i++ )
+		for (i = 0; i < 6; i++)
 		{
-			byte luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
-			scan[i*4] = luma;
-			scan[i*4 + 1] = luma;
-			scan[i*4 + 2] = luma;
+			int w2 = width, h2 = height;
+			RawImage_UploadTexture(image->texnum, data, x, y, width, height, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, picFormat, numMips, internalFormat, type, flags, qfalse);
+			for (c = numMips; c; c--)
+			{
+				data += CalculateMipSize(w2, h2, picFormat);
+				w2 = MAX(1, w2 >> 1);
+				h2 = MAX(1, h2 >> 1);
+			}
 		}
-	}
-	else if( r_greyscale->value )
-	{
-		for ( i = 0; i < c; i++ )
-		{
-			float luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
-			scan[i*4] = LERP(scan[i*4], luma, r_greyscale->value);
-			scan[i*4 + 1] = LERP(scan[i*4 + 1], luma, r_greyscale->value);
-			scan[i*4 + 2] = LERP(scan[i*4 + 2], luma, r_greyscale->value);
-		}
-	}
-
-	if (glRefConfig.swizzleNormalmap && (type == IMGTYPE_NORMAL || type == IMGTYPE_NORMALHEIGHT))
-		RawImage_SwizzleRA(data, width, height);
-
-	// This corresponds to what the OpenGL1 renderer does
-	if (!(flags & IMGFLAG_NOLIGHTSCALE) && (!notScaled || mipmap))
-		R_LightScaleTexture(data, width, height, !mipmap);
-
-	if (subtexture)
-	{
-		// FIXME: Incorrect if original texture was not a power of 2 texture or picmipped
-		RawImage_UploadTexture(image->texnum, data, x, y, width, height, uploadTarget, GL_RGBA8, 0, internalFormat, type, flags, qtrue);
-		GL_CheckErrors();
-		return;
-	}
-
-	RawImage_UploadTexture(image->texnum, data, 0, 0, width, height, uploadTarget, GL_RGBA8, 0, internalFormat, type, flags, qfalse);
-
-done:
-
-	image->uploadWidth  = width;
-	image->uploadHeight = height;
-
-	if (mipmap)
-	{
-		if (textureFilterAnisotropic && !cubemap)
-			qglTextureParameteriEXT(image->texnum, textureTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT,
-			(GLint)Com_Clamp(1, maxAnisotropy, r_ext_max_anisotropy->integer));
-
-		qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-		qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 	}
 	else
 	{
-		if (textureFilterAnisotropic && !cubemap)
-			qglTextureParameteriEXT(image->texnum, textureTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1);
-
-		qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	}
-
-	// Fix for sampling depth buffer on old nVidia cards
-	// from http://www.idevgames.com/forums/thread-4141-post-34844.html#pid34844
-	switch(internalFormat)
-	{
-		case GL_DEPTH_COMPONENT:
-		case GL_DEPTH_COMPONENT16_ARB:
-		case GL_DEPTH_COMPONENT24_ARB:
-		case GL_DEPTH_COMPONENT32_ARB:
-			qglTextureParameterfEXT(image->texnum, textureTarget, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
-			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			break;
-		default:
-			break;
+		RawImage_UploadTexture(image->texnum, data, x, y, width, height, GL_TEXTURE_2D, picFormat, numMips, internalFormat, type, flags, qfalse);
 	}
 
 	GL_CheckErrors();
-
-	if ( resampledBuffer != NULL )
-		ri.Hunk_FreeTempMemory( resampledBuffer );
 }
 
 
@@ -2158,10 +2104,18 @@ This is the only way any image_t are created
 ================
 */
 image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLenum picFormat, int numMips, imgType_t type, imgFlags_t flags, int internalFormat ) {
-	image_t		*image;
-	qboolean	isLightmap = qfalse;
-	long		hash;
-	int         glWrapClampMode;
+	byte       *resampledBuffer = NULL;
+	image_t    *image;
+	qboolean    isLightmap = qfalse, scaled = qfalse;
+	long        hash;
+	int         glWrapClampMode, mipWidth, mipHeight, miplevel;
+	qboolean    compressed = (!(picFormat == GL_RGBA8) || (picFormat == GL_SRGB8_ALPHA8_EXT));
+	qboolean    mipmap = !!(flags & IMGFLAG_MIPMAP);
+	qboolean    cubemap = !!(flags & IMGFLAG_CUBEMAP);
+	qboolean    picmip = !!(flags & IMGFLAG_PICMIP);
+	qboolean    lastMip;
+	GLenum textureTarget = cubemap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+	GLenum dataFormat;
 
 	if (strlen(name) >= MAX_QPATH ) {
 		ri.Error (ERR_DROP, "R_CreateImage: \"%s\" is too long", name);
@@ -2194,20 +2148,91 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 		internalFormat = RawImage_GetFormat(pic, width * height, picFormat, isLightmap, image->type, image->flags);
 
 	image->internalFormat = internalFormat;
-		
-	Upload32(pic, 0, 0, image->width, image->height, picFormat, numMips, image);
 
-	if (image->flags & IMGFLAG_CUBEMAP)
+	// Possibly scale image before uploading.
+	// if compressed and uploading an image, skip picmips.
+	if (!cubemap)
 	{
-		qglTextureParameterfEXT(image->texnum, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, glWrapClampMode);
-		qglTextureParameterfEXT(image->texnum, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, glWrapClampMode);
-		qglTextureParameteriEXT(image->texnum, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, glWrapClampMode);
+		if (!compressed)
+			scaled = RawImage_ScaleToPower2(&pic, &width, &height, type, flags, &resampledBuffer);
+		else if (pic && picmip)
+		{
+			for (miplevel = r_picmip->integer; miplevel > 0 && numMips > 1; miplevel--, numMips--)
+			{
+				int size = CalculateMipSize(width, height, picFormat);
+				width = MAX(1, width >> 1);
+				height = MAX(1, height >> 1);
+				pic += size;
+			}
+		}
 	}
-	else
+
+	image->uploadWidth = width;
+	image->uploadHeight = height;
+
+	// Allocate texture storage so we don't have to worry about it later.
+	dataFormat = PixelDataFormatFromInternalFormat(internalFormat);
+	mipWidth = width;
+	mipHeight = height;
+	miplevel = 0;
+	do
 	{
-		qglTextureParameterfEXT(image->texnum, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glWrapClampMode);
-		qglTextureParameterfEXT(image->texnum, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glWrapClampMode);
+		lastMip = !mipmap || (mipWidth == 1 && mipHeight == 1);
+		if (cubemap)
+		{
+			int i;
+
+			for (i = 0; i < 6; i++)
+				qglTextureImage2DEXT(image->texnum, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, miplevel, internalFormat, mipWidth, mipHeight, 0, dataFormat, GL_UNSIGNED_BYTE, NULL);
+		}
+		else
+		{
+			qglTextureImage2DEXT(image->texnum, GL_TEXTURE_2D, miplevel, internalFormat, mipWidth, mipHeight, 0, dataFormat, GL_UNSIGNED_BYTE, NULL);
+		}
+
+		mipWidth  = MAX(1, mipWidth >> 1);
+		mipHeight = MAX(1, mipHeight >> 1);
+		miplevel++;
 	}
+	while (!lastMip);
+
+	// Upload data.
+	if (pic)
+		Upload32(pic, 0, 0, width, height, picFormat, numMips, image, scaled);
+
+	if (resampledBuffer != NULL)
+		ri.Hunk_FreeTempMemory(resampledBuffer);
+
+	// Set all necessary texture parameters.
+	qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_WRAP_S, glWrapClampMode);
+	qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_WRAP_T, glWrapClampMode);
+
+	if (cubemap)
+		qglTextureParameteriEXT(image->texnum, textureTarget, GL_TEXTURE_WRAP_R, glWrapClampMode);
+
+	if (textureFilterAnisotropic && !cubemap)
+		qglTextureParameteriEXT(image->texnum, textureTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT,
+			mipmap ? (GLint)Com_Clamp(1, maxAnisotropy, r_ext_max_anisotropy->integer) : 1);
+
+	switch(internalFormat)
+	{
+		case GL_DEPTH_COMPONENT:
+		case GL_DEPTH_COMPONENT16_ARB:
+		case GL_DEPTH_COMPONENT24_ARB:
+		case GL_DEPTH_COMPONENT32_ARB:
+			// Fix for sampling depth buffer on old nVidia cards.
+			// from http://www.idevgames.com/forums/thread-4141-post-34844.html#pid34844
+			qglTextureParameterfEXT(image->texnum, textureTarget, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
+			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			break;
+		default:
+			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MIN_FILTER, mipmap ? gl_filter_min : GL_LINEAR);
+			qglTextureParameterfEXT(image->texnum, textureTarget, GL_TEXTURE_MAG_FILTER, mipmap ? gl_filter_max : GL_LINEAR);
+			break;
+	}
+
+	GL_CheckErrors();
 
 	hash = generateHashValue(name);
 	image->next = hashTable[hash];
@@ -2232,7 +2257,7 @@ image_t *R_CreateImage(const char *name, byte *pic, int width, int height, imgTy
 
 void R_UpdateSubImage( image_t *image, byte *pic, int x, int y, int width, int height )
 {
-	Upload32(pic, x, y, width, height, GL_RGBA8, 0, image);
+	Upload32(pic, x, y, width, height, GL_RGBA8, 0, image, qfalse);
 }
 
 //===================================================================
