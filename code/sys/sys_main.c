@@ -184,7 +184,12 @@ Sys_RemovePIDFile
 */
 void Sys_RemovePIDFile( const char *gamedir )
 {
-	char *pidFile = Sys_PIDFileName( gamedir );
+	char *pidFile;
+
+	if ( gamedir[0] == '\0' )
+		pidFile = Sys_PIDFileName( BASEGAME );
+	else
+		pidFile = Sys_PIDFileName( gamedir );
 
 	if( pidFile != NULL )
 		remove( pidFile );
