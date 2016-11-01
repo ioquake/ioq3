@@ -31,8 +31,10 @@ endif
 ifndef SDLDLL
 	ifeq ($(ARCH),x86_64)
 		SDLDLL=SDL264.dll
+		PLATFORM=mingw64
 	else
 		SDLDLL=SDL2.dll
+		PLATFORM=mingw32
 	endif
 endif
 
@@ -60,10 +62,10 @@ endif
 all: ioquake3-$(VERSION)-$(RELEASE).$(ARCH).exe
 
 ioquake3.$(ARCH).nsi: ioquake3.nsi.in
-	sed 's/XXXVERSIONXXX/$(VERSION)/;s/XXXRELEASEXXX/$(RELEASE)/;s/x86/$(ARCH)/g;s/SDL2.dll/$(SDLDLL)/' < $< > $@
+	sed 's/XXXVERSIONXXX/$(VERSION)/;s/XXXRELEASEXXX/$(RELEASE)/;s/x86/$(ARCH)/g;s/SDL2.dll/$(SDLDLL)/;s/mingw32/$(PLATFORM)/;s/\//\\/g;s/\"\\oname=README\.txt\"\ //' < $< > $@
 
 ioquake3-$(VERSION)-$(RELEASE).$(ARCH).exe: ioquake3.$(ARCH).nsi
-	makensis $(DEFINES) ioquake3.$(ARCH).nsi
+	wine 'C:\Program Files (x86)\NSIS\makensis.exe' $(DEFINES) ioquake3.$(ARCH).nsi
 
 clean:
 	rm -rf *.exe ioquake3.$(ARCH).nsi
