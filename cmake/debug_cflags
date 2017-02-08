@@ -1,0 +1,4 @@
+# vim:ft=cmake
+set(DEBUG_FLAGS "-O0 -g3 -fsanitize=address -fsanitize-blacklist=${CMAKE_SOURCE_DIR}/misc/blacklist.txt -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_DEBUG ${DEBUG_FLAGS})
+set(CMAKE_CXX_FLAGS_DEBUG ${DEBUG_FLAGS})
