@@ -38,8 +38,6 @@ set( CGAME_SOURCES
     cg_scoreboard.c
     cg_servercmds.c
     cg_snapshot.c
-    cg_syscalls.asm
-    cg_syscalls.c
     cg_view.c
     cg_weapons.c
     ${BG_SOURCE_DIR}/bg_lib.h
@@ -70,7 +68,7 @@ target_include_directories(
     )
 
 include( ${CMAKE_SOURCE_DIR}/cmake/AddQVM.cmake )
-add_qvm( cgame ${CGAME_SOURCES} cg_syscalls.asm )
+add_qvm( cgame MISSIONPACK ${CGAME_SOURCES} cg_syscalls.asm )
 
 
 add_custom_command(

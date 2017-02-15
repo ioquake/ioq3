@@ -13,21 +13,23 @@ macro(QVM_COMPILE_ASM defs outfile infile)
     add_custom_command(
         OUTPUT  ${outfile}
         COMMAND ${Q3LCC_BINARY}
-        ARGS    ${ADD_QVM_D} -o ${outfile} ${infile}
+        ARGS    ${defs} -o ${outfile} ${infile}
         DEPENDS ${QVM_DEPS} 
         )
     set_source_files_properties(${outfile} PROPERTIES GENERATED TRUE)
 endmacro()
 
-macro(ADD_QVM Name Defs)
-    cmake_parse_arguments(ADD_QVM "" "" "" ${ARGN})
-
-    #message( "QVM: ${Name}" )
+macro(ADD_QVM Name)
+    set(options MISSIONPACK)
+    cmake_parse_arguments(ADD_QVM "${options}" "" "" ${ARGN})
 
     string(TOUPPER ${Name} UPNAME)
-    set(defs "-DVMS -D${UPNAME} ${Defs}")
 
-    message( "DEFINITIONS ${defs}" )
+    if( ${ADD_QVM_MISSIONPACK} )
+        set(defs "-DVMS" "-D${UPNAME}" "-DMISSIONPACK")
+    else( ${ADD_QVM_MISSIONPACK} )
+        set(defs "-DVMS" "-D${UPNAME}")
+    endif( ${ADD_QVM_MISSIONPACK} )
 
     foreach(srcfile ${ADD_QVM_UNPARSED_ARGUMENTS})
         #message( "> ${srcfile}" )
@@ -43,7 +45,7 @@ macro(ADD_QVM Name Defs)
             get_filename_component(outfile ${srcfile} NAME_WE)
             set(outfile ${outfile}.asm)
             # compile C code into asm
-            qvm_compile_asm(${defs} ${outfile} ${CMAKE_CURRENT_SOURCE_DIR}/${srcfile})
+            qvm_compile_asm("${defs}" "${outfile}" "${CMAKE_CURRENT_SOURCE_DIR}/${srcfile}")
             # add asm to list
             list(APPEND srcs ${outfile})
         endif()

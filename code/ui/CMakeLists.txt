@@ -25,8 +25,6 @@ set(UI_SOURCES
     ui_public.h
     ui_shared.c
     ui_shared.h
-    ui_syscalls.asm
-    ui_syscalls.c
     ${CMAKE_SOURCE_DIR}/ui/menudef.h
     ${BG_SOURCE_DIR}/bg_lib.h
     ${BG_SOURCE_DIR}/bg_public.h
@@ -52,7 +50,7 @@ target_include_directories(
     )
 
 include(${CMAKE_SOURCE_DIR}/cmake/AddQVM.cmake)
-add_qvm( ui ${UI_SOURCES} ui_syscalls.asm )
+add_qvm( ui MISSIONPACK ${UI_SOURCES} ui_syscalls.asm )
 
 add_custom_command(
     TARGET ui POST_BUILD

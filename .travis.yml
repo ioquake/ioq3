@@ -9,7 +9,7 @@ git:
     depth: 5
 
 script:
-    - travis-ci-build.sh
+    - ./travis-ci-build.sh
 
 notifications:
     email:
@@ -22,7 +22,7 @@ matrix:
       compiler: gcc
       before_install:
           - docker build -t wtfbbqhax/ioquake3:v1 .
-          - docker run -v $(pwd)/build:/usr/src/build wtfbbqhax/ioquake3:v1 ./misc/docker-build.sh
+          - docker run -v $(pwd)/build:/usr/src/build wtfbbqhax/ioquake3:v1 ./docker-build.sh
 
     - os: osx
       osx_image: xcode8

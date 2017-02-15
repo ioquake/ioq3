@@ -55,8 +55,6 @@ set( GAME_SOURCES
     g_session.c
     g_spawn.c
     g_svcmds.c
-    g_syscalls.asm
-    g_syscalls.c
     g_target.c
     g_team.c
     g_team.h
@@ -74,7 +72,7 @@ set( GAME_SOURCES
 add_library( game SHARED ${GAME_SOURCES} g_syscalls.c )
 
 include( ${CMAKE_SOURCE_DIR}/cmake/AddQVM.cmake )
-add_qvm( game ${GAME_SOURCES} g_syscalls.asm )
+add_qvm( game MISSIONPACK ${GAME_SOURCES} g_syscalls.asm )
 
 add_custom_command(
     TARGET game POST_BUILD
