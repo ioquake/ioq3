@@ -103,6 +103,11 @@ void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entity
 void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
 						 int number );
 
+void MSG_WriteDeltaSharedEntity( msg_t *msg, void *from, void *to
+								   , qboolean force, int number );
+void MSG_ReadDeltaSharedEntity( msg_t *msg, void *from, void *to,
+								 int number );
+
 void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
 void MSG_ReadDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct playerState_s *to );
 
@@ -470,6 +475,9 @@ void	Cmd_TokenizeStringIgnoreQuotes( const char *text_in );
 void	Cmd_ExecuteString( const char *text );
 // Parses a single line of text into arguments and tries to execute it
 // as if it was typed at the console
+
+void Cmd_SaveCmdContext( void );
+void Cmd_RestoreCmdContext( void );
 
 
 /*

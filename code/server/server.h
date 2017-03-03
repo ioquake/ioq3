@@ -93,6 +93,15 @@ typedef struct {
 
 	int				restartTime;
 	int				time;
+
+	// serverside demo recording
+	fileHandle_t		demoFile;
+	demoState_t	demoState;
+	char			demoName[MAX_QPATH];
+
+	// serverside demo recording - previous frame for delta compression
+	sharedEntity_t	demoEntities[MAX_GENTITIES];
+	playerState_t	demoPlayerStates[MAX_CLIENTS];
 } server_t;
 
 
@@ -199,6 +208,8 @@ typedef struct client_s {
 #ifdef LEGACY_PROTOCOL
 	qboolean		compat;
 #endif
+
+	qboolean            demoClient; // is this a demoClient?
 } client_t;
 
 //=============================================================================
@@ -269,6 +280,7 @@ extern	cvar_t	*sv_rconPassword;
 extern	cvar_t	*sv_privatePassword;
 extern	cvar_t	*sv_allowDownload;
 extern	cvar_t	*sv_maxclients;
+extern	cvar_t	*sv_democlients; // number of democlients: this should always be set to 0, and will be automatically adjusted when needed by the demo facility. ATTENTION: if sv_maxclients = sv_democlients then server will be full! sv_democlients consume clients slots even if there are no democlients recorded nor replaying for this slot!
 
 extern	cvar_t	*sv_privateClients;
 extern	cvar_t	*sv_hostname;
@@ -293,6 +305,11 @@ extern	cvar_t	*sv_lanForceRate;
 extern	cvar_t	*sv_strictAuth;
 #endif
 extern	cvar_t	*sv_banFile;
+
+extern	cvar_t	*sv_demoState;
+extern	cvar_t	*sv_autoDemo;
+extern	cvar_t	*cl_freezeDemo;
+extern	cvar_t	*sv_demoTolerant;
 
 extern	serverBan_t serverBans[SERVER_MAXBANS];
 extern	int serverBansCount;
@@ -376,6 +393,8 @@ void SV_ClientEnterWorld( client_t *client, usercmd_t *cmd );
 void SV_FreeClient(client_t *client);
 void SV_DropClient( client_t *drop, const char *reason );
 
+void SV_UpdateUserinfo_f( client_t *cl );
+
 void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK );
 void SV_ClientThink (client_t *cl, usercmd_t *cmd);
 
@@ -411,6 +430,60 @@ void		SV_InitGameProgs ( void );
 void		SV_ShutdownGameProgs ( void );
 void		SV_RestartGameProgs( void );
 qboolean	SV_inPVS (const vec3_t p1, const vec3_t p2);
+void SV_GameSendServerCommand( int clientNum, const char *text );
+
+//
+// sv_demo.c
+//
+void SV_DemoStartRecord(void);
+void SV_DemoStopRecord(void);
+void SV_DemoStartPlayback(void);
+void SV_DemoStopPlayback(void);
+void SV_DemoAutoDemoRecord(void);
+void SV_DemoRestartPlayback(void);
+
+void SV_DemoReadFrame(void);
+void SV_DemoReadClientCommand( msg_t *msg );
+void SV_DemoReadServerCommand( msg_t *msg );
+void SV_DemoReadGameCommand( msg_t *msg );
+void SV_DemoReadConfigString( msg_t *msg );
+void SV_DemoReadClientConfigString( msg_t *msg );
+void SV_DemoReadClientUserinfo( msg_t *msg );
+//void SV_DemoReadClientUsercmd( msg_t *msg );
+void SV_DemoReadAllPlayerState( msg_t *msg );
+void SV_DemoReadAllEntityState( msg_t *msg );
+void SV_DemoReadAllEntityShared( msg_t *msg );
+void SV_DemoReadRefreshEntities( void );
+
+void SV_DemoWriteFrame(void);
+void SV_DemoWriteClientCommand( client_t *client, const char *cmd );
+void SV_DemoWriteServerCommand( const char *cmd );
+void SV_DemoWriteGameCommand( int clientNum, const char *cmd );
+void SV_DemoWriteConfigString( int cs_index, const char *cs_string );
+void SV_DemoWriteClientConfigString( int clientNum, const char *cs_string );
+void SV_DemoWriteClientUserinfo( client_t *client, const char *userinfo );
+//void SV_DemoWriteClientUsercmd( client_t *cl, qboolean delta, int cmdCount, usercmd_t *cmds, int key );
+void SV_DemoWriteAllPlayerState(void);
+void SV_DemoWriteAllEntityState(void);
+void SV_DemoWriteAllEntityShared(void);
+
+qboolean SV_CheckClientCommand( client_t *client, const char *cmd );
+qboolean SV_CheckServerCommand( const char *cmd );
+qboolean SV_CheckGameCommand( const char *cmd );
+qboolean SV_CheckConfigString( int cs_index, const char *cs_string );
+qboolean SV_CheckLastCmd( const char *cmd, qboolean onlyStore );
+void SV_DemoFilterClientUserinfo( const char *userinfo );
+char *SV_CleanFilename( char *string );
+char *SV_CleanStrCmd( char *string );
+char *SV_GenerateDateTime(void);
+
+//
+// sv_demo_ext.c
+//
+
+int SV_GentityGetHealthField( sharedEntity_t * gent );
+void SV_GentitySetHealthField( sharedEntity_t * gent, int value );
+void SV_GentityUpdateHealthField( sharedEntity_t * gent, playerState_t *player );
 
 //
 // sv_bot.c

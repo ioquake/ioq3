@@ -650,7 +650,7 @@ void SV_SendClientMessages(void)
 	{
 		c = &svs.clients[i];
 		
-		if(!c->state)
+		if(!c->state || c->demoClient) // do not send a packet to a democlient, this will cause the engine to crash
 			continue;		// not connected
 
 		if(*c->downloadName)

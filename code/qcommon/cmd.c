@@ -353,6 +353,41 @@ static	char		cmd_cmd[BIG_INFO_STRING]; // the original command we received (no t
 
 static	cmd_function_t	*cmd_functions;		// possible commands to execute
 
+typedef struct cmdContext_s
+{
+	int		argc;
+	char	*argv[ MAX_STRING_TOKENS ];	// points into cmd.tokenized
+	char	tokenized[ BIG_INFO_STRING + MAX_STRING_TOKENS ];	// will have 0 bytes inserted
+	char	cmd[ BIG_INFO_STRING ]; // the original command we received (no token processing)
+} cmdContext_t;
+
+static cmdContext_t		cmd;
+static cmdContext_t		savedCmd;
+
+/*
+============
+Cmd_SaveCmdContext
+
+Save the tokenized strings and cmd so that later we can restore them and the engine will continue its usual processing normally
+============
+*/
+void Cmd_SaveCmdContext( void )
+{
+	Com_Memcpy( &savedCmd, &cmd, sizeof( cmdContext_t ) );
+}
+
+/*
+============
+Cmd_RestoreCmdContext
+
+Restore the tokenized strings and cmd saved previously so that the engine can continue its usual processing
+============
+*/
+void Cmd_RestoreCmdContext( void )
+{
+	Com_Memcpy( &cmd, &savedCmd, sizeof( cmdContext_t ) );
+}
+
 /*
 ============
 Cmd_Argc

@@ -80,6 +80,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_MASTER_SERVERS      5	// number of supported master servers
 
 #define DEMOEXT	"dm_"			// standard demo extension
+#define SVDEMOEXT	"svdm_"		// server-side demo extension
 
 #ifdef _MSC_VER
 
@@ -1407,6 +1408,18 @@ typedef enum _flag_status {
 	FLAG_TAKEN_BLUE,	// One Flag CTF
 	FLAG_DROPPED
 } flagStatus_t;
+
+typedef enum {
+	DS_NONE,
+
+	DS_WAITINGPLAYBACK, // demo will play after map_restart)
+	DS_PLAYBACK, // a demo is playing
+	DS_WAITINGSTOP, // demo is stopped but we must move clients over their normal slots
+
+	DS_RECORDING, // a demo is being recorded
+
+	DS_NUM_DEMO_STATES
+} demoState_t;
 
 
 
