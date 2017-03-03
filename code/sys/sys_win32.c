@@ -141,7 +141,7 @@ char *Sys_SteamPath( void )
 	DWORD pathLen = MAX_OSPATH;
 	qboolean finishPath = qfalse;
 
-#ifdef STEAMPATH_APPID
+#if defined(STEAMPATH_APPID) && defined(KEY_WOW64_32KEY)
 	// Assuming Steam is a 32-bit app
 	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App " STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
 	{
