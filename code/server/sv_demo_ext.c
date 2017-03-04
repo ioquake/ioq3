@@ -1,15 +1,15 @@
 /*
 ===========================================================================
-Copyright (C) 2012 Stephen Larroque <lrq3000@gmail.com>
+Copyright (C) 2012-2017 Stephen Larroque <lrq3000@gmail.com>
 
-This file is part of OpenArena.
+This file is part of ioquake3.
 
-OpenArena is free software; you can redistribute it
+ioquake3 is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
 published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 
-OpenArena is distributed in the hope that it will be
+ioquake3 is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
