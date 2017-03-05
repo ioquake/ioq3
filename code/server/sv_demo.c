@@ -1239,7 +1239,7 @@ void SV_DemoAutoDemoRecord(void)
                         MAX_QPATH);
 
 	Com_Printf("DEMO: automatic recording server-side demo to: %s/svdemos/%s.%s%d\n",  strlen(Cvar_VariableString("fs_game")) ?  Cvar_VariableString("fs_game") : BASEGAME, demoname, SVDEMOEXT, PROTOCOL_VERSION);
-	SV_SendServerCommand( NULL, "chat \"^3DEMO: automatic recording server-side demo to: %s.%s%d.\"", demoName, SVDEMOEXT, PROTOCOL_VERSION );
+	SV_SendServerCommand( NULL, "chat \"^3DEMO: automatic recording server-side demo to: %s.%s%d.\"", demoname, SVDEMOEXT, PROTOCOL_VERSION );
 
 	Cbuf_AddText( va("demo_record %s\n", demoname ) );
 
