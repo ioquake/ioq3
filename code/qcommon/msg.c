@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #include "q_shared.h"
 #include "qcommon.h"
+#include "../rscode/ecc.h"
 
 static huffman_t		msgHuff;
 
@@ -259,6 +260,31 @@ void MSG_WriteData( msg_t *buf, const void *data, int length ) {
 	int i;
 	for(i=0;i<length;i++) {
 		MSG_WriteByte(buf, ((byte *)data)[i]);
+	}
+}
+
+void MSG_WriteDataWithECC( msg_t *buf, const void *data, int length ) {
+	int i;
+    char buf_copy[28];
+    char data_and_ecc[32];
+	for(i=0;i<length;i++) {
+		MSG_WriteByte(buf, ((byte *)data)[i]);
+        // copy the current byte in a buffer
+        buf_copy[i % 28] = ((byte *)data)[i];
+        // reached the size to generate an ecc, or we are at the end of the message
+        if i == 28 || i == (length - 1) {
+            // if end of message but the buffer is not full, we pad with 0s
+            if i == (length - 1) && (i % length) < 27 {
+                for(j=(i+1) % length;j<28;j++) {
+                    buf_copy[j] = 0;
+                }
+            }
+            // generate ecc symbols (will be appended to the message)
+            encode_data(buf_copy, sizeof(buf_ecc), data_and_ecc);
+            for(j=28;j<sizeof(data_and_ecc);j++) {
+                MSG_WriteByte(buf, ((byte *)data_and_ecc)[i]);
+            }
+        }
 	}
 }
 
@@ -507,6 +533,25 @@ void MSG_ReadData( msg_t *msg, void *data, int len ) {
 
 	for (i=0 ; i<len ; i++) {
 		((byte *)data)[i] = MSG_ReadByte (msg);
+	}
+}
+
+void MSG_ReadDataWithECC( msg_t *msg, void *data, int length ) {
+	int i;
+    char data_and_ecc[32];
+    // Decode each codeword blocks
+	for(i=0;i<(int)(length/32);i++) {
+        // Read codeword (data + ecc symbols)
+		MSG_ReadData(msg, data_and_ecc, 32);
+        // Decode the syndromes
+        decode_data(data_and_ecc, sizeof(data_and_ecc);
+        // Check the syndrome, if not null, then there are errors
+        if (check_syndrome () != 0) {
+            // Correct errors
+            correct_errors_erasures (data_and_ecc, sizeof(data_and_ecc), 0, 0); // disable erasures detection because we have no idea where the erasures might be, so just do error correction
+        // Copy the corrected message to data (ie, the first 28 bytes)
+        for(j=0;j<28;j++)
+            ((byte *)data)[i*28+j] = data_and_ecc[j];
 	}
 }
 

@@ -74,6 +74,7 @@ void Netchan_Init( int port ) {
 	showpackets = Cvar_Get ("showpackets", "0", CVAR_TEMP );
 	showdrop = Cvar_Get ("showdrop", "0", CVAR_TEMP );
 	qport = Cvar_Get ("net_qport", va("%i", port), CVAR_INIT );
+	initialize_ecc(); // initialize error correction lib
 }
 
 /*
@@ -211,7 +212,9 @@ void Netchan_Transmit( netchan_t *chan, int length, const byte *data ) {
 
 	chan->outgoingSequence++;
 
-	MSG_WriteData( &send, data, length );
+	// Write data
+	//MSG_WriteData( &send, data, length );
+	MSG_WriteDataWithECC( &send, data, length );
 
 	// send the datagram
 	NET_SendPacket( chan->sock, send.cursize, send.data, chan->remoteAddress );
@@ -245,6 +248,10 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 	int			sequence;
 	int			fragmentStart, fragmentLength;
 	qboolean	fragmented;
+	// for error correction
+	msg_t corrected_msg;
+	int bak_readcount = 0;
+	int bak_bit = 0;
 
 	// XOR unscramble all data in the packet after the header
 //	Netchan_UnScramblePacket( msg );
@@ -275,6 +282,20 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 		// UDP spoofing protection
 		if(NETCHAN_GENCHECKSUM(chan->challenge, sequence) != checksum)
 			return qfalse;
+	}
+
+    // Apply error correction on message data if not fragmented (FIXME: implement also for fragmented packets)
+	if ( !fragmented ) {
+		// Store current cursor position
+		bak_readcount = msg->readcount;
+		bak_bit = msg->bit;
+		// Read and ecc decode message content
+		MSG_ReadDataWithECC( msg, corrected_msg, sizeof(msg));
+		// Replace current message with the corrected one, and restore cursor position
+		Q_strncpyz(msg, corrected_msg, MAX_PACKETLEN);
+		MSG_BeginReadingOOB( msg );
+		msg->readcount = bak_readcount;
+		msg->bit = bak_bit;
 	}
 
 	// read the fragment information
