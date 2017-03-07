@@ -791,6 +791,12 @@ void SV_ClientEnterWorld( client_t *client, usercmd_t *cmd ) {
 	// server-side demo playback: prevent players from joining the game when a demo is replaying (particularly if the gametype is non-team based, by default the gamecode force players to join in)
 	if (sv.demoState == DS_PLAYBACK &&
 	    ( (client - svs.clients) >= sv_democlients->integer ) && ( (client - svs.clients) < sv_maxclients->integer ) ) { // check that it's a real player
+        // Specific to excessiveplus mod, this is just a safeguard in case the demo bugs (eg, Tournament gametype but one democlient is not rendered correctly because of ping, then the gamecode will consider it's normal to force another player to join)
+        //if ( !Q_stricmp(Cvar_VariableString("fs_game"), "excessiveplus") ) {
+            Cmd_TokenizeString( va("speconly") );
+            VM_Call( gvm, GAME_CLIENT_COMMAND, client - svs.clients );  // force SV_ExecuteClientCommand
+        //}
+        // Force client to spectator
 		SV_ExecuteClientCommand(client, "team spectator", qtrue);
 	}
 

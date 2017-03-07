@@ -200,12 +200,6 @@ static void SV_Map_f( void ) {
 		}
 	}
 
-    // stop any demos
-	if (sv.demoState == DS_RECORDING)
-		SV_DemoStopRecord();
-	if (sv.demoState == DS_PLAYBACK)
-		SV_DemoStopPlayback();
-
 	// save the map name here cause on a map restart we reload the q3config.cfg
 	// and thus nuke the arguments of the map command
 	Q_strncpyz(mapname, map, sizeof(mapname));
@@ -278,12 +272,6 @@ static void SV_MapRestart_f( void ) {
 		SV_SpawnServer( mapname, qfalse );
 		return;
 	}
-
-	// stop any demos
-	if (sv.demoState == DS_RECORDING)
-		SV_DemoStopRecord();
-	if (sv.demoState == DS_PLAYBACK)
-		SV_DemoStopPlayback();
 
 	// toggle the server bit so clients can detect that a
 	// map_restart has happened
@@ -365,11 +353,6 @@ static void SV_MapRestart_f( void ) {
 	VM_Call (gvm, GAME_RUN_FRAME, sv.time);
 	sv.time += 100;
 	svs.time += 100;
-
-	// start recording a demo
-    if ( sv_autoDemo->integer ) {
-        SV_DemoAutoDemoRecord();
-    }
 }
 
 //===============================================================

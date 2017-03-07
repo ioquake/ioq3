@@ -85,6 +85,13 @@ static int demoTeamAutoJoin = -1; // load the g_teamAutoJoin value from the demo
 
 
 /***********************************************
+ * AUXILIARY FUNCTIONS: MANIPULATING CLIENT COMMANDS
+ *
+ * Functions used to manipulate clients commands and communicate with the gamecode.
+ ***********************************************/
+
+
+/***********************************************
  * AUXILIARY FUNCTIONS: CHECKING, FILTERING AND CLEANING
  *
  * Functions used to either trim unnecessary or privacy concerned data, or to just check if the data should be written in the demo, relayed to a more specialized function or just dropped.
@@ -787,7 +794,7 @@ void SV_DemoReadClientConfigString( msg_t *msg )
 		SV_SetConfigstring(CS_PLAYERS + num, configstring);
 
 		// Set some infos about this user:
-		svs.clients[num].demoClient = qtrue; // to check if a client is a democlient, you can either rely on this variable, either you can check if num (index of client) is >= CS_PLAYERS + sv_democlients->integer && < CS_PLAYERS + sv_maxclients->integer (if it's not a configstring, remove CS_PLAYERS from your if)
+		svs.clients[num].demoClient = qtrue; // to check if a client is a democlient, you can either rely on this variable, either you can check if it's a real client num (index of client) is >= CS_PLAYERS + sv_democlients->integer && < CS_PLAYERS + sv_maxclients->integer (if it's not a configstring, remove CS_PLAYERS from your if)
 		Q_strncpyz( svs.clients[num].name, Info_ValueForKey( configstring, "n" ), MAX_NAME_LENGTH ); // set the name (useful for internal functions such as status_f). Anyway userinfo will automatically set both name (server-side) and netname (gamecode-side).
 
 
@@ -1225,8 +1232,12 @@ void SV_DemoAutoDemoRecord(void)
 	qtime_t now;
 	Com_RealTime( &now );
     char *demoname = malloc ( MAX_QPATH * sizeof * demoname );
-    
 
+	// Break if a demo is already being recorded - FIXME: this should not happen, this is a failsafe but if it's used it means there are redundant calls that we can maybe remove
+	if (sv.demoState == DS_RECORDING)
+		return;
+
+	// Generate the demo filename
 	Q_strncpyz(demoname, va( "%s_%04d-%02d-%02d-%02d-%02d-%02d_%s",
 			SV_CleanFilename(va("%s", sv_hostname->string)),
                         1900 + now.tm_year,
@@ -1238,11 +1249,14 @@ void SV_DemoAutoDemoRecord(void)
                         SV_CleanFilename(Cvar_VariableString( "mapname" )) ),
                         MAX_QPATH);
 
+	// Print a message
 	Com_Printf("DEMO: automatic recording server-side demo to: %s/svdemos/%s.%s%d\n",  strlen(Cvar_VariableString("fs_game")) ?  Cvar_VariableString("fs_game") : BASEGAME, demoname, SVDEMOEXT, PROTOCOL_VERSION);
 	SV_SendServerCommand( NULL, "chat \"^3DEMO: automatic recording server-side demo to: %s.%s%d.\"", demoname, SVDEMOEXT, PROTOCOL_VERSION );
 
+	// Launch the demo recording
 	Cbuf_AddText( va("demo_record %s\n", demoname ) );
 
+	// Free memory of the filename
 	free(demoname);
 }
 
@@ -1649,6 +1663,13 @@ void SV_DemoStartPlayback(void)
 	// Force all real clients already connected before the demo begins to be set to spectator team
 	for (i = sv_democlients->integer; i < sv_maxclients->integer; i++) {
 		if (svs.clients[i].state >= CS_CONNECTED) { // Only set as spectator a player that is at least connected (or primed or active)
+            // Specific to excessiveplus mod, this is just a safeguard in case the demo bugs (eg, Tournament gametype but one democlient is not rendered correctly because of ping, then the gamecode will consider it's normal to force another player to join)
+            //if ( !Q_stricmp(Cvar_VariableString("fs_game"), "excessiveplus") ) {
+                Cmd_TokenizeString( va("speconly") );
+                VM_Call( gvm, GAME_CLIENT_COMMAND, i );  // force SV_ExecuteClientCommand
+                //SV_ExecuteClientCommand(&svs.clients[i], "speconly", qtrue);
+            //}
+            // Force client to spectator
 			SV_ExecuteClientCommand(&svs.clients[i], "team spectator", qtrue); // should be more interoperable than a forceteam
 			Cbuf_ExecuteText(EXEC_NOW, va("forceteam %i spectator", i)); // sometimes team spectator does not work when a demo is replayed client-side with some mods (eg: ExcessivePlus), in this case we also issue a forceteam (even if it's less interoperable)
 		}
