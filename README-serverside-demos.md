@@ -137,7 +137,13 @@ DEV NOTES
 TODO
 ----
 
-* Update to latest OpenArena v3.0.0a (don't expect this to be done anytime soon, but it should be easy using the [ioquake3 patch](https://github.com/lrq3000/ioq3/tree/server-side-demo), if you want to give it a shot!).
+* Fix demo filenames: legacy protocol cvar? client side demos have extension dm_66 on ioq3 but svdemos have dm_71
+
+* Fix tournament when nb players < 2: if a demo is recorded before demo players connected, real players connecting before demo players joined will join automatically. The only way to fix in ExcessivePlus that is to manually enter /speconly then /team s. For vanilla ioquake3, wait for demoplayers to connect and then go to spectators.
+
+* In ExcessivePlus tournament, sometimes one of the two players won't be spectatable as first person as soon as the second player connects. The cause is unknown, but it happens when warmup is being recorded in the same demo (you can see a lot of InitGame and ShutdownGame). The new hooks might fix this?
+
+* After a demo of a warmup, all clients gets disconnected (with a hangout connection, they are not really totally disconnected, so they have to do /reconnect). The new hooks might also fix this.
 
 
 
@@ -163,6 +169,8 @@ SHOULD DO (but not now)
 KNOWN BUGS (WONT FIX FOR NOW)
 -----------------------------
 Below is a list of known bugs or wished features, but if you encounter them, please report anyway. If a bug is reported to be too hampering, it may get fixed in the future.
+
+* Demo crashing with error "server disconnected - server command overflow". If you get this error when they try to replay, it means your graphical settings are too slow for your computer. Try using a lower resolution or change graphical parameters to solve your graphical slowness issues, this should solve the demo playback. Indeed, demo playback needs to be realtime, so if your computer is slow, the demo will crash.
 
 * save the minimum correct value for sv_democlients when recording: count the total number of clients (>= CS_ZOMBIE) per frame, and the highest number count will be the good number (or just look at the highest clientid reached since client slots are filled in ascending order).
 
