@@ -29,9 +29,10 @@ FEATURES
 * Privacy checking: filters out privacy data (not even recorded in the demo file)
 * Save meta-data of the demo (infos about the demo, like the UTC datetime)
 * Automatically switch the correct gametype/mod/map/limits when replaying a demo
-* Can play demos on a server
+* Can play demos on a patched server, clients can connect and see server-side demos replays without needing a patched client.
+* Can play demos locally using a patched client (no need to setup a server).
 * Can be used as an alternative to GTV by rebroadcasting a demo (can be done in realtime as the demo is being written)
-
+* `timescale` and `cl_freezeDemo` are supported to slowdown/speedup/pause a demo (both locally on a client, or on a server replay).
 
 
 INSTALL
@@ -132,6 +133,8 @@ DEV NOTES
 
 * usercmd_t management (players movement commands simulation) is implemented but commented out. It fully works, but it's not necessary for the demo functionnalities, and it adds a LOT of data to the demo file, so demo files take a lot more harddrive space when this function is enabled. If you want to do demo analysis, it is advised to turn on this feature, else you should probably not.
 
+* The patch architecture is pretty simple: we record every events/entities/playerStates at demo recording, and for playback we just hook at the end of each server frame and overwrite with demo events. This way, demo events always take the upper hand on server's events, but it still allows the server to manage interpolation when there is no demo event. This is why the timescale and cl_freezeDemo functions work with server-side demos.
+
 
 
 TODO
@@ -139,12 +142,7 @@ TODO
 
 * Fix demo filenames: legacy protocol cvar? client side demos have extension dm_66 on ioq3 but svdemos have dm_71
 
-* Fix tournament when nb players < 2: if a demo is recorded before demo players connected, real players connecting before demo players joined will join automatically. The only way to fix in ExcessivePlus that is to manually enter /speconly then /team s. For vanilla ioquake3, wait for demoplayers to connect and then go to spectators.
-
-* In ExcessivePlus tournament, sometimes one of the two players won't be spectatable as first person as soon as the second player connects. The cause is unknown, but it happens when warmup is being recorded in the same demo (you can see a lot of InitGame and ShutdownGame). The new hooks might fix this?
-
-* After a demo of a warmup, all clients gets disconnected (with a hangout connection, they are not really totally disconnected, so they have to do /reconnect). The new hooks might also fix this.
-
+* ExcessivePlus new scoreboard is buggy and shows wrong scores and stats, except when one of the players die (producing and sending a new scoreboard state, so this forces the gamecode to update with the correct scoreboard state from demo). A generic solution might be to: always save the full server/gamecode state at the end of one frame (in sv_demo.c), and then at the beginning of next frame restore the full server/gamecode state. This way, each demo frame would pick up right from the last demo state, guaranteed. Because here the scoreboard bug is probably due to ExcessivePlus having a too high scoreboard refresh rate, so it gets refreshed between demo frames where there is a scoreboard refresh (in other words, E+ is refreshing the scoreboard even though there is no new info: E+ is active in its approach to scoreboard refreshing, whereas ioq3 is passive and waits for real updates). But with this approach, check if timescale and cl_freezeDemo still work (because saving/restoring full server state might break ability to interpolate frames between recorded demo frames). Might want to look into RestoreCmdContext() and SaveCmdContext().
 
 
 SHOULD DO (but not now)
@@ -164,6 +162,7 @@ SHOULD DO (but not now)
 
 * When demo replaying a demo client-side with mod switching, sv_cheats is disabled (prevent timescale and other commands to be used)
 
+* Fix tournament when nb players < 2: if a demo is recorded before demo players connected, real players connecting before demo players joined will join automatically. The only way to fix in ExcessivePlus that is to manually enter /speconly then /team s. For vanilla ioquake3, wait for demoplayers to connect and then go to spectators. This is not critical to fix anymore since these "buggy" demos (where real players will be forced to join the demo game) are recorded in a separate "warmup" demo, and the real match that starts after when two players connect are recorded in another demo. So the match demo has no issue at all (because there are two democlients, so the real players cannot join anymore), only the warmup demo can still allow real players to join the game (but they are a lot less interesting anyway with only one democlient!).
 
 
 KNOWN BUGS (WONT FIX FOR NOW)
@@ -275,3 +274,5 @@ CHANGELOG (newest to the bottom)
 * fix: Compatibility with OA 0.8.8: fix: fixed "FIXING ENT->S.NUMBER!!!" error, crashing demo playback with OA > 0.8.5. Now, the patch is compatible with OA 0.8.8
 * fix: compatibility with maps containing mover objects (like moving platforms of Kaos2): "Reached_BinaryMover: bad moverState" error. Fixed by stopping ent->reached from being called by setting entity->s.pos.trType = TR_LINEAR when entity->s.pos.trType == TR_LINEAR_STOP.
 * add: Compiled for ioquake3 latest version (but not yet merged in OA v3): https://github.com/lrq3000/ioq3/tree/server-side-demo
+* In ExcessivePlus tournament, sometimes one of the two players won't be spectatable as first person as soon as the second player connects. The cause is unknown, but it happens when warmup is being recorded in the same demo (you can see a lot of InitGame and ShutdownGame). The new hooks might fix this? -> yes, the new hook fixed the issue by stopping the demo and starting a new one (in sv_autoDemo 1 mode), so that the warmup session is separated from the match in two different demos.
+* After a demo of a warmup, all clients gets disconnected (with a hangout connection, they get an infinite "awaiting snapshot", so they have to do /reconnect) -> Fixed by the new hooks, now there are a few "awaiting snapshot" the time the server relaunches with old parameters (before demo playback) and the clients reconnect smoothly.
