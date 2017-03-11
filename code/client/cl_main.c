@@ -2298,7 +2298,7 @@ and determine if we need to download them
 =================
 */
 void CL_InitDownloads(void) {
-  char missingfiles[1024];
+  char missingfiles[BIG_INFO_STRING];
 
   if ( !(cl_allowDownload->integer & DLF_ENABLE) )
   {
