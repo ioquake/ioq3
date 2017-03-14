@@ -500,8 +500,8 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 {
 	void *dllhandle;
 	
-	// Don't load any DLLs that end with the pk3 extension
-	if (COM_CompareExtension(name, ".pk3"))
+	// Don't load any DLLs that try to traverse directories
+	if (strstr(name, "/") || strstr(name, "\\") || strstr(name, "..") || strstr(name, "::"))
 	{
 		Com_Printf("Rejecting DLL named \"%s\"", name);
 		return NULL;
