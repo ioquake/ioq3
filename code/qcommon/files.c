@@ -227,6 +227,8 @@ typedef struct {
 	int				hashSize;					// hash table size (power of 2)
 	fileInPack_t*	*hashTable;					// hash table
 	fileInPack_t*	buildBuffer;				// buffer with the filenames etc.
+	qboolean	autoDownloaded;
+	qboolean	trusted;
 } pack_t;
 
 typedef struct {
@@ -573,6 +575,38 @@ static void FS_CheckFilenameIsMutable( const char *filename,
 		Com_Error( ERR_FATAL, "%s: Not allowed to manipulate '%s' due "
 			"to %s extension", function, filename, COM_GetExtension( filename ) );
 	}
+}
+
+/*
+=================
+FS_FileRequiresTrust
+
+Return nonzero if the file is one that is executed by the engine without
+explicit user action. ("exec foo.txt" doesn't count because if a mod can
+cause that, it is already executing code.)
+=================
+ */
+static qboolean FS_FileRequiresTrust( const char *filename )
+{
+	// Just to be paranoid, we check for all known platforms' DLL
+	// extensions *and* the one that is relevant to the current
+	// platform.
+	if( COM_CompareExtension( filename, DLL_EXT )
+		|| COM_CompareExtension( filename, ".dll" )
+		|| COM_CompareExtension( filename, ".dylib" )
+		|| COM_CompareExtension( filename, ".so" )
+		// autoexec.cfg, default.cfg, q3config.cfg can change
+		// sensitive settings like cl_renderer
+		|| COM_CompareExtension( filename, ".cfg" )
+		// QVM bytecode is executed by an interpreter or JIT
+		// compiler, but play it safe and assume it's able to
+		// break out of the sandbox somehow.
+		|| COM_CompareExtension( filename, ".qvm" ) )
+	{
+		return qtrue;
+	}
+
+	return qfalse;
 }
 
 /*
@@ -1100,6 +1134,48 @@ qboolean FS_IsDemoExt(const char *filename, int namelen)
 }
 
 /*
+ * Check that pak is sufficiently trusted as a source for filename,
+ * so that untrusted (auto-downloaded) files cannot execute arbitrary
+ * code. Returns true if the file is acceptable, false if the caller
+ * must behave as though the file wasn't found.
+ */
+static qboolean FS_CheckTrusted(pack_t *pak, const char *filename)
+{
+	if(pak->trusted)
+		return qtrue;
+
+	if (!FS_FileRequiresTrust(filename))
+		return qtrue;
+
+	Com_Printf(S_COLOR_YELLOW "WARNING: Auto-downloaded package "
+		"\"%s\" contains executable code \"%s\" which could "
+		"harm your computer.\n"
+		"To use this mod, please download it from a source "
+		"you trust and install it to \"%s%c%s%c%s.pk3\".\n",
+		pak->pakFilename, filename, fs_homepath->string, PATH_SEP,
+		pak->pakGamename, PATH_SEP, pak->pakBasename);
+
+	// Don't issue an ERR_DROP if the pak is in the normal
+	// search path (i.e. the user has copied it into place)
+	// because if we did that, we'd probably reload the UI,
+	// get another ERR_DROP for vm/ui.qvm and fail with a
+	// recursive error. But if it came from the server, we can
+	// disconnect.
+	if(pak->autoDownloaded)
+	{
+		Com_Error(ERR_DROP,
+			"Auto-downloaded package \"%s/%s\" contains "
+			"executable code which could harm your "
+			"computer. Please download this mod from a "
+			"source you trust. See console log for more "
+			"details.",
+			pak->pakGamename, pak->pakBasename);
+	}
+
+	return qfalse;
+}
+
+/*
 ===========
 FS_FOpenFileReadDir
 
@@ -1167,7 +1243,7 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 				do
 				{
 					// case and separator insensitive comparisons
-					if(!FS_FilenameCompare(pakFile->name, filename))
+					if(!FS_FilenameCompare(pakFile->name, filename) && FS_CheckTrusted(pak, filename))
 					{
 						// found it!
 						if(pakFile->len)
@@ -1231,7 +1307,7 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 			do
 			{
 				// case and separator insensitive comparisons
-				if(!FS_FilenameCompare(pakFile->name, filename))
+				if(!FS_FilenameCompare(pakFile->name, filename) && FS_CheckTrusted(pak, filename))
 				{
 					// found it!
 
@@ -1438,9 +1514,16 @@ int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, i
 		Com_Error(ERR_FATAL, "Filesystem call made without initialization");
 
 	if(enableDll)
-		Com_sprintf(dllName, sizeof(dllName), "%s" ARCH_STRING DLL_EXT, name);
+	{
+		// Make sure an attacker can't chop off DLL_EXT by making an
+		// abusively long filename cause truncation.
+		if (Com_sprintf(dllName, sizeof(dllName), "%s" ARCH_STRING DLL_EXT, name) >= sizeof(dllName))
+			Com_Error(ERR_FATAL, "DLL name too long: \"%s\"", dllName);
+	}
 
-	Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name);
+	// Make sure an attacker can't chop off ".qvm", as above
+	if (Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name) >= sizeof(qvmName))
+		Com_Error(ERR_FATAL, "QVM name too long: \"%s\"", qvmName);
 
 	lastSearch = *startSearch;
 	if(*startSearch == NULL)
@@ -3002,6 +3085,16 @@ void FS_AddGameDirectory( const char *path, const char *dir ) {
 			fs_packFiles += pak->numfiles;
 
 			search = Z_Malloc(sizeof(searchpath_t));
+
+			// If it's an auto-downloaded file that was moved into
+			// the normal search path, assume the user didn't
+			// intend to enable arbitrary code execution from it
+			if (strstr(pakfile, ".noexec.") != NULL)
+				pak->trusted = qfalse;
+			else
+				pak->trusted = qtrue;
+
+			pak->autoDownloaded = qfalse;
 			search->pack = pak;
 			search->next = fs_searchpaths;
 			fs_searchpaths = search;
@@ -3119,6 +3212,8 @@ FS_AddAutoDownloaded(const char *name, const char *gamename, const char *basenam
 	// Prepend the downloaded PK3 to the search path
 	fs_packFiles += pak->numfiles;
 	search = Z_Malloc(sizeof(searchpath_t));
+	pak->trusted = qfalse;
+	pak->autoDownloaded = qtrue;
 	search->pack = pak;
 	search->next = fs_searchpaths;
 	fs_searchpaths = search;
