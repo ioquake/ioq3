@@ -2165,8 +2165,16 @@ void CL_BeginDownload( const char *localName, const char *remoteName ) {
 				"Remotename: %s\n"
 				"****************************\n", localName, remoteName);
 
-	Q_strncpyz ( clc.downloadName, localName, sizeof(clc.downloadName) );
-	Com_sprintf( clc.downloadTempName, sizeof(clc.downloadTempName), "%s.tmp", localName );
+	if (Com_sprintf(clc.downloadName, sizeof(clc.downloadName), "%s",
+			localName) >= sizeof(clc.downloadName)
+		|| Com_sprintf(clc.downloadTempName, sizeof(clc.downloadTempName),
+			"%s.tmp", localName) >= sizeof(clc.downloadTempName))
+	{
+		// It was truncated, perhaps by an attacker trying to get rid
+		// of the pk3 extension or the .noexec. marker by pushing
+		// them outside the buffer with an abusively long filename.
+		Com_Error(ERR_DROP, "Auto-download filename \"%s\" too long", localName);
+	}
 
 	// Set so UI gets access to it
 	Cvar_Set( "cl_downloadName", remoteName );
