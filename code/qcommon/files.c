@@ -3053,6 +3053,41 @@ void FS_AddGameDirectory( const char *path, const char *dir ) {
 	fs_searchpaths = search;
 }
 
+static void
+FS_FreeSearchPathEntry(searchpath_t *p)
+{
+	if(p->pack)
+		FS_FreePak(p->pack);
+	if (p->dir)
+		Z_Free(p->dir);
+
+	Z_Free(p);
+}
+
+/*
+ * Remove all auto-downloaded packages from the search path.
+ */
+void
+FS_RemoveAutoDownloaded(void)
+{
+	searchpath_t *p;
+
+	while (fs_searchpaths && fs_searchpaths->pack && fs_searchpaths->pack->autoDownloaded) {
+		p = fs_searchpaths;
+		fs_searchpaths = p->next;
+		FS_FreeSearchPathEntry(p);
+	}
+
+	for (p = fs_searchpaths; p; p = p->next) {
+		if (p->next && p->next->pack && p->next->pack->autoDownloaded) {
+			searchpath_t *next = p->next->next;
+
+			FS_FreeSearchPathEntry(p->next);
+			p->next = next;
+		}
+	}
+}
+
 /*
  * Add an auto-downloaded package to the search path.
  *
@@ -3303,13 +3338,7 @@ void FS_Shutdown( qboolean closemfp ) {
 	for(p = fs_searchpaths; p; p = next)
 	{
 		next = p->next;
-
-		if(p->pack)
-			FS_FreePak(p->pack);
-		if (p->dir)
-			Z_Free(p->dir);
-
-		Z_Free(p);
+		FS_FreeSearchPathEntry(p);
 	}
 
 	// any FS_ calls will now be an error until reinitialized

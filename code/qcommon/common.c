@@ -303,6 +303,14 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	com_gameRestarting = qfalse;
 	com_gameClientRestarting = qfalse;
 
+	// Do this early so that by the time we maybe call CL_Init(),
+	// we are not trying to load resources from the auto-downloaded
+	// packages. FS_PureServerSetLoadedPaks() potentially triggers
+	// a FS_Restart() so we need to clear the referenced packs first.
+	FS_RemoveAutoDownloaded();
+	FS_PureServerSetReferencedPaks("", "");
+	FS_PureServerSetLoadedPaks("", "");
+
 	if (code == ERR_DISCONNECT || code == ERR_SERVERDISCONNECT) {
 		VM_Forced_Unload_Start();
 		SV_Shutdown( "Server disconnected" );
@@ -312,8 +320,6 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		CL_Disconnect( qtrue );
 		CL_FlushMemory( );
 		VM_Forced_Unload_Done();
-		// make sure we can get at our local stuff
-		FS_PureServerSetLoadedPaks("", "");
 		com_errorEntered = qfalse;
 		longjmp (abortframe, -1);
 	} else if (code == ERR_DROP) {
@@ -326,7 +332,6 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		CL_Disconnect( qtrue );
 		CL_FlushMemory( );
 		VM_Forced_Unload_Done();
-		FS_PureServerSetLoadedPaks("", "");
 		com_errorEntered = qfalse;
 		longjmp (abortframe, -1);
 	} else if ( code == ERR_NEED_CD ) {
@@ -344,8 +349,6 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 			Com_Printf("Server didn't have CD\n" );
 			VM_Forced_Unload_Done();
 		}
-
-		FS_PureServerSetLoadedPaks("", "");
 
 		com_errorEntered = qfalse;
 		longjmp (abortframe, -1);
