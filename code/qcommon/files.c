@@ -227,6 +227,8 @@ typedef struct {
 	int				hashSize;					// hash table size (power of 2)
 	fileInPack_t*	*hashTable;					// hash table
 	fileInPack_t*	buildBuffer;				// buffer with the filenames etc.
+	qboolean	autoDownloaded;
+	qboolean	trusted;
 } pack_t;
 
 typedef struct {
@@ -573,6 +575,38 @@ static void FS_CheckFilenameIsMutable( const char *filename,
 		Com_Error( ERR_FATAL, "%s: Not allowed to manipulate '%s' due "
 			"to %s extension", function, filename, COM_GetExtension( filename ) );
 	}
+}
+
+/*
+=================
+FS_FileRequiresTrust
+
+Return nonzero if the file is one that is executed by the engine without
+explicit user action. ("exec foo.txt" doesn't count because if a mod can
+cause that, it is already executing code.)
+=================
+ */
+static qboolean FS_FileRequiresTrust( const char *filename )
+{
+	// Just to be paranoid, we check for all known platforms' DLL
+	// extensions *and* the one that is relevant to the current
+	// platform.
+	if( COM_CompareExtension( filename, DLL_EXT )
+		|| COM_CompareExtension( filename, ".dll" )
+		|| COM_CompareExtension( filename, ".dylib" )
+		|| COM_CompareExtension( filename, ".so" )
+		// autoexec.cfg, default.cfg, q3config.cfg can change
+		// sensitive settings like cl_renderer
+		|| COM_CompareExtension( filename, ".cfg" )
+		// QVM bytecode is executed by an interpreter or JIT
+		// compiler, but play it safe and assume it's able to
+		// break out of the sandbox somehow.
+		|| COM_CompareExtension( filename, ".qvm" ) )
+	{
+		return qtrue;
+	}
+
+	return qfalse;
 }
 
 /*
@@ -1115,6 +1149,48 @@ qboolean FS_IsDemoExt(const char *filename, int namelen)
 }
 
 /*
+ * Check that pak is sufficiently trusted as a source for filename,
+ * so that untrusted (auto-downloaded) files cannot execute arbitrary
+ * code. Returns true if the file is acceptable, false if the caller
+ * must behave as though the file wasn't found.
+ */
+static qboolean FS_CheckTrusted(pack_t *pak, const char *filename)
+{
+	if(pak->trusted)
+		return qtrue;
+
+	if (!FS_FileRequiresTrust(filename))
+		return qtrue;
+
+	Com_Printf(S_COLOR_YELLOW "WARNING: Auto-downloaded package "
+		"\"%s\" contains executable code \"%s\" which could "
+		"harm your computer.\n"
+		"To use this mod, please download it from a source "
+		"you trust and install it to \"%s%c%s%c%s.pk3\".\n",
+		pak->pakFilename, filename, fs_homepath->string, PATH_SEP,
+		pak->pakGamename, PATH_SEP, pak->pakBasename);
+
+	// Don't issue an ERR_DROP if the pak is in the normal
+	// search path (i.e. the user has copied it into place)
+	// because if we did that, we'd probably reload the UI,
+	// get another ERR_DROP for vm/ui.qvm and fail with a
+	// recursive error. But if it came from the server, we can
+	// disconnect.
+	if(pak->autoDownloaded)
+	{
+		Com_Error(ERR_DROP,
+			"Auto-downloaded package \"%s/%s\" contains "
+			"executable code which could harm your "
+			"computer. Please download this mod from a "
+			"source you trust. See console log for more "
+			"details.",
+			pak->pakGamename, pak->pakBasename);
+	}
+
+	return qfalse;
+}
+
+/*
 ===========
 FS_FOpenFileReadDir
 
@@ -1182,7 +1258,7 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 				do
 				{
 					// case and separator insensitive comparisons
-					if(!FS_FilenameCompare(pakFile->name, filename))
+					if(!FS_FilenameCompare(pakFile->name, filename) && FS_CheckTrusted(pak, filename))
 					{
 						// found it!
 						if(pakFile->len)
@@ -1246,7 +1322,7 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 			do
 			{
 				// case and separator insensitive comparisons
-				if(!FS_FilenameCompare(pakFile->name, filename))
+				if(!FS_FilenameCompare(pakFile->name, filename) && FS_CheckTrusted(pak, filename))
 				{
 					// found it!
 
@@ -1453,9 +1529,16 @@ int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, i
 		Com_Error(ERR_FATAL, "Filesystem call made without initialization");
 
 	if(enableDll)
-		Com_sprintf(dllName, sizeof(dllName), "%s" ARCH_STRING DLL_EXT, name);
+	{
+		// Make sure an attacker can't chop off DLL_EXT by making an
+		// abusively long filename cause truncation.
+		if (Com_sprintf(dllName, sizeof(dllName), "%s" ARCH_STRING DLL_EXT, name) >= sizeof(dllName))
+			Com_Error(ERR_FATAL, "DLL name too long: \"%s\"", dllName);
+	}
 
-	Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name);
+	// Make sure an attacker can't chop off ".qvm", as above
+	if (Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name) >= sizeof(qvmName))
+		Com_Error(ERR_FATAL, "QVM name too long: \"%s\"", qvmName);
 
 	lastSearch = *startSearch;
 	if(*startSearch == NULL)
@@ -2073,8 +2156,11 @@ static pack_t *FS_LoadZipFile(const char *zipfile, const char *basename)
 	Q_strncpyz( pack->pakBasename, basename, sizeof( pack->pakBasename ) );
 
 	// strip .pk3 if needed
-	if ( strlen( pack->pakBasename ) > 4 && !Q_stricmp( pack->pakBasename + strlen( pack->pakBasename ) - 4, ".pk3" ) ) {
-		pack->pakBasename[strlen( pack->pakBasename ) - 4] = 0;
+	if (COM_CompareExtension( pack->pakBasename, ".pk3" )) {
+		COM_StripExtension( pack->pakBasename, pack->pakBasename, sizeof( pack->pakBasename ) );
+
+		if (COM_CompareExtension( pack->pakBasename, ".noexec" ))
+			COM_StripExtension( pack->pakBasename, pack->pakBasename, sizeof( pack->pakBasename ) );
 	}
 
 	pack->handle = uf;
@@ -2564,7 +2650,8 @@ int	FS_GetModList( char *listbuf, int bufsize ) {
 			continue;
 		}
 		// we drop "baseq3" "." and ".."
-		if (Q_stricmp(name, com_basegame->string) && Q_stricmpn(name, ".", 1)) {
+		// we also drop "downloads" which is now reserved for auto-downloads
+		if (Q_stricmp(name, com_basegame->string) && Q_stricmpn(name, ".", 1) && Q_stricmp(name, "downloads")) {
 			// now we need to find some .pk3 files to validate the mod
 			// NOTE TTimo: (actually I'm not sure why .. what if it's a mod under developement with no .pk3?)
 			// we didn't keep the information when we merged the directory names, as to what OS Path it was found under
@@ -2999,6 +3086,16 @@ void FS_AddGameDirectory( const char *path, const char *dir ) {
 			fs_packFiles += pak->numfiles;
 
 			search = Z_Malloc(sizeof(searchpath_t));
+
+			// If it's an auto-downloaded file that was moved into
+			// the normal search path, assume the user didn't
+			// intend to enable arbitrary code execution from it
+			if (strstr(pakfile, ".noexec.") != NULL)
+				pak->trusted = qfalse;
+			else
+				pak->trusted = qtrue;
+
+			pak->autoDownloaded = qfalse;
 			search->pack = pak;
 			search->next = fs_searchpaths;
 			fs_searchpaths = search;
@@ -3046,6 +3143,79 @@ void FS_AddGameDirectory( const char *path, const char *dir ) {
 	Q_strncpyz(search->dir->fullpath, curpath, sizeof(search->dir->fullpath));
 	Q_strncpyz(search->dir->gamedir, dir, sizeof(search->dir->gamedir));
 
+	search->next = fs_searchpaths;
+	fs_searchpaths = search;
+}
+
+static void
+FS_FreeSearchPathEntry(searchpath_t *p)
+{
+	if(p->pack)
+		FS_FreePak(p->pack);
+	if (p->dir)
+		Z_Free(p->dir);
+
+	Z_Free(p);
+}
+
+/*
+ * Remove all auto-downloaded packages from the search path.
+ */
+void
+FS_RemoveAutoDownloaded(void)
+{
+	searchpath_t *p;
+
+	while (fs_searchpaths && fs_searchpaths->pack && fs_searchpaths->pack->autoDownloaded) {
+		p = fs_searchpaths;
+		fs_searchpaths = p->next;
+		FS_FreeSearchPathEntry(p);
+	}
+
+	for (p = fs_searchpaths; p; p = p->next) {
+		if (p->next && p->next->pack && p->next->pack->autoDownloaded) {
+			searchpath_t *next = p->next->next;
+
+			FS_FreeSearchPathEntry(p->next);
+			p->next = next;
+		}
+	}
+}
+
+/*
+ * Add an auto-downloaded package to the search path.
+ *
+ * name is relative to the downloads directory, and is something like
+ * "threewave/pak05.abcdef12.noexec.pk3". gamename is "threewave" for
+ * this example, and basename is "pak05".
+ */
+void
+FS_AddAutoDownloaded(const char *name, const char *gamename, const char *basename)
+{
+	char *zippath;
+	char *dirpath;
+	searchpath_t *search;
+	pack_t *pak;
+
+	// We should have already checked this, but paranoia is good
+	if (FS_CheckDirTraversal(name) || FS_CheckDirTraversal(gamename) || FS_CheckDirTraversal(basename))
+		Com_Error(ERR_DROP, "Invalid downloaded filename (path traversal): %s", name);
+
+	zippath = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), "downloads", name);
+
+	if ((pak = FS_LoadZipFile(zippath, basename)) == 0)
+		Com_Error(ERR_DROP, "Cannot open auto-downloaded file: %s", name);
+
+	dirpath = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), "downloads", gamename);
+	Q_strncpyz(pak->pakPathname, dirpath, sizeof(pak->pakPathname));
+	Q_strncpyz(pak->pakGamename, gamename, sizeof(pak->pakGamename));
+
+	// Prepend the downloaded PK3 to the search path
+	fs_packFiles += pak->numfiles;
+	search = Z_Malloc(sizeof(searchpath_t));
+	pak->trusted = qfalse;
+	pak->autoDownloaded = qtrue;
+	search->pack = pak;
 	search->next = fs_searchpaths;
 	fs_searchpaths = search;
 }
@@ -3126,6 +3296,11 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 
 	for ( i = 0 ; i < fs_numServerReferencedPaks ; i++ )
 	{
+		char gameName[MAX_QPATH + 1];
+		char autoName[MAX_OSPATH + 1];
+		char *slash;
+		char *backslash;
+
 		// Ok, see if we have this pak file
 		havepak = qfalse;
 
@@ -3146,6 +3321,24 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 			continue;
 		}
 
+		// The filename must contain exactly one slash, and no
+		// other would-be path separators. It must have a reasonable
+		// length (no more than MAX_QPATH = 64). The game name (before
+		// the slash) must be non-empty, and so must the basename
+		// (after the slash).
+		slash = strchr(fs_serverReferencedPakNames[i], '/');
+		backslash = strchr(fs_serverReferencedPakNames[i], '\\');
+		if ( slash == NULL || slash == fs_serverReferencedPakNames[i] ||
+			slash[1] == '\0' || backslash != NULL ||
+			strchr( slash + 1, '/' ) != NULL ||
+			strlen( fs_serverReferencedPakNames[i] ) >= MAX_QPATH )
+		{
+			Com_Printf("WARNING: Invalid download name %s\n", fs_serverReferencedPakNames[i]);
+			continue;
+		}
+
+		// First look for the same checksum among the files we
+		// already loaded
 		for ( sp = fs_searchpaths ; sp ; sp = sp->next ) {
 			if ( sp->pack && sp->pack->checksum == fs_serverReferencedPaks[i] ) {
 				havepak = qtrue; // This is it!
@@ -3153,8 +3346,25 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 			}
 		}
 
-		if ( !havepak && fs_serverReferencedPakNames[i] && *fs_serverReferencedPakNames[i] ) { 
-			// Don't got it
+		if ( havepak )
+			continue;
+
+		// Next see whether we already auto-downloaded it.
+		// If we did, prepend it to the search path and stop.
+
+		// Copy up to (slash - fs_serverReferencedPakNames[i]) bytes
+		Q_strncpyz( gameName, fs_serverReferencedPakNames[i], MIN( sizeof( gameName ), slash - fs_serverReferencedPakNames[i] + 1 ) );
+		Com_sprintf( autoName, sizeof(autoName), "downloads/%s/%s.%08x.noexec.pk3",
+			gameName, slash + 1, fs_serverReferencedPaks[i] );
+
+		if ( FS_SV_FileExists( autoName ) )
+		{
+			FS_AddAutoDownloaded( autoName + strlen( "downloads/" ), gameName, slash + 1 );
+			continue;
+		}
+
+		if ( fs_serverReferencedPakNames[i] && *fs_serverReferencedPakNames[i] ) {
+			// We don't have it - queue it for auto-downloading
 
 			if (dlstring)
 			{
@@ -3172,19 +3382,7 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 				// Local name
 				Q_strcat( neededpaks, len, "@");
 				// Do we have one with the same name?
-				if ( FS_SV_FileExists( va( "%s.pk3", fs_serverReferencedPakNames[i] ) ) )
-				{
-					char st[MAX_ZPATH];
-					// We already have one called this, we need to download it to another name
-					// Make something up with the checksum in it
-					Com_sprintf( st, sizeof( st ), "%s.%08x.pk3", fs_serverReferencedPakNames[i], fs_serverReferencedPaks[i] );
-					Q_strcat( neededpaks, len, st );
-				}
-				else
-				{
-					Q_strcat( neededpaks, len, fs_serverReferencedPakNames[i] );
-					Q_strcat( neededpaks, len, ".pk3" );
-				}
+				Q_strcat( neededpaks, len, autoName );
 
 				// Find out whether it might have overflowed the buffer and don't add this file to the
 				// list if that is the case.
@@ -3236,13 +3434,7 @@ void FS_Shutdown( qboolean closemfp ) {
 	for(p = fs_searchpaths; p; p = next)
 	{
 		next = p->next;
-
-		if(p->pack)
-			FS_FreePak(p->pack);
-		if (p->dir)
-			Z_Free(p->dir);
-
-		Z_Free(p);
+		FS_FreeSearchPathEntry(p);
 	}
 
 	// any FS_ calls will now be an error until reinitialized
@@ -3313,6 +3505,7 @@ FS_Startup
 */
 static void FS_Startup( const char *gameName )
 {
+	char missingfiles[BIG_INFO_STRING];
 	const char *homePath;
 
 	Com_Printf( "----- FS_Startup -----\n" );
@@ -3407,6 +3600,12 @@ static void FS_Startup( const char *gameName )
 	Cmd_AddCommand ("fdir", FS_NewDir_f );
 	Cmd_AddCommand ("touchFile", FS_TouchFile_f );
 	Cmd_AddCommand ("which", FS_Which_f );
+
+	// Maybe the server has pk3 files that we previously auto-downloaded.
+	// Make sure we've loaded them all. (We aren't actually going to use
+	// the list for anything, we just want the side-effect of calling
+	// FS_AddAutoDownloaded if necessary.)
+	FS_ComparePaks(missingfiles, sizeof(missingfiles), qfalse);
 
 	// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=506
 	// reorder the pure pk3 files according to server order
