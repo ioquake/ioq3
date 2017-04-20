@@ -527,7 +527,7 @@ jpeg_fill_bit_buffer (bitread_working_state * state,
       }
 
       /* OK, load c into get_buffer */
-      get_buffer = (get_buffer << 8) | c;
+      get_buffer = ((unsigned long)get_buffer << 8) | c;
       bits_left += 8;
     } /* end while */
   } else {

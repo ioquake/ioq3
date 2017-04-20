@@ -1813,7 +1813,9 @@ static void R_CreateWorldVaos(void)
 				coverage *= right - left + 1.0f/256.0f;
 			}
 
-			iCoverage = coverage * 256;
+			// coverage * 256 can go above INT_MAX
+			coverage *= 256;
+			iCoverage = coverage < (float)INT_MAX ? (int)coverage : INT_MAX;
 
 			if (iCoverage > s_worldData.surfacesDlightBits[surfaceNum])
 			{

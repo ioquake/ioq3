@@ -214,7 +214,7 @@ int MSG_ReadBits( msg_t *msg, int bits ) {
 			for(i=0;i<bits;i+=8) {
 				Huff_offsetReceive (msgHuff.decompressor.tree, &get, msg->data, &msg->bit);
 //				fwrite(&get, 1, 1, fp);
-				value |= (get<<(i+nbits));
+				value = (unsigned int)value | ((unsigned int)get<<(i+nbits));
 			}
 //			fclose(fp);
 		}

@@ -206,7 +206,7 @@ jpeg_idct_islow (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 	inptr[DCTSIZE*5] == 0 && inptr[DCTSIZE*6] == 0 &&
 	inptr[DCTSIZE*7] == 0) {
       /* AC terms all zero */
-      int dcval = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]) << PASS1_BITS;
+      int dcval = (unsigned int)DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]) << PASS1_BITS;
 
       wsptr[DCTSIZE*0] = dcval;
       wsptr[DCTSIZE*1] = dcval;
@@ -233,10 +233,8 @@ jpeg_idct_islow (j_decompress_ptr cinfo, jpeg_component_info * compptr,
     tmp2 = z1 + MULTIPLY(z2, FIX_0_765366865);
     tmp3 = z1 - MULTIPLY(z3, FIX_1_847759065);
 
-    z2 = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]);
-    z3 = DEQUANTIZE(inptr[DCTSIZE*4], quantptr[DCTSIZE*4]);
-    z2 <<= CONST_BITS;
-    z3 <<= CONST_BITS;
+    z2 = (unsigned long)DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]) << CONST_BITS;
+    z3 = (unsigned long)DEQUANTIZE(inptr[DCTSIZE*4], quantptr[DCTSIZE*4]) << CONST_BITS;
     /* Add fudge factor here for final descale. */
     z2 += ONE << (CONST_BITS-PASS1_BITS-1);
 
@@ -344,8 +342,8 @@ jpeg_idct_islow (j_decompress_ptr cinfo, jpeg_component_info * compptr,
     z2 = (INT32) wsptr[0] + (ONE << (PASS1_BITS+2));
     z3 = (INT32) wsptr[4];
 
-    tmp0 = (z2 + z3) << CONST_BITS;
-    tmp1 = (z2 - z3) << CONST_BITS;
+    tmp0 = (unsigned long)(z2 + z3) << CONST_BITS;
+    tmp1 = (unsigned long)(z2 - z3) << CONST_BITS;
     
     tmp10 = tmp0 + tmp2;
     tmp13 = tmp0 - tmp2;
@@ -448,8 +446,7 @@ jpeg_idct_7x7 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
   for (ctr = 0; ctr < 7; ctr++, inptr++, quantptr++, wsptr++) {
     /* Even part */
 
-    tmp13 = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]);
-    tmp13 <<= CONST_BITS;
+    tmp13 = (unsigned long)DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]) << CONST_BITS;
     /* Add fudge factor here for final descale. */
     tmp13 += ONE << (CONST_BITS-PASS1_BITS-1);
 
@@ -2582,8 +2579,7 @@ jpeg_idct_16x16 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
   for (ctr = 0; ctr < 8; ctr++, inptr++, quantptr++, wsptr++) {
     /* Even part */
 
-    tmp0 = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]);
-    tmp0 <<= CONST_BITS;
+    tmp0 = (unsigned long)DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]) << CONST_BITS;
     /* Add fudge factor here for final descale. */
     tmp0 += 1 << (CONST_BITS-PASS1_BITS-1);
 
@@ -2685,7 +2681,7 @@ jpeg_idct_16x16 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 
     /* Add fudge factor here for final descale. */
     tmp0 = (INT32) wsptr[0] + (ONE << (PASS1_BITS+2));
-    tmp0 <<= CONST_BITS;
+    tmp0 = (unsigned long)tmp0 << CONST_BITS;
 
     z1 = (INT32) wsptr[4];
     tmp1 = MULTIPLY(z1, FIX(1.306562965));      /* c4[16] = c2[8] */

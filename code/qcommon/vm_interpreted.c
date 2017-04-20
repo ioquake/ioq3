@@ -816,9 +816,6 @@ nextInstruction2:
 			opStack[opStackOfs] = ((unsigned) r1) % ((unsigned) r0);
 			goto nextInstruction;
 		case OP_MULI:
-			opStackOfs--;
-			opStack[opStackOfs] = r1 * r0;
-			goto nextInstruction;
 		case OP_MULU:
 			opStackOfs--;
 			opStack[opStackOfs] = ((unsigned) r1) * ((unsigned) r0);

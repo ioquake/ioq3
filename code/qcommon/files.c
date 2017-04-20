@@ -3427,10 +3427,10 @@ static void FS_CheckPak0( void )
 
 	for( path = fs_searchpaths; path; path = path->next )
 	{
-		const char* pakBasename = path->pack->pakBasename;
-
 		if(!path->pack)
 			continue;
+
+		const char* pakBasename = path->pack->pakBasename;
 
 		curpack = path->pack;
 
