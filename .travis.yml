@@ -19,11 +19,15 @@ notifications:
 matrix:
   include: 
     - os: linux
-      compiler: gcc
+      env: PLATFORM=linux
       before_install:
-          - docker build -t wtfbbqhax/ioquake3:v1 .
-          - docker run -v $(pwd)/build:/usr/src/build wtfbbqhax/ioquake3:v1 ./docker-build.sh
-
+      - docker pull wtfbbqhax/tremulous:v3
+      - docker run -e PLATFORM -v $(pwd):/usr/src wtfbbqhax/tremulous:v3 ./docker-build.sh
+    - os: linux
+      env: PLATFORM=mingw32
+      before_install:
+      - docker pull wtfbbqhax/tremulous:v3
+      - docker run -e PLATFORM -v $(pwd):/usr/src wtfbbqhax/tremulous:v3 ./docker-build.sh
     - os: osx
       osx_image: xcode8
       compiler: clang
