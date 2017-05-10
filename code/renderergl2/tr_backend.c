@@ -1123,7 +1123,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 
 			GLSL_BindProgram(&tr.ssaoShader);
 
-			GL_BindToTMU(tr.hdrDepthImage, TB_COLORMAP);
+			GL_BindToTMU(tr.renderDepthImage, TB_COLORMAP);
 
 			GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
 
