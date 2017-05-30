@@ -90,7 +90,8 @@ static client_t *SV_GetPlayerByHandle( void ) {
 		}
 	}
 
-	Com_Printf( "Player %s is not on the server\n", s );
+	if ( Q_stricmp( "all", s ) || Q_stricmp( "allbots", s ) )
+		Com_Printf( "Player %s is not on the server\n", s );
 
 	return NULL;
 }
