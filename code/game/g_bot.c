@@ -567,6 +567,7 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	char			*model;
 	char			*headmodel;
 	char			userinfo[MAX_INFO_STRING];
+	char			buff[MAX_INFO_VALUE];
 
 	// have the server allocate a client slot
 	clientNum = trap_BotAllocateClient();
@@ -586,6 +587,10 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 
 	// create the bot's userinfo
 	userinfo[0] = '\0';
+
+	// add bot_ffaWeaponMode to the userinfo
+	trap_Cvar_VariableStringBuffer( "bot_ffaWeaponMode", buff, sizeof(buff) );
+	Info_SetValueForKey( userinfo, "bot_ffaWeaponMode", buff );
 
 	botname = Info_ValueForKey( botinfo, "funname" );
 	if( !botname[0] ) {

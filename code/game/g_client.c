@@ -1073,6 +1073,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		accuracy_hits, accuracy_shots;
 	int		eventSequence;
 	char	userinfo[MAX_INFO_STRING];
+	char	*ffaWeaponMode;
 
 	index = ent - g_entities;
 	client = ent->client;
@@ -1180,16 +1181,53 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.clientNum = index;
 
-	client->ps.stats[STAT_WEAPONS] = ( 1 << WP_MACHINEGUN );
-	if ( g_gametype.integer == GT_TEAM ) {
-		client->ps.ammo[WP_MACHINEGUN] = 50;
-	} else {
-		client->ps.ammo[WP_MACHINEGUN] = 100;
+	// force team weapons?
+	if (g_forceTeamWeapons.integer) {
+		if (g_switchTeamWeapons.integer) {
+			if (client->sess.sessionTeam == TEAM_BLUE)
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+			else
+				client->sess.weapon = WP_RAILGUN;
+		}
+		else {
+			if (client->sess.sessionTeam == TEAM_RED)
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+			else
+				client->sess.weapon = WP_RAILGUN;
+		}
 	}
 
-	client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GAUNTLET );
-	client->ps.ammo[WP_GAUNTLET] = -1;
-	client->ps.ammo[WP_GRAPPLING_HOOK] = -1;
+	// force weapon?
+	if (!Q_stricmp(g_forceWeapon.string, "rl"))
+		client->sess.weapon = WP_ROCKET_LAUNCHER;
+	if (!Q_stricmp(g_forceWeapon.string, "rg"))
+		client->sess.weapon = WP_RAILGUN;
+
+	// get ffaWeaponMode value
+	trap_GetUserinfo( ent - g_entities, userinfo, sizeof(userinfo) );
+	if (ent->r.svFlags & SVF_BOT)
+		ffaWeaponMode = Info_ValueForKey( userinfo, "bot_ffaWeaponMode" );
+	else
+		ffaWeaponMode = Info_ValueForKey( userinfo, "cg_ffaWeaponMode" );
+
+	if ( g_gametype.integer == GT_FFA )
+	{
+		if (!Q_stricmp(ffaWeaponMode, "rl"))
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+		if (!Q_stricmp(ffaWeaponMode, "rg"))
+			client->sess.weapon = WP_RAILGUN;
+	}
+
+	// give sess.weapon
+	client->ps.stats[STAT_WEAPONS] = ( 1 << client->sess.weapon );
+	client->ps.ammo[client->sess.weapon] = -1;
+
+	if ( g_gametype.integer == GT_FFA ) {
+		if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
+			client->sess.weapon = WP_RAILGUN;
+		else if ( client->sess.weapon == WP_RAILGUN )
+			client->sess.weapon = WP_ROCKET_LAUNCHER;
+	}
 
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
@@ -1218,7 +1256,7 @@ void ClientSpawn(gentity_t *ent) {
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR) {
 			G_KillBox(ent);
 			// force the base weapon up
-			client->ps.weapon = WP_MACHINEGUN;
+			client->ps.weapon = client->sess.weapon;
 			client->ps.weaponstate = WEAPON_READY;
 			// fire the targets of the spawn point
 			G_UseTargets(spawnPoint, ent);
@@ -1256,6 +1294,19 @@ void ClientSpawn(gentity_t *ent) {
 
 	// clear entity state values
 	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
+
+	// alternate or random weapon in ffa
+		if (!Q_stricmp( ffaWeaponMode, "alternate" )) {
+			if ( client->sess.weapon == WP_ROCKET_LAUNCHER )
+				client->sess.weapon = WP_RAILGUN;
+			else if ( client->sess.weapon == WP_RAILGUN )
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+		} else if (!Q_stricmp( ffaWeaponMode, "random" )) {
+			if (crandom() > 0)
+				client->sess.weapon = WP_RAILGUN;
+			else
+				client->sess.weapon = WP_ROCKET_LAUNCHER;
+		}
 }
 
 
@@ -1302,7 +1353,7 @@ void ClientDisconnect( int clientNum ) {
 
 		// They don't get to take powerups with them!
 		// Especially important for stuff like CTF flags
-		TossClientItems( ent );
+		//TossClientItems( ent );
 #ifdef MISSIONPACK
 		TossClientPersistantPowerups( ent );
 		if( g_gametype.integer == GT_HARVESTER ) {

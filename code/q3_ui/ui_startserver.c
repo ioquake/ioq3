@@ -48,8 +48,8 @@ START SERVER MENU *****
 #define GAMESERVER_ARROWSR		"menu/art/gs_arrows_r"
 
 #define MAX_MAPROWS		2
-#define MAX_MAPCOLS		2
-#define MAX_MAPSPERPAGE	4
+#define MAX_MAPCOLS		4
+#define MAX_MAPSPERPAGE	8
 
 #define MAX_NAMELENGTH	16
 #define ID_GAMETYPE				10
@@ -400,7 +400,10 @@ static void StartServer_MenuInit( void ) {
 	s_startserver.banner.generic.type  = MTYPE_BTEXT;
 	s_startserver.banner.generic.x	   = 320;
 	s_startserver.banner.generic.y	   = 16;
-	s_startserver.banner.string        = "GAME SERVER";
+	if (s_startserver.multiplayer)
+		s_startserver.banner.string        = "GAME SERVER";
+	else
+		s_startserver.banner.string        = "SKIRMISH";
 	s_startserver.banner.color         = color_white;
 	s_startserver.banner.style         = UI_CENTER;
 
@@ -431,8 +434,8 @@ static void StartServer_MenuInit( void ) {
 
 	for (i=0; i<MAX_MAPSPERPAGE; i++)
 	{
-		x =	(i % MAX_MAPCOLS) * (128+8) + 188;
-		y = (i / MAX_MAPROWS) * (128+8) + 96;
+		x =	(i % MAX_MAPCOLS) * (128+8) + 52;
+		y = (i / MAX_MAPCOLS) * (128+8) + 96;
 
 		s_startserver.mappics[i].generic.type   = MTYPE_BITMAP;
 		s_startserver.mappics[i].generic.flags  = QMF_LEFT_JUSTIFY|QMF_INACTIVE;
@@ -526,8 +529,8 @@ static void StartServer_MenuInit( void ) {
 	s_startserver.item_null.height			= 480;
 
 	Menu_AddItem( &s_startserver.menu, &s_startserver.banner );
-	Menu_AddItem( &s_startserver.menu, &s_startserver.framel );
-	Menu_AddItem( &s_startserver.menu, &s_startserver.framer );
+	//Menu_AddItem( &s_startserver.menu, &s_startserver.framel );
+	//Menu_AddItem( &s_startserver.menu, &s_startserver.framer );
 
 	Menu_AddItem( &s_startserver.menu, &s_startserver.gametype );
 	for (i=0; i<MAX_MAPSPERPAGE; i++)

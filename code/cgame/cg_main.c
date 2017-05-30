@@ -88,7 +88,6 @@ centity_t			cg_entities[MAX_GENTITIES];
 weaponInfo_t		cg_weapons[MAX_WEAPONS];
 itemInfo_t			cg_items[MAX_ITEMS];
 
-
 vmCvar_t	cg_railTrailTime;
 vmCvar_t	cg_centertime;
 vmCvar_t	cg_runpitch;
@@ -198,6 +197,9 @@ vmCvar_t	cg_recordSPDemoName;
 vmCvar_t	cg_obeliskRespawnDelay;
 #endif
 
+// Slugrock cvars
+vmCvar_t	cg_ffaWeaponMode;
+
 typedef struct {
 	vmCvar_t	*vmCvar;
 	char		*cvarName;
@@ -206,6 +208,8 @@ typedef struct {
 } cvarTable_t;
 
 static cvarTable_t cvarTable[] = {
+	{ &cg_ffaWeaponMode, "cg_ffaWeaponMode", "alternate", CVAR_USERINFO },
+
 	{ &cg_ignore, "cg_ignore", "0", 0 },	// used for debugging
 	{ &cg_autoswitch, "cg_autoswitch", "1", CVAR_ARCHIVE },
 	{ &cg_drawGun, "cg_drawGun", "1", CVAR_ARCHIVE },

@@ -809,8 +809,10 @@ void ClearRegisteredItems( void ) {
 	memset( itemRegistered, 0, sizeof( itemRegistered ) );
 
 	// players always start with the base weapon
-	RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
-	RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
+	//RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
+	//RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
+	RegisterItem( BG_FindItemForWeapon( WP_ROCKET_LAUNCHER ) );
+	RegisterItem( BG_FindItemForWeapon( WP_RAILGUN ) );
 #ifdef MISSIONPACK
 	if( g_gametype.integer == GT_HARVESTER ) {
 		RegisterItem( BG_FindItem( "Red Cube" ) );
@@ -911,6 +913,8 @@ void G_SpawnItem (gentity_t *ent, gitem_t *item) {
 		ent->s.generic1 = ent->spawnflags;
 	}
 #endif
+	if ( item->giType != IT_TEAM )
+		ent->s.eFlags |= EF_NODRAW;
 }
 
 

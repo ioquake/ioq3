@@ -444,7 +444,14 @@ void ClientTimerActions( gentity_t *ent, int msec ) {
 				G_AddEvent( ent, EV_POWERUP_REGEN, 0 );
 			}
 #endif
-		} else {
+		} 
+		else if ( g_healthRegen.integer == 1 ) {
+			if ( ent->health < 125 ) 
+				ent->health += 5;
+			if ( ent->health > 125 )
+				ent->health = 125;
+		}
+		else {
 			// count down health when over max
 			if ( ent->health > client->ps.stats[STAT_MAX_HEALTH] ) {
 				ent->health--;
