@@ -206,7 +206,15 @@ void QDECL Com_Printf( const char *fmt, ... ) {
 			
 			if(logfile)
 			{
-				Com_Printf( "logfile opened on %s\n", asctime( newtime ) );
+				char *timestr;
+				timestr = asctime( newtime );
+#ifdef _WIN32
+				if( timestr[ strlen( timestr ) - 1 ] == '\n' )
+				{
+					timestr[ strlen( timestr ) - 1 ] = '\0';
+				}
+#endif
+				Com_Printf( "logfile opened on %s\n", timestr );
 			
 				if ( com_logfile->integer > 1 )
 				{
