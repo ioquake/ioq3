@@ -537,6 +537,10 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 		}
 
 		driverName = SDL_GetCurrentVideoDriver( );
+		if (!driverName)
+		{
+			driverName = "";
+		}
 		ri.Printf( PRINT_ALL, "SDL using driver \"%s\"\n", driverName );
 		ri.Cvar_Set( "r_sdlDriver", driverName );
 	}
