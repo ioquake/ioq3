@@ -91,6 +91,7 @@ control(Tokenrow *trp)
 {
 	Nlist *np;
 	Token *tp;
+	char  *fp;
 
 	tp = trp->tp;
 	if (tp->type!=NAME) {
@@ -237,7 +238,7 @@ control(Tokenrow *trp)
 		break;
 
 	case KINCLUDE:
-		doinclude(trp);
+		doinclude(trp, &fp);
 		trp->lp = trp->bp;
 		return;
 
@@ -250,6 +251,7 @@ control(Tokenrow *trp)
 		break;
 	}
 	setempty(trp);
+	dofree(fp);
 }
 
 void *

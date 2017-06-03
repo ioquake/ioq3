@@ -78,6 +78,7 @@ dodefine(Tokenrow *trp)
 		Tokenrow *tap;
 		tap = normtokenrow(args);
 		dofree(args->bp);
+		dofree(args);
 		args = tap;
 	}
 	np->ap = args;

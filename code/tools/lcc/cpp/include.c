@@ -20,6 +20,7 @@ void appendDirToIncludeList( char *dir )
 	for (i=NINCLUDE-2; i>=0; i--) {
 		if (includelist[i].file &&
 				!strcmp (includelist[i].file, fqdir)) {
+			dofree(fqdir);
 			return;
 		}
 	}
@@ -36,12 +37,13 @@ void appendDirToIncludeList( char *dir )
 }
 
 void
-doinclude(Tokenrow *trp)
+doinclude(Tokenrow *trp, char **fp)
 {
 	char fname[256], iname[256];
 	Includelist *ip;
 	int angled, len, fd, i;
 
+	*fp = NULL;
 	trp->tp += 1;
 	if (trp->tp>=trp->lp)
 		goto syntax;
@@ -73,8 +75,9 @@ doinclude(Tokenrow *trp)
 	if (trp->tp < trp->lp || len==0)
 		goto syntax;
 	fname[len] = '\0';
+	*fp = basepath( fname );
 
-	appendDirToIncludeList( basepath( fname ) );
+	appendDirToIncludeList( *fp );
 
 	if (fname[0]=='/') {
 		fd = open(fname, 0);
