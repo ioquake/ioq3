@@ -13,8 +13,8 @@ add_library(
 
 include_directories(
     include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../opus-1.1/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../libogg-1.3.1/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../opus-1.1.4/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../libogg-1.3.2/include
     )
 
 target_link_libraries(

@@ -1,6 +1,7 @@
 
 add_definitions(
     -DFLOATING_POINT
+    -DFLOAT_APPROX
     -DOPUS_BUILD
     -DUSE_CODEC_OPUS
     -DUSE_ALLOCA

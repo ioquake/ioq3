@@ -683,8 +683,10 @@ int main( int argc, char **argv )
 	int   i;
 	char  commandLine[ MAX_STRING_CHARS ] = { 0 };
 
+#ifdef USE_AUTOUPDATER
 	extern void Sys_LaunchAutoupdater(int argc, char **argv);
 	Sys_LaunchAutoupdater(argc, argv);
+#endif
 
 #ifndef DEDICATED
 	// SDL version check

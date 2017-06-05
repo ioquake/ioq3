@@ -31,6 +31,7 @@ option(USE_VOIP "" OFF)
 option(USE_MUMBLE "" ON)
 option(USE_CODEC_OPUS "" ON)
 option(BUILD_MISSIONPACK "" ON) # FIXME Unused
+option(USE_AUTOUPDATER "" ON)
 
 include(${CMAKE_SOURCE_DIR}/cmake/build_dir)
 include(${CMAKE_SOURCE_DIR}/cmake/debug_cflags)
@@ -38,11 +39,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/debug_cflags)
 # builtins 
 add_subdirectory(code/zlib)
 add_subdirectory(code/jpeg-8c)
-add_subdirectory(code/libspeex)
-add_subdirectory(code/opus-1.1)
-add_subdirectory(code/opusfile-0.5)
-add_subdirectory(code/libogg-1.3.1)
-add_subdirectory(code/libvorbis-1.3.4)
+add_subdirectory(code/opus-1.1.4)
+add_subdirectory(code/opusfile-0.8)
+add_subdirectory(code/libogg-1.3.2)
+add_subdirectory(code/libvorbis-1.3.5)
 
 # engine
 add_subdirectory(code/renderercommon)

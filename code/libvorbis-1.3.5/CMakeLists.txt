@@ -77,6 +77,6 @@ target_include_directories(
     vorbis PUBLIC
     ${VORBIS_INCLUDES_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/../libogg-1.3.1/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../libogg-1.3.2/include
     )
 

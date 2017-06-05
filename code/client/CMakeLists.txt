@@ -21,6 +21,7 @@ add_definitions(
     -DUSE_OPENAL
     -DUSE_OPENAL_DLOPEN
     -DUSE_INTERNAL_JPEG
+    -DUSE_AUTOUPDATER
     -DUSE_RENDERER_DLOPEN
     -DNDEBUG
     -DPRODUCT_VERSION="1.2.0 pre-release"
@@ -103,6 +104,7 @@ add_executable(
     #
     ${PARENT_DIR}/sys/con_log.c
     ${PARENT_DIR}/sys/con_tty.c
+    ${PARENT_DIR}/sys/sys_autoupdater.c
     ${PARENT_DIR}/sys/sys_main.c
     ${PARENT_DIR}/sys/sys_unix.c
     ${PARENT_DIR}/qcommon/cm_load.c
