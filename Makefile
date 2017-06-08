@@ -856,6 +856,26 @@ ifeq ($(PLATFORM),irix64)
 else # ifeq IRIX
 
 #############################################################################
+# SETUP AND BUILD -- Haiku
+#############################################################################
+
+ifeq ($(PLATFORM),haiku)
+  CC=gcc
+  MKDIR=mkdir
+  LIBS=-lbe -lnetwork
+
+  SHLIBEXT=so
+  SHLIBLDFLAGS=-shared
+
+  BASE_CFLAGS += -I.
+
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
+  CLIENT_LIBS += $(SDL_LIBS)
+  RENDERER_LIBS = $(SDL_LIBS) -lGL
+
+else #ifeq Haiku
+
+#############################################################################
 # SETUP AND BUILD -- SunOS
 #############################################################################
 
@@ -928,6 +948,7 @@ endif #FreeBSD
 endif #OpenBSD
 endif #NetBSD
 endif #IRIX
+endif #Haiku
 endif #SunOS
 
 ifndef CC
