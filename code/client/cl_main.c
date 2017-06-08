@@ -1715,6 +1715,8 @@ void CL_Connect_f( void ) {
 		Q_strncpyz( server, Cmd_Argv(2), sizeof( server ) );
 	}
 
+	server = CopyString(server);
+
 	// save arguments for reconnect
 	Q_strncpyz( cl_reconnectArgs, Cmd_Args(), sizeof( cl_reconnectArgs ) );
 
@@ -1777,6 +1779,7 @@ void CL_Connect_f( void ) {
 
 	// server connection string
 	Cvar_Set( "cl_currentServerAddress", server );
+	Z_Free(server);
 }
 
 #define MAX_RCON_MESSAGE 1024
