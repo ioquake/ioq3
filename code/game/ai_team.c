@@ -129,12 +129,12 @@ int BotSortTeamMatesByBaseTravelTime(bot_state_t *bs, int *teammates, int maxtea
 	char buf[MAX_INFO_STRING];
 	int traveltimes[MAX_CLIENTS];
 	bot_goal_t *goal = NULL;
+	qboolean useCTFFlags = gametype == GT_CTF;
 
 #ifdef MISSIONPACK
-	if (gametype == GT_CTF || gametype == GT_1FCTF)
-#else
-	if (gametype == GT_CTF)
+	useCTFFlags = useCTFFlags || gametype == GT_1FCTF;
 #endif
+	if (useCTFFlags)
 	{
 		if (BotTeam(bs) == TEAM_RED)
 			goal = &ctf_redflag;
