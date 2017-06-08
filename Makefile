@@ -1339,7 +1339,9 @@ endif
 	$(call print_wrapped, $(SERVER_CFLAGS))
 	@echo ""
 	@echo "  LDFLAGS:"
+ifneq ($(LDFLAGS),)
 	$(call print_wrapped, $(LDFLAGS))
+endif
 	@echo ""
 	@echo "  LIBS:"
 	$(call print_wrapped, $(LIBS))
