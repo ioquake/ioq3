@@ -1,0 +1,82 @@
+set( VORBIS_INCLUDES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+add_library (
+    vorbis STATIC
+    lib/analysis.c
+    lib/backends.h
+    lib/bitrate.c
+    lib/bitrate.h
+    lib/block.c
+    lib/books
+    lib/books/coupled
+    lib/books/coupled/res_books_51.h
+    lib/books/coupled/res_books_stereo.h
+    lib/books/floor
+    lib/books/floor/floor_books.h
+    lib/books/uncoupled
+    lib/books/uncoupled/res_books_uncoupled.h
+    lib/codebook.c
+    lib/codebook.h
+    lib/codec_internal.h
+    lib/envelope.c
+    lib/envelope.h
+    lib/floor0.c
+    lib/floor1.c
+    lib/highlevel.h
+    lib/info.c
+    lib/lookup.c
+    lib/lookup.h
+    lib/lookup_data.h
+    lib/lpc.c
+    lib/lpc.h
+    lib/lsp.c
+    lib/lsp.h
+    lib/mapping0.c
+    lib/masking.h
+    lib/mdct.c
+    lib/mdct.h
+    lib/misc.h
+    lib/modes
+    lib/modes/floor_all.h
+    lib/modes/psych_11.h
+    lib/modes/psych_16.h
+    lib/modes/psych_44.h
+    lib/modes/psych_8.h
+    lib/modes/residue_16.h
+    lib/modes/residue_44.h
+    lib/modes/residue_44p51.h
+    lib/modes/residue_44u.h
+    lib/modes/residue_8.h
+    lib/modes/setup_11.h
+    lib/modes/setup_16.h
+    lib/modes/setup_22.h
+    lib/modes/setup_32.h
+    lib/modes/setup_44.h
+    lib/modes/setup_44p51.h
+    lib/modes/setup_44u.h
+    lib/modes/setup_8.h
+    lib/modes/setup_X.h
+    lib/os.h
+    lib/psy.c
+    lib/psy.h
+    lib/registry.c
+    lib/registry.h
+    lib/res0.c
+    lib/scales.h
+    lib/sharedbook.c
+    lib/smallft.c
+    lib/smallft.h
+    lib/synthesis.c
+    lib/vorbisenc.c
+    lib/vorbisfile.c
+    lib/window.c
+    lib/window.h
+    )
+
+target_include_directories(
+    vorbis PUBLIC
+    ${VORBIS_INCLUDES_DIR} 
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/../libogg-1.3.2/include
+    )
+

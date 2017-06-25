@@ -1,0 +1,59 @@
+# CMakeLists.txt in celt
+
+SET(CELT_SRCS
+bands.c
+celt.c
+celt_decoder.c
+celt_encoder.c
+celt_lpc.c
+cwrs.c
+entcode.c
+entdec.c
+entenc.c
+kiss_fft.c
+laplace.c
+mathops.c
+mdct.c
+modes.c
+pitch.c
+quant_bands.c
+rate.c
+vq.c
+)
+
+SET(CELT_HEADERS
+    arch.h
+    bands.h
+    celt.h
+    celt_lpc.h
+    cpu_support.h
+    cwrs.h
+    ecintrin.h
+    entcode.h
+    entdec.h
+    entenc.h
+    fixed_debug.h
+    fixed_generic.h
+    float_cast.h
+    kiss_fft.h
+    laplace.h
+    mathops.h
+    mdct.h
+    mfrngcod.h
+    modes.h
+    os_support.h
+    pitch.h
+    quant_bands.h
+    rate.h
+    stack_alloc.h
+    static_modes_fixed.h
+    static_modes_float.h
+    vq.h
+    _kiss_fft_guts.h
+    )
+
+INCLUDE_DIRECTORIES(
+    ${OPUS_INCLUDES_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    )
