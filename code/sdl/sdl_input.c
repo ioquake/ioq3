@@ -191,15 +191,24 @@ IN_TranslateSDLToQ3Key
 static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 {
 	keyNum_t key = 0;
+	SDL_Keycode keycode = keysym->sym;
 
-	if( keysym->sym >= SDLK_SPACE && keysym->sym < SDLK_DELETE )
+	// On Windows, SDL always maps the number keys as such even if they
+	// actually map to other characters (eg, "1" is "&" on an AZERTY keyboard).
+	// This enforces the same behavior on all platforms.
+	if( keysym->scancode == SDL_SCANCODE_0 )
+		keycode = SDLK_0;
+	else if( keysym->scancode >= SDL_SCANCODE_1 && keysym->scancode <= SDL_SCANCODE_9 )
+		keycode = SDLK_1 + (keysym->scancode - SDL_SCANCODE_1);
+
+	if( keycode >= SDLK_SPACE && keycode < SDLK_DELETE )
 	{
 		// These happen to match the ASCII chars
-		key = (int)keysym->sym;
+		key = (int)keycode;
 	}
 	else
 	{
-		switch( keysym->sym )
+		switch( keycode )
 		{
 			case SDLK_PAGEUP:       key = K_PGUP;          break;
 			case SDLK_KP_9:         key = K_KP_PGUP;       break;
