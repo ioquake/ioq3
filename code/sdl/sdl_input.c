@@ -1051,8 +1051,37 @@ static void IN_ProcessEvents( void )
 							{
 								Com_QueueEvent( 0, SE_KEY, K_CONSOLE, qtrue, 0, NULL );
 								Com_QueueEvent( 0, SE_KEY, K_CONSOLE, qfalse, 0, NULL );
-							}
-							else
+							} else
+							if( utf32 == 0xDC ) //latin big letter u with diaeresis (U+00DC)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'U', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
+							if( utf32 == 0xFC ) //latin small letter u with diaeresis (U+00FC)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'u', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
+							if( utf32 == 0xD6 ) //latin big letter o with diaeresis (U+00D6)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'O', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
+							if( utf32 == 0xF6 ) //latin small letter o with diaeresis (U+00FC)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'o', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
+							if( utf32 == 0xC4 ) //latin big letter a with diaeresis (U+00C4)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'A', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
+							if( utf32 == 0xE4 ) //latin small letter a with diaeresis (U+00E4)
+							{
+								Com_QueueEvent( 0, SE_CHAR, 'a', 0, 0, NULL );
+								Com_QueueEvent( 0, SE_CHAR, 'e', 0, 0, NULL );
+							} else
 								Com_QueueEvent( 0, SE_CHAR, utf32, 0, 0, NULL );
 						}
           }
