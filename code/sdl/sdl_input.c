@@ -208,6 +208,10 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 		// These happen to match the ASCII chars
 		key = (int)keysym->sym;
 	}
+	else if (keysym->sym >= 0xA0 && keysym->sym <= 0xFF) {
+		// These are extended ASCII chars, map them to K_WORLD_0..95
+		key = K_WORLD_0 + (keysym->sym - 0xA0);
+	}
 	else
 	{
 		switch( keysym->sym )
