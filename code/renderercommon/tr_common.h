@@ -121,6 +121,7 @@ void  R_NoiseInit( void );
 
 image_t     *R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags );
 image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgType_t type, imgFlags_t flags, int internalFormat );
+image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLenum picFormat, int numMips, imgType_t type, imgFlags_t flags, int internalFormat );
 
 void R_IssuePendingRenderCommands( void );
 qhandle_t		 RE_RegisterShaderLightMap( const char *name, int lightmapIndex );
@@ -146,6 +147,7 @@ void R_LoadJPG( const char *name, byte **pic, int *width, int *height );
 void R_LoadPCX( const char *name, byte **pic, int *width, int *height );
 void R_LoadPNG( const char *name, byte **pic, int *width, int *height );
 void R_LoadTGA( const char *name, byte **pic, int *width, int *height );
+void R_LoadHDR( const char *name, byte **pic, int *width, int *height );
 
 /*
 ====================================================================

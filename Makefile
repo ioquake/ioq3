@@ -215,10 +215,6 @@ ifndef USE_INTERNAL_ZLIB
 USE_INTERNAL_ZLIB=$(USE_INTERNAL_LIBS)
 endif
 
-ifndef USE_INTERNAL_JPEG
-USE_INTERNAL_JPEG=$(USE_INTERNAL_LIBS)
-endif
-
 ifndef USE_LOCAL_HEADERS
 USE_LOCAL_HEADERS=$(USE_INTERNAL_LIBS)
 endif
@@ -258,7 +254,6 @@ BLIBDIR=$(MOUNT_DIR)/botlib
 NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
 Q3UIDIR=$(MOUNT_DIR)/q3_ui
-JPDIR=$(MOUNT_DIR)/jpeg-8c
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.2
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.5
 OPUSDIR=$(MOUNT_DIR)/opus-1.1.4
@@ -1093,18 +1088,6 @@ endif
 BASE_CFLAGS += $(ZLIB_CFLAGS)
 LIBS += $(ZLIB_LIBS)
 
-ifeq ($(USE_INTERNAL_JPEG),1)
-  BASE_CFLAGS += -DUSE_INTERNAL_JPEG
-  BASE_CFLAGS += -I$(JPDIR)
-else
-  # IJG libjpeg doesn't have pkg-config, but libjpeg-turbo uses libjpeg.pc;
-  # we fall back to hard-coded answers if libjpeg.pc is unavailable
-  JPEG_CFLAGS ?= $(shell pkg-config --silence-errors --cflags libjpeg || true)
-  JPEG_LIBS ?= $(shell pkg-config --silence-errors --libs libjpeg || echo -ljpeg)
-  BASE_CFLAGS += $(JPEG_CFLAGS)
-  RENDERER_LIBS += $(JPEG_LIBS)
-endif
-
 ifeq ($(USE_FREETYPE),1)
   FREETYPE_CFLAGS ?= $(shell pkg-config --silence-errors --cflags freetype2 || true)
   FREETYPE_LIBS ?= $(shell pkg-config --silence-errors --libs freetype2 || echo -lfreetype)
@@ -1687,7 +1670,6 @@ Q3OBJ = \
   \
   $(B)/client/unzip.o \
   $(B)/client/ioapi.o \
-  $(B)/client/puff.o \
   $(B)/client/vm.o \
   $(B)/client/vm_interpreted.o \
   \
@@ -1749,11 +1731,8 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_font.o \
   $(B)/renderergl2/tr_glsl.o \
   $(B)/renderergl2/tr_image.o \
-  $(B)/renderergl2/tr_image_bmp.o \
-  $(B)/renderergl2/tr_image_jpg.o \
+  $(B)/renderergl2/tr_image_stb.o \
   $(B)/renderergl2/tr_image_pcx.o \
-  $(B)/renderergl2/tr_image_png.o \
-  $(B)/renderergl2/tr_image_tga.o \
   $(B)/renderergl2/tr_image_dds.o \
   $(B)/renderergl2/tr_init.o \
   $(B)/renderergl2/tr_light.o \
@@ -1816,11 +1795,8 @@ Q3ROBJ = \
   $(B)/renderergl1/tr_flares.o \
   $(B)/renderergl1/tr_font.o \
   $(B)/renderergl1/tr_image.o \
-  $(B)/renderergl1/tr_image_bmp.o \
-  $(B)/renderergl1/tr_image_jpg.o \
+  $(B)/renderergl1/tr_image_stb.o \
   $(B)/renderergl1/tr_image_pcx.o \
-  $(B)/renderergl1/tr_image_png.o \
-  $(B)/renderergl1/tr_image_tga.o \
   $(B)/renderergl1/tr_init.o \
   $(B)/renderergl1/tr_light.o \
   $(B)/renderergl1/tr_main.o \
@@ -1844,65 +1820,13 @@ Q3ROBJ = \
 ifneq ($(USE_RENDERER_DLOPEN), 0)
   Q3ROBJ += \
     $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
     $(B)/renderergl1/q_math.o \
     $(B)/renderergl1/tr_subs.o
 
   Q3R2OBJ += \
     $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
     $(B)/renderergl1/q_math.o \
     $(B)/renderergl1/tr_subs.o
-endif
-
-ifneq ($(USE_INTERNAL_JPEG),0)
-  JPGOBJ = \
-    $(B)/renderergl1/jaricom.o \
-    $(B)/renderergl1/jcapimin.o \
-    $(B)/renderergl1/jcapistd.o \
-    $(B)/renderergl1/jcarith.o \
-    $(B)/renderergl1/jccoefct.o  \
-    $(B)/renderergl1/jccolor.o \
-    $(B)/renderergl1/jcdctmgr.o \
-    $(B)/renderergl1/jchuff.o   \
-    $(B)/renderergl1/jcinit.o \
-    $(B)/renderergl1/jcmainct.o \
-    $(B)/renderergl1/jcmarker.o \
-    $(B)/renderergl1/jcmaster.o \
-    $(B)/renderergl1/jcomapi.o \
-    $(B)/renderergl1/jcparam.o \
-    $(B)/renderergl1/jcprepct.o \
-    $(B)/renderergl1/jcsample.o \
-    $(B)/renderergl1/jctrans.o \
-    $(B)/renderergl1/jdapimin.o \
-    $(B)/renderergl1/jdapistd.o \
-    $(B)/renderergl1/jdarith.o \
-    $(B)/renderergl1/jdatadst.o \
-    $(B)/renderergl1/jdatasrc.o \
-    $(B)/renderergl1/jdcoefct.o \
-    $(B)/renderergl1/jdcolor.o \
-    $(B)/renderergl1/jddctmgr.o \
-    $(B)/renderergl1/jdhuff.o \
-    $(B)/renderergl1/jdinput.o \
-    $(B)/renderergl1/jdmainct.o \
-    $(B)/renderergl1/jdmarker.o \
-    $(B)/renderergl1/jdmaster.o \
-    $(B)/renderergl1/jdmerge.o \
-    $(B)/renderergl1/jdpostct.o \
-    $(B)/renderergl1/jdsample.o \
-    $(B)/renderergl1/jdtrans.o \
-    $(B)/renderergl1/jerror.o \
-    $(B)/renderergl1/jfdctflt.o \
-    $(B)/renderergl1/jfdctfst.o \
-    $(B)/renderergl1/jfdctint.o \
-    $(B)/renderergl1/jidctflt.o \
-    $(B)/renderergl1/jidctfst.o \
-    $(B)/renderergl1/jidctint.o \
-    $(B)/renderergl1/jmemmgr.o \
-    $(B)/renderergl1/jmemnobs.o \
-    $(B)/renderergl1/jquant1.o \
-    $(B)/renderergl1/jquant2.o \
-    $(B)/renderergl1/jutils.o
 endif
 
 ifeq ($(ARCH),x86)
@@ -2156,26 +2080,26 @@ $(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(LIBSDLMAIN)
 		-o $@ $(Q3OBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS)
 
-$(B)/renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
+$(B)/renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3ROBJ) $(JPGOBJ) \
+	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3ROBJ) \
 		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
 
-$(B)/renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ)
+$(B)/renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
+	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) \
 		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
 else
-$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) $(LIBSDLMAIN)
+$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(Q3ROBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) \
+		-o $@ $(Q3OBJ) $(Q3ROBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
 
-$(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) $(LIBSDLMAIN)
+$(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
+		-o $@ $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
 endif
 
@@ -2675,9 +2599,6 @@ $(B)/renderergl1/%.o: $(CMDIR)/%.c
 $(B)/renderergl1/%.o: $(SDLDIR)/%.c
 	$(DO_REF_CC)
 
-$(B)/renderergl1/%.o: $(JPDIR)/%.c
-	$(DO_REF_CC)
-
 $(B)/renderergl1/%.o: $(RCOMMONDIR)/%.c
 	$(DO_REF_CC)
 
@@ -2820,7 +2741,7 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # MISC
 #############################################################################
 
-OBJ = $(Q3OBJ) $(Q3ROBJ) $(Q3R2OBJ) $(Q3DOBJ) $(JPGOBJ) \
+OBJ = $(Q3OBJ) $(Q3ROBJ) $(Q3R2OBJ) $(Q3DOBJ) \
   $(MPGOBJ) $(Q3GOBJ) $(Q3CGOBJ) $(MPCGOBJ) $(Q3UIOBJ) $(MPUIOBJ) \
   $(MPGVMOBJ) $(Q3GVMOBJ) $(Q3CGVMOBJ) $(MPCGVMOBJ) $(Q3UIVMOBJ) $(MPUIVMOBJ)
 TOOLSOBJ = $(LBURGOBJ) $(Q3CPPOBJ) $(Q3RCCOBJ) $(Q3LCCOBJ) $(Q3ASMOBJ)
@@ -2922,8 +2843,7 @@ ifdef MINGW
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
 		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \
-		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB) \
-		USE_INTERNAL_JPEG=$(USE_INTERNAL_JPEG)
+		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB)
 else
 	@$(MAKE) VERSION=$(VERSION) -C $(LOKISETUPDIR) V=$(V)
 endif
