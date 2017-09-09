@@ -1503,7 +1503,7 @@ typedef struct {
 	int width;
 	int height;
 	char *fileName;
-	qboolean jpeg;
+	imgFileFormat_t fileFormat;
 } screenshotCommand_t;
 
 typedef struct {
@@ -1576,10 +1576,6 @@ void RE_StretchPic ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2, qhandle_t hShader );
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
-void RE_SaveJPG(char * filename, int quality, int image_width, int image_height,
-                unsigned char *image_buffer, int padding);
-size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
-		          int image_width, int image_height, byte *image_buffer, int padding);
 void RE_TakeVideoFrame( int width, int height,
 		byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
 

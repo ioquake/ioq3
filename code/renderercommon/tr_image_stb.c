@@ -135,8 +135,8 @@ static void RE_AppendToBuffer(void* context, void* data, int size)
 	*out += size;
 }
 
-size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
-    int image_width, int image_height, byte *image_buffer, int padding)
+size_t RE_SaveImageToBuffer(byte *buffer, size_t bufSize, int quality,
+    int image_width, int image_height, byte *image_buffer, int padding, imgFileFormat_t fileFormat)
 {
 	byte *out, *newImage;
 	int y;
@@ -151,8 +151,22 @@ size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
 	}
 
 	out = buffer;
-	if (!stbi_write_jpg_to_func(RE_AppendToBuffer, (void *)&out, image_width, image_height, 3, newImage, quality))
-		out = buffer;
+
+	if (fileFormat == IMGFILEFORMAT_JPG)
+	{
+		if (!stbi_write_jpg_to_func(RE_AppendToBuffer, (void *)&out, image_width, image_height, 3, newImage, quality))
+			out = buffer;
+	}
+	else if (fileFormat == IMGFILEFORMAT_PNG)
+	{
+		if (!stbi_write_png_to_func(RE_AppendToBuffer, (void *)&out, image_width, image_height, 3, newImage, image_width * 3))
+			out = buffer;
+	}
+	else if (fileFormat == IMGFILEFORMAT_TGA)
+	{
+		if (!stbi_write_tga_to_func(RE_AppendToBuffer, (void *)&out, image_width, image_height, 3, newImage))
+			out = buffer;
+	}
 
 	ri.Free(newImage);
 
@@ -160,7 +174,7 @@ size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
 }
 
 
-void RE_SaveJPG(char * filename, int quality, int image_width, int image_height, byte *image_buffer, int padding)
+void RE_SaveImage(char * filename, int quality, int image_width, int image_height, byte *image_buffer, int padding, imgFileFormat_t fileFormat)
 {
 	byte *out;
 	size_t bufSize;
@@ -168,7 +182,7 @@ void RE_SaveJPG(char * filename, int quality, int image_width, int image_height,
 	bufSize = image_width * image_height * 3;
 	out = ri.Hunk_AllocateTempMemory(bufSize);
 
-	bufSize = RE_SaveJPGToBuffer(out, bufSize, quality, image_width, image_height, image_buffer, padding);
+	bufSize = RE_SaveImageToBuffer(out, bufSize, quality, image_width, image_height, image_buffer, padding, fileFormat);
 	ri.FS_WriteFile(filename, out, bufSize);
 
 	ri.Hunk_FreeTempMemory(out);

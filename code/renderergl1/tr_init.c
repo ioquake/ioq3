@@ -394,69 +394,7 @@ byte *RB_ReadPixels(int x, int y, int width, int height, size_t *offset, int *pa
 RB_TakeScreenshot
 ================== 
 */  
-void RB_TakeScreenshot(int x, int y, int width, int height, char *fileName)
-{
-	byte *allbuf, *buffer;
-	byte *srcptr, *destptr;
-	byte *endline, *endmem;
-	byte temp;
-	
-	int linelen, padlen;
-	size_t offset = 18, memcount;
-		
-	allbuf = RB_ReadPixels(x, y, width, height, &offset, &padlen);
-	buffer = allbuf + offset - 18;
-	
-	Com_Memset (buffer, 0, 18);
-	buffer[2] = 2;		// uncompressed type
-	buffer[12] = width & 255;
-	buffer[13] = width >> 8;
-	buffer[14] = height & 255;
-	buffer[15] = height >> 8;
-	buffer[16] = 24;	// pixel size
-
-	// swap rgb to bgr and remove padding from line endings
-	linelen = width * 3;
-	
-	srcptr = destptr = allbuf + offset;
-	endmem = srcptr + (linelen + padlen) * height;
-	
-	while(srcptr < endmem)
-	{
-		endline = srcptr + linelen;
-
-		while(srcptr < endline)
-		{
-			temp = srcptr[0];
-			*destptr++ = srcptr[2];
-			*destptr++ = srcptr[1];
-			*destptr++ = temp;
-			
-			srcptr += 3;
-		}
-		
-		// Skip the pad
-		srcptr += padlen;
-	}
-
-	memcount = linelen * height;
-
-	// gamma correct
-	if(glConfig.deviceSupportsGamma)
-		R_GammaCorrect(allbuf + offset, memcount);
-
-	ri.FS_WriteFile(fileName, buffer, memcount + 18);
-
-	ri.Hunk_FreeTempMemory(allbuf);
-}
-
-/* 
-================== 
-RB_TakeScreenshotJPEG
-================== 
-*/
-
-void RB_TakeScreenshotJPEG(int x, int y, int width, int height, char *fileName)
+void RB_TakeScreenshot(int x, int y, int width, int height, char *fileName, imgFileFormat_t fileFormat)
 {
 	byte *buffer;
 	size_t offset = 0, memcount;
@@ -469,7 +407,7 @@ void RB_TakeScreenshotJPEG(int x, int y, int width, int height, char *fileName)
 	if(glConfig.deviceSupportsGamma)
 		R_GammaCorrect(buffer + offset, memcount);
 
-	RE_SaveJPG(fileName, r_screenshotJpegQuality->integer, width, height, buffer + offset, padlen);
+	RE_SaveImage(fileName, r_screenshotJpegQuality->integer, width, height, buffer + offset, padlen, fileFormat);
 	ri.Hunk_FreeTempMemory(buffer);
 }
 
@@ -483,10 +421,7 @@ const void *RB_TakeScreenshotCmd( const void *data ) {
 	
 	cmd = (const screenshotCommand_t *)data;
 	
-	if (cmd->jpeg)
-		RB_TakeScreenshotJPEG( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName);
-	else
-		RB_TakeScreenshot( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName);
+	RB_TakeScreenshot( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName, cmd->fileFormat);
 	
 	return (const void *)(cmd + 1);	
 }
@@ -496,7 +431,7 @@ const void *RB_TakeScreenshotCmd( const void *data ) {
 R_TakeScreenshot
 ==================
 */
-void R_TakeScreenshot( int x, int y, int width, int height, char *name, qboolean jpeg ) {
+void R_TakeScreenshot( int x, int y, int width, int height, char *name, imgFileFormat_t fileFormat ) {
 	static char	fileName[MAX_OSPATH]; // bad things if two screenshots per frame?
 	screenshotCommand_t	*cmd;
 
@@ -512,7 +447,7 @@ void R_TakeScreenshot( int x, int y, int width, int height, char *name, qboolean
 	cmd->height = height;
 	Q_strncpyz( fileName, name, sizeof(fileName) );
 	cmd->fileName = fileName;
-	cmd->jpeg = jpeg;
+	cmd->fileFormat = fileFormat;
 }
 
 /* 
@@ -520,11 +455,11 @@ void R_TakeScreenshot( int x, int y, int width, int height, char *name, qboolean
 R_ScreenshotFilename
 ================== 
 */  
-void R_ScreenshotFilename( int lastNumber, char *fileName ) {
+void R_ScreenshotFilename( int lastNumber, char *fileName, char *extension ) {
 	int		a,b,c,d;
 
 	if ( lastNumber < 0 || lastNumber > 9999 ) {
-		Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot9999.tga" );
+		Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot9999.%s", extension );
 		return;
 	}
 
@@ -536,33 +471,8 @@ void R_ScreenshotFilename( int lastNumber, char *fileName ) {
 	lastNumber -= c*10;
 	d = lastNumber;
 
-	Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot%i%i%i%i.tga"
-		, a, b, c, d );
-}
-
-/* 
-================== 
-R_ScreenshotFilename
-================== 
-*/  
-void R_ScreenshotFilenameJPEG( int lastNumber, char *fileName ) {
-	int		a,b,c,d;
-
-	if ( lastNumber < 0 || lastNumber > 9999 ) {
-		Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot9999.jpg" );
-		return;
-	}
-
-	a = lastNumber / 1000;
-	lastNumber -= a*1000;
-	b = lastNumber / 100;
-	lastNumber -= b*100;
-	c = lastNumber / 10;
-	lastNumber -= c*10;
-	d = lastNumber;
-
-	Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot%i%i%i%i.jpg"
-		, a, b, c, d );
+	Com_sprintf( fileName, MAX_OSPATH, "screenshots/shot%i%i%i%i.%s"
+		, a, b, c, d, extension );
 }
 
 /*
@@ -634,7 +544,7 @@ void R_LevelShot( void ) {
 
 /* 
 ================== 
-R_ScreenShot_f
+R_ScreenShot_helper
 
 screenshot
 screenshot [silent]
@@ -644,10 +554,12 @@ screenshot [filename]
 Doesn't print the pacifier message if there is a second arg
 ================== 
 */  
-void R_ScreenShot_f (void) {
+void R_ScreenShot_helper(imgFileFormat_t fileFormat)
+{
 	char	checkname[MAX_OSPATH];
 	static	int	lastNumber = -1;
 	qboolean	silent;
+	char *extension;
 
 	if ( !strcmp( ri.Cmd_Argv(1), "levelshot" ) ) {
 		R_LevelShot();
@@ -660,9 +572,16 @@ void R_ScreenShot_f (void) {
 		silent = qfalse;
 	}
 
+	if (fileFormat == IMGFILEFORMAT_JPG)
+		extension = "jpg";
+	else if (fileFormat == IMGFILEFORMAT_PNG)
+		extension = "png";
+	else //if (fileFormat == IMGFILEFORMAT_TGA)
+		extension = "tga";
+
 	if ( ri.Cmd_Argc() == 2 && !silent ) {
 		// explicit filename
-		Com_sprintf( checkname, MAX_OSPATH, "screenshots/%s.tga", ri.Cmd_Argv( 1 ) );
+		Com_sprintf( checkname, MAX_OSPATH, "screenshots/%s.%s", ri.Cmd_Argv( 1 ), extension );
 	} else {
 		// scan for a free filename
 
@@ -674,7 +593,7 @@ void R_ScreenShot_f (void) {
 		}
 		// scan for a free number
 		for ( ; lastNumber <= 9999 ; lastNumber++ ) {
-			R_ScreenshotFilename( lastNumber, checkname );
+			R_ScreenshotFilename( lastNumber, checkname, extension );
 
       if (!ri.FS_FileExists( checkname ))
       {
@@ -690,65 +609,24 @@ void R_ScreenShot_f (void) {
 		lastNumber++;
 	}
 
-	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, qfalse );
+	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, fileFormat );
 
 	if ( !silent ) {
 		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
 	}
-} 
+}
+
+void R_ScreenShot_f (void) {
+	R_ScreenShot_helper(IMGFILEFORMAT_TGA);
+}
 
 void R_ScreenShotJPEG_f (void) {
-	char		checkname[MAX_OSPATH];
-	static	int	lastNumber = -1;
-	qboolean	silent;
+	R_ScreenShot_helper(IMGFILEFORMAT_JPG);
+}
 
-	if ( !strcmp( ri.Cmd_Argv(1), "levelshot" ) ) {
-		R_LevelShot();
-		return;
-	}
-
-	if ( !strcmp( ri.Cmd_Argv(1), "silent" ) ) {
-		silent = qtrue;
-	} else {
-		silent = qfalse;
-	}
-
-	if ( ri.Cmd_Argc() == 2 && !silent ) {
-		// explicit filename
-		Com_sprintf( checkname, MAX_OSPATH, "screenshots/%s.jpg", ri.Cmd_Argv( 1 ) );
-	} else {
-		// scan for a free filename
-
-		// if we have saved a previous screenshot, don't scan
-		// again, because recording demo avis can involve
-		// thousands of shots
-		if ( lastNumber == -1 ) {
-			lastNumber = 0;
-		}
-		// scan for a free number
-		for ( ; lastNumber <= 9999 ; lastNumber++ ) {
-			R_ScreenshotFilenameJPEG( lastNumber, checkname );
-
-      if (!ri.FS_FileExists( checkname ))
-      {
-        break; // file doesn't exist
-      }
-		}
-
-		if ( lastNumber == 10000 ) {
-			ri.Printf (PRINT_ALL, "ScreenShot: Couldn't create a file\n"); 
-			return;
- 		}
-
-		lastNumber++;
-	}
-
-	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, qtrue );
-
-	if ( !silent ) {
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
-	}
-} 
+void R_ScreenShotPNG_f (void) {
+	R_ScreenShot_helper(IMGFILEFORMAT_PNG);
+}
 
 //============================================================================
 
@@ -791,9 +669,9 @@ const void *RB_TakeVideoFrameCmd( const void *data )
 
 	if(cmd->motionJpeg)
 	{
-		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, linelen * cmd->height,
+		memcount = RE_SaveImageToBuffer(cmd->encodeBuffer, linelen * cmd->height,
 			r_aviMotionJpegQuality->integer,
-			cmd->width, cmd->height, cBuf, padlen);
+			cmd->width, cmd->height, cBuf, padlen, IMGFILEFORMAT_JPG);
 		ri.CL_WriteAVIVideoFrame(cmd->encodeBuffer, memcount);
 	}
 	else
@@ -1150,6 +1028,7 @@ void R_Register( void )
 	ri.Cmd_AddCommand( "modelist", R_ModeList_f );
 	ri.Cmd_AddCommand( "screenshot", R_ScreenShot_f );
 	ri.Cmd_AddCommand( "screenshotJPEG", R_ScreenShotJPEG_f );
+	ri.Cmd_AddCommand( "screenshotPNG", R_ScreenShotPNG_f );
 	ri.Cmd_AddCommand( "gfxinfo", GfxInfo_f );
 	ri.Cmd_AddCommand( "minimize", GLimp_Minimize );
 }
@@ -1266,6 +1145,7 @@ void RE_Shutdown( qboolean destroyWindow ) {
 	ri.Cmd_RemoveCommand( "modelist" );
 	ri.Cmd_RemoveCommand( "screenshot" );
 	ri.Cmd_RemoveCommand( "screenshotJPEG" );
+	ri.Cmd_RemoveCommand( "screenshotPNG" );
 	ri.Cmd_RemoveCommand( "gfxinfo" );
 	ri.Cmd_RemoveCommand( "minimize" );
 

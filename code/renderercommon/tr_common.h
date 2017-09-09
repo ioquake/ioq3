@@ -28,6 +28,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 typedef enum
 {
+	IMGFILEFORMAT_TGA,
+	IMGFILEFORMAT_PNG,
+	IMGFILEFORMAT_JPG
+} imgFileFormat_t;
+
+typedef enum
+{
 	IMGTYPE_COLORALPHA, // for color, lightmap, diffuse, and specular
 	IMGTYPE_NORMAL,
 	IMGTYPE_NORMALHEIGHT,
@@ -134,6 +141,11 @@ void R_InitFreeType( void );
 void R_DoneFreeType( void );
 void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font);
 
+void RE_SaveImage(char * filename, int quality, int image_width, int image_height,
+	unsigned char *image_buffer, int padding, imgFileFormat_t fileFormat);
+size_t RE_SaveImageToBuffer(byte *buffer, size_t bufSize, int quality,
+	  int image_width, int image_height, byte *image_buffer, int padding, imgFileFormat_t fileFormat);
+
 /*
 =============================================================
 
@@ -148,6 +160,7 @@ void R_LoadPCX( const char *name, byte **pic, int *width, int *height );
 void R_LoadPNG( const char *name, byte **pic, int *width, int *height );
 void R_LoadTGA( const char *name, byte **pic, int *width, int *height );
 void R_LoadHDR( const char *name, byte **pic, int *width, int *height );
+
 
 /*
 ====================================================================
