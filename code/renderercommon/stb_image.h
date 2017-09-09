@@ -3683,24 +3683,36 @@ static stbi_uc *load_jpeg_image(stbi__jpeg *z, int *out_x, int *out_y, int *comp
 static void *stbi__jpeg_load(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri)
 {
    unsigned char* result;
+#ifdef STBI_TEMP_ON_STACK
+   stbi__jpeg js, *j = &js;
+#else
    stbi__jpeg* j = (stbi__jpeg*) stbi__malloc(sizeof(stbi__jpeg));
+#endif
    STBI_NOTUSED(ri);
    j->s = s;
    stbi__setup_jpeg(j);
    result = load_jpeg_image(j, x,y,comp,req_comp);
+#ifndef STBI_TEMP_ON_STACK
    STBI_FREE(j);
+#endif
    return result;
 }
 
 static int stbi__jpeg_test(stbi__context *s)
 {
    int r;
+#ifdef STBI_TEMP_ON_STACK
+   stbi__jpeg js, *j = &js;
+#else
    stbi__jpeg* j = (stbi__jpeg*)stbi__malloc(sizeof(stbi__jpeg));
+#endif
    j->s = s;
    stbi__setup_jpeg(j);
    r = stbi__decode_jpeg_header(j, STBI__SCAN_type);
    stbi__rewind(s);
+#ifndef STBI_TEMP_ON_STACK
    STBI_FREE(j);
+#endif
    return r;
 }
 
@@ -3719,10 +3731,16 @@ static int stbi__jpeg_info_raw(stbi__jpeg *j, int *x, int *y, int *comp)
 static int stbi__jpeg_info(stbi__context *s, int *x, int *y, int *comp)
 {
    int result;
+#ifdef STBI_TEMP_ON_STACK
+   stbi__jpeg js, *j = &js;
+#else
    stbi__jpeg* j = (stbi__jpeg*) (stbi__malloc(sizeof(stbi__jpeg)));
+#endif
    j->s = s;
    result = stbi__jpeg_info_raw(j, x, y, comp);
+#ifndef STBI_TEMP_ON_STACK
    STBI_FREE(j);
+#endif
    return result;
 }
 #endif
@@ -6110,15 +6128,23 @@ static int stbi__gif_header(stbi__context *s, stbi__gif *g, int *comp, int is_in
 
 static int stbi__gif_info_raw(stbi__context *s, int *x, int *y, int *comp)
 {
+#ifdef STBI_TEMP_ON_STACK
+   stbi__gif gs, *g = &gs;
+#else
    stbi__gif* g = (stbi__gif*) stbi__malloc(sizeof(stbi__gif));
+#endif
    if (!stbi__gif_header(s, g, comp, 1)) {
+#ifndef STBI_TEMP_ON_STACK
       STBI_FREE(g);
+#endif
       stbi__rewind( s );
       return 0;
    }
    if (x) *x = g->w;
    if (y) *y = g->h;
+#ifndef STBI_TEMP_ON_STACK
    STBI_FREE(g);
+#endif
    return 1;
 }
 
@@ -6374,7 +6400,11 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
 static void *stbi__gif_load(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri)
 {
    stbi_uc *u = 0;
+#ifdef STBI_TEMP_ON_STACK
+   stbi__gif gs, *g = &gs;
+#else
    stbi__gif* g = (stbi__gif*) stbi__malloc(sizeof(stbi__gif));
+#endif
    memset(g, 0, sizeof(*g));
    STBI_NOTUSED(ri);
 
@@ -6388,7 +6418,9 @@ static void *stbi__gif_load(stbi__context *s, int *x, int *y, int *comp, int req
    }
    else if (g->out)
       STBI_FREE(g->out);
+#ifndef STBI_TEMP_ON_STACK
    STBI_FREE(g);
+#endif
    return u;
 }
 

@@ -56,6 +56,7 @@ static void R_LocalFree(void *ptr)
 #define STBI_NO_GIF
 #define STBI_NO_PIC
 #define STBI_NO_PNM
+#define STBI_TEMP_ON_STACK
 //#define STB_IMAGE_STATIC
 #include "stb_image.h"
 
