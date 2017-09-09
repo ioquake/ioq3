@@ -5529,9 +5529,7 @@ static void *stbi__tga_load(stbi__context *s, int *x, int *y, int *comp, int req
          --RLE_count;
       }
       //   do I need to invert the image?
-#ifndef STBI_TGA_FORCE_INVERT
       if ( tga_inverted )
-#endif
       {
          for (j = 0; j*2 < tga_height; ++j)
          {

@@ -44,7 +44,8 @@ static void* R_LocalReallocSized(void *ptr, size_t old_size, size_t new_size)
 
 static void R_LocalFree(void *ptr)
 {
-	ri.Free(ptr);
+	if (ptr)
+		ri.Free(ptr);
 }
 
 #define STBI_MALLOC R_LocalMalloc
@@ -56,7 +57,6 @@ static void R_LocalFree(void *ptr)
 #define STBI_NO_GIF
 #define STBI_NO_PIC
 #define STBI_NO_PNM
-#define STBI_TGA_FORCE_INVERT
 #define STBI_TEMP_ON_STACK
 //#define STB_IMAGE_STATIC
 #include "stb_image.h"
@@ -72,8 +72,9 @@ static void R_LocalFree(void *ptr)
 #define IMG_BYTE 0
 #define IMG_FLOAT 1
 
-void R_LoadSTB( const char *name, byte **pic, int *width, int *height, int comp, int type)
+void R_LoadSTB( const char *name, byte **pic, int *width, int *height, int comp, int outputType, imgFileFormat_t fileFormat)
 {
+	stbi__context sContext;
 	byte *raw;
 	int x, y, n, len;
 
@@ -87,10 +88,82 @@ void R_LoadSTB( const char *name, byte **pic, int *width, int *height, int comp,
 	if (!raw || len < 0)
 		return;
 
-	if (type == IMG_BYTE)
+	// Enforce file extensions matching format.
+	// This uses stb_image functions that are supposed to be internal.
+	stbi__start_mem(&sContext, raw, len);
+	switch(fileFormat)
+	{
+		case IMGFILEFORMAT_TGA:
+			if (!stbi__tga_test(&sContext))
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) could not load as TGA\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+
+		case IMGFILEFORMAT_JPG:
+			if (!stbi__jpeg_test(&sContext))
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) could not load as JPEG\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+
+		case IMGFILEFORMAT_PNG:
+			if (!stbi__png_test(&sContext))
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) could not load as BMP\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+
+		case IMGFILEFORMAT_BMP:
+			if (!stbi__tga_test(&sContext))
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) could not load as TGA\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+
+		case IMGFILEFORMAT_PCX:
+			if (1)
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) does not support PCX\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+
+		case IMGFILEFORMAT_HDR:
+			if (!stbi__hdr_test(&sContext))
+			{
+				ri.Printf(PRINT_DEVELOPER, "R_LoadSTB(%s) could not load as HDR\n", name);
+				ri.FS_FreeFile (raw);
+				return;
+			}
+			break;
+	}
+
+	// Special code to deal with q3's original tga parsing
+	// q3 originally loaded all TGAs as bottom-up images, but stb_image correctly
+	// reorients them based on their attributes, so just reflip them here.
+	if (fileFormat == IMGFILEFORMAT_TGA && (raw[17] & 0x20))
+	{
+		ri.Printf( PRINT_WARNING, "WARNING: '%s' TGA file header declares top-down image, flipping to match q3\n", name);
+		stbi_set_flip_vertically_on_load(1);
+	}
+
+	if (outputType == IMG_BYTE)
 		*pic = stbi_load_from_memory(raw, len, &x, &y, &n, comp);
 	else
 		*pic = (byte *)stbi_loadf_from_memory(raw, len, &x, &y, &n, comp);
+
+	// reset flip in case image loads are done elsewhere
+	stbi_set_flip_vertically_on_load(0);
 
 	ri.FS_FreeFile (raw);
 
@@ -105,27 +178,27 @@ void R_LoadSTB( const char *name, byte **pic, int *width, int *height, int comp,
 
 void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 {
-	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE);
+	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE, IMGFILEFORMAT_BMP);
 }
 
 void R_LoadJPG( const char *name, byte **pic, int *width, int *height )
 {
-	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE);
+	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE, IMGFILEFORMAT_JPG);
 }
 
 void R_LoadPNG( const char *name, byte **pic, int *width, int *height )
 {
-	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE);
+	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE, IMGFILEFORMAT_PNG);
 }
 
 void R_LoadTGA( const char *name, byte **pic, int *width, int *height )
 {
-	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE);
+	R_LoadSTB(name, pic, width, height, 4, IMG_BYTE, IMGFILEFORMAT_TGA);
 }
 
 void R_LoadHDR( const char *name, byte **pic, int *width, int *height )
 {
-	R_LoadSTB(name, pic, width, height, 3, IMG_FLOAT);
+	R_LoadSTB(name, pic, width, height, 3, IMG_FLOAT, IMGFILEFORMAT_HDR);
 }
 
 static void RE_AppendToBuffer(void* context, void* data, int size)
