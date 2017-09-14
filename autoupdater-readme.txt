@@ -21,7 +21,7 @@ The basic flow looks like this:
 - The updater downloads a manifest from a known URL over https://, using
   libCurl. The base URL is platform-specific (it might be
   https://example.com/mac/, or https://example.com/linux-x86/, whatever).
-  The url might have other features, like a updater version or a specific
+  The url might have other features, like an updater version or a specific
   product name, etc.
   The manifest is at $BASEURL/manifest.txt
 - The updater also downloads $BASEURL/manifest.txt.sig, which is a digital
@@ -34,7 +34,7 @@ Contents/MacOS/baseq3/uix86_64.dylib
 332428
 a49bbe77f8eb6c195265ea136f881f7830db58e4d8a883b27f59e1e23e396a20
 
-- That's the file's path, its size in bytes, and an sha256 hash of the data.
+- That's the file's path, its size in bytes, and a sha256 hash of the data.
 - The file will be at this path under the base url on the webserver.
 - The manifest only lists files that ever needed updating; it's not necessary
   to list every file in the game's installation (unless you want to allow the
@@ -131,7 +131,7 @@ program, the admin will sign the manifest, generating manifest.txt.sig.
 The public key ships with the game (adding 270 bytes to the download), the
 .sig is downloaded with the manifest by the autoupdater (256 bytes extra
 download), then the autoupdater checks the manifest against the signature
-with the public key. if the signature isn't valid (the manifest was tampered
+with the public key. If the signature isn't valid (the manifest was tampered
 with or corrupt), the autoupdater refuses to continue.
 
 If the manifest is to be trusted, it lists sha256 checksums for every file to
