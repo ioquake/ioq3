@@ -35,7 +35,7 @@ The map editor and associated compiling tools are not included. We suggest you
 use a modern copy from http://icculus.org/gtkradiant/.
 
 The original id software readme that accompanied the Q3 source release has been
-renamed to id-readme.txt so as to prevent confusion. Please refer to the
+renamed to [id-readme.txt](https://github.com/ioquake/ioq3/blob/master/id-readme.txt) to prevent confusion. Please refer to the
 website for updated status.
 
 More documentation including a Player's Guide and Sysadmin Guide is on:
@@ -65,14 +65,14 @@ For Mac OS X, building a Universal Binary
 
 Installation, for *nix
   1. Set the COPYDIR variable in the shell to be where you installed Quake 3
-     to. By default it will be /usr/local/games/quake3 if you haven't set it.
+     to. By default, it will be /usr/local/games/quake3 if you haven't set it.
      This is the path as used by the original Linux Q3 installer and subsequent
      point releases.
   2. Run 'make copyfiles'.
 
 It is also possible to cross compile for Windows under *nix using MinGW. Your
 distribution may have mingw32 packages available. On debian/Ubuntu, you need to
-install 'mingw-w64'. Thereafter cross compiling is simply a case running
+install 'mingw-w64'. Thereafter, cross compiling is simply a case running
 'PLATFORM=mingw32 ARCH=x86 make' in place of 'make'. ARCH may also be set to
 x86_64.
 
@@ -136,37 +136,37 @@ The defaults for these variables differ depending on the target platform.
   cl_cURLLib                        - filename of cURL library to load
   cl_consoleKeys                    - space delimited list of key names or
                                       characters that toggle the console
-  cl_mouseAccelStyle                - Set to 1 for QuakeLive mouse acceleration
-                                      behaviour, 0 for standard q3
-  cl_mouseAccelOffset               - Tuning the acceleration curve, see below
+  cl_mouseAccelStyle                - set to 1 for QuakeLive mouse acceleration
+                                      behavior, 0 for standard q3
+  cl_mouseAccelOffset               - suning the acceleration curve, see below
 
-  con_autochat                      - Set to 0 to disable sending console input
+  con_autochat                      - set to 0 to disable sending console input
                                       text as chat when there is not a slash
                                       at the beginning
-  con_autoclear                     - Set to 0 to disable clearing console
+  con_autoclear                     - set to 0 to disable clearing console
                                       input text when console is closed
 
-  in_joystickUseAnalog              - Do not translate joystick axis events
+  in_joystickUseAnalog              - do not translate joystick axis events
                                       to keyboard commands
 
-  j_forward                         - Joystick analogue to m_forward,
+  j_forward                         - joystick analogue to m_forward,
                                       for forward movement speed/direction.
-  j_side                            - Joystick analogue to m_side,
+  j_side                            - joystick analogue to m_side,
                                       for side movement speed/direction.
-  j_up                              - Joystick up movement speed/direction.
-  j_pitch                           - Joystick analogue to m_pitch,
+  j_up                              - joystick up movement speed/direction.
+  j_pitch                           - joystick analogue to m_pitch,
                                       for pitch rotation speed/direction.
-  j_yaw                             - Joystick analogue to m_yaw,
+  j_yaw                             - joystick analogue to m_yaw,
                                       for yaw rotation speed/direction.
-  j_forward_axis                    - Selects which joystick axis
+  j_forward_axis                    - selects which joystick axis
                                       controls forward/back.
-  j_side_axis                       - Selects which joystick axis
+  j_side_axis                       - selects which joystick axis
                                       controls left/right.
-  j_up_axis                         - Selects which joystick axis
+  j_up_axis                         - selects which joystick axis
                                       controls up/down.
-  j_pitch_axis                      - Selects which joystick axis
+  j_pitch_axis                      - selects which joystick axis
                                       controls pitch.
-  j_yaw_axis                        - Selects which joystick axis
+  j_yaw_axis                        - selects which joystick axis
                                       controls yaw.
 
   s_useOpenAL                       - use the OpenAL sound backend if available
@@ -203,31 +203,31 @@ The defaults for these variables differ depending on the target platform.
 
   com_ansiColor                     - enable use of ANSI escape codes in the tty
   com_altivec                       - enable use of altivec on PowerPC systems
-  com_standalone (read only)        - If set to 1, quake3 is running in
+  com_standalone (read only)        - if set to 1, quake3 is running in
                                       standalone mode
-  com_basegame                      - Use a different base than baseq3. If no
+  com_basegame                      - use a different base than baseq3. If no
                                       original Quake3 or TeamArena pak files
                                       are found, this will enable running in
                                       standalone mode
-  com_homepath                      - Specify name that is to be appended to the
+  com_homepath                      - specify name that is to be appended to the
                                       home path
-  com_legacyprotocol                - Specify protocol version number for
+  com_legacyprotocol                - specify protocol version number for
                                       legacy Quake3 1.32c protocol, see
                                       "Network protocols" section below
                                       (startup only)
-  com_maxfpsUnfocused               - Maximum frames per second when unfocused
-  com_maxfpsMinimized               - Maximum frames per second when minimized
-  com_busyWait                      - Will use a busy loop to wait for rendering
+  com_maxfpsUnfocused               - maximum frames per second when unfocused
+  com_maxfpsMinimized               - maximum frames per second when minimized
+  com_busyWait                      - will use a busy loop to wait for rendering
                                       next frame when set to non-zero value
-  com_pipefile                      - Specify filename to create a named pipe
+  com_pipefile                      - specify filename to create a named pipe
                                       through which other processes can control
                                       the server while it is running.
                                       Nonfunctional on Windows.
-  com_gamename                      - Gamename sent to master server in
+  com_gamename                      - gamename sent to master server in
                                       getservers[Ext] query and infoResponse
                                       "gamename" infostring value. Also used
                                       for filtering local network games.
-  com_protocol                      - Specify protocol version number for
+  com_protocol                      - specify protocol version number for
                                       current ioquake3 protocol, see
                                       "Network protocols" section below
                                       (startup only)
@@ -238,7 +238,7 @@ The defaults for these variables differ depending on the target platform.
 
   sv_dlURL                          - the base of the HTTP or FTP site that
                                       holds custom pk3 files for your server
-  sv_banFile                        - Name of the file that is used for storing
+  sv_banFile                        - name of the file that is used for storing
                                       the server bans
 
   net_ip6                           - IPv6 address to bind to
@@ -247,7 +247,7 @@ The defaults for these variables differ depending on the target platform.
                                       number for option to enable it:
                                       enable ipv4 networking:    1
                                       enable ipv6 networking:    2
-                                      prioritise ipv6 over ipv4: 4
+                                      prioritize ipv6 over ipv4: 4
                                       disable multicast support: 8
   net_mcast6addr                    - multicast address to use for scanning for
                                       ipv6 servers on the local network
@@ -261,7 +261,7 @@ The defaults for these variables differ depending on the target platform.
                                       supports values in the range of 0 to 1
   r_stereoEnabled                   - enable stereo rendering for techniques
                                       like shutter glasses (untested)
-  r_anaglyphMode                    - Enable rendering of anaglyph images
+  r_anaglyphMode                    - enable rendering of anaglyph images
                                       red-cyan glasses:    1
                                       red-blue:            2
                                       red-green:           3
@@ -271,25 +271,25 @@ The defaults for these variables differ depending on the target platform.
                                       color combination. For red-blue and
                                       red-green you probably want to enable
                                       r_greyscale
-  r_stereoSeparation                - Control eye separation. Resulting
+  r_stereoSeparation                - control eye separation. Resulting
                                       separation is r_zProj divided by this
                                       value in quake3 standard units.
                                       See also
                                       http://wiki.ioquake3.org/Stereo_Rendering
                                       for more information
-  r_marksOnTriangleMeshes           - Support impact marks on md3 models, MOD
+  r_marksOnTriangleMeshes           - support impact marks on md3 models, MOD
                                       developers should increase the mark
                                       triangle limits in cg_marks.c if they
                                       intend to use this.
   r_sdlDriver                       - read only, indicates the SDL driver
                                       backend being used
-  r_noborder                        - Remove window decoration from window
+  r_noborder                        - remove window decoration from window
                                       managers, like borders and titlebar.
-  r_screenshotJpegQuality           - Controls quality of jpeg screenshots
+  r_screenshotJpegQuality           - controls quality of jpeg screenshots
                                       captured using screenshotJPEG
-  r_aviMotionJpegQuality            - Controls quality of video capture when
+  r_aviMotionJpegQuality            - controls quality of video capture when
                                       cl_aviMotionJpeg is enabled
-  r_mode -2                         - This new video mode automatically uses the
+  r_mode -2                         - this new video mode automatically uses the
                                       desktop resolution.
 ```
 
@@ -299,9 +299,9 @@ The defaults for these variables differ depending on the target platform.
   video [filename]        - start video capture (use with demo command)
   stopvideo               - stop video capture
   stopmusic               - stop background music
-  minimize                - Minimize the game and show desktop
+  minimize                - minimize the game and show desktop
   togglemenu              - causes escape key event for opening/closing menu, or
-                            going to a previous menu. works in binds, even in UI
+                            going to a previous menu. Works in binds, even in UI
 
   print                   - print out the contents of a cvar
   unset                   - unset a user created cvar
@@ -317,7 +317,7 @@ The defaults for these variables differ depending on the target platform.
   flushbans               - delete all bans
 
   net_restart             - restart network subsystem to change latched settings
-  game_restart <fs_game>  - Switch to another mod
+  game_restart <fs_game>  - switch to another mod
 
   which <filename/path>   - print out the path on disk to a loaded item
 
@@ -353,7 +353,7 @@ If you wish to compile external mods as shared libraries on a 64bit platform,
 and the mod source is derived from the id Q3 SDK, you will need to modify the
 interface code a little. Open the files ending in _syscalls.c and change
 every instance of int to intptr_t in the declaration of the syscall function
-pointer and the dllEntry function. Also find the vmMain function for each
+pointer and the dllEntry function. Also, find the vmMain function for each
 module (usually in cg_main.c g_main.c etc.) and similarly replace the return
 value in the prototype with intptr_t (arg0, arg1, ...stay int).
 
@@ -395,10 +395,10 @@ website. Just make sure the game is called with:
 
     +set com_basegame <yournewbase>
 
-in any links/scripts you install for your users to start the game. The
+In any links/scripts you install for your users to start the game. The
 binary must not detect any original quake3 game pak files. If this
 condition is met, the game will set com_standalone to 1 and is then running
-in stand alone mode.
+in standalone mode.
 
 If you want the engine to use a different directory in your homepath than
 e.g. "Quake3" on Windows or ".q3a" on Linux, then set a new name at startup
@@ -406,7 +406,7 @@ by adding
 
     +set com_homepath <homedirname>
 
-to the command line. You can also control which game name to use when talking
+To the command line. You can also control which game name to use when talking
 to the master server:
 
     +set com_gamename <gamename>
@@ -459,8 +459,8 @@ result in missing placeholder textures where the map is used with the id
 Quake 3 client or earlier versions of ioquake3.
 
 Recent versions of GtkRadiant and q3map2 support PNG images without
-modification. However GtkRadiant is not aware that PNG textures are supported
-by ioquake3. To change this behaviour open the file 'q3.game' in the 'games'
+modification. However, GtkRadiant is not aware that PNG textures are supported
+by ioquake3. To change this behavior open the file 'q3.game' in the 'games'
 directory of the GtkRadiant base directory with an editor and change the
 line:
 
@@ -478,13 +478,13 @@ IPv6 support requires a header named "wspiapi.h" to abstract away from
 differences in earlier versions of Windows' IPv6 stack. There is no MinGW
 equivalent of this header and the Microsoft version is obviously not
 redistributable, so in its absence we're forced to require Windows XP.
-However if this header is acquired separately and placed in the qcommon/
+However, if this header is acquired separately and placed in the qcommon/
 directory, this restriction is lifted.
 
 
 # Contributing
 
-Please send all patches to bugzilla (https://bugzilla.icculus.org), or as a GitHub pull request and
+Please send all patches to Bugzilla (https://bugzilla.icculus.org), or as a GitHub pull request and
 submit your patch there.
 
 The focus for ioq3 is to develop a stable base suitable for further development
