@@ -239,6 +239,15 @@ ifndef DEBUG_CFLAGS
 DEBUG_CFLAGS=-ggdb -O0
 endif
 
+#define the openGL library to link to
+#possible values are for LDFLAGS:
+# GL for libGL
+# GLESv2 for libGLESv2
+# and so on for other providers...
+ifndef OPENGL_PROVIDER
+OPENGL_PROVIDER="GL"
+endif
+
 #############################################################################
 
 BD=$(BUILD_DIR)/debug-$(PLATFORM)-$(ARCH)
@@ -381,7 +390,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   AUTOUPDATER_LIBS += -ldl
 
   CLIENT_LIBS=$(SDL_LIBS)
-  RENDERER_LIBS = $(SDL_LIBS) -lGL
+  RENDERER_LIBS = $(SDL_LIBS) -l$(OPENGL_PROVIDER)
 
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
@@ -699,7 +708,7 @@ ifeq ($(PLATFORM),freebsd)
   CLIENT_LIBS =
 
   CLIENT_LIBS += $(SDL_LIBS)
-  RENDERER_LIBS = $(SDL_LIBS) -lGL
+  RENDERER_LIBS = $(SDL_LIBS) -l$(OPENGL_PROVIDER)
 
   # optional features/libraries
   ifeq ($(USE_OPENAL),1)
@@ -790,7 +799,7 @@ ifeq ($(PLATFORM),openbsd)
   CLIENT_LIBS =
 
   CLIENT_LIBS += $(SDL_LIBS)
-  RENDERER_LIBS = $(SDL_LIBS) -lGL
+  RENDERER_LIBS = $(SDL_LIBS) -l$(OPENGL_PROVIDER)
 
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
@@ -853,7 +862,7 @@ ifeq ($(PLATFORM),irix64)
   # FIXME: The X libraries probably aren't necessary?
   CLIENT_LIBS=-L/usr/X11/$(LIB) $(SDL_LIBS) \
     -lX11 -lXext -lm
-  RENDERER_LIBS = $(SDL_LIBS) -lGL
+  RENDERER_LIBS = $(SDL_LIBS) -l$(OPENGL_PROVIDER)
 
 else # ifeq IRIX
 
@@ -909,7 +918,7 @@ ifeq ($(PLATFORM),sunos)
   BOTCFLAGS=-O0
 
   CLIENT_LIBS +=$(SDL_LIBS) -lX11 -lXext -liconv -lm
-  RENDERER_LIBS = $(SDL_LIBS) -lGL
+  RENDERER_LIBS = $(SDL_LIBS) -l$(OPENGL_PROVIDER)
 
 else # ifeq sunos
 
@@ -1355,6 +1364,9 @@ endif
 	@echo ""
 	@echo "  AUTOUPDATER_LIBS:"
 	$(call print_wrapped, $(AUTOUPDATER_LIBS))
+	@echo ""
+	@echo "  OPENGL PROVIDER:"
+	$(call print_wrapped, $(OPENGL_PROVIDER))
 	@echo ""
 	@echo "  Output:"
 	$(call print_list, $(NAKED_TARGETS))
