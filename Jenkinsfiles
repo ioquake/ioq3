@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                
+                echo 'Building..'
+                make release
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing..'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying....'
+                COPYDIR=~/Desktop/jenkins_/build/ make copyfiles
+            }
+        }
+    }
+}
