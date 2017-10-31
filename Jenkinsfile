@@ -6,10 +6,9 @@ pipeline {
         sh 'make release'
       }
     }
-    stage('Archive') {
+    stage('Deploy') {
       steps {
-        sh '''COPYDIR=~/Desktop/_jenkins/ make copyfiles
-cd ~/Desktop/ && zip build$RANDOM.zip _jenkins'''
+        sh 'COPYDIR=~/Desktop/_jenkins/ make copyfiles & disown'
       }
     }
   }
