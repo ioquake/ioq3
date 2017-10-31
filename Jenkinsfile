@@ -23,3 +23,10 @@ pipeline {
     PLATFORM = 'darwin'
   }
 }
+post {
+        always {
+            archive 'build/libs/**/*.jar'
+            junit 'build/reports/**/*.xml'
+        }
+    }
+}
