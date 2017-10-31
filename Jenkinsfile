@@ -8,12 +8,13 @@ pipeline {
     }
     stage('Deploy') {
       steps {
-        sh 'COPYDIR=~/Desktop/jenkins/build make copyfiles & disown'
+        sh 'COPYDIR=./artifacts make copyfiles & disown'
       }
     }
     stage('Clean') {
       steps {
-        sh 'make distclean'
+        sh '''make distclean
+'''
       }
     }
   }
