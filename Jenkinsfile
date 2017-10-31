@@ -11,6 +11,11 @@ pipeline {
         sh 'COPYDIR=~/Desktop/jenkins/build make copyfiles & disown'
       }
     }
+    stage('Clean') {
+      steps {
+        sh 'make distclean'
+      }
+    }
   }
   environment {
     ARCH = 'x86_64'
