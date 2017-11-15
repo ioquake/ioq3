@@ -205,6 +205,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 	dsurface_t  *surf;
 	int			len;
 	byte		*image;
+	int			imageSize;
 	int			i, j, numLightmaps, textureInternalFormat = 0;
 	int			numLightmapsPerPage = 16;
 	float maxIntensity = 0;
@@ -241,7 +242,8 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 		}
 	}
 
-	image = ri.Malloc(tr.lightmapSize * tr.lightmapSize * 4 * 2);
+	imageSize = tr.lightmapSize * tr.lightmapSize * 4 * 2;
+	image = ri.Malloc(imageSize);
 
 	if (tr.worldDeluxeMapping)
 		numLightmaps >>= 1;
@@ -293,7 +295,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 
 		for (i = 0; i < tr.numLightmaps; i++)
 		{
-			tr.lightmaps[i] = R_CreateImage(va("_fatlightmap%d", i), NULL, width, height, IMGTYPE_COLORALPHA, imgFlags, textureInternalFormat);
+			tr.lightmaps[i] = R_CreateImage2(va("_fatlightmap%d", i), NULL, width, height, textureInternalFormat, 0, IMGTYPE_COLORALPHA, imgFlags, textureInternalFormat);
 
 			if (tr.worldDeluxeMapping)
 				tr.deluxemaps[i] = R_CreateImage(va("_fatdeluxemap%d", i), NULL, width, height, IMGTYPE_DELUXE, imgFlags, 0);
@@ -319,7 +321,8 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 		{
 			char filename[MAX_QPATH];
 			byte *hdrLightmap = NULL;
-			int size = 0;
+			int lightmapWidth = tr.lightmapSize;
+			int lightmapHeight = tr.lightmapSize;
 
 			// look for hdr lightmaps
 			if (textureInternalFormat == GL_RGBA16)
@@ -327,37 +330,37 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 				Com_sprintf( filename, sizeof( filename ), "maps/%s/lm_%04d.hdr", s_worldData.baseName, i * (tr.worldDeluxeMapping ? 2 : 1) );
 				//ri.Printf(PRINT_ALL, "looking for %s\n", filename);
 
-				size = ri.FS_ReadFile(filename, (void **)&hdrLightmap);
+				R_LoadHDR(filename, &hdrLightmap, &lightmapWidth, &lightmapHeight);
+
+				if (hdrLightmap)
+				{
+					int newImageSize = lightmapWidth * lightmapHeight * 4 * 2;
+
+					if (r_mergeLightmaps->integer && (lightmapWidth != tr.lightmapSize || lightmapHeight != tr.lightmapSize))
+					{
+						ri.Printf(PRINT_ALL, "Error loading %s: non %dx%d lightmaps require r_mergeLightmaps 0.\n", filename, tr.lightmapSize, tr.lightmapSize);
+						ri.Free(hdrLightmap);
+						hdrLightmap = NULL;
+					}
+					else if (newImageSize > imageSize)
+					{
+						ri.Free(image);
+						imageSize = newImageSize;
+						image = ri.Malloc(imageSize);
+					}
+				}
+
+				if (!hdrLightmap)
+				{
+					lightmapWidth = tr.lightmapSize;
+					lightmapHeight = tr.lightmapSize;
+				}
 			}
 
 			if (hdrLightmap)
 			{
-				byte *p = hdrLightmap, *end = hdrLightmap + size;
 				//ri.Printf(PRINT_ALL, "found!\n");
-				
-				/* FIXME: don't just skip over this header and actually parse it */
-				while (p < end && !(*p == '\n' && *(p+1) == '\n'))
-					p++;
-
-				p += 2;
-				
-				while (p < end && !(*p == '\n'))
-					p++;
-
-				p++;
-
-				if (p >= end)
-					ri.Error(ERR_DROP, "Bad header for %s!", filename);
-
-				buf_p = p;
-
-#if 0 // HDRFILE_RGBE
-				if ((int)(end - hdrLightmap) != tr.lightmapSize * tr.lightmapSize * 4)
-					ri.Error(ERR_DROP, "Bad size for %s (%i)!", filename, size);
-#else // HDRFILE_FLOAT
-				if ((int)(end - hdrLightmap) != tr.lightmapSize * tr.lightmapSize * 12)
-					ri.Error(ERR_DROP, "Bad size for %s (%i)!", filename, size);
-#endif
+				buf_p = hdrLightmap;
 			}
 			else
 			{
@@ -365,25 +368,13 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 				buf_p = buf + imgOffset * tr.lightmapSize * tr.lightmapSize * 3;
 			}
 
-			for ( j = 0 ; j < tr.lightmapSize * tr.lightmapSize; j++ ) 
+			for ( j = 0 ; j < lightmapWidth * lightmapHeight; j++ )
 			{
 				if (hdrLightmap)
 				{
 					vec4_t color;
 
-#if 0 // HDRFILE_RGBE
-					float exponent = exp2(buf_p[j*4+3] - 128);
-
-					color[0] = buf_p[j*4+0] * exponent;
-					color[1] = buf_p[j*4+1] * exponent;
-					color[2] = buf_p[j*4+2] * exponent;
-#else // HDRFILE_FLOAT
 					memcpy(color, &buf_p[j*12], 12);
-
-					color[0] = LittleFloat(color[0]);
-					color[1] = LittleFloat(color[1]);
-					color[2] = LittleFloat(color[2]);
-#endif
 					color[3] = 1.0f;
 
 					R_ColorShiftLightingFloats(color, color);
@@ -454,12 +445,12 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 			}
 
 			if (r_mergeLightmaps->integer)
-				R_UpdateSubImage(tr.lightmaps[lightmapnum], image, xoff, yoff, tr.lightmapSize, tr.lightmapSize, textureInternalFormat);
+				R_UpdateSubImage(tr.lightmaps[lightmapnum], image, xoff, yoff, lightmapWidth, lightmapHeight, textureInternalFormat);
 			else
-				tr.lightmaps[i] = R_CreateImage(va("*lightmap%d", i), image, tr.lightmapSize, tr.lightmapSize, IMGTYPE_COLORALPHA, imgFlags, textureInternalFormat );
+				tr.lightmaps[i] = R_CreateImage2(va("*lightmap%d", i), image, lightmapWidth, lightmapHeight, textureInternalFormat, 0, IMGTYPE_COLORALPHA, imgFlags, textureInternalFormat );
 
 			if (hdrLightmap)
-				ri.FS_FreeFile(hdrLightmap);
+				ri.Free(hdrLightmap);
 		}
 
 		if (tr.worldDeluxeMapping)
