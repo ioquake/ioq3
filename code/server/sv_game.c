@@ -75,6 +75,14 @@ Sends a command string to a client
 ===============
 */
 void SV_GameSendServerCommand( int clientNum, const char *text ) {
+
+	// record the game server commands in demos
+	if ( sv.demoState == DS_RECORDING ) {
+		SV_DemoWriteGameCommand( clientNum, text );
+	} else if ( sv.demoState == DS_PLAYBACK ) {
+		SV_CheckLastCmd( text, qtrue ); // store the new game command, so when replaying a demo message, we can check for duplicates: maybe this message was already submitted (because of the events simulation, an event may trigger a message), and so we want to avoid those duplicates: if an event already triggered a message, no need to issue the one stored in the demo
+	}
+
 	if ( clientNum == -1 ) {
 		SV_SendServerCommand( NULL, "%s", text );
 	} else {
@@ -376,7 +384,10 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return SV_inPVSIgnorePortals( VMA(1), VMA(2) );
 
 	case G_SET_CONFIGSTRING:
-		SV_SetConfigstring( args[1], VMA(2) );
+		// Don't allow the game to overwrite demo configstrings (unless it modifies the normal spectator clients configstrings, this exception allows for player connecting during a demo playback to be correctly rendered, else they will get an empty configstring so no icon, no name, nothing...)
+		if ( (sv_democlients->integer > 0 && args[1] >= CS_PLAYERS + sv_democlients->integer && args[1] < CS_PLAYERS + sv_maxclients->integer) || sv.demoState != DS_PLAYBACK ) { // ATTENTION: sv.demoState check must be placed LAST! Else, it will short-circuit and prevent normal players configstrings from being set!
+			SV_SetConfigstring( args[1], VMA(2) );
+		}
 		return 0;
 	case G_GET_CONFIGSTRING:
 		SV_GetConfigstring( args[1], VMA(2), args[3] );
@@ -860,6 +871,12 @@ void SV_ShutdownGameProgs( void ) {
 	if ( !gvm ) {
 		return;
 	}
+	// stop any demos
+ 	if (sv.demoState == DS_RECORDING)
+ 		SV_DemoStopRecord();
+ 	if (sv.demoState == DS_PLAYBACK)
+ 		SV_DemoStopPlayback();
+    // shutdown game
 	VM_Call( gvm, GAME_SHUTDOWN, qfalse );
 	VM_Free( gvm );
 	gvm = NULL;
@@ -889,6 +906,17 @@ static void SV_InitGameVM( qboolean restart ) {
 	// use the current msec count for a random seed
 	// init for this gamestate
 	VM_Call (gvm, GAME_INIT, sv.time, Com_Milliseconds(), restart);
+
+ 	// start recording a demo
+    if ( sv_autoDemo->integer ) {
+		// stop any demos
+		if (sv.demoState == DS_RECORDING)
+			SV_DemoStopRecord();
+		if (sv.demoState == DS_PLAYBACK)
+			SV_DemoStopPlayback();
+        // start an auto demo recording
+        SV_DemoAutoDemoRecord();
+    }
 }
 
 
