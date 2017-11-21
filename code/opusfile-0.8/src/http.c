@@ -3109,7 +3109,7 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
     OP_ASSERT(end_pos<0||conn_pos<=end_pos);
     /*Can we quickly read ahead without issuing a new request or waiting for
        any more data?
-      If we have an oustanding request, we'll over-estimate the amount of data
+      If we have an outstanding request, we'll over-estimate the amount of data
        it has available (because we'll count the response headers, too), but
        that probably doesn't matter.*/
     if(conn_pos<=pos&&pos-conn_pos<=available&&(end_pos<0||pos<end_pos)){
@@ -3121,7 +3121,7 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
         conn=*pnext;
         continue;
       }
-      /*Sucessfully resurrected this connection.*/
+      /*Successfully resurrected this connection.*/
       *pnext=conn->next;
       conn->next=stream->lru_head;
       stream->lru_head=conn;
@@ -3173,7 +3173,7 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
         conn=*pnext;
         continue;
       }
-      /*Sucessfully resurrected this connection.*/
+      /*Successfully resurrected this connection.*/
       *pnext=conn->next;
       conn->next=stream->lru_head;
       stream->lru_head=conn;

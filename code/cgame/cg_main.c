@@ -417,7 +417,7 @@ int CG_LastAttacker( void ) {
 	if ( !cg.attackerTime ) {
 		return -1;
 	}
-	return cg.snap->ps.persistant[PERS_ATTACKER];
+	return cg.snap->ps.persistent[PERS_ATTACKER];
 }
 
 void QDECL CG_Printf( const char *msg, ... ) {
@@ -499,7 +499,7 @@ static void CG_RegisterItemSounds( int itemNum ) {
 		trap_S_RegisterSound( item->pickup_sound, qfalse );
 	}
 
-	// parse the space seperated precache string for other media
+	// parse the space separated precache string for other media
 	s = item->sounds;
 	if (!s || !s[0])
 		return;

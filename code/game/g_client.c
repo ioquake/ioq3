@@ -48,7 +48,7 @@ void SP_info_player_deathmatch( gentity_t *ent ) {
 }
 
 /*QUAKED info_player_start (1 0 0) (-16 -16 -24) (16 16 32)
-equivelant to info_player_deathmatch
+equivalent to info_player_deathmatch
 */
 void SP_info_player_start(gentity_t *ent) {
 	ent->classname = "info_player_deathmatch";
@@ -377,7 +377,7 @@ void InitBodyQue (void) {
 =============
 BodySink
 
-After sitting around for five seconds, fall into the ground and dissapear
+After sitting around for five seconds, fall into the ground and disappear
 =============
 */
 void BodySink( gentity_t *ent ) {
@@ -954,7 +954,7 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 	}
 	G_ReadSessionData( client );
 
-	// get and distribute relevent paramters
+	// get and distribute relevant parameters
 	G_LogPrintf( "ClientConnect: %i\n", clientNum );
 	ClientUserinfoChanged( clientNum );
 
@@ -1048,7 +1048,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		i;
 	clientPersistant_t	saved;
 	clientSession_t		savedSess;
-	int		persistant[MAX_PERSISTANT];
+	int		persistent[MAX_PERSISTANT];
 	gentity_t	*spawnPoint;
 	gentity_t *tent;
 	int		flags;
@@ -1104,7 +1104,7 @@ void ClientSpawn(gentity_t *ent) {
 	flags = ent->client->ps.eFlags & (EF_TELEPORT_BIT | EF_VOTED | EF_TEAMVOTED);
 	flags ^= EF_TELEPORT_BIT;
 
-	// clear everything but the persistant data
+	// clear everything but the persistent data
 
 	saved = client->pers;
 	savedSess = client->sess;
@@ -1113,7 +1113,7 @@ void ClientSpawn(gentity_t *ent) {
 	accuracy_hits = client->accuracy_hits;
 	accuracy_shots = client->accuracy_shots;
 	for ( i = 0 ; i < MAX_PERSISTANT ; i++ ) {
-		persistant[i] = client->ps.persistant[i];
+		persistent[i] = client->ps.persistent[i];
 	}
 	eventSequence = client->ps.eventSequence;
 
@@ -1128,12 +1128,12 @@ void ClientSpawn(gentity_t *ent) {
 	client->lastkilled_client = -1;
 
 	for ( i = 0 ; i < MAX_PERSISTANT ; i++ ) {
-		client->ps.persistant[i] = persistant[i];
+		client->ps.persistent[i] = persistent[i];
 	}
 	client->ps.eventSequence = eventSequence;
 	// increment the spawncount so the client will detect the respawn
-	client->ps.persistant[PERS_SPAWN_COUNT]++;
-	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
+	client->ps.persistent[PERS_SPAWN_COUNT]++;
+	client->ps.persistent[PERS_TEAM] = client->sess.sessionTeam;
 
 	client->airOutTime = level.time + 12000;
 
@@ -1321,7 +1321,7 @@ void ClientDisconnect( int clientNum ) {
 	ent->inuse = qfalse;
 	ent->classname = "disconnected";
 	ent->client->pers.connected = CON_DISCONNECTED;
-	ent->client->ps.persistant[PERS_TEAM] = TEAM_FREE;
+	ent->client->ps.persistent[PERS_TEAM] = TEAM_FREE;
 	ent->client->sess.sessionTeam = TEAM_FREE;
 
 	trap_SetConfigstring( CS_PLAYERS + clientNum, "");

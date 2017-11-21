@@ -1233,7 +1233,7 @@ void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct p
 	}
 	persistantbits = 0;
 	for (i=0 ; i<MAX_PERSISTANT ; i++) {
-		if (to->persistant[i] != from->persistant[i]) {
+		if (to->persistent[i] != from->persistent[i]) {
 			persistantbits |= 1<<i;
 		}
 	}
@@ -1273,7 +1273,7 @@ void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct p
 		MSG_WriteBits( msg, persistantbits, MAX_PERSISTANT );
 		for (i=0 ; i<MAX_PERSISTANT ; i++)
 			if (persistantbits & (1<<i) )
-				MSG_WriteShort (msg, to->persistant[i]);
+				MSG_WriteShort (msg, to->persistent[i]);
 	} else {
 		MSG_WriteBits( msg, 0, 1 );	// no change
 	}
@@ -1402,13 +1402,13 @@ void MSG_ReadDeltaPlayerstate (msg_t *msg, playerState_t *from, playerState_t *t
 			}
 		}
 
-		// parse persistant stats
+		// parse persistent stats
 		if ( MSG_ReadBits( msg, 1 ) ) {
 			LOG("PS_PERSISTANT");
 			bits = MSG_ReadBits (msg, MAX_PERSISTANT);
 			for (i=0 ; i<MAX_PERSISTANT ; i++) {
 				if (bits & (1<<i) ) {
-					to->persistant[i] = MSG_ReadShort(msg);
+					to->persistent[i] = MSG_ReadShort(msg);
 				}
 			}
 		}

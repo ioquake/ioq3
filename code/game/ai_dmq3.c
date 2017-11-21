@@ -2412,7 +2412,7 @@ BotHasPersistantPowerupAndWeapon
 */
 int BotHasPersistantPowerupAndWeapon(bot_state_t *bs) {
 #ifdef MISSIONPACK
-	// if the bot does not have a persistant powerup
+	// if the bot does not have a persistent powerup
 	if (!bs->inventory[INVENTORY_SCOUT] &&
 		!bs->inventory[INVENTORY_GUARD] &&
 		!bs->inventory[INVENTORY_DOUBLER] &&
@@ -2759,7 +2759,7 @@ bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl) {
 		bs->flags ^= BFL_STRAFERIGHT;
 		bs->attackstrafe_time = 0;
 	}
-	//bot couldn't do any usefull movement
+	//bot couldn't do any useful movement
 //	bs->attackchase_time = AAS_Time() + 6;
 	return moveresult;
 }
@@ -4862,7 +4862,7 @@ void BotCheckEvents(bot_state_t *bs, entityState_t *state) {
 			else*/
 #ifdef MISSIONPACK
 			if (!strcmp(buf, "sound/items/kamikazerespawn.wav" )) {
-				//the kamikaze respawned so dont avoid it
+				//the kamikaze respawned so don't avoid it
 				BotDontAvoid(bs, "Kamikaze");
 			}
 			else
@@ -5242,7 +5242,7 @@ void BotDeathmatchAI(bot_state_t *bs, float thinktime) {
 		trap_BotSetChatName(bs->cs, name, bs->client);
 		//
 		bs->lastframe_health = bs->inventory[INVENTORY_HEALTH];
-		bs->lasthitcount = bs->cur_ps.persistant[PERS_HITS];
+		bs->lasthitcount = bs->cur_ps.persistent[PERS_HITS];
 		//
 		bs->setupcount = 0;
 		//
@@ -5298,7 +5298,7 @@ void BotDeathmatchAI(bot_state_t *bs, float thinktime) {
 	}
 	//
 	bs->lastframe_health = bs->inventory[INVENTORY_HEALTH];
-	bs->lasthitcount = bs->cur_ps.persistant[PERS_HITS];
+	bs->lasthitcount = bs->cur_ps.persistent[PERS_HITS];
 }
 
 /*

@@ -92,7 +92,7 @@ int BotIsFirstInRankings(bot_state_t *bs) {
 	char buf[MAX_INFO_STRING];
 	playerState_t ps;
 
-	score = bs->cur_ps.persistant[PERS_SCORE];
+	score = bs->cur_ps.persistent[PERS_SCORE];
 	for (i = 0; i < level.maxclients; i++) {
 		trap_GetConfigstring(CS_PLAYERS+i, buf, sizeof(buf));
 		//if no config string or no name
@@ -100,7 +100,7 @@ int BotIsFirstInRankings(bot_state_t *bs) {
 		//skip spectators
 		if (atoi(Info_ValueForKey(buf, "t")) == TEAM_SPECTATOR) continue;
 		//
-		if (BotAI_GetClientState(i, &ps) && score < ps.persistant[PERS_SCORE]) return qfalse;
+		if (BotAI_GetClientState(i, &ps) && score < ps.persistent[PERS_SCORE]) return qfalse;
 	}
 	return qtrue;
 }
@@ -115,7 +115,7 @@ int BotIsLastInRankings(bot_state_t *bs) {
 	char buf[MAX_INFO_STRING];
 	playerState_t ps;
 
-	score = bs->cur_ps.persistant[PERS_SCORE];
+	score = bs->cur_ps.persistent[PERS_SCORE];
 	for (i = 0; i < level.maxclients; i++) {
 		trap_GetConfigstring(CS_PLAYERS+i, buf, sizeof(buf));
 		//if no config string or no name
@@ -123,7 +123,7 @@ int BotIsLastInRankings(bot_state_t *bs) {
 		//skip spectators
 		if (atoi(Info_ValueForKey(buf, "t")) == TEAM_SPECTATOR) continue;
 		//
-		if (BotAI_GetClientState(i, &ps) && score > ps.persistant[PERS_SCORE]) return qfalse;
+		if (BotAI_GetClientState(i, &ps) && score > ps.persistent[PERS_SCORE]) return qfalse;
 	}
 	return qtrue;
 }
@@ -148,8 +148,8 @@ char *BotFirstClientInRankings(void) {
 		//skip spectators
 		if (atoi(Info_ValueForKey(buf, "t")) == TEAM_SPECTATOR) continue;
 		//
-		if (BotAI_GetClientState(i, &ps) && ps.persistant[PERS_SCORE] > bestscore) {
-			bestscore = ps.persistant[PERS_SCORE];
+		if (BotAI_GetClientState(i, &ps) && ps.persistent[PERS_SCORE] > bestscore) {
+			bestscore = ps.persistent[PERS_SCORE];
 			bestclient = i;
 		}
 	}
@@ -177,8 +177,8 @@ char *BotLastClientInRankings(void) {
 		//skip spectators
 		if (atoi(Info_ValueForKey(buf, "t")) == TEAM_SPECTATOR) continue;
 		//
-		if (BotAI_GetClientState(i, &ps) && ps.persistant[PERS_SCORE] < worstscore) {
-			worstscore = ps.persistant[PERS_SCORE];
+		if (BotAI_GetClientState(i, &ps) && ps.persistent[PERS_SCORE] < worstscore) {
+			worstscore = ps.persistent[PERS_SCORE];
 			bestclient = i;
 		}
 	}

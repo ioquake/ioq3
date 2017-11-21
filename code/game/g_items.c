@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   Respawnable items don't actually go away when picked up, they are
   just made invisible and untouchable.  This allows them to ride
-  movers and respawn apropriately.
+  movers and respawn appropriately.
 */
 
 
@@ -110,7 +110,7 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 		}
 
 		// anti-reward
-		client->ps.persistant[PERS_PLAYEREVENTS] ^= PLAYEREVENT_DENIEDREWARD;
+		client->ps.persistent[PERS_PLAYEREVENTS] ^= PLAYEREVENT_DENIEDREWARD;
 	}
 	return RESPAWN_POWERUP;
 }

@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
-// so there is NO persistant data between levels on the client side.
+// so there is NO persistent data between levels on the client side.
 // If you absolutely need something stored, it can either be kept
 // by the server in the server stored userinfos, or stashed in a cvar.
 
@@ -197,7 +197,7 @@ typedef struct centity_s {
 //======================================================================
 
 // local entities are created as a result of events or predicted actions,
-// and live independantly from all server transmitted entities
+// and live independently from all server transmitted entities
 
 typedef struct markPoly_s {
 	struct markPoly_s	*prevMark, *nextMark;
@@ -458,7 +458,7 @@ typedef struct {
 	qboolean	loading;			// don't defer players at initial startup
 	qboolean	intermissionStarted;	// don't play voice rewards, because game will end shortly
 
-	// there are only one or two snapshot_t that are relevent at a time
+	// there are only one or two snapshot_t that are relevant at a time
 	int			latestSnapshotNum;	// the number of snapshots the client system has received
 	int			latestSnapshotTime;	// the time from latestSnapshotNum, so we don't need to read the snapshot yet
 
@@ -601,7 +601,7 @@ typedef struct {
 
 	int			itemPickup;
 	int			itemPickupTime;
-	int			itemPickupBlendTime;	// the pulse around the crosshair is timed seperately
+	int			itemPickupBlendTime;	// the pulse around the crosshair is timed separately
 
 	int			weaponSelectTime;
 	int			weaponAnimation;
@@ -1613,7 +1613,7 @@ void		trap_GetGlconfig( glconfig_t *glconfig );
 void		trap_GetGameState( gameState_t *gamestate );
 
 // cgame will poll each frame to see if a newer snapshot has arrived
-// that it is interested in.  The time is returned seperately so that
+// that it is interested in.  The time is returned separately so that
 // snapshot latency can be calculated.
 void		trap_GetCurrentSnapshotNumber( int *snapshotNumber, int *serverTime );
 

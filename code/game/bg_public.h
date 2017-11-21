@@ -210,11 +210,11 @@ typedef enum {
 	STAT_ARMOR,				
 	STAT_DEAD_YAW,					// look this direction when dead (FIXME: get rid of?)
 	STAT_CLIENTS_READY,				// bit mask of clients wishing to exit the intermission (FIXME: configstring?)
-	STAT_MAX_HEALTH					// health / armor limit, changable by handicap
+	STAT_MAX_HEALTH					// health / armor limit, changeable by handicap
 } statIndex_t;
 
 
-// player_state->persistant[] indexes
+// player_state->persistent[] indexes
 // these fields are the only part of player_state that isn't
 // cleared on respawn
 // NOTE: may not have more than 16
@@ -324,7 +324,7 @@ typedef enum {
 } weapon_t;
 
 
-// reward sounds (stored in ps->persistant[PERS_PLAYEREVENTS])
+// reward sounds (stored in ps->persistent[PERS_PLAYEREVENTS])
 #define	PLAYEREVENT_DENIEDREWARD		0x0001
 #define	PLAYEREVENT_GAUNTLETREWARD		0x0002
 #define PLAYEREVENT_HOLYSHIT			0x0004

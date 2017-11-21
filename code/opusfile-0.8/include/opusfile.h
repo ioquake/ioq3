@@ -728,7 +728,7 @@ struct OpusServerInfo{
   /**The software used by the origin server (Server).
      This is <code>NULL</code> if there was no <code>Server</code> header.*/
   char        *server;
-  /**The media type of the entity sent to the recepient (Content-Type).
+  /**The media type of the entity sent to the recipient (Content-Type).
      This is <code>NULL</code> if there was no <code>Content-Type</code>
       header.*/
   char        *content_type;

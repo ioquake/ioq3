@@ -264,7 +264,7 @@ typedef int		clipHandle_t;
 
 #define	MAX_SAY_TEXT	150
 
-// paramters for command buffer stuffing
+// parameters for command buffer stuffing
 typedef enum {
 	EXEC_NOW,			// don't return until completed, a VM should NEVER use this,
 						// because some commands might cause the VM to be unloaded...
@@ -1194,7 +1194,7 @@ typedef struct playerState_s {
 	int			damageCount;
 
 	int			stats[MAX_STATS];
-	int			persistant[MAX_PERSISTANT];	// stats that aren't cleared on death
+	int			persistent[MAX_PERSISTANT];	// stats that aren't cleared on death
 	int			powerups[MAX_POWERUPS];	// level.time that the powerup runs out
 	int			ammo[MAX_WEAPONS];
 
@@ -1221,7 +1221,7 @@ typedef struct playerState_s {
 #define	BUTTON_TALK			2			// displays talk balloon and disables actions
 #define	BUTTON_USE_HOLDABLE	4
 #define	BUTTON_GESTURE		8
-#define	BUTTON_WALKING		16			// walking can't just be infered from MOVE_RUN
+#define	BUTTON_WALKING		16			// walking can't just be inferred from MOVE_RUN
 										// because a key pressed late in the frame will
 										// only generate a small move value for that frame
 										// walking will use different animations and

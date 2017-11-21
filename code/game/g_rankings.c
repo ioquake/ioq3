@@ -159,7 +159,7 @@ void G_RankRunFrame()
 			}
 
 			time = (level.time - ent->client->pers.enterTime) / 1000;
-			ent->client->ps.persistant[PERS_MATCH_TIME] = time;
+			ent->client->ps.persistent[PERS_MATCH_TIME] = time;
 		}
 	}
 }
@@ -1054,7 +1054,7 @@ void G_RankClientDisconnect( int self )
 	}
 	else
 	{
-		match_rating = client->ps.persistant[PERS_MATCH_RATING] / time;
+		match_rating = client->ps.persistent[PERS_MATCH_RATING] / time;
 	}
 	trap_RankReportInt( self, -1, QGR_KEY_MATCH_RATING, match_rating, 0 );
 }

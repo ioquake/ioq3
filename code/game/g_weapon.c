@@ -545,7 +545,7 @@ void weapon_railgun_fire (gentity_t *ent) {
 		ent->client->accurateCount += hits;
 		if ( ent->client->accurateCount >= 2 ) {
 			ent->client->accurateCount -= 2;
-			ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
+			ent->client->ps.persistent[PERS_IMPRESSIVE_COUNT]++;
 			// add the sprite over the player's head
 			ent->client->ps.eFlags &= ~(EF_AWARD_IMPRESSIVE | EF_AWARD_EXCELLENT | EF_AWARD_GAUNTLET | EF_AWARD_ASSIST | EF_AWARD_DEFEND | EF_AWARD_CAP );
 			ent->client->ps.eFlags |= EF_AWARD_IMPRESSIVE;
@@ -918,7 +918,7 @@ static void KamikazeRadiusDamage( vec3_t origin, gentity_t *attacker, float dama
 			continue;
 		}
 
-		// dont hit things we have already hit
+		// don't hit things we have already hit
 		if( ent->kamikazeTime > level.time ) {
 			continue;
 		}
@@ -978,7 +978,7 @@ static void KamikazeShockWave( vec3_t origin, gentity_t *attacker, float damage,
 	for ( e = 0 ; e < numListedEntities ; e++ ) {
 		ent = &g_entities[entityList[ e ]];
 
-		// dont hit things we have already hit
+		// don't hit things we have already hit
 		if( ent->kamikazeShockTime > level.time ) {
 			continue;
 		}

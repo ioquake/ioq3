@@ -69,19 +69,19 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		else {
 			accuracy = 0;
 		}
-		perfect = ( cl->ps.persistant[PERS_RANK] == 0 && cl->ps.persistant[PERS_KILLED] == 0 ) ? 1 : 0;
+		perfect = ( cl->ps.persistent[PERS_RANK] == 0 && cl->ps.persistent[PERS_KILLED] == 0 ) ? 1 : 0;
 
 		Com_sprintf (entry, sizeof(entry),
 			" %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
-			cl->ps.persistant[PERS_SCORE], ping, (level.time - cl->pers.enterTime)/60000,
+			cl->ps.persistent[PERS_SCORE], ping, (level.time - cl->pers.enterTime)/60000,
 			scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy, 
-			cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
-			cl->ps.persistant[PERS_EXCELLENT_COUNT],
-			cl->ps.persistant[PERS_GAUNTLET_FRAG_COUNT], 
-			cl->ps.persistant[PERS_DEFEND_COUNT], 
-			cl->ps.persistant[PERS_ASSIST_COUNT], 
+			cl->ps.persistent[PERS_IMPRESSIVE_COUNT],
+			cl->ps.persistent[PERS_EXCELLENT_COUNT],
+			cl->ps.persistent[PERS_GAUNTLET_FRAG_COUNT], 
+			cl->ps.persistent[PERS_DEFEND_COUNT], 
+			cl->ps.persistent[PERS_ASSIST_COUNT], 
 			perfect,
-			cl->ps.persistant[PERS_CAPTURES]);
+			cl->ps.persistent[PERS_CAPTURES]);
 		j = strlen(entry);
 		if (stringlength + j >= sizeof(string))
 			break;
@@ -288,23 +288,23 @@ void Cmd_Give_f (gentity_t *ent)
 	}
 
 	if (Q_stricmp(name, "excellent") == 0) {
-		ent->client->ps.persistant[PERS_EXCELLENT_COUNT]++;
+		ent->client->ps.persistent[PERS_EXCELLENT_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "impressive") == 0) {
-		ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
+		ent->client->ps.persistent[PERS_IMPRESSIVE_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "gauntletaward") == 0) {
-		ent->client->ps.persistant[PERS_GAUNTLET_FRAG_COUNT]++;
+		ent->client->ps.persistent[PERS_GAUNTLET_FRAG_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "defend") == 0) {
-		ent->client->ps.persistant[PERS_DEFEND_COUNT]++;
+		ent->client->ps.persistent[PERS_DEFEND_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "assist") == 0) {
-		ent->client->ps.persistant[PERS_ASSIST_COUNT]++;
+		ent->client->ps.persistent[PERS_ASSIST_COUNT]++;
 		return;
 	}
 
@@ -639,7 +639,7 @@ void SetTeam( gentity_t *ent, const char *s ) {
 
 	BroadcastTeamChange( client, oldTeam );
 
-	// get and distribute relevent paramters
+	// get and distribute relevant parameters
 	ClientUserinfoChanged( clientNum );
 
 	// client hasn't spawned yet, they sent an early team command, teampref userinfo, or g_teamAutoJoin is enabled
@@ -659,7 +659,7 @@ to free floating spectator mode
 =================
 */
 void StopFollowing( gentity_t *ent ) {
-	ent->client->ps.persistant[ PERS_TEAM ] = TEAM_SPECTATOR;	
+	ent->client->ps.persistent[ PERS_TEAM ] = TEAM_SPECTATOR;	
 	ent->client->sess.sessionTeam = TEAM_SPECTATOR;	
 	ent->client->sess.spectatorState = SPECTATOR_FREE;
 	ent->client->ps.pm_flags &= ~PMF_FOLLOW;
@@ -921,7 +921,7 @@ void G_Say( gentity_t *ent, gentity_t *target, int mode, const char *chatText ) 
 		G_Printf( "%s%s\n", name, text);
 	}
 
-	// send it to all the apropriate clients
+	// send it to all the appropriate clients
 	for (j = 0; j < level.maxclients; j++) {
 		other = &g_entities[j];
 		G_SayTo( ent, other, mode, color, name, text );
@@ -1062,7 +1062,7 @@ void G_Voice( gentity_t *ent, gentity_t *target, int mode, const char *id, qbool
 		G_Printf( "voice: %s %s\n", ent->client->pers.netname, id);
 	}
 
-	// send it to all the apropriate clients
+	// send it to all the appropriate clients
 	for (j = 0; j < level.maxclients; j++) {
 		other = &g_entities[j];
 		G_VoiceTo( ent, other, mode, id, voiceonly );

@@ -391,7 +391,7 @@ static void PortalTouch( gentity_t *self, gentity_t *other, trace_t *trace) {
 	if( !other->client ) {
 		return;
 	}
-//	if( other->client->ps.persistant[PERS_TEAM] != self->spawnflags ) {
+//	if( other->client->ps.persistent[PERS_TEAM] != self->spawnflags ) {
 //		return;
 //	}
 
@@ -464,7 +464,7 @@ void DropPortalSource( gentity_t *player ) {
 	ent->count = player->client->portalID;
 	player->client->portalID = 0;
 
-//	ent->spawnflags = player->client->ps.persistant[PERS_TEAM];
+//	ent->spawnflags = player->client->ps.persistent[PERS_TEAM];
 
 	ent->nextthink = level.time + 1000;
 	ent->think = PortalEnable;

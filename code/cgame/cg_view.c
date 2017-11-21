@@ -42,7 +42,7 @@ Testmodel will create a fake entity 100 units in front of the current view
 position, directly facing the viewer.  It will remain immobile, so you can
 move around it to view it from different angles.
 
-Testgun will cause the model to follow the player around and supress the real
+Testgun will cause the model to follow the player around and suppress the real
 view weapon model.  The default frame 0 of most guns is completely off screen,
 so you will probably have to cycle a couple frames to see it.
 
@@ -796,7 +796,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	CG_PredictPlayerState();
 
 	// decide on third person view
-	cg.renderingThirdPerson = cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR
+	cg.renderingThirdPerson = cg.snap->ps.persistent[PERS_TEAM] != TEAM_SPECTATOR
 							&& (cg_thirdPerson.integer || (cg.snap->ps.stats[STAT_HEALTH] <= 0));
 
 	// build cg.refdef

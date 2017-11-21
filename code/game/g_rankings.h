@@ -335,7 +335,7 @@ Key digits:
 #define QGR_KEY_FLIGHT					1111060600
 
 #ifdef MISSIONPACK
-// persistant powerup keys
+// persistent powerup keys
 // new to team arena
 #define QGR_KEY_SCOUT					1111160800
 #define QGR_KEY_GUARD					1111160801

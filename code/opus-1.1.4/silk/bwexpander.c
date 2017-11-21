@@ -41,7 +41,7 @@ void silk_bwexpander(
     opus_int   i;
     opus_int32 chirp_minus_one_Q16 = chirp_Q16 - 65536;
 
-    /* NB: Dont use silk_SMULWB, instead of silk_RSHIFT_ROUND( silk_MUL(), 16 ), below.  */
+    /* NB: Don't use silk_SMULWB, instead of silk_RSHIFT_ROUND( silk_MUL(), 16 ), below.  */
     /* Bias in silk_SMULWB can lead to unstable filters                                */
     for( i = 0; i < d - 1; i++ ) {
         ar[ i ]    = (opus_int16)silk_RSHIFT_ROUND( silk_MUL( chirp_Q16, ar[ i ]             ), 16 );

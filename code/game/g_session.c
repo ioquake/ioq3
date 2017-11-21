@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   SESSION DATA
 
-Session data is the only data that stays persistant across level loads
+Session data is the only data that stays persistent across level loads
 and tournament restarts.
 =======================================================================
 */
