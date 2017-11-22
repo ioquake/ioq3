@@ -1652,7 +1652,7 @@ VM_CompileFunction( source_instruction_t * const i_first )
 
 			case OP_BCOM:
 				MAYBE_EMIT_CONST();
-				in( into, rFIRST, rFIRST );
+				in( iNOT, rFIRST, rFIRST );
 				break;
 
 			case OP_LSH:

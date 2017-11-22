@@ -132,7 +132,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 typedef enum powerpc_iname {
 	iCMPLWI, iCMPWI, iCMPW, iCMPLW, iFCMPU, iLI, iLIS, iADDI, iADDIS,
 	iBLTm, iBC, iBCL, iB, iBL, iBLR, iBCTR, iBCTRL, iRLWINM, iNOP, iORI,
-	iXORIS, iLDX, iLWZX, iSLW, iAND, iSUB, iLBZX, iNEG, into, iSTWX, iSTBX,
+	iXORIS, iLDX, iLWZX, iSLW, iAND, iSUB, iLBZX, iNEG, iNOT, iSTWX, iSTBX,
 	iMULLW, iADD, iLHZX, iXOR, iMFLR, iSTHX, iMR, iOR, iDIVWU, iMTLR,
 	iMTCTR, iDIVW, iLFSX, iSRW, iSTFSX, iSRAW, iEXTSH, iEXTSB, iLWZ, iLBZ,
 	iSTW, iSTWU, iSTB, iLHZ, iSTH, iLFS, iLFD, iSTFS, iSTFD, iLD, iFDIVS,

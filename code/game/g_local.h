@@ -234,7 +234,7 @@ typedef struct {
 // on each level change or team change at ClientBegin()
 typedef struct {
 	clientConnected_t	connected;	
-	usercmd_t	cmd;				// we would lose angles if not persistent
+	usercmd_t	cmd;				// we would lose angles if not persistant
 	qboolean	localClient;		// true if "ip" info key is "localhost"
 	qboolean	initialSpawn;		// the first spawn should be at a cool location
 	qboolean	predictItemPickup;	// based on cg_predictItems userinfo

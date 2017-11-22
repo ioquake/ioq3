@@ -27,7 +27,7 @@ cvar_t *sv_voip;
 cvar_t *sv_voipProtocol;
 #endif
 
-serverStatic_t	svs;				// persistent server info
+serverStatic_t	svs;				// persistant server info
 server_t		sv;					// local server
 vm_t			*gvm = NULL;				// game virtual machine
 
@@ -571,7 +571,7 @@ static void SVC_Status( netadr_t from ) {
 		if ( cl->state >= CS_CONNECTED ) {
 			ps = SV_GameClientNum( i );
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
-				ps->persistent[PERS_SCORE], cl->ping, cl->name);
+				ps->persistant[PERS_SCORE], cl->ping, cl->name);
 			playerLength = strlen(player);
 			if (statusLength + playerLength >= sizeof(status) ) {
 				break;		// can't hold any more

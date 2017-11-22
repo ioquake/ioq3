@@ -1194,7 +1194,7 @@ typedef struct playerState_s {
 	int			damageCount;
 
 	int			stats[MAX_STATS];
-	int			persistent[MAX_PERSISTANT];	// stats that aren't cleared on death
+	int			persistant[MAX_PERSISTANT];	// stats that aren't cleared on death
 	int			powerups[MAX_POWERUPS];	// level.time that the powerup runs out
 	int			ammo[MAX_WEAPONS];
 

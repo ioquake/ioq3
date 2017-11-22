@@ -2082,7 +2082,7 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 		}
 	}
 	//if the bot hit someone
-	if (bs->cur_ps.persistent[PERS_HITS] > bs->lasthitcount) {
+	if (bs->cur_ps.persistant[PERS_HITS] > bs->lasthitcount) {
 		if (BotChat_HitNoKill(bs)) {
 			bs->stand_time = FloatTime() + BotChatTime(bs);
 			AIEnter_Stand(bs, "battle fight: chat hit someone");

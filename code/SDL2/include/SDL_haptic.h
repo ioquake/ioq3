@@ -886,7 +886,7 @@ extern DECLSPEC SDL_Haptic *SDLCALL SDL_HapticOpenFromMouse(void);
  *
  *  \param joystick Joystick to test for haptic capabilities.
  *  \return 1 if the joystick is haptic, 0 if it isn't
- *          or -1 if an error occurred.
+ *          or -1 if an error ocurred.
  *
  *  \sa SDL_HapticOpenFromJoystick
  */

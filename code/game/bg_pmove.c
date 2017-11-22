@@ -1543,7 +1543,7 @@ static void PM_Weapon( void ) {
 	}
 
 	// ignore if spectator
-	if ( pm->ps->persistent[PERS_TEAM] == TEAM_SPECTATOR ) {
+	if ( pm->ps->persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
 		return;
 	}
 

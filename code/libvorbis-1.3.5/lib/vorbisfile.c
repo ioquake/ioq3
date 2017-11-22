@@ -530,7 +530,7 @@ static int _bisect_forward_serialno(OggVorbis_File *vf,
     vorbis_comment vc;
     int testserial = serialno+1;
 
-    /* the below guards against garbage separating the last and
+    /* the below guards against garbage seperating the last and
        first pages of two links. */
     while(searched<endsearched){
       ogg_int64_t bisect;
@@ -1057,7 +1057,7 @@ int ov_halfrate_p(OggVorbis_File *vf){
    ov_clear to close/free it. Same return codes as open.
 
    Note that vorbisfile does _not_ take ownership of the file if the
-   call fails; the calling application is responsible for closing the file
+   call fails; the calling applicaiton is responsible for closing the file
    if this call returns an error. */
 
 int ov_test_callbacks(void *f,OggVorbis_File *vf,
@@ -1893,7 +1893,7 @@ vorbis_info *ov_info(OggVorbis_File *vf,int link){
   }
 }
 
-/* grr, strong typing, grr, no templates/inheritance, grr */
+/* grr, strong typing, grr, no templates/inheritence, grr */
 vorbis_comment *ov_comment(OggVorbis_File *vf,int link){
   if(vf->seekable){
     if(link<0)

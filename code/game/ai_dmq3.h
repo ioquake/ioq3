@@ -94,7 +94,7 @@ int BotWantsToChase(bot_state_t *bs);
 int BotWantsToHelp(bot_state_t *bs);
 //returns true if the bot can and wants to rocketjump
 int BotCanAndWantsToRocketJump(bot_state_t *bs);
-// returns true if the bot has a persistent powerup and a weapon
+// returns true if the bot has a persistant powerup and a weapon
 int BotHasPersistantPowerupAndWeapon(bot_state_t *bs);
 //returns true if the bot wants to and goes camping
 int BotWantsToCamp(bot_state_t *bs);

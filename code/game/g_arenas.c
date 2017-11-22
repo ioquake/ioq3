@@ -95,28 +95,28 @@ void UpdateTournamentInfo( void ) {
 		} else {
 			if (&level.clients[playerClientNum] == &level.clients[ level.sortedClients[0] ]) {
 				won = qtrue;
-				score1 = level.clients[ level.sortedClients[0] ].ps.persistent[PERS_SCORE];
-				score2 = level.clients[ level.sortedClients[1] ].ps.persistent[PERS_SCORE];
+				score1 = level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE];
+				score2 = level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE];
 			} else {
-				score2 = level.clients[ level.sortedClients[0] ].ps.persistent[PERS_SCORE];
-				score1 = level.clients[ level.sortedClients[1] ].ps.persistent[PERS_SCORE];
+				score2 = level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE];
+				score1 = level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE];
 			}
 		}
-		if (won && player->client->ps.persistent[PERS_KILLED] == 0) {
+		if (won && player->client->ps.persistant[PERS_KILLED] == 0) {
 			perfect = 1;
 		} else {
 			perfect = 0;
 		}
 		Com_sprintf( msg, sizeof(msg), "postgame %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.numNonSpectatorClients, playerClientNum, accuracy,
-			player->client->ps.persistent[PERS_IMPRESSIVE_COUNT], player->client->ps.persistent[PERS_EXCELLENT_COUNT],player->client->ps.persistent[PERS_DEFEND_COUNT],
-			player->client->ps.persistent[PERS_ASSIST_COUNT], player->client->ps.persistent[PERS_GAUNTLET_FRAG_COUNT], player->client->ps.persistent[PERS_SCORE],
-			perfect, score1, score2, level.time, player->client->ps.persistent[PERS_CAPTURES] );
+			player->client->ps.persistant[PERS_IMPRESSIVE_COUNT], player->client->ps.persistant[PERS_EXCELLENT_COUNT],player->client->ps.persistant[PERS_DEFEND_COUNT],
+			player->client->ps.persistant[PERS_ASSIST_COUNT], player->client->ps.persistant[PERS_GAUNTLET_FRAG_COUNT], player->client->ps.persistant[PERS_SCORE],
+			perfect, score1, score2, level.time, player->client->ps.persistant[PERS_CAPTURES] );
 
 #else
-		perfect = ( level.clients[playerClientNum].ps.persistent[PERS_RANK] == 0 && player->client->ps.persistent[PERS_KILLED] == 0 ) ? 1 : 0;
+		perfect = ( level.clients[playerClientNum].ps.persistant[PERS_RANK] == 0 && player->client->ps.persistant[PERS_KILLED] == 0 ) ? 1 : 0;
 		Com_sprintf( msg, sizeof(msg), "postgame %i %i %i %i %i %i %i %i", level.numNonSpectatorClients, playerClientNum, accuracy,
-			player->client->ps.persistent[PERS_IMPRESSIVE_COUNT], player->client->ps.persistent[PERS_EXCELLENT_COUNT],
-			player->client->ps.persistent[PERS_GAUNTLET_FRAG_COUNT], player->client->ps.persistent[PERS_SCORE],
+			player->client->ps.persistant[PERS_IMPRESSIVE_COUNT], player->client->ps.persistant[PERS_EXCELLENT_COUNT],
+			player->client->ps.persistant[PERS_GAUNTLET_FRAG_COUNT], player->client->ps.persistant[PERS_SCORE],
 			perfect );
 #endif
 	}
@@ -124,7 +124,7 @@ void UpdateTournamentInfo( void ) {
 	msglen = strlen( msg );
 	for( i = 0; i < level.numNonSpectatorClients; i++ ) {
 		n = level.sortedClients[i];
-		Com_sprintf( buf, sizeof(buf), " %i %i %i", n, level.clients[n].ps.persistent[PERS_RANK], level.clients[n].ps.persistent[PERS_SCORE] );
+		Com_sprintf( buf, sizeof(buf), " %i %i %i", n, level.clients[n].ps.persistant[PERS_RANK], level.clients[n].ps.persistant[PERS_SCORE] );
 		msglen += strlen( buf );
 		if( msglen >= sizeof(msg) ) {
 			break;
@@ -335,7 +335,7 @@ void SpawnModelsOnVictoryPads( void ) {
 	podium = SpawnPodium();
 
 	player = SpawnModelOnVictoryPad( podium, offsetFirst, &g_entities[level.sortedClients[0]],
-				level.clients[ level.sortedClients[0] ].ps.persistent[PERS_RANK] &~ RANK_TIED_FLAG );
+				level.clients[ level.sortedClients[0] ].ps.persistant[PERS_RANK] &~ RANK_TIED_FLAG );
 	if ( player ) {
 		player->nextthink = level.time + 2000;
 		player->think = CelebrateStart;
@@ -343,14 +343,14 @@ void SpawnModelsOnVictoryPads( void ) {
 	}
 
 	player = SpawnModelOnVictoryPad( podium, offsetSecond, &g_entities[level.sortedClients[1]],
-				level.clients[ level.sortedClients[1] ].ps.persistent[PERS_RANK] &~ RANK_TIED_FLAG );
+				level.clients[ level.sortedClients[1] ].ps.persistant[PERS_RANK] &~ RANK_TIED_FLAG );
 	if ( player ) {
 		podium2 = player;
 	}
 
 	if ( level.numNonSpectatorClients > 2 ) {
 		player = SpawnModelOnVictoryPad( podium, offsetThird, &g_entities[level.sortedClients[2]],
-				level.clients[ level.sortedClients[2] ].ps.persistent[PERS_RANK] &~ RANK_TIED_FLAG );
+				level.clients[ level.sortedClients[2] ].ps.persistant[PERS_RANK] &~ RANK_TIED_FLAG );
 		if ( player ) {
 			podium3 = player;
 		}

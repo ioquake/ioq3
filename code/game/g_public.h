@@ -166,7 +166,7 @@ typedef enum {
 
 	G_GET_USERINFO,		// ( int num, char *buffer, int bufferSize );
 	// userinfo strings are maintained by the server system, so they
-	// are persistent across level loads, while all other game visible
+	// are persistant across level loads, while all other game visible
 	// data is completely reset
 
 	G_SET_USERINFO,		// ( int num, const char *buffer );

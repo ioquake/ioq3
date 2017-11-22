@@ -414,9 +414,9 @@ static int ogg_stream_flush_i(ogg_stream_state *os,ogg_page *og, int force, int 
   }else{
 
     /* The extra packets_done, packet_just_done logic here attempts to do two things:
-       1) Don't unnecessarily span pages.
+       1) Don't unneccessarily span pages.
        2) Unless necessary, don't flush pages if there are less than four packets on
-          them; this expands page size to reduce unnecessary overhead if incoming packets
+          them; this expands page size to reduce unneccessary overhead if incoming packets
           are large.
        These are not necessary behaviors, just 'always better than naive flushing'
        without requiring an application to explicitly request a specific optimized

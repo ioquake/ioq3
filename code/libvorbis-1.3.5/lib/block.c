@@ -191,7 +191,7 @@ static int _vds_shared_init(vorbis_dsp_state *v,vorbis_info *vi,int encp){
   b->transform[0]=_ogg_calloc(VI_TRANSFORMB,sizeof(*b->transform[0]));
   b->transform[1]=_ogg_calloc(VI_TRANSFORMB,sizeof(*b->transform[1]));
 
-  /* MDCT is transform 0 */
+  /* MDCT is tranform 0 */
 
   b->transform[0][0]=_ogg_calloc(1,sizeof(mdct_lookup));
   b->transform[1][0]=_ogg_calloc(1,sizeof(mdct_lookup));
@@ -959,7 +959,7 @@ int vorbis_synthesis_read(vorbis_dsp_state *v,int n){
 /* intended for use with a specific vorbisfile feature; we want access
    to the [usually synthetic/postextrapolated] buffer and lapping at
    the end of a decode cycle, specifically, a half-short-block worth.
-   This function works like pcmout above, except it will also expose
+   This funtion works like pcmout above, except it will also expose
    this implicit buffer data not normally decoded. */
 int vorbis_synthesis_lapout(vorbis_dsp_state *v,float ***pcm){
   vorbis_info *vi=v->vi;

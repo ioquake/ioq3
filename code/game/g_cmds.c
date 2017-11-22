@@ -69,19 +69,19 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		else {
 			accuracy = 0;
 		}
-		perfect = ( cl->ps.persistent[PERS_RANK] == 0 && cl->ps.persistent[PERS_KILLED] == 0 ) ? 1 : 0;
+		perfect = ( cl->ps.persistant[PERS_RANK] == 0 && cl->ps.persistant[PERS_KILLED] == 0 ) ? 1 : 0;
 
 		Com_sprintf (entry, sizeof(entry),
 			" %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
-			cl->ps.persistent[PERS_SCORE], ping, (level.time - cl->pers.enterTime)/60000,
+			cl->ps.persistant[PERS_SCORE], ping, (level.time - cl->pers.enterTime)/60000,
 			scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy, 
-			cl->ps.persistent[PERS_IMPRESSIVE_COUNT],
-			cl->ps.persistent[PERS_EXCELLENT_COUNT],
-			cl->ps.persistent[PERS_GAUNTLET_FRAG_COUNT], 
-			cl->ps.persistent[PERS_DEFEND_COUNT], 
-			cl->ps.persistent[PERS_ASSIST_COUNT], 
+			cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
+			cl->ps.persistant[PERS_EXCELLENT_COUNT],
+			cl->ps.persistant[PERS_GAUNTLET_FRAG_COUNT], 
+			cl->ps.persistant[PERS_DEFEND_COUNT], 
+			cl->ps.persistant[PERS_ASSIST_COUNT], 
 			perfect,
-			cl->ps.persistent[PERS_CAPTURES]);
+			cl->ps.persistant[PERS_CAPTURES]);
 		j = strlen(entry);
 		if (stringlength + j >= sizeof(string))
 			break;
@@ -288,23 +288,23 @@ void Cmd_Give_f (gentity_t *ent)
 	}
 
 	if (Q_stricmp(name, "excellent") == 0) {
-		ent->client->ps.persistent[PERS_EXCELLENT_COUNT]++;
+		ent->client->ps.persistant[PERS_EXCELLENT_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "impressive") == 0) {
-		ent->client->ps.persistent[PERS_IMPRESSIVE_COUNT]++;
+		ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "gauntletaward") == 0) {
-		ent->client->ps.persistent[PERS_GAUNTLET_FRAG_COUNT]++;
+		ent->client->ps.persistant[PERS_GAUNTLET_FRAG_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "defend") == 0) {
-		ent->client->ps.persistent[PERS_DEFEND_COUNT]++;
+		ent->client->ps.persistant[PERS_DEFEND_COUNT]++;
 		return;
 	}
 	if (Q_stricmp(name, "assist") == 0) {
-		ent->client->ps.persistent[PERS_ASSIST_COUNT]++;
+		ent->client->ps.persistant[PERS_ASSIST_COUNT]++;
 		return;
 	}
 
@@ -659,7 +659,7 @@ to free floating spectator mode
 =================
 */
 void StopFollowing( gentity_t *ent ) {
-	ent->client->ps.persistent[ PERS_TEAM ] = TEAM_SPECTATOR;	
+	ent->client->ps.persistant[ PERS_TEAM ] = TEAM_SPECTATOR;	
 	ent->client->sess.sessionTeam = TEAM_SPECTATOR;	
 	ent->client->sess.spectatorState = SPECTATOR_FREE;
 	ent->client->ps.pm_flags &= ~PMF_FOLLOW;
