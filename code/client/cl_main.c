@@ -359,7 +359,8 @@ void CL_VoipParseTargets(void)
 			{
 				int maxClients = atoi(Info_ValueForKey(cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO], "sv_maxclients"));
 				int clientTeam = atoi(Info_ValueForKey(cl.gameState.stringData + cl.gameState.stringOffsets[CS_PLAYERS + clc.clientNum], "t"));
-				for (int id = 0; id < maxClients; id++)
+                int id;
+                for (id = 0; id < maxClients; id++)
 				{
 					if (id == clc.clientNum)
 					{
