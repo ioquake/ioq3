@@ -1,5 +1,5 @@
 ioquake3 VoIP support documentation.
-Last updated 6/25/2008 by Ryan C. Gordon.
+Last updated 12/18/2017 by Johannes Berrenberg.
 
 There are two ways to use VoIP in ioquake3. You can either use Mumble as an
  external program, for which ioq3 now supplies some basic hooks, or you can
@@ -50,15 +50,16 @@ cl_voipSendTarget: a string: "all" to broadcast to everyone, "none" to send
                    to no one, "attacker" to send to the last person that hit
                    you, "crosshair" to send to the people currently in your
                    crosshair, "spatial" to talk to all people in hearing
-                   range or a comma-separated list of client numbers, like
+                   range, "team" to send to all team members (red, blue or
+                   spectator) or a comma-separated list of client numbers, like
                    "0,7,2,23" ... an empty string is treated like "spatial".
                    You can also use a mixed string like
                    "0, spatial, 2, crosshair".
                    This is reset to "spatial" when connecting to a new server.
                    Presumably mods will manage this cvar, not people, but
                    keybind could be useful for the general cases. To send to
-                   just your team, or the opposing team, or a buddy list, you
-                   have to set a list of numbers.
+                   just the opposing team, or a buddy list, you have to set a
+                   list of numbers.
 
 cl_voipUseVAD: set to "1" to automatically send audio when the game thinks you
                are talking, "0" (the default) to require the user to manually

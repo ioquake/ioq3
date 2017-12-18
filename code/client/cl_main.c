@@ -355,6 +355,25 @@ void CL_VoipParseTargets(void)
 				target += 7;
 				continue;
 			}
+			if (!Q_stricmpn(target, "team", 4))
+			{
+				int maxClients = atoi(Info_ValueForKey(cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO], "sv_maxclients"));
+				int clientTeam = atoi(Info_ValueForKey(cl.gameState.stringData + cl.gameState.stringOffsets[CS_PLAYERS + clc.clientNum], "t"));
+				for (int id = 0; id < maxClients; id++)
+				{
+					if (id == clc.clientNum)
+					{
+						continue;
+					}
+					if (atoi(Info_ValueForKey(cl.gameState.stringData + cl.gameState.stringOffsets[CS_PLAYERS + id], "t")) != clientTeam)
+					{
+						continue;
+					}
+					clc.voipTargets[id / 8] |= 1 << (id % 8);
+				}
+				target += 4;
+				continue;
+			}
 			else
 			{
 				if(!Q_stricmpn(target, "attacker", 8))
