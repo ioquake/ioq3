@@ -1366,9 +1366,19 @@ void CheckExitRules( void ) {
 		return;
 	}
 
+	if ( g_timelimit.integer < 0 ) {
+		trap_SendServerCommand( -1, "print \"Timelimit is negative.\n\"" );
+		trap_Cvar_Set( "timelimit", "0" );
+		trap_Cvar_Update( &g_timelimit );
+	} else if ( g_timelimit.integer > INT_MAX / 60000 ) {
+		trap_SendServerCommand( -1, "print \"Timelimit is too large.\n\"" );
+		trap_Cvar_Set( "timelimit", "0" );
+		trap_Cvar_Update( &g_timelimit );
+	}
+
 	if ( g_timelimit.integer && !level.warmupTime ) {
-		if ( level.time - level.startTime >= g_timelimit.integer*60000 ) {
-			trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"");
+		if ( level.time - level.startTime >= g_timelimit.integer * 60000 ) {
+			trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"" );
 			LogExit( "Timelimit hit." );
 			return;
 		}
