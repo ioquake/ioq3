@@ -1380,6 +1380,12 @@ void CheckExitRules( void ) {
 		}
 	}
 
+	if ( g_fraglimit.integer < 0 ) {
+		trap_SendServerCommand( -1, "print \"Fraglimit is negative\n\"" );
+		trap_Cvar_Set( "fraglimit", "0" );
+		trap_Cvar_Update( &g_fraglimit );
+	}
+
 	if ( g_gametype.integer < GT_CTF && g_fraglimit.integer ) {
 		if ( level.teamScores[TEAM_RED] >= g_fraglimit.integer ) {
 			trap_SendServerCommand( -1, "print \"Red hit the fraglimit.\n\"" );
