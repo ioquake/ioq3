@@ -1124,7 +1124,7 @@ static void IN_ProcessEvents( void )
 							height = e.window.data2;
 
 							// ignore this event on fullscreen
-							if( cls.glconfig.isFullscreen )
+							if( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN )
 							{
 								break;
 							}
@@ -1168,18 +1168,19 @@ IN_Frame
 void IN_Frame( void )
 {
 	qboolean loading;
+	qboolean isFullscreen = SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN;
 
 	IN_JoyMove( );
 
 	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
 	loading = ( clc.state != CA_DISCONNECTED && clc.state != CA_ACTIVE );
 
-	if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
+	if( !isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
 	{
 		// Console is down in windowed mode
 		IN_DeactivateMouse( );
 	}
-	else if( !cls.glconfig.isFullscreen && loading )
+	else if( !isFullscreen && loading )
 	{
 		// Loading in windowed mode
 		IN_DeactivateMouse( );
