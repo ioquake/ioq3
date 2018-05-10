@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
    on other files, where the compiler might then generate Altivec
    instructions for normal floating point, crashing on G3 (etc) processors. */
 
+#include "tr_local.h" 
+
 #if idppc_altivec
 
 #if !defined(__APPLE__)
