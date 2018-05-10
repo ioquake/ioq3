@@ -1653,6 +1653,7 @@ Q3OBJ = \
   $(B)/client/net_ip.o \
   $(B)/client/huffman.o \
   \
+  $(B)/client/snd_altivec.o \
   $(B)/client/snd_adpcm.o \
   $(B)/client/snd_dma.o \
   $(B)/client/snd_mem.o \
@@ -1806,6 +1807,7 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/tonemap_vp.o
 
 Q3ROBJ = \
+  $(B)/renderergl1/tr_altivec.o \
   $(B)/renderergl1/tr_animation.o \
   $(B)/renderergl1/tr_backend.o \
   $(B)/renderergl1/tr_bsp.o \
