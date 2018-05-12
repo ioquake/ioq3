@@ -235,6 +235,10 @@ ifndef USE_AUTOUPDATER  # DON'T include unless you mean to!
 USE_AUTOUPDATER=0
 endif
 
+ifndef USE_ALTIVEC
+USE_ALTIVEC=0
+endif
+
 ifndef DEBUG_CFLAGS
 DEBUG_CFLAGS=-ggdb -O0
 endif
@@ -348,11 +352,19 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     HAVE_VM_COMPILED=true
   else
   ifeq ($(ARCH),ppc)
-    BASE_CFLAGS += -maltivec
+    ifeq ($(USE_ALTIVEC),1)
+      BASE_CFLAGS += -maltivec -DUSE_ALTIVEC
+    else
+      BASE_CFLAGS += -mno-altivec
+    endif
     HAVE_VM_COMPILED=true
   endif
   ifeq ($(ARCH),ppc64)
-    BASE_CFLAGS += -maltivec
+    ifeq ($(USE_ALTIVEC),1)
+      BASE_CFLAGS += -maltivec -DUSE_ALTIVEC
+    else
+      BASE_CFLAGS += -mno-altivec
+    endif
     HAVE_VM_COMPILED=true
   endif
   ifeq ($(ARCH),sparc)
@@ -440,10 +452,19 @@ ifeq ($(PLATFORM),darwin)
                  -DMAC_OS_X_VERSION_MIN_REQUIRED=$(MAC_OS_X_VERSION_MIN_REQUIRED)
 
   ifeq ($(ARCH),ppc)
-    BASE_CFLAGS += -arch ppc -faltivec
+    BASE_CFLAGS += -arch ppc
+    ifeq ($(USE_ALTIVEC),1)
+      # -fno-altivec doesn't seem to exist according to
+      # http://www.manpages.info/macosx/gcc.1.html so we'll just have to
+      # hope that the default is no Altivec
+      BASE_CFLAGS += -faltivec -DUSE_ALTIVEC
+    endif
   endif
   ifeq ($(ARCH),ppc64)
-    BASE_CFLAGS += -arch ppc64 -faltivec
+    BASE_CFLAGS += -arch ppc64
+    ifeq ($(USE_ALTIVEC),1)
+      BASE_CFLAGS += -faltivec -DUSE_ALTIVEC
+    endif
   endif
   ifeq ($(ARCH),x86)
     OPTIMIZEVM += -march=prescott -mfpmath=sse
@@ -768,11 +789,19 @@ ifeq ($(PLATFORM),openbsd)
     HAVE_VM_COMPILED=true
   else
   ifeq ($(ARCH),ppc)
-    BASE_CFLAGS += -maltivec
+    ifeq ($(USE_ALTIVEC),1)
+      BASE_CFLAGS += -maltivec -DUSE_ALTIVEC
+    else
+      BASE_CFLAGS += -mno-altivec
+    endif
     HAVE_VM_COMPILED=true
   endif
   ifeq ($(ARCH),ppc64)
-    BASE_CFLAGS += -maltivec
+    ifeq ($(USE_ALTIVEC),1)
+      BASE_CFLAGS += -maltivec -DUSE_ALTIVEC
+    else
+      BASE_CFLAGS += -mno-altivec
+    endif
     HAVE_VM_COMPILED=true
   endif
   ifeq ($(ARCH),sparc64)

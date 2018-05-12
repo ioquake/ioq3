@@ -44,7 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if (defined(powerc) || defined(powerpc) || defined(ppc) || \
 	defined(__ppc) || defined(__ppc__)) && !defined(C_ONLY)
 #define idppc 1
-#if defined(__VEC__)
+#if defined(__VEC__) && defined(USE_ALTIVEC)
 #define idppc_altivec 1
 #ifdef __APPLE__  // Apple's GCC does this differently than the FSF.
 #define VECCONST_UINT8(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) \
