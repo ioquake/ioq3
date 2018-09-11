@@ -5346,7 +5346,7 @@ void BotSetEntityNumForGoal(bot_goal_t *goal, char *classname) {
 		if ( !ent->inuse ) {
 			continue;
 		}
-		if ( !Q_stricmp(ent->classname, classname) ) {
+		if ( Q_stricmp(ent->classname, classname) != 0 ) {
 			continue;
 		}
 		VectorSubtract(goal->origin, ent->s.origin, dir);
