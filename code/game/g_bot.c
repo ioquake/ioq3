@@ -663,7 +663,7 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	}
 	Info_SetValueForKey( userinfo, "name", botname );
 	Info_SetValueForKey( userinfo, "rate", "25000" );
-	Info_SetValueForKey( userinfo, "snaps", "20" );
+	Info_SetValueForKey( userinfo, "snaps", "60" );
 	Info_SetValueForKey( userinfo, "skill", va("%.2f", skill) );
 	Info_SetValueForKey( userinfo, "teampref", team );
 
@@ -705,7 +705,7 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 	key = "color1";
 	s = Info_ValueForKey( botinfo, key );
 	if ( !*s ) {
-		s = "4";
+		s = "5";
 	}
 	Info_SetValueForKey( userinfo, key, s );
 

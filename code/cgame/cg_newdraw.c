@@ -1804,6 +1804,8 @@ int CG_ClientNumFromName(const char *p) {
 void CG_ShowResponseHead(void) {
 	float x, y, w, h;
 
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
+
 	x = 72;
 	y = w = h = 0;
 	CG_AdjustFrom640( &x, &y, &w, &h );
@@ -1811,6 +1813,8 @@ void CG_ShowResponseHead(void) {
 	Menus_OpenByName("voiceMenu");
 	trap_Cvar_Set("cl_conXOffset", va("%d", (int)x));
 	cg.voiceTime = cg.time;
+
+	CG_PopScreenPlacement();
 }
 
 void CG_RunMenuScript(char **args) {

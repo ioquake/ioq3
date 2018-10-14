@@ -608,7 +608,7 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 	}
 	dsh = &s_worldData.shaders[ _shaderNum ];
 
-	if ( r_vertexLight->integer || glConfig.hardwareType == GLHW_PERMEDIA2 ) {
+	if ( r_vertexLight->integer ) {
 		lightmapNum = LIGHTMAP_BY_VERTEX;
 	}
 

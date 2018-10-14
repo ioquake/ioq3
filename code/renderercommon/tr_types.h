@@ -57,6 +57,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // refdef flags
 #define RDF_NOWORLDMODEL	0x0001		// used for player configuration screen
+#define RDF_UNDERWATER		0x0002		// underwater
 #define RDF_HYPERSPACE		0x0004		// teleportation effect
 
 typedef struct {
@@ -70,6 +71,24 @@ typedef struct poly_s {
 	int					numVerts;
 	polyVert_t			*verts;
 } poly_t;
+
+// =========================================
+// Gordon, these MUST NOT exceed the values for SHADER_MAX_VERTEXES/SHADER_MAX_INDEXES
+#define MAX_PB_VERTS    1025 // SHADER_MAX_VERTEXES
+#define MAX_PB_INDICIES ( MAX_PB_VERTS * 6 )
+
+typedef struct polyBuffer_s {
+	vec4_t xyz[MAX_PB_VERTS];
+	vec2_t st[MAX_PB_VERTS];
+	byte color[MAX_PB_VERTS][4];
+	int numVerts;
+
+	int indicies[MAX_PB_INDICIES];
+	int numIndicies;
+
+	qhandle_t shader;
+} polyBuffer_t;
+// =========================================
 
 typedef enum {
 	RT_MODEL,
@@ -162,58 +181,37 @@ typedef enum {
 	TC_S3TC_ARB  // this is for the GL_EXT_texture_compression_s3tc extension.
 } textureCompression_t;
 
-typedef enum {
-	GLDRV_ICD,					// driver is integrated with window system
-								// WARNING: there are tests that check for
-								// > GLDRV_ICD for minidriverness, so this
-								// should always be the lowest value in this
-								// enum set
-	GLDRV_STANDALONE,			// driver is a non-3Dfx standalone driver
-	GLDRV_VOODOO				// driver is a 3Dfx standalone driver
-} glDriverType_t;
-
-typedef enum {
-	GLHW_GENERIC,			// where everything works the way it should
-	GLHW_3DFX_2D3D,			// Voodoo Banshee or Voodoo3, relevant since if this is
-							// the hardware type then there can NOT exist a secondary
-							// display adapter
-	GLHW_RIVA128,			// where you can't interpolate alpha
-	GLHW_RAGEPRO,			// where you can't modulate alpha on alpha textures
-	GLHW_PERMEDIA2			// where you don't have src*dst
-} glHardwareType_t;
-
 typedef struct {
 	char					renderer_string[MAX_STRING_CHARS];
 	char					vendor_string[MAX_STRING_CHARS];
 	char					version_string[MAX_STRING_CHARS];
-	char					extensions_string[BIG_INFO_STRING];
+	char					extensions_string[BIG_INFO_STRING * 4];
 
 	int						maxTextureSize;			// queried from GL
 	int						numTextureUnits;		// multitexture ability
 
 	int						colorBits, depthBits, stencilBits;
 
-	glDriverType_t			driverType;
-	glHardwareType_t		hardwareType;
-
 	qboolean				deviceSupportsGamma;
 	textureCompression_t	textureCompression;
 	qboolean				textureEnvAddAvailable;
+	qboolean				textureFilterAnisotropic;
+	int						maxAnisotropy;
 
-	int						vidWidth, vidHeight;
-	// aspect is the screen's physical width / height, which may be different
-	// than scrWidth / scrHeight if the pixels are non-square
-	// normal screens should be 4/3, but wide aspect monitors may be 16/9
+	// Game resolution, aspect, and refresh rate.
+	int						vidWidth;
+	int						vidHeight;
 	float					windowAspect;
 
+	// Display (desktop) resolution, aspect, and refresh rate.
+	int						displayWidth;
+	int						displayHeight;
+	float					displayAspect;
 	int						displayFrequency;
 
-	// synonymous with "does rendering consume the entire screen?", therefore
-	// a Voodoo or Voodoo2 will have this set to TRUE, as will a Win32 ICD that
-	// used CDS.
+	// synonymous with "does rendering consume the entire screen?"
 	qboolean				isFullscreen;
 	qboolean				stereoEnabled;
-	qboolean				smpActive;		// UNUSED, present for compatibility
 } glconfig_t;
 
 #endif	// __TR_TYPES_H

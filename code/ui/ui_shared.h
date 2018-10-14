@@ -105,6 +105,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define SLIDER_THUMB_HEIGHT 20.0
 #define	NUM_CROSSHAIRS			10
 
+// ugly workaround for having it in cg_local.h and ui_shared.h
+#ifndef HAVE_SCREEN_PLACEMENT
+#define HAVE_SCREEN_PLACEMENT
+typedef enum {
+	PLACE_STRETCH,
+	PLACE_CENTER,
+
+	// horizontal only
+	PLACE_LEFT,
+	PLACE_RIGHT,
+
+	// vertical only
+	PLACE_TOP,
+	PLACE_BOTTOM
+} screenPlacement_e;
+#endif
+
 typedef struct {
   const char *command;
   const char *args[MAX_SCRIPT_ARGS];
@@ -268,6 +285,9 @@ typedef struct {
   vec4_t focusColor;								// focus color for items
   vec4_t disableColor;							// focus color for items
   itemDef_t *items[MAX_MENUITEMS];	// items this menu contains   
+
+	qboolean forceScreenPlacement;
+	screenPlacement_e screenHPos, screenVPos;
 } menuDef_t;
 
 typedef struct {
@@ -365,6 +385,9 @@ typedef struct {
 	void (*stopCinematic)(int handle);
 	void (*drawCinematic)(int handle, float x, float y, float w, float h);
 	void (*runCinematicFrame)(int handle);
+	void (*adjustFrom640)( float *x, float *y, float *w, float *h );
+	void (*setScreenPlacement)( screenPlacement_e hpos, screenPlacement_e vpos );
+	void (*popScreenPlacement)( void );
 
   float			yscale;
   float			xscale;
@@ -432,7 +455,10 @@ void LerpColor(vec4_t a, vec4_t b, vec4_t c, float t);
 void Menus_CloseAll( void );
 void Menu_Paint(menuDef_t *menu, qboolean forcePaint);
 void Menu_SetFeederSelection(menuDef_t *menu, int feeder, int index, const char *name);
+void Menu_SetScreenPlacement(menuDef_t *menu, screenPlacement_e hpos, screenPlacement_e vpos );
 void Display_CacheAll( void );
+
+itemDef_t *Menu_FindItemByName(menuDef_t *menu, const char *p);
 
 void *UI_Alloc( int size );
 void UI_InitMemory( void );

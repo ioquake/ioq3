@@ -293,6 +293,10 @@ static genFunc_t NameToGenFunc( const char *funcname )
 	{
 		return GF_NOISE;
 	}
+	else if ( !Q_stricmp( funcname, "random" ) )
+	{
+		return GF_RANDOM;
+	}
 
 	ri.Printf( PRINT_WARNING, "WARNING: invalid genfunc name '%s' in shader '%s'\n", funcname, shader.name );
 	return GF_SIN;
@@ -1821,14 +1825,6 @@ static qboolean CollapseMultitexture( void ) {
 		return qfalse;
 	}
 
-	// on voodoo2, don't combine different tmus
-	if ( glConfig.driverType == GLDRV_VOODOO ) {
-		if ( stages[0].bundle[0].image[0]->TMU ==
-			 stages[1].bundle[0].image[0]->TMU ) {
-			return qfalse;
-		}
-	}
-
 	abits = stages[0].stateBits;
 	bbits = stages[1].stateBits;
 
@@ -1944,6 +1940,7 @@ static void FixRenderCommandList( int newShader ) {
 				break;
 				}
 			case RC_STRETCH_PIC:
+			case RC_STRETCH_PIC_GRADIENT:
 				{
 				const stretchPicCommand_t *sp_cmd = (const stretchPicCommand_t *)curCmd;
 				curCmd = (const void *)(sp_cmd + 1);
@@ -2344,7 +2341,7 @@ static shader_t *FinishShader( void ) {
 	//
 	// if we are in r_vertexLight mode, never use a lightmap texture
 	//
-	if ( stage > 1 && ( (r_vertexLight->integer && !r_uiFullScreen->integer) || glConfig.hardwareType == GLHW_PERMEDIA2 ) ) {
+	if ( stage > 1 && r_vertexLight->integer && !r_uiFullScreen->integer ) {
 		VertexLightingCollapse();
 		stage = 1;
 		hasLightmapStage = qfalse;
