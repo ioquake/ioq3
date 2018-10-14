@@ -128,8 +128,8 @@ static int GLimp_CompareModes( const void *a, const void *b )
 	float aspectB = (float)modeB->w / (float)modeB->h;
 	int areaA = modeA->w * modeA->h;
 	int areaB = modeB->w * modeB->h;
-	float aspectDiffA = fabs( aspectA - displayAspect );
-	float aspectDiffB = fabs( aspectB - displayAspect );
+	float aspectDiffA = fabs(aspectA - glConfig.displayAspect);
+	float aspectDiffB = fabs(aspectB - glConfig.displayAspect);
 	float aspectDiffsDiff = aspectDiffA - aspectDiffB;
 
 	if( aspectDiffsDiff > ASPECT_EPSILON )
@@ -412,13 +412,19 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 
 	if( display >= 0 && SDL_GetDesktopDisplayMode( display, &desktopMode ) == 0 )
 	{
-		displayAspect = (float)desktopMode.w / (float)desktopMode.h;
+		glConfig.displayWidth = desktopMode.w;
+		glConfig.displayHeight = desktopMode.h;
+		glConfig.displayAspect = (float)desktopMode.w / (float)desktopMode.h;
 
-		ri.Printf( PRINT_ALL, "Display aspect: %.3f\n", displayAspect );
+		ri.Printf( PRINT_ALL, "Display aspect: %.3f\n", glConfig.displayAspect );
 	}
 	else
 	{
 		Com_Memset( &desktopMode, 0, sizeof( SDL_DisplayMode ) );
+
+		glConfig.displayWidth = 640;
+		glConfig.displayHeight = 480;
+		glConfig.displayAspect = 1.333f;
 
 		ri.Printf( PRINT_ALL,
 				"Cannot determine display aspect, assuming 1.333\n" );
@@ -941,19 +947,19 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 		}
 	}
 
-	textureFilterAnisotropic = qfalse;
+	glConfig.textureFilterAnisotropic = qfalse;
 	if ( SDL_GL_ExtensionSupported( "GL_EXT_texture_filter_anisotropic" ) )
 	{
 		if ( r_ext_texture_filter_anisotropic->integer ) {
-			qglGetIntegerv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, (GLint *)&maxAnisotropy );
-			if ( maxAnisotropy <= 0 ) {
+			qglGetIntegerv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, (GLint *)&glConfig.maxAnisotropy );
+			if ( glConfig.maxAnisotropy <= 0 ) {
 				ri.Printf( PRINT_ALL, "...GL_EXT_texture_filter_anisotropic not properly supported!\n" );
-				maxAnisotropy = 0;
+				glConfig.maxAnisotropy = 0;
 			}
 			else
 			{
-				ri.Printf( PRINT_ALL, "...using GL_EXT_texture_filter_anisotropic (max: %i)\n", maxAnisotropy );
-				textureFilterAnisotropic = qtrue;
+				ri.Printf( PRINT_ALL, "...using GL_EXT_texture_filter_anisotropic (max: %i)\n", glConfig.maxAnisotropy );
+				glConfig.textureFilterAnisotropic = qtrue;
 			}
 		}
 		else

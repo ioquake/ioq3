@@ -73,14 +73,11 @@ typedef struct image_s {
 extern	refimport_t		ri;
 extern glconfig_t	glConfig;		// outside of TR since it shouldn't be cleared during ref re-init
 
-// These variables should live inside glConfig but can't because of
-// compatibility issues to the original ID vms.  If you release a stand-alone
-// game and your mod uses tr_types.h from this build you can safely move them
-// to the glconfig_t struct.
-extern qboolean  textureFilterAnisotropic;
-extern int       maxAnisotropy;
-extern float     displayAspect;
-
+// used by shader functions, including noise in renderercommon
+#define	FOG_TABLE_SIZE		256
+#define FUNCTABLE_SIZE		1024
+#define FUNCTABLE_SIZE2		10
+#define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
 //
 // cvars
 //
@@ -117,6 +114,7 @@ extern	cvar_t	*r_saveFontData;
 qboolean	R_GetModeInfo( int *width, int *height, float *windowAspect, int mode );
 
 float R_NoiseGet4f( float x, float y, float z, double t );
+int R_RandomOn( double t );
 void  R_NoiseInit( void );
 
 image_t     *R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags );

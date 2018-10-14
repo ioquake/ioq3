@@ -188,7 +188,8 @@ typedef enum {
 	GF_SAWTOOTH, 
 	GF_INVERSE_SAWTOOTH, 
 
-	GF_NOISE
+	GF_NOISE,
+	GF_RANDOM
 
 } genFunc_t;
 
@@ -1349,11 +1350,6 @@ typedef struct {
 	int		c_dlightSurfacesCulled;
 } frontEndCounters_t;
 
-#define	FOG_TABLE_SIZE		256
-#define FUNCTABLE_SIZE		1024
-#define FUNCTABLE_SIZE2		10
-#define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
-
 
 // the renderer front end should never modify glstate_t
 typedef struct {
@@ -1614,6 +1610,7 @@ typedef struct {
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
 
+	vec4_t					clipRegion;			// 2D clipping region
 	//
 	// put large tables at the end, so most elements will be
 	// within the +/32K indexed range on risc processors
@@ -1649,6 +1646,7 @@ typedef struct {
 	float					triangleTable[FUNCTABLE_SIZE];
 	float					sawToothTable[FUNCTABLE_SIZE];
 	float					inverseSawToothTable[FUNCTABLE_SIZE];
+	float					noiseTable[FUNCTABLE_SIZE];
 	float					fogTable[FOG_TABLE_SIZE];
 } trGlobals_t;
 
@@ -2368,6 +2366,8 @@ typedef struct {
 	float	w, h;
 	float	s1, t1;
 	float	s2, t2;
+
+	byte gradientColor[4];      // color values 0-255
 } stretchPicCommand_t;
 
 typedef struct {
@@ -2429,6 +2429,7 @@ typedef enum {
 	RC_END_OF_LIST,
 	RC_SET_COLOR,
 	RC_STRETCH_PIC,
+	RC_STRETCH_PIC_GRADIENT,
 	RC_DRAW_SURFS,
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS,
@@ -2476,8 +2477,11 @@ void R_AddCapShadowmapCmd( int dlight, int cubeSide );
 void R_AddPostProcessCmd (void);
 
 void RE_SetColor( const float *rgba );
+void RE_SetClipRegion( const float *region );
 void RE_StretchPic ( float x, float y, float w, float h, 
 					  float s1, float t1, float s2, float t2, qhandle_t hShader );
+void RE_StretchPicGradient( float x, float y, float w, float h,
+							float s1, float t1, float s2, float t2, qhandle_t hShader, const float *gradientColor );
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
 void RE_SaveJPG(char * filename, int quality, int image_width, int image_height,
