@@ -108,6 +108,14 @@ vmCvar_t	cg_drawAmmoWarning;
 vmCvar_t	cg_drawCrosshair;
 vmCvar_t	cg_drawCrosshairNames;
 vmCvar_t	cg_drawRewards;
+vmCvar_t	cg_drawScores;
+vmCvar_t	cg_drawPickups;
+vmCvar_t	cg_drawWeaponBar;
+vmCvar_t	cg_drawStatusHead;
+vmCvar_t	cg_statusScale;
+vmCvar_t	cg_fovAspectAdjust;
+vmCvar_t	cg_fovGunAdjust;
+vmCvar_t	cg_stretch;
 vmCvar_t	cg_crosshairSize;
 vmCvar_t	cg_crosshairX;
 vmCvar_t	cg_crosshairY;
@@ -228,6 +236,14 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_drawCrosshair, "cg_drawCrosshair", "4", CVAR_ARCHIVE },
 	{ &cg_drawCrosshairNames, "cg_drawCrosshairNames", "0", CVAR_ARCHIVE },
 	{ &cg_drawRewards, "cg_drawRewards", "1", CVAR_ARCHIVE },
+	{ &cg_drawScores, "cg_drawScores", "1", CVAR_ARCHIVE },
+	{ &cg_drawPickups, "cg_drawPickups", "1", CVAR_ARCHIVE },
+	{ &cg_drawWeaponBar, "cg_drawWeaponBar", "1", CVAR_ARCHIVE },
+	{ &cg_drawStatusHead, "cg_drawStatusHead", "1", CVAR_ARCHIVE },
+	{ &cg_statusScale, "cg_statusScale", "1", CVAR_ARCHIVE },
+	{ &cg_fovAspectAdjust, "cg_fovAspectAdjust", "0", CVAR_ARCHIVE },
+	{ &cg_fovGunAdjust, "cg_fovGunAdjust", "0", CVAR_ARCHIVE },
+	{ &cg_stretch, "cg_stretch", "0", CVAR_ARCHIVE },
 	{ &cg_crosshairSize, "cg_crosshairSize", "12", CVAR_ARCHIVE },
 	{ &cg_crosshairHealth, "cg_crosshairHealth", "1", CVAR_ARCHIVE },
 	{ &cg_crosshairX, "cg_crosshairX", "0", CVAR_ARCHIVE },
@@ -1017,6 +1033,9 @@ static void CG_RegisterGraphics( void ) {
 		}
 	}
 
+	// can be used by HUD so always load it
+	CG_RegisterItemVisuals( 6 /* item_health_large */ );
+
 	// wall marks
 	cgs.media.bulletMarkShader = trap_R_RegisterShader( "gfx/damage/bullet_mrk" );
 	cgs.media.burnMarkShader = trap_R_RegisterShader( "gfx/damage/burn_med_mrk" );
@@ -1742,6 +1761,7 @@ CG_LoadHudMenu();
 void CG_LoadHudMenu( void ) {
 	char buff[1024];
 	const char *hudSet;
+	menuDef_t *menu;
 
 	cgDC.registerShaderNoMip = &trap_R_RegisterShaderNoMip;
 	cgDC.setColor = &trap_R_SetColor;
@@ -1792,6 +1812,9 @@ void CG_LoadHudMenu( void ) {
 	cgDC.stopCinematic = &CG_StopCinematic;
 	cgDC.drawCinematic = &CG_DrawCinematic;
 	cgDC.runCinematicFrame = &CG_RunCinematicFrame;
+	cgDC.adjustFrom640 = &CG_AdjustFrom640;
+	cgDC.setScreenPlacement = &CG_SetScreenPlacement;
+	cgDC.popScreenPlacement = &CG_PopScreenPlacement;
 	
 	Init_Display(&cgDC);
 
@@ -1804,6 +1827,31 @@ void CG_LoadHudMenu( void ) {
 	}
 
 	CG_LoadMenus(hudSet);
+
+	// make voice chat head stick to left side in widescreen
+	menu = Menus_FindByName( "voiceMenu" );
+	if ( menu && !menu->forceScreenPlacement ) {
+		Menu_SetScreenPlacement( menu, PLACE_LEFT, PLACE_TOP );
+	}
+
+	// Make vertical power up area stick to the left or right side in widescreen.
+	// Team Arena has it on the right side but also handle custom huds that use left side.
+	menu = Menus_FindByName( "powerup area" );
+	if ( menu && !menu->forceScreenPlacement ) {
+		itemDef_t *item = Menu_FindItemByName( menu, "powerupArea" );
+
+		if ( item && item->window.ownerDraw == CG_AREA_POWERUP && item->alignment == HUD_VERTICAL ) {
+			screenPlacement_e hpos;
+
+			if ( item->window.rect.x > SCREEN_WIDTH*0.5f ) {
+				hpos = PLACE_RIGHT;
+			} else {
+				hpos = PLACE_LEFT;
+			}
+
+			Menu_SetScreenPlacement( menu, hpos, PLACE_CENTER );
+		}
+	}
 }
 
 void CG_AssetCache( void ) {
@@ -1873,8 +1921,25 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	// get the rendering configuration from the client system
 	trap_GetGlconfig( &cgs.glconfig );
-	cgs.screenXScale = cgs.glconfig.vidWidth / 640.0;
-	cgs.screenYScale = cgs.glconfig.vidHeight / 480.0;
+	cgs.screenXScaleStretch = cgs.glconfig.vidWidth * (1.0/640.0);
+	cgs.screenYScaleStretch = cgs.glconfig.vidHeight * (1.0/480.0);
+	if ( cgs.glconfig.vidWidth * 480 > cgs.glconfig.vidHeight * 640 ) {
+		cgs.screenXScale = cgs.glconfig.vidWidth * (1.0/640.0);
+		cgs.screenYScale = cgs.glconfig.vidHeight * (1.0/480.0);
+		// wide screen
+		cgs.screenXBias = 0.5 * ( cgs.glconfig.vidWidth - ( cgs.glconfig.vidHeight * (640.0/480.0) ) );
+		cgs.screenXScale = cgs.screenYScale;
+		// no narrow screen
+		cgs.screenYBias = 0;
+	} else {
+		cgs.screenXScale = cgs.glconfig.vidWidth * (1.0/640.0);
+		cgs.screenYScale = cgs.glconfig.vidHeight * (1.0/480.0);
+		// narrow screen
+		cgs.screenYBias = 0.5 * ( cgs.glconfig.vidHeight - ( cgs.glconfig.vidWidth * (480.0/640.0) ) );
+		cgs.screenYScale = cgs.screenXScale;
+		// no wide screen
+		cgs.screenXBias = 0;
+	}
 
 	// get the gamestate from the client system
 	trap_GetGameState( &cgs.gameState );

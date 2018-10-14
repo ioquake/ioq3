@@ -479,7 +479,7 @@ static int CG_CalcFov( void ) {
 
 	if ( cg.predictedPlayerState.pm_type == PM_INTERMISSION ) {
 		// if in intermission, use a fixed value
-		fov_x = 90;
+		cg.fov = fov_x = 90;
 	} else {
 		// user selectable
 		if ( cgs.dmflags & DF_FIXED_FOV ) {
@@ -493,6 +493,8 @@ static int CG_CalcFov( void ) {
 				fov_x = 160;
 			}
 		}
+
+		cg.fov = fov_x;
 
 		// account for zooms
 		zoomFov = cg_zoomFov.value;
@@ -515,6 +517,16 @@ static int CG_CalcFov( void ) {
 				fov_x = zoomFov + f * ( fov_x - zoomFov );
 			}
 		}
+	}
+
+	if ( cg_fovAspectAdjust.integer ) {
+		// Based on LordHavoc's code for Darkplaces
+		// http://www.quakeworld.nu/forum/topic/53/what-does-your-qw-look-like/page/30
+		const float baseAspect = 0.75f; // 3/4
+		const float aspect = (float)cg.refdef.width/(float)cg.refdef.height;
+		const float desiredFov = fov_x;
+
+		fov_x = atan2( tan( desiredFov*M_PI / 360.0f ) * baseAspect*aspect, 1 )*360.0f / M_PI;
 	}
 
 	x = cg.refdef.width / tan( fov_x / 360 * M_PI );

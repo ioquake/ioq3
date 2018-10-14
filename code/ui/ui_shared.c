@@ -3620,14 +3620,6 @@ qboolean Item_Bind_HandleKey(itemDef_t *item, int key, qboolean down) {
 
 
 
-void AdjustFrom640(float *x, float *y, float *w, float *h) {
-	//*x = *x * DC->scale + DC->bias;
-	*x *= DC->xscale;
-	*y *= DC->yscale;
-	*w *= DC->xscale;
-	*h *= DC->yscale;
-}
-
 void Item_Model_Paint(itemDef_t *item) {
 	float x, y, w, h;
 	refdef_t refdef;
@@ -3649,7 +3641,7 @@ void Item_Model_Paint(itemDef_t *item) {
 	w = item->window.rect.w-2;
 	h = item->window.rect.h-2;
 
-	AdjustFrom640( &x, &y, &w, &h );
+	DC->adjustFrom640( &x, &y, &w, &h );
 
 	refdef.x = x;
 	refdef.y = y;
@@ -4195,6 +4187,20 @@ void Menu_SetFeederSelection(menuDef_t *menu, int feeder, int index, const char 
 	}
 }
 
+void Menu_SetScreenPlacement(menuDef_t *menu, screenPlacement_e hpos, screenPlacement_e vpos ) {
+	if ( !menu )
+		return;
+
+	if (DC->setScreenPlacement == NULL) {
+		Com_Printf( S_COLOR_YELLOW "WARNING: Menu_SetScreenPlacement() is only supported in CGame\n" );
+		return;
+	}
+
+	menu->forceScreenPlacement = qtrue;
+	menu->screenHPos = hpos;
+	menu->screenVPos = vpos;
+}
+
 qboolean Menus_AnyFullScreenVisible(void) {
   int i;
   for (i = 0; i < menuCount; i++) {
@@ -4327,6 +4333,10 @@ void Menu_Paint(menuDef_t *menu, qboolean forcePaint) {
 		menu->window.flags |= WINDOW_FORCED;
 	}
 
+	if (menu->forceScreenPlacement) {
+		DC->setScreenPlacement( menu->screenHPos, menu->screenVPos );
+	}
+
 	// draw the background if necessary
 	if (menu->fullScreen) {
 		// implies a background shader
@@ -4349,6 +4359,10 @@ void Menu_Paint(menuDef_t *menu, qboolean forcePaint) {
 		color[0] = color[2] = color[3] = 1;
 		color[1] = 0;
 		DC->drawRect(menu->window.rect.x, menu->window.rect.y, menu->window.rect.w, menu->window.rect.h, 1, color);
+	}
+
+	if (menu->forceScreenPlacement) {
+		DC->popScreenPlacement();
 	}
 }
 
@@ -5609,6 +5623,54 @@ qboolean MenuParse_fadeCycle( itemDef_t *item, int handle ) {
 	return qtrue;
 }
 
+// NOTE: This only affects the draw location. It's mainly for HUDs,
+// not interactive menus. Though it could be used for menu decorations.
+qboolean MenuParse_screenPlacement( itemDef_t *item, int handle ) {
+	menuDef_t *menu = (menuDef_t*)item;
+	screenPlacement_e hpos, vpos;
+	pc_token_t token;
+
+	if (DC->setScreenPlacement == NULL) {
+		PC_SourceError(handle, "screenPlacement is only supported in HUDs");
+		return qfalse;
+	}
+
+	if (!trap_PC_ReadToken(handle, &token))
+		return qfalse;
+
+	if (Q_stricmp(token.string, "PLACE_RIGHT") == 0) {
+		hpos = PLACE_RIGHT;
+	} else if (Q_stricmp(token.string, "PLACE_LEFT") == 0) {
+		hpos = PLACE_LEFT;
+	} else if (Q_stricmp(token.string, "PLACE_CENTER") == 0) {
+		hpos = PLACE_CENTER;
+	} else if (Q_stricmp(token.string, "PLACE_STRETCH") == 0) {
+		hpos = PLACE_STRETCH;
+	} else {
+		PC_SourceError(handle, "unknown screenPlacement horizontal placement %s", token.string);
+		return qfalse;
+	}
+
+	if (!trap_PC_ReadToken(handle, &token))
+		return qfalse;
+
+	if (Q_stricmp(token.string, "PLACE_TOP") == 0) {
+		vpos = PLACE_RIGHT;
+	} else if (Q_stricmp(token.string, "PLACE_BOTTOM") == 0) {
+		vpos = PLACE_LEFT;
+	} else if (Q_stricmp(token.string, "PLACE_CENTER") == 0) {
+		vpos = PLACE_CENTER;
+	} else if (Q_stricmp(token.string, "PLACE_STRETCH") == 0) {
+		vpos = PLACE_STRETCH;
+	} else {
+		PC_SourceError(handle, "unknown screenPlacement vertical placement %s", token.string);
+		return qfalse;
+	}
+
+	Menu_SetScreenPlacement( menu, hpos, vpos );
+	return qtrue;
+}
+
 
 qboolean MenuParse_itemDef( itemDef_t *item, int handle ) {
 	menuDef_t *menu = (menuDef_t*)item;
@@ -5656,6 +5718,7 @@ keywordHash_t menuParseKeywords[] = {
 	{"fadeClamp", MenuParse_fadeClamp, NULL},
 	{"fadeCycle", MenuParse_fadeCycle, NULL},
 	{"fadeAmount", MenuParse_fadeAmount, NULL},
+	{"screenPlacement", MenuParse_screenPlacement, NULL},
 	{NULL, 0, NULL}
 };
 

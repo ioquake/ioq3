@@ -1357,7 +1357,7 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 	refEntity_t	hand;
 	centity_t	*cent;
 	clientInfo_t	*ci;
-	float		fovOffset;
+	vec3_t		fovOffset;
 	vec3_t		angles;
 	weaponInfo_t	*weapon;
 
@@ -1394,11 +1394,19 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 		return;
 	}
 
-	// drop gun lower at higher fov
-	if ( cg_fov.integer > 90 ) {
-		fovOffset = -0.2 * ( cg_fov.integer - 90 );
-	} else {
-		fovOffset = 0;
+	VectorClear(fovOffset);
+
+	if ( cg_fovGunAdjust.integer ) {
+		if ( cg.fov > 90 ) {
+			// drop gun lower at higher fov
+			fovOffset[2] = -0.2 * ( cg.fov - 90 ) * cg.refdef.fov_x / cg.fov;
+		} else if ( cg.fov < 90 ) {
+			// move gun forward at lowerer fov
+			fovOffset[0] = -0.2 * ( cg.fov - 90 ) * cg.refdef.fov_x / cg.fov;
+		}
+	} else if ( cg_fov.integer > 90 ) {
+		// Q3A's auto adjust
+		fovOffset[2] = -0.2 * ( cg_fov.integer - 90 );
 	}
 
 	cent = &cg.predictedPlayerEntity;	// &cg_entities[cg.snap->ps.clientNum];
@@ -1410,9 +1418,9 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 	// set up gun position
 	CG_CalculateWeaponPosition( hand.origin, angles );
 
-	VectorMA( hand.origin, cg_gun_x.value, cg.refdef.viewaxis[0], hand.origin );
-	VectorMA( hand.origin, cg_gun_y.value, cg.refdef.viewaxis[1], hand.origin );
-	VectorMA( hand.origin, (cg_gun_z.value+fovOffset), cg.refdef.viewaxis[2], hand.origin );
+	VectorMA( hand.origin, (cg_gun_x.value+fovOffset[0]), cg.refdef.viewaxis[0], hand.origin );
+	VectorMA( hand.origin, (cg_gun_y.value+fovOffset[1]), cg.refdef.viewaxis[1], hand.origin );
+	VectorMA( hand.origin, (cg_gun_z.value+fovOffset[2]), cg.refdef.viewaxis[2], hand.origin );
 
 	AnglesToAxis( angles, hand.axis );
 
@@ -1456,6 +1464,13 @@ void CG_DrawWeaponSelect( void ) {
 	int		x, y, w;
 	char	*name;
 	float	*color;
+	float	markerSize, iconSize, offsetSize, charWidth, charHeight;
+
+	CG_SetScreenPlacement(PLACE_CENTER, PLACE_BOTTOM);
+
+	if ( cg_drawWeaponBar.value <= 0 ) {
+		return;
+	}
 
 	// don't display if dead
 	if ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) {
@@ -1480,8 +1495,15 @@ void CG_DrawWeaponSelect( void ) {
 		}
 	}
 
-	x = 320 - count * 20;
+	x = 320 - count * 20 * cg_drawWeaponBar.value;
 	y = 380;
+
+	markerSize = 40 * cg_drawWeaponBar.value;
+	iconSize = 32 * cg_drawWeaponBar.value;
+	offsetSize = (markerSize - iconSize) * 0.5f;
+
+	charWidth = BIGCHAR_WIDTH * cg_drawWeaponBar.value;
+	charHeight = BIGCHAR_HEIGHT * cg_drawWeaponBar.value;
 
 	for ( i = 1 ; i < MAX_WEAPONS ; i++ ) {
 		if ( !( bits & ( 1 << i ) ) ) {
@@ -1491,28 +1513,28 @@ void CG_DrawWeaponSelect( void ) {
 		CG_RegisterWeapon( i );
 
 		// draw weapon icon
-		CG_DrawPic( x, y, 32, 32, cg_weapons[i].weaponIcon );
+		CG_DrawPic( x, y, iconSize, iconSize, cg_weapons[i].weaponIcon );
 
 		// draw selection marker
 		if ( i == cg.weaponSelect ) {
-			CG_DrawPic( x-4, y-4, 40, 40, cgs.media.selectShader );
+			CG_DrawPic( x-offsetSize, y-offsetSize, markerSize, markerSize, cgs.media.selectShader );
 		}
 
 		// no ammo cross on top
 		if ( !cg.snap->ps.ammo[ i ] ) {
-			CG_DrawPic( x, y, 32, 32, cgs.media.noammoShader );
+			CG_DrawPic( x, y, iconSize, iconSize, cgs.media.noammoShader );
 		}
 
-		x += 40;
+		x += markerSize;
 	}
 
 	// draw the selected name
 	if ( cg_weapons[ cg.weaponSelect ].item ) {
 		name = cg_weapons[ cg.weaponSelect ].item->pickup_name;
 		if ( name ) {
-			w = CG_DrawStrlen( name ) * BIGCHAR_WIDTH;
+			w = CG_DrawStrlen( name ) * charWidth;
 			x = ( SCREEN_WIDTH - w ) / 2;
-			CG_DrawBigStringColor(x, y - 22, name, color);
+			CG_DrawStringExt(x, y - 22*cg_drawWeaponBar.value, name, color, qfalse, qtrue, charWidth, charHeight, 0 );
 		}
 	}
 
