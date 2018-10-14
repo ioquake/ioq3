@@ -27,8 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * $Archive: /MissionPack/code/client/cl_cin.c $
  *
- * cl_glconfig.hwtype trtypes 3dfx/ragepro need 256x256
- *
  *****************************************************************************/
 
 #include "client.h"
@@ -996,8 +994,8 @@ static void readQuadInfo( byte *qData )
         cinTable[currentHandle].drawX = cinTable[currentHandle].CIN_WIDTH;
         cinTable[currentHandle].drawY = cinTable[currentHandle].CIN_HEIGHT;
         
-	// rage pro is very slow at 512 wide textures, voodoo can't do it at all
-	if ( cls.glconfig.hardwareType == GLHW_RAGEPRO || cls.glconfig.maxTextureSize <= 256) {
+	// some old drivers can't do it at all
+	if (cls.glconfig.maxTextureSize <= 256) {
                 if (cinTable[currentHandle].drawX>256) {
                         cinTable[currentHandle].drawX = 256;
                 }
@@ -1005,7 +1003,7 @@ static void readQuadInfo( byte *qData )
                         cinTable[currentHandle].drawY = 256;
                 }
 		if (cinTable[currentHandle].CIN_WIDTH != 256 || cinTable[currentHandle].CIN_HEIGHT != 256) {
-			Com_Printf("HACK: approxmimating cinematic for Rage Pro or Voodoo\n");
+			Com_Printf("HACK: approxmimating cinematic to 256x256 from %dx%d\n", cinTable[currentHandle].CIN_WIDTH, cinTable[currentHandle].CIN_HEIGHT);
 		}
 	}
 }
