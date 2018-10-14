@@ -5433,7 +5433,7 @@ void BotSetupDeathmatchAI(void) {
 	trap_Cvar_Register(&bot_testrchat, "bot_testrchat", "0", 0);
 	trap_Cvar_Register(&bot_challenge, "bot_challenge", "0", 0);
 	trap_Cvar_Register(&bot_predictobstacles, "bot_predictobstacles", "1", 0);
-	trap_Cvar_Register(&g_spSkill, "g_spSkill", "2", 0);
+	trap_Cvar_Register(&g_spSkill, "g_spSkill", "3", 0);
 	//
 	if (gametype == GT_CTF) {
 		if (trap_BotGetLevelItemGoal(-1, "Red Flag", &ctf_redflag) < 0)

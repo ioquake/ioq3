@@ -585,7 +585,7 @@ typedef struct src_s
 #ifdef __APPLE__
 	#define MAX_SRC 64
 #else
-	#define MAX_SRC 128
+	#define MAX_SRC 255 // Tobias FIXME: 256 and 64 bots will CRASH the game! So, why can't we set this at least to 256 (which is still not enough). Eventually try 1.17.3 -> https://github.com/kcat/openal-soft/commit/d9bf4f7620c1e13846a53ee9df5c8c9eb2fcfe7d
 #endif
 static src_t srcList[MAX_SRC];
 static int srcCount = 0;
@@ -2507,12 +2507,16 @@ qboolean S_AL_Init( soundInterface_t *si )
 	// New console variables
 	s_alPrecache = Cvar_Get( "s_alPrecache", "1", CVAR_ARCHIVE );
 	s_alGain = Cvar_Get( "s_alGain", "1.0", CVAR_ARCHIVE );
+#ifdef __APPLE__
 	s_alSources = Cvar_Get( "s_alSources", "96", CVAR_ARCHIVE );
+#else
+	s_alSources = Cvar_Get( "s_alSources", "256", CVAR_ARCHIVE );// Tobias FIXME: Increase this!
+#endif
 	s_alDopplerFactor = Cvar_Get( "s_alDopplerFactor", "1.0", CVAR_ARCHIVE );
 	s_alDopplerSpeed = Cvar_Get( "s_alDopplerSpeed", "9000", CVAR_ARCHIVE );
 	s_alMinDistance = Cvar_Get( "s_alMinDistance", "120", CVAR_CHEAT );
 	s_alMaxDistance = Cvar_Get("s_alMaxDistance", "1024", CVAR_CHEAT);
-	s_alRolloff = Cvar_Get( "s_alRolloff", "2", CVAR_CHEAT);
+	s_alRolloff = Cvar_Get( "s_alRolloff", "1", CVAR_CHEAT);
 	s_alGraceDistance = Cvar_Get("s_alGraceDistance", "512", CVAR_CHEAT);
 
 	s_alDriver = Cvar_Get( "s_alDriver", ALDRIVER_DEFAULT, CVAR_ARCHIVE | CVAR_LATCH | CVAR_PROTECTED );

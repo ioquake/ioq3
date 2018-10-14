@@ -2986,10 +2986,10 @@ static void UI_StartSkirmish(qboolean next) {
 	trap_Cvar_Set("cg_cameraOrbit", "0");
 	trap_Cvar_Set("cg_thirdPerson", "0");
 	trap_Cvar_Set("cg_drawTimer", "1");
-	trap_Cvar_Set("g_doWarmup", "1");
-	trap_Cvar_Set("g_warmup", "15");
-	trap_Cvar_Set("sv_pure", "0");
-	trap_Cvar_Set("g_friendlyFire", "0");
+	trap_Cvar_Set("g_doWarmup", "0");
+	trap_Cvar_Set("g_warmup", "10");
+	trap_Cvar_Set("sv_pure", "1");
+	trap_Cvar_Set("g_friendlyFire", "1");
 	trap_Cvar_Set("g_redTeam", UI_Cvar_VariableString("ui_teamName"));
 	trap_Cvar_Set("g_blueTeam", UI_Cvar_VariableString("ui_opponentName"));
 
@@ -5202,8 +5202,8 @@ void _UI_Init( qboolean inGameLoad ) {
 	uiInfo.previewMovie = -1;
 
 	if (trap_Cvar_VariableValue("ui_TeamArenaFirstRun") == 0) {
-		trap_Cvar_Set("s_volume", "0.8");
-		trap_Cvar_Set("s_musicvolume", "0.5");
+		trap_Cvar_Set("s_volume", "1.0");
+		trap_Cvar_Set("s_musicvolume", "0.0");
 		trap_Cvar_Set("ui_TeamArenaFirstRun", "1");
 	}
 
@@ -5773,7 +5773,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_spScores5, "g_spScores5", "", CVAR_ARCHIVE },
 	{ &ui_spAwards, "g_spAwards", "", CVAR_ARCHIVE },
 	{ &ui_spVideos, "g_spVideos", "", CVAR_ARCHIVE },
-	{ &ui_spSkill, "g_spSkill", "2", CVAR_ARCHIVE },
+	{ &ui_spSkill, "g_spSkill", "3", CVAR_ARCHIVE },
 
 	{ &ui_spSelection, "ui_spSelection", "", CVAR_ROM },
 
@@ -5784,7 +5784,7 @@ static cvarTable_t		cvarTable[] = {
 
 	{ &ui_brassTime, "cg_brassTime", "2500", CVAR_ARCHIVE },
 	{ &ui_drawCrosshair, "cg_drawCrosshair", "4", CVAR_ARCHIVE },
-	{ &ui_drawCrosshairNames, "cg_drawCrosshairNames", "1", CVAR_ARCHIVE },
+	{ &ui_drawCrosshairNames, "cg_drawCrosshairNames", "0", CVAR_ARCHIVE },
 	{ &ui_marks, "cg_marks", "1", CVAR_ARCHIVE },
 
 	{ &ui_server1, "server1", "", CVAR_ARCHIVE },
@@ -5826,7 +5826,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_blueteam3, "ui_blueteam3", "0", CVAR_ARCHIVE },
 	{ &ui_blueteam4, "ui_blueteam4", "0", CVAR_ARCHIVE },
 	{ &ui_blueteam5, "ui_blueteam5", "0", CVAR_ARCHIVE },
-	{ &ui_netSource, "ui_netSource", "1", CVAR_ARCHIVE },
+	{ &ui_netSource, "ui_netSource", "0", CVAR_ARCHIVE },
 	{ &ui_menuFiles, "ui_menuFiles", "ui/menus.txt", CVAR_ARCHIVE },
 	{ &ui_currentTier, "ui_currentTier", "0", CVAR_ARCHIVE },
 	{ &ui_currentMap, "ui_currentMap", "0", CVAR_ARCHIVE },
@@ -5858,8 +5858,8 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_scoreTimeBonus, "ui_scoreTimeBonus", "0", CVAR_ARCHIVE},
 	{ &ui_scoreSkillBonus, "ui_scoreSkillBonus", "0", CVAR_ARCHIVE},
 	{ &ui_scoreShutoutBonus, "ui_scoreShutoutBonus", "0", CVAR_ARCHIVE},
-	{ &ui_fragLimit, "ui_fragLimit", "10", 0},
-	{ &ui_captureLimit, "ui_captureLimit", "5", 0},
+	{ &ui_fragLimit, "ui_fragLimit", "0", 0},
+	{ &ui_captureLimit, "ui_captureLimit", "8", 0},
 	{ &ui_smallFont, "ui_smallFont", "0.25", CVAR_ARCHIVE},
 	{ &ui_bigFont, "ui_bigFont", "0.4", CVAR_ARCHIVE},
 	{ &ui_findPlayer, "ui_findPlayer", "Sarge", CVAR_ARCHIVE},
@@ -5867,7 +5867,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_hudFiles, "cg_hudFiles", "ui/hud.txt", CVAR_ARCHIVE},
 	{ &ui_recordSPDemo, "ui_recordSPDemo", "0", CVAR_ARCHIVE},
 	{ &ui_teamArenaFirstRun, "ui_teamArenaFirstRun", "0", CVAR_ARCHIVE},
-	{ &ui_realWarmUp, "g_warmup", "20", CVAR_ARCHIVE},
+	{ &ui_realWarmUp, "g_warmup", "10", CVAR_ARCHIVE},
 	{ &ui_realCaptureLimit, "capturelimit", "8", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART},
 	{ &ui_serverStatusTimeOut, "ui_serverStatusTimeOut", "7000", CVAR_ARCHIVE},
 
