@@ -222,7 +222,7 @@ float CalcLightAttenuation(float point, float normDist)
 	return attenuation;
 }
 
-
+#if defined(USE_BOX_CUBEMAP_PARALLAX) && __VERSION__ >= 130
 vec4 hitCube(vec3 ray, vec3 pos, vec3 invSize, float lod, samplerCube tex)
 {
 	// find any hits on cubemap faces facing the camera
@@ -252,6 +252,7 @@ vec4 hitCube(vec3 ray, vec3 pos, vec3 invSize, float lod, samplerCube tex)
 	//return vec4(textureCubeLod(tex, tc, lod).rgb * fade, fade);
 	return vec4(textureCubeLod(tex, tc, lod).rgb, 1.0);
 }
+#endif
 
 void main()
 {
@@ -440,7 +441,7 @@ void main()
 	// from http://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/
 	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
 
-  #if defined(USE_BOX_CUBEMAP_PARALLAX)
+  #if defined(USE_BOX_CUBEMAP_PARALLAX) && __VERSION__ >= 130
 	vec3 cubeLightColor = hitCube(R * u_CubeMapInfo.w, parallax, u_CubeMapInfo.www, ROUGHNESS_MIPS * roughness, u_CubeMap).rgb * u_EnableTextures.w;
   #else
 	vec3 cubeLightColor = textureCubeLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
