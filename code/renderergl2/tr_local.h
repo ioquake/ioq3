@@ -482,6 +482,8 @@ typedef struct shader_s {
 	int			numUnfoggedPasses;
 	shaderStage_t	*stages[MAX_SHADER_STAGES];		
 
+	int	lightingStage;
+
 	void		(*optimalStageIteratorFunc)( void );
 
   double clampTime;                                  // time this shader is clamped to

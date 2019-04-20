@@ -2802,6 +2802,40 @@ static shader_t *GeneratePermanentShader( void ) {
 }
 
 /*
+====================
+FindLightingStages
+
+Find proper stage for dlight pass
+====================
+
+*/
+#define GLS_BLEND_BITS (GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS)
+static void FindLightingStages( void )
+{
+	int i;
+	shader.lightingStage = -1;
+
+	if ( shader.isSky || ( shader.surfaceFlags & (SURF_NODLIGHT | SURF_SKY) ) || shader.sort > SS_OPAQUE )
+		return;
+
+	for ( i = 0; i < shader.numUnfoggedPasses; i++ ) {
+		if ( !stages[i].bundle[0].isLightmap ) {
+			if ( stages[i].bundle[0].tcGen != TCGEN_TEXTURE )
+				continue;
+			if ( (stages[i].stateBits & GLS_BLEND_BITS) == (GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE) )
+				continue;
+			if ( stages[i].rgbGen == CGEN_IDENTITY && (stages[i].stateBits & GLS_BLEND_BITS) == (GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO) ) {
+				if ( shader.lightingStage >= 0 ) {
+					continue;
+				}
+			}
+			shader.lightingStage = i;
+		}
+	}
+}
+
+
+/*
 =================
 VertexLightingCollapse
 
@@ -3101,6 +3135,8 @@ static shader_t *FinishShader( void ) {
 	// compute number of passes
 	//
 	shader.numUnfoggedPasses = stage;
+
+	FindLightingStages();
 
 	// fogonly shaders don't have any normal passes
 	if (stage == 0 && !shader.isSky)
