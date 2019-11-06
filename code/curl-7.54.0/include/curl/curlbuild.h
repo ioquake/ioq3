@@ -287,7 +287,9 @@
 #  define CURL_TYPEOF_CURL_SOCKLEN_T int
 #  define CURL_SIZEOF_CURL_SOCKLEN_T 4
 
-#elif defined(__LCC__)
+/* added additional condition to turn off reaction */
+/* from MCST lcc compiler on MCST Elbrus 2000 */
+#elif defined(__LCC__) && !defined(__e2k__)
 #  define CURL_SIZEOF_LONG           4
 #  define CURL_TYPEOF_CURL_OFF_T     long
 #  define CURL_FORMAT_CURL_OFF_T     "ld"
@@ -539,7 +541,8 @@
 #    define CURL_SUFFIX_CURL_OFF_T     LL
 #    define CURL_SUFFIX_CURL_OFF_TU    ULL
 #  elif defined(__LP64__) || \
-        defined(__x86_64__) || defined(__ppc64__) || defined(__powerpc64__) || defined(__sparc64__)
+        defined(__x86_64__) || defined(__ppc64__) || defined(__powerpc64__) || defined(__sparc64__) || \
+        defined(__e2k__) /* MCST Elbrus 2000 */
 #    define CURL_SIZEOF_LONG           8
 #    define CURL_TYPEOF_CURL_OFF_T     long
 #    define CURL_FORMAT_CURL_OFF_T     "ld"
