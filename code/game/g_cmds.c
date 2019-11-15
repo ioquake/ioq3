@@ -637,7 +637,9 @@ void SetTeam( gentity_t *ent, const char *s ) {
 		CheckTeamLeader( oldTeam );
 	}
 
-	BroadcastTeamChange( client, oldTeam );
+	if ( !(ent->r.svFlags & SVF_BOT) ) {
+		BroadcastTeamChange( client, oldTeam );
+	}
 
 	// get and distribute relevant parameters
 	ClientUserinfoChanged( clientNum );
