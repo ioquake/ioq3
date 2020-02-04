@@ -66,6 +66,39 @@ void VM_Debug( int level ) {
 
 /*
 ==============
+VM_CheckBounds
+==============
+*/
+void VM_CheckBounds(const vm_t* vm, unsigned int address, unsigned int length)
+{
+	//if ( !vm->entryPoint )
+	{
+		if ((address | length) > vm->dataMask || (address + length) > vm->dataAlloc)
+		{
+			Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
+		}
+	}
+}
+
+
+/*
+==============
+VM_CheckBounds2
+==============
+*/
+void VM_CheckBounds2(const vm_t* vm, unsigned int addr1, unsigned int addr2, unsigned int length)
+{
+	//if ( !vm->entryPoint )
+	{
+		if ((addr1 | addr2 | length) > vm->dataMask || (addr1 + length) > vm->dataAlloc || (addr2 + length) > vm->dataAlloc)
+		{
+			Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
+		}
+	}
+}
+
+/*
+==============
 VM_Init
 ==============
 */
