@@ -375,14 +375,14 @@ void	VM_Debug( int level );
 	macros which cause them to be omitted, and is definitely unsafe, though 
 	more performant. */
 #ifndef _IOQ3_INSECURE_QVM
-void	VM_CheckBounds(const vm_t* vm, unsigned int address, unsigned int length);
-void	VM_CheckBounds2(const vm_t* vm, unsigned int addr1, unsigned int addr2, unsigned int length);
+void	VM_CheckBounds( const vm_t* vm, unsigned int address, unsigned int length );
+void	VM_CheckBounds2( const vm_t* vm, unsigned int addr1, unsigned int addr2, unsigned int length );
 
 #define VM_CHECKBOUNDS VM_CheckBounds
 #define VM_CHECKBOUNDS2 VM_CheckBounds2
 #else
-#define VM_CHECKBOUNDS(a,b)
-#define VM_CHECKBOUNDS2(a,b,c)
+#define VM_CHECKBOUNDS( a, b )
+#define VM_CHECKBOUNDS2( a, b, c )
 #endif
 void	*VM_ArgPtr( intptr_t intValue );
 void	*VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue );
