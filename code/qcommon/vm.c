@@ -71,12 +71,9 @@ VM_CheckBounds
 */
 void VM_CheckBounds(const vm_t* vm, unsigned int address, unsigned int length)
 {
-	//if ( !vm->entryPoint )
+	if ((address | length) > vm->dataMask || (address + length) > vm->dataAlloc)
 	{
-		if ((address | length) > vm->dataMask || (address + length) > vm->dataAlloc)
-		{
-			Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
-		}
+		Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
 	}
 }
 
@@ -88,12 +85,9 @@ VM_CheckBounds2
 */
 void VM_CheckBounds2(const vm_t* vm, unsigned int addr1, unsigned int addr2, unsigned int length)
 {
-	//if ( !vm->entryPoint )
+	if ((addr1 | addr2 | length) > vm->dataMask || (addr1 + length) > vm->dataAlloc || (addr2 + length) > vm->dataAlloc)
 	{
-		if ((addr1 | addr2 | length) > vm->dataMask || (addr1 + length) > vm->dataAlloc || (addr2 + length) > vm->dataAlloc)
-		{
-			Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
-		}
+		Com_Error(ERR_DROP, "program tried to bypass data segment bounds");
 	}
 }
 
@@ -396,10 +390,11 @@ VM_LoadQVM
 Load a .qvm file
 =================
 */
-vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
+static vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 {
-	int					dataLength;
-	int					i;
+	unsigned int					dataLength;
+	unsigned int					dataAlloc;
+	unsigned int					i;
 	char				filename[MAX_QPATH];
 	union {
 		vmHeader_t	*h;
@@ -481,11 +476,14 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	}
 	dataLength = 1 << i;
 
+	// reserve some space for effective LOCAL+LOAD* checks
+	dataAlloc = dataLength + 1024;
+
 	if(alloc)
 	{
 		// allocate zero filled space for initialized and uninitialized data
 		// leave some space beyond data mask so we can secure all mask operations
-		vm->dataAlloc = dataLength + 4;
+		vm->dataAlloc = dataAlloc;
 		vm->dataBase = Hunk_Alloc(vm->dataAlloc, h_high);
 		vm->dataMask = dataLength - 1;
 	}
