@@ -45,6 +45,7 @@ Servers obviously need these binaries to record and play demos.
 Clients also need these binaries to play demos locally, unless they connect to a server replaying the demos, in this case they don't need anything.
 
 Indeed, a server issuing `/demo_play <filename>` will be accessible to spectators. This can be useful to replay a big event. This can also be used as a replacement to GTV, since you can read a demo at the same time as it is being written.
+
 USAGE
 -----
 
