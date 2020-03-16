@@ -7,7 +7,7 @@ DESCRIPTION
 -----------
 Fully working server-side demos for ioquake3 are now a reality!
 
-This patch provide a full server-side demos facility for ioquake3 github commit of 2017-03-04. For the original patch for OpenArena with full commit history, see https://github.com/lrq3000/openarena_engine_serversidedemos .
+This patch provide a full server-side demos facility for ioquake3 github commit of 2017-03-04. For the original patch for OpenArena with full commit history (and a few missing features, the OpenArena patch being older), see https://github.com/lrq3000/openarena_engine_serversidedemos .
 
 This patch was done by Stephen Larroque and is based on the original patch by Amanieu d'Antras for Tremfusion (Tremulous).
 
@@ -274,5 +274,7 @@ CHANGELOG (newest to the bottom)
 * fix: Compatibility with OA 0.8.8: fix: fixed "FIXING ENT->S.NUMBER!!!" error, crashing demo playback with OA > 0.8.5. Now, the patch is compatible with OA 0.8.8
 * fix: compatibility with maps containing mover objects (like moving platforms of Kaos2): "Reached_BinaryMover: bad moverState" error. Fixed by stopping ent->reached from being called by setting entity->s.pos.trType = TR_LINEAR when entity->s.pos.trType == TR_LINEAR_STOP.
 * add: Compiled for ioquake3 latest version (but not yet merged in OA v3): https://github.com/lrq3000/ioq3/tree/server-side-demo
-* In ExcessivePlus tournament, sometimes one of the two players won't be spectatable as first person as soon as the second player connects. The cause is unknown, but it happens when warmup is being recorded in the same demo (you can see a lot of InitGame and ShutdownGame). The new hooks might fix this? -> yes, the new hook fixed the issue by stopping the demo and starting a new one (in sv_autoDemo 1 mode), so that the warmup session is separated from the match in two different demos.
-* After a demo of a warmup, all clients gets disconnected (with a hangout connection, they get an infinite "awaiting snapshot", so they have to do /reconnect) -> Fixed by the new hooks, now there are a few "awaiting snapshot" the time the server relaunches with old parameters (before demo playback) and the clients reconnect smoothly.
+* add: record chat messages
+* fix: In ExcessivePlus tournament, sometimes one of the two players won't be spectatable as first person as soon as the second player connects. The cause is unknown, but it happens when warmup is being recorded in the same demo (you can see a lot of InitGame and ShutdownGame). The new hooks might fix this? -> yes, the new hook fixed the issue by stopping the demo and starting a new one (in sv_autoDemo 1 mode), so that the warmup session is separated from the match in two different demos.
+* fix: After a demo of a warmup, all clients gets disconnected (with a hangout connection, they get an infinite "awaiting snapshot", so they have to do /reconnect) -> Fixed by the new hooks, now there are a few "awaiting snapshot" the time the server relaunches with old parameters (before demo playback) and the clients reconnect smoothly.
+* fix: better autorecord hooks and typo in variable name (which made filename buggy)
