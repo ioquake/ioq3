@@ -1,0 +1,22 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches:
+      - master
+      - test_build 
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: make
+      env:
+        PLATFORM: mingw32
+        ARCH: x86_64
