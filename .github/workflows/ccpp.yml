@@ -22,4 +22,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
        name: release-mingw32-x86_64.zip
-       path: build/release-mingw32-x86_64.zip
+       path: /home/runner/work/ioq3/ioq3/build/
