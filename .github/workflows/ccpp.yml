@@ -4,10 +4,7 @@ on:
   push:
     branches:
       - master
-      - test_build 
-  pull_request:
-    branches: [ master ]
-
+      - test_build
 jobs:
   build:
 
@@ -22,3 +19,7 @@ jobs:
       env:
         PLATFORM: mingw32
         ARCH: x86_64
+    - uses: actions/upload-artifact@v2
+      with:
+       name: release-mingw32-x86_64.zip
+       path: build/release-mingw32-x86_64.zip
