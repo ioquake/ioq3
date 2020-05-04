@@ -1,10 +1,9 @@
-name: C/C++ CI
+name: Build mingw32x86_64
 
 on:
   push:
     branches:
       - master
-      - test_build
 jobs:
   build:
 
