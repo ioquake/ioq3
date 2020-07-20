@@ -967,15 +967,27 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		attacker->client->ps.persistant[PERS_ATTACKEE_ARMOR] = (targ->health<<8)|(client->ps.stats[STAT_ARMOR]);
 	}
 
-	// always give half damage if hurting self
-	// calculated after knockback, so rocket jumping works
-	if ( targ == attacker) {
-		damage *= 0.5;
-	}
+	// mod start
+	if (g_enableRocketJump.integer) {
+		if ( targ == attacker || OnSameTeam (targ, attacker) ) {
+			damage = 0;
+		}
+		if ( !(targ == attacker || OnSameTeam (targ, attacker)) && damage < 1 ) {
+			damage = 1;
+		}
+	} else { // original code
+		// always give half damage if hurting self
+		// calculated after knockback, so rocket jumping works
+		if ( targ == attacker) {
+			damage *= 0.5;
+		}
 
-	if ( damage < 1 ) {
-		damage = 1;
+		if ( damage < 1 ) {
+			damage = 1;
+		}
 	}
+	// mod end
+
 	take = damage;
 
 	// save some from armor

@@ -746,6 +746,14 @@ extern	vmCvar_t	g_singlePlayer;
 extern	vmCvar_t	g_proxMineTimeout;
 extern	vmCvar_t	g_localTeamPref;
 
+// mod start
+extern	vmCvar_t	g_enableRocketJump;
+extern	vmCvar_t	g_spawnWithRocket;
+extern	vmCvar_t	g_spawnWithBFG;
+extern	vmCvar_t	g_spawnWithPlasma;
+// mod end
+
+
 void	trap_Print( const char *text );
 void	trap_Error( const char *text ) __attribute__((noreturn));
 int		trap_Milliseconds( void );

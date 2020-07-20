@@ -1175,6 +1175,21 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.ammo[WP_GAUNTLET] = -1;
 	client->ps.ammo[WP_GRAPPLING_HOOK] = -1;
 
+	if (g_spawnWithRocket.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_ROCKET_LAUNCHER );
+		client->ps.ammo[WP_ROCKET_LAUNCHER] = g_spawnWithRocket.integer;
+	}
+
+	if (g_spawnWithBFG.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_BFG );
+		client->ps.ammo[WP_BFG] = g_spawnWithBFG.integer;
+	}
+
+	if (g_spawnWithPlasma.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_PLASMAGUN );
+		client->ps.ammo[WP_PLASMAGUN] = g_spawnWithPlasma.integer;
+	}
+
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
 

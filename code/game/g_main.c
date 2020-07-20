@@ -96,6 +96,13 @@ vmCvar_t	g_enableBreath;
 vmCvar_t	g_proxMineTimeout;
 #endif
 
+// mod start
+vmCvar_t	g_enableRocketJump;
+vmCvar_t	g_spawnWithRocket;
+vmCvar_t	g_spawnWithBFG;
+vmCvar_t	g_spawnWithPlasma;
+// mod end
+
 static cvarTable_t		gameCvarTable[] = {
 	// don't override the cheat state set by the system
 	{ &g_cheats, "sv_cheats", "", 0, 0, qfalse },
@@ -178,8 +185,14 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &pmove_msec, "pmove_msec", "8", CVAR_SYSTEMINFO, 0, qfalse},
 
 	{ &g_rankings, "g_rankings", "0", 0, 0, qfalse},
-	{ &g_localTeamPref, "g_localTeamPref", "", 0, 0, qfalse }
+	{ &g_localTeamPref, "g_localTeamPref", "", 0, 0, qfalse },
 
+	// mod start
+	{ &g_enableRocketJump, "rocketjump", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithRocket,  "withrocket", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithBFG,     "withbfg",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithPlasma,  "withplasma", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	// mod end
 };
 
 static int gameCvarTableSize = ARRAY_LEN( gameCvarTable );
