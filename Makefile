@@ -6,8 +6,8 @@
 COMPILE_PLATFORM=$(shell uname | sed -e 's/_.*//' | tr '[:upper:]' '[:lower:]' | sed -e 's/\//_/g')
 COMPILE_ARCH=$(shell uname -m | sed -e 's/i.86/x86/' | sed -e 's/^arm.*/arm/')
 
-ifeq ($(COMPILE_PLATFORM),sunos)
-  # Solaris uname and GNU uname differ
+ifneq (,$(findstring "$(COMPILE_PLATFORM)", "sunos" "netbsd"))
+  # Solaris/NetBSD uname and GNU uname differ
   COMPILE_ARCH=$(shell uname -p | sed -e 's/i.86/x86/')
 endif
 
@@ -339,7 +339,7 @@ MKDIR=mkdir -p
 EXTRA_FILES=
 CLIENT_EXTRA_FILES=
 
-ifneq (,$(findstring "$(COMPILE_PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
+ifneq (,$(findstring "$(COMPILE_PLATFORM)", "linux" "bsd" "gnu"))
   TOOLS_CFLAGS += -DARCH_STRING=\"$(COMPILE_ARCH)\"
 endif
 
@@ -713,7 +713,7 @@ ifeq ($(PLATFORM),freebsd)
   # flags
   BASE_CFLAGS = \
     -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
-    -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON
+    -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS)
   HAVE_VM_COMPILED = true
 
@@ -767,7 +767,7 @@ else # ifeq freebsd
 ifeq ($(PLATFORM),openbsd)
 
   BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
-    -pipe -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON
+    -pipe -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS)
 
   OPTIMIZEVM = -O3
@@ -849,7 +849,8 @@ ifeq ($(PLATFORM),netbsd)
   SHLIBLDFLAGS=-shared $(LDFLAGS)
   THREAD_LIBS=-lpthread
 
-  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes
+  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
+    -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
 
   ifeq ($(ARCH),x86)
     HAVE_VM_COMPILED=true

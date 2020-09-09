@@ -221,14 +221,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_INLINE inline
 #define PATH_SEP '/'
 
-#ifdef __i386__
-#define ARCH_STRING "x86"
-#elif defined __amd64__
+#if !defined(ARCH_STRING)
+# error ARCH_STRING should be defined by the Makefile
+#endif
+
+#if defined __x86_64__
 #undef idx64
 #define idx64 1
-#define ARCH_STRING "x86_64"
-#elif defined __axp__
-#define ARCH_STRING "alpha"
 #endif
 
 #if BYTE_ORDER == BIG_ENDIAN
