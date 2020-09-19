@@ -843,19 +843,53 @@ else # ifeq openbsd
 
 ifeq ($(PLATFORM),netbsd)
 
-  LIBS=-lm
+  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
+    -pipe -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON
+
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
+
+  OPTIMIZEVM = -O3
+  OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+
+  ifeq ($(ARCH),x86_64)
+    OPTIMIZEVM = -O3
+    OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+    HAVE_VM_COMPILED = true
+  else
+  ifeq ($(ARCH),x86)
+    OPTIMIZEVM = -O3 -march=i586
+    OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+    HAVE_VM_COMPILED=true
+  endif
+  endif
+
+  ifeq ($(USE_CURL),1)
+    CLIENT_CFLAGS += $(CURL_CFLAGS)
+    USE_CURL_DLOPEN=0
+  endif
+
   SHLIBEXT=so
   SHLIBCFLAGS=-fPIC
   SHLIBLDFLAGS=-shared $(LDFLAGS)
   THREAD_LIBS=-lpthread
+  LIBS=-lm
 
-  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes
+  CLIENT_LIBS =
 
-  ifeq ($(ARCH),x86)
-    HAVE_VM_COMPILED=true
+  CLIENT_LIBS += $(SDL_LIBS)
+  RENDERER_LIBS = $(SDL_LIBS)
+
+  ifeq ($(USE_OPENAL),1)
+    ifneq ($(USE_OPENAL_DLOPEN),1)
+      CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
+    endif
   endif
 
-  BUILD_CLIENT = 0
+  ifeq ($(USE_CURL),1)
+    ifneq ($(USE_CURL_DLOPEN),1)
+      CLIENT_LIBS += $(CURL_LIBS)
+    endif
+  endif
 else # ifeq netbsd
 
 #############################################################################
