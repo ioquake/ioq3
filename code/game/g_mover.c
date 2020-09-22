@@ -424,7 +424,7 @@ void G_MoverTeam( gentity_t *ent ) {
 
 	obstacle = NULL;
 
-	// make sure all team slaves can move before committing
+	// make sure all team members can move before committing
 	// any moves or calling any think functions
 	// if the move is blocked, all moved objects will be backed out
 	pushed_p = pushed;
@@ -550,10 +550,10 @@ in the same amount of time
 ================
 */
 void MatchTeam( gentity_t *teamLeader, int moverState, int time ) {
-	gentity_t		*slave;
+	gentity_t		*member;
 
-	for ( slave = teamLeader ; slave ; slave = slave->teamchain ) {
-		SetMoverState( slave, moverState, time );
+	for ( member = teamLeader ; member ; member = member->teamchain ) {
+		SetMoverState( member, moverState, time );
 	}
 }
 
