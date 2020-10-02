@@ -208,7 +208,9 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 
 void Add_Ammo (gentity_t *ent, int weapon, int count)
 {
-	ent->client->ps.ammo[weapon] += count;
+	if ( ent->client->ps.ammo[weapon] != -1 ) {
+	    ent->client->ps.ammo[weapon] += count;
+	}
 	if ( ent->client->ps.ammo[weapon] > 200 ) {
 		ent->client->ps.ammo[weapon] = 200;
 	}
