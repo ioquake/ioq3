@@ -567,7 +567,9 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 				damage = 5;
 			}
 			ent->pain_debounce_time = level.time + 200;	// no normal pain sound
-			if ( g_enableRocketJump.integer == 0 ) G_Damage (ent, NULL, NULL, NULL, NULL, damage, 0, MOD_FALLING);
+			if ( g_enableRocketJump.integer == 0 ) {
+			    G_Damage (ent, NULL, NULL, NULL, NULL, damage, 0, MOD_FALLING);
+			}
 			break;
 
 		case EV_FIRE_WEAPON:
