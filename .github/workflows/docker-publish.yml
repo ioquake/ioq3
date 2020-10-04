@@ -14,7 +14,7 @@ on:
   pull_request:
 
 env:
-  DOCKER_IMAGE: ondronr/ioq3server
+  DOCKER_IMAGE: ghcr.io/ondronr/ioq3server
 
 jobs:
   # Run tests.
