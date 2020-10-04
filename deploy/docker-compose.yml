@@ -1,0 +1,14 @@
+ioq3server:
+  image: ghcr.io/ondronr/ioq3server
+  command: /app/ioq3ded.x86_64 +set dedicated 1 +set sv_allowDownload 1 +set sv_dlURL \"\" +set com_hunkmegs 64 +exec autoexec.cfg
+  ports:
+      - "0.0.0.0:27960:27960"
+      - "0.0.0.0:27960:27960/udp"
+  volumes:
+      - '/usr/lib/ioquake3/:/datafiles'
+      - './autoexec.cfg:/app/baseq3/autoexec.cfg'
+      - './dm.cfg:/app/baseq3/dm.cfg'
+      - './ctf.cfg:/app/baseq3/ctf.cfg'
+      - './botson.cfg:/app/baseq3/botson.cfg'
+      - './botsoff.cfg:/app/baseq3/botsoff.cfg'
+  restart: always
