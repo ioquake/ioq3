@@ -1,5 +1,5 @@
 ioq3server:
-  image: ghcr.io/ondronr/ioq3server
+  image: ghcr.io/ondronr/ioq3server:edge
   command: /app/ioq3ded.x86_64 +set dedicated 1 +set sv_allowDownload 1 +set sv_dlURL \"\" +set com_hunkmegs 64 +exec autoexec.cfg
   ports:
       - "0.0.0.0:27960:27960"
