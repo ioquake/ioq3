@@ -751,6 +751,16 @@ extern	vmCvar_t	g_enableRocketJump;
 extern	vmCvar_t	g_spawnWithRocket;
 extern	vmCvar_t	g_spawnWithBFG;
 extern	vmCvar_t	g_spawnWithPlasma;
+extern	vmCvar_t	g_spawnWithMachinegun;
+extern	vmCvar_t	g_spawnWithShotgun;
+extern	vmCvar_t	g_spawnWithGrenade;
+extern	vmCvar_t	g_spawnWithLightning;
+extern	vmCvar_t	g_spawnWithRailgun;
+#ifdef MISSIONPACK
+extern	vmCvar_t	g_spawnWithNailgun;
+extern	vmCvar_t	g_spawnWithProx;
+extern	vmCvar_t	g_spawnWithChaingun;
+#endif
 // mod end
 
 

@@ -101,6 +101,16 @@ vmCvar_t	g_enableRocketJump;
 vmCvar_t	g_spawnWithRocket;
 vmCvar_t	g_spawnWithBFG;
 vmCvar_t	g_spawnWithPlasma;
+vmCvar_t	g_spawnWithMachinegun;
+vmCvar_t	g_spawnWithShotgun;
+vmCvar_t	g_spawnWithGrenade;
+vmCvar_t	g_spawnWithLightning;
+vmCvar_t	g_spawnWithRailgun;
+#ifdef MISSIONPACK
+vmCvar_t	g_spawnWithNailgun;
+vmCvar_t	g_spawnWithProx;
+vmCvar_t	g_spawnWithChaingun;
+#endif
 // mod end
 
 static cvarTable_t		gameCvarTable[] = {
@@ -188,10 +198,20 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_localTeamPref, "g_localTeamPref", "", 0, 0, qfalse },
 
 	// mod start
-	{ &g_enableRocketJump, "rocketjump", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
-	{ &g_spawnWithRocket,  "withrocket", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
-	{ &g_spawnWithBFG,     "withbfg",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
-	{ &g_spawnWithPlasma,  "withplasma", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_enableRocketJump,    "rocketjump",     "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithRocket,     "withrocket",     "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithBFG,        "withbfg",        "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithPlasma,     "withplasma",     "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithMachinegun, "withmachinegun", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithShotgun,    "withshotgun",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithGrenade,    "withgrenade",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithLightning,  "withlightning",  "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithRailgun,    "withrailgun",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+#ifdef MISSIONPACK
+	{ &g_spawnWithNailgun,    "withnailgun",    "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithProx,       "withprox",       "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+	{ &g_spawnWithChaingun,   "withchaingun",   "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+#endif
 	// mod end
 };
 

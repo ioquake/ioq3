@@ -1175,6 +1175,7 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.ammo[WP_GAUNTLET] = -1;
 	client->ps.ammo[WP_GRAPPLING_HOOK] = -1;
 
+	// mod start
 	if (g_spawnWithRocket.integer != 0) {
 		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_ROCKET_LAUNCHER );
 		client->ps.ammo[WP_ROCKET_LAUNCHER] = g_spawnWithRocket.integer;
@@ -1189,6 +1190,51 @@ void ClientSpawn(gentity_t *ent) {
 		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_PLASMAGUN );
 		client->ps.ammo[WP_PLASMAGUN] = g_spawnWithPlasma.integer;
 	}
+
+
+	if (g_spawnWithMachinegun.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_MACHINEGUN );
+		client->ps.ammo[WP_MACHINEGUN] = g_spawnWithMachinegun.integer;
+	}
+
+
+	if (g_spawnWithShotgun.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_SHOTGUN );
+		client->ps.ammo[WP_SHOTGUN] = g_spawnWithShotgun.integer;
+	}
+
+	if (g_spawnWithGrenade.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GRENADE_LAUNCHER );
+		client->ps.ammo[WP_GRENADE_LAUNCHER] = g_spawnWithGrenade.integer;
+	}
+
+	if (g_spawnWithLightning.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_LIGHTNING );
+		client->ps.ammo[WP_LIGHTNING] = g_spawnWithLightning.integer;
+	}
+
+	if (g_spawnWithRailgun.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_RAILGUN );
+		client->ps.ammo[WP_RAILGUN] = g_spawnWithRailgun.integer;
+	}
+
+#ifdef MISSIONPACK
+	if (g_spawnWithNailgun.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_NAILGUN );
+		client->ps.ammo[WP_NAILGUN] = g_spawnWithNailgun.integer;
+	}
+
+	if (g_spawnWithProx.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_PROX_LAUNCHER );
+		client->ps.ammo[WP_PROX_LAUNCHER] = g_spawnWithProx.integer;
+	}
+
+	if (g_spawnWithChaingun.integer != 0) {
+		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_CHAINGUN );
+		client->ps.ammo[WP_CHAINGUN] = g_spawnWithChaingun.integer;
+	}
+#endif
+	// mod end
 
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
