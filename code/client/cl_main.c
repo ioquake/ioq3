@@ -1473,7 +1473,11 @@ void CL_Disconnect( qboolean showMainMenu ) {
 		CL_CloseAVI( );
 	}
 
-	CL_UpdateGUID( NULL, 0 );
+	if ( cl_guidServerUniq->integer ) {
+		Cvar_Set("cl_guid", "");
+	} else {
+		CL_UpdateGUID( NULL, 0 );
+	}
 
 	if(!noGameRestart)
 		CL_OldGame();
@@ -3704,7 +3708,14 @@ void CL_Init( void ) {
 
 	CL_GenerateQKey();
 	Cvar_Get( "cl_guid", "", CVAR_USERINFO | CVAR_ROM );
-	CL_UpdateGUID( NULL, 0 );
+	if ( cl_guidServerUniq->integer ) {
+		if ( clc.state >= CA_CONNECTING ) {
+			const char *serverString = NET_AdrToStringwPort( clc.serverAddress );
+			CL_UpdateGUID( serverString, strlen( serverString) );
+		}
+	} else {
+		CL_UpdateGUID( NULL, 0 );
+	}
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );
 }
