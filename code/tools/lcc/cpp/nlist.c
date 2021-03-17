@@ -82,7 +82,7 @@ lookup(Token *tp, int install)
 	h %= NLSIZE;
 	np = nlist[h];
 	while (np) {
-		if (*tp->t==*np->name && tp->len==np->len 
+		if (*tp->t==*np->name && tp->len==np->len
 		 && strncmp((char*)tp->t, (char*)np->name, tp->len)==0)
 			return np;
 		np = np->next;

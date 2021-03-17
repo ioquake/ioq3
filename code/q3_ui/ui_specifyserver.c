@@ -40,8 +40,8 @@ static char* specifyserver_artlist[] =
 {
 	SPECIFYSERVER_FRAMEL,
 	SPECIFYSERVER_FRAMER,
-	SPECIFYSERVER_BACK0,	
-	SPECIFYSERVER_BACK1,	
+	SPECIFYSERVER_BACK0,
+	SPECIFYSERVER_BACK1,
 	SPECIFYSERVER_FIGHT0,
 	SPECIFYSERVER_FIGHT1,
 	NULL
@@ -120,7 +120,7 @@ void SpecifyServer_MenuInit( void )
 	s_specifyserver.framel.generic.type  = MTYPE_BITMAP;
 	s_specifyserver.framel.generic.name  = SPECIFYSERVER_FRAMEL;
 	s_specifyserver.framel.generic.flags = QMF_INACTIVE;
-	s_specifyserver.framel.generic.x	 = 0;  
+	s_specifyserver.framel.generic.x	 = 0;
 	s_specifyserver.framel.generic.y	 = 78;
 	s_specifyserver.framel.width  	     = 256;
 	s_specifyserver.framel.height  	     = 329;

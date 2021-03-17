@@ -226,7 +226,7 @@ void RB_InstantQuad(vec4_t quadVerts[4])
 	VectorSet2(texCoords[3], 0.0f, 1.0f);
 
 	GLSL_BindProgram(&tr.textureColorShader);
-	
+
 	GLSL_SetUniformMat4(&tr.textureColorShader, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 	GLSL_SetUniformVec4(&tr.textureColorShader, UNIFORM_COLOR, colorWhite);
 
@@ -253,7 +253,7 @@ static void RB_SurfaceSprite( void ) {
 	} else {
 		float	s, c;
 		float	ang;
-		
+
 		ang = M_PI * ent->e.rotation / 180;
 		s = sin( ang );
 		c = cos( ang );
@@ -536,11 +536,11 @@ static void RB_SurfaceBeam( void )
 
 	// FIXME: A lot of this can probably be removed for speed, and refactored into a more convenient function
 	RB_UpdateTessVao(ATTR_POSITION);
-	
+
 	GLSL_BindProgram(sp);
-		
+
 	GLSL_SetUniformMat4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
-					
+
 	GLSL_SetUniformVec4(sp, UNIFORM_COLOR, colorRed);
 
 	GLSL_SetUniformInt(sp, UNIFORM_ALPHATEST, 0);
@@ -909,11 +909,11 @@ static float	LodErrorForVolume( vec3_t local, float radius ) {
 		return 0;
 	}
 
-	world[0] = local[0] * backEnd.or.axis[0][0] + local[1] * backEnd.or.axis[1][0] + 
+	world[0] = local[0] * backEnd.or.axis[0][0] + local[1] * backEnd.or.axis[1][0] +
 		local[2] * backEnd.or.axis[2][0] + backEnd.or.origin[0];
-	world[1] = local[0] * backEnd.or.axis[0][1] + local[1] * backEnd.or.axis[1][1] + 
+	world[1] = local[0] * backEnd.or.axis[0][1] + local[1] * backEnd.or.axis[1][1] +
 		local[2] * backEnd.or.axis[2][1] + backEnd.or.origin[1];
-	world[2] = local[0] * backEnd.or.axis[0][2] + local[1] * backEnd.or.axis[1][2] + 
+	world[2] = local[0] * backEnd.or.axis[0][2] + local[1] * backEnd.or.axis[1][2] +
 		local[2] * backEnd.or.axis[2][2] + backEnd.or.origin[2];
 
 	VectorSubtract( world, backEnd.viewParms.or.origin, world );
@@ -1017,7 +1017,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 				break;
 			}
 		} while ( 1 );
-		
+
 		rows = irows;
 		if ( vrows < irows + 1 ) {
 			rows = vrows - 1;
@@ -1100,7 +1100,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 			for (i = 0 ; i < h ; i++) {
 				for (j = 0 ; j < w ; j++) {
 					int		v1, v2, v3, v4;
-			
+
 					// vertex order to be reckognized as tristrips
 					v1 = numVertexes + i*lodWidth + j + 1;
 					v2 = v1 - 1;
@@ -1110,7 +1110,7 @@ static void RB_SurfaceGrid( srfBspSurface_t *srf ) {
 					tess.indexes[numIndexes] = v2;
 					tess.indexes[numIndexes+1] = v3;
 					tess.indexes[numIndexes+2] = v1;
-					
+
 					tess.indexes[numIndexes+3] = v1;
 					tess.indexes[numIndexes+4] = v3;
 					tess.indexes[numIndexes+5] = v4;
@@ -1301,8 +1301,8 @@ static void RB_SurfaceSkip( void *surf ) {
 
 
 void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
-	(void(*)(void*))RB_SurfaceBad,			// SF_BAD, 
-	(void(*)(void*))RB_SurfaceSkip,			// SF_SKIP, 
+	(void(*)(void*))RB_SurfaceBad,			// SF_BAD,
+	(void(*)(void*))RB_SurfaceSkip,			// SF_SKIP,
 	(void(*)(void*))RB_SurfaceFace,			// SF_FACE,
 	(void(*)(void*))RB_SurfaceGrid,			// SF_GRID,
 	(void(*)(void*))RB_SurfaceTriangles,		// SF_TRIANGLES,

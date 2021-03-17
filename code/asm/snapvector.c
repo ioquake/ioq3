@@ -50,14 +50,14 @@ void qsnapvectorsse(vec3_t vec)
 		: "r" (ssemask), "r" (vec)
 		: "memory", "%xmm0", "%xmm1", "%xmm2"
 	);
-	
+
 }
 
 #define QROUNDX87(src) \
 	"flds " src "\n" \
 	"fistpl " src "\n" \
 	"fildl " src "\n" \
-	"fstps " src "\n"	
+	"fstps " src "\n"
 
 void qsnapvectorx87(vec3_t vec)
 {

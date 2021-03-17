@@ -77,7 +77,7 @@ int ReadValue(source_t *source, float *value)
 		SourceError(source, "invalid return value %s", token.string);
 		return qfalse;
 	}
-	
+
 	*value = token.floatvalue;
 	return qtrue;
 } //end of the function ReadValue

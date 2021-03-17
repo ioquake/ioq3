@@ -130,11 +130,11 @@ void GL_Cull( int cullType ) {
 
 	glState.faceCulling = cullType;
 
-	if ( cullType == CT_TWO_SIDED ) 
+	if ( cullType == CT_TWO_SIDED )
 	{
 		qglDisable( GL_CULL_FACE );
-	} 
-	else 
+	}
+	else
 	{
 		qboolean cullFront;
 		qglEnable( GL_CULL_FACE );
@@ -401,9 +401,9 @@ static void SetViewportAndScissor( void ) {
 	qglMatrixMode(GL_MODELVIEW);
 
 	// set the window clipping
-	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
+	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
+	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 }
 
@@ -543,7 +543,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from separate
 		// entities merged into a single batch, like smoke and blood puff sprites
-		if ( shader != NULL && ( shader != oldShader || fogNum != oldFogNum || dlighted != oldDlighted 
+		if ( shader != NULL && ( shader != oldShader || fogNum != oldFogNum || dlighted != oldDlighted
 			|| ( entityNum != oldEntityNum && !shader->entityMergable ) ) ) {
 			if (oldShader != NULL) {
 				RB_EndSurface();
@@ -582,7 +582,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				{
 					// hack the depth range to prevent view model from poking into walls
 					depthRange = qtrue;
-					
+
 					if(backEnd.currentEntity->e.renderfx & RF_CROSSHAIR)
 						isCrosshair = qtrue;
 				}
@@ -674,7 +674,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	}
 
 	// darken down any stencil shadows
-	RB_ShadowFinish();		
+	RB_ShadowFinish();
 
 	// add light flares on lights that aren't obscured
 	RB_RenderFlares();
@@ -1017,9 +1017,9 @@ RB_ColorMask
 const void *RB_ColorMask(const void *data)
 {
 	const colorMaskCommand_t *cmd = data;
-	
+
 	qglColorMask(cmd->rgba[0], cmd->rgba[1], cmd->rgba[2], cmd->rgba[3]);
-	
+
 	return (const void *)(cmd + 1);
 }
 
@@ -1032,7 +1032,7 @@ RB_ClearDepth
 const void *RB_ClearDepth(const void *data)
 {
 	const clearDepthCommand_t *cmd = data;
-	
+
 	if(tess.numIndexes)
 		RB_EndSurface();
 
@@ -1041,7 +1041,7 @@ const void *RB_ClearDepth(const void *data)
 		RB_ShowImages();
 
 	qglClear(GL_DEPTH_BUFFER_BIT);
-	
+
 	return (const void *)(cmd + 1);
 }
 

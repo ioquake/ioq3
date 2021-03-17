@@ -132,7 +132,7 @@ void CG_BloodTrail( localEntity_t *le ) {
 	for ( ; t <= t2; t += step ) {
 		BG_EvaluateTrajectory( &le->pos, t, newOrigin );
 
-		blood = CG_SmokePuff( newOrigin, vec3_origin, 
+		blood = CG_SmokePuff( newOrigin, vec3_origin,
 					  20,		// radius
 					  1, 1, 1, 1,	// color
 					  2000,		// trailTime
@@ -228,8 +228,8 @@ void CG_ReflectVelocity( localEntity_t *le, trace_t *trace ) {
 
 
 	// check for stop, making sure that even on low FPS systems it doesn't bobble
-	if ( trace->allsolid || 
-		( trace->plane.normal[2] > 0 && 
+	if ( trace->allsolid ||
+		( trace->plane.normal[2] > 0 &&
 		( le->pos.trDelta[2] < 40 || le->pos.trDelta[2] < -cg.frametime * le->pos.trDelta[2] ) ) ) {
 		le->pos.trType = TR_STATIONARY;
 	} else {
@@ -250,7 +250,7 @@ void CG_AddFragment( localEntity_t *le ) {
 		// sink into the ground if near the removal time
 		int		t;
 		float	oldZ;
-		
+
 		t = le->endTime - cg.time;
 		if ( t < SINK_TIME ) {
 			// we must use an explicit lighting origin, otherwise the

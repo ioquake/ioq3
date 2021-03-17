@@ -1082,7 +1082,7 @@ void R_AddIQMSurfaces( trRefEntity_t *ent ) {
 	// when the surfaces are rendered, they don't need to be
 	// range checked again.
 	//
-	if ( (ent->e.frame >= data->num_frames) 
+	if ( (ent->e.frame >= data->num_frames)
 	     || (ent->e.frame < 0)
 	     || (ent->e.oldframe >= data->num_frames)
 	     || (ent->e.oldframe < 0) ) {
@@ -1138,9 +1138,9 @@ void R_AddIQMSurfaces( trRefEntity_t *ent ) {
 
 		// stencil shadows can't do personal models unless I polyhedron clip
 		if ( !personalModel
-			&& r_shadows->integer == 2 
+			&& r_shadows->integer == 2
 			&& fogNum == 0
-			&& !(ent->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) ) 
+			&& !(ent->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
 			&& shader->sort == SS_OPAQUE ) {
 			R_AddDrawSurf( (void *)surface, tr.shadowShader, 0, 0 );
 		}
@@ -1458,7 +1458,7 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 }
 
 int R_IQMLerpTag( orientation_t *tag, iqmData_t *data,
-		  int startFrame, int endFrame, 
+		  int startFrame, int endFrame,
 		  float frac, const char *tagName ) {
 	float	jointMats[IQM_MAX_JOINTS * 12];
 	int	joint;

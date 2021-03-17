@@ -68,7 +68,7 @@ static void bbcall(Symbol yycounts, Coordinate *cp, Tree *e) {
 /* bbentry - return tree for _prologue(&afunc, &YYlink)' */
 static void bbentry(Symbol yylink, Symbol f) {
 	static Symbol prologue;
-	
+
 	afunc = genident(STATIC, array(voidptype, 4, 0), GLOBAL);
 	if (prologue == 0) {
 		prologue = mksymbol(EXTERN, "_prologue", ftype(inttype, voidptype));
@@ -81,7 +81,7 @@ static void bbentry(Symbol yylink, Symbol f) {
 /* bbexit - return tree for _epilogue(&afunc)' */
 static void bbexit(Symbol yylink, Symbol f, Tree e) {
 	static Symbol epilogue;
-	
+
 	if (epilogue == 0) {
 		epilogue = mksymbol(EXTERN, "_epilogue", ftype(inttype, voidptype));
 		epilogue->defined = 0;

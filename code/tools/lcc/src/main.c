@@ -102,7 +102,7 @@ void main_init(int argc, char *argv[]) {
 					IR->stabline = stabline;
 					IR->stabend = stabend;
 				}
-			}	
+			}
 		} else if (strcmp(argv[i], "-x") == 0)
 			xref++;
 		else if (strcmp(argv[i], "-A") == 0) {

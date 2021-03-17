@@ -37,7 +37,7 @@ int CM_PointLeafnum_r( const vec3_t p, int num ) {
 	{
 		node = cm.nodes + num;
 		plane = node->plane;
-		
+
 		if (plane->type < 3)
 			d = p[plane->type] - plane->dist;
 		else
@@ -147,7 +147,7 @@ void CM_BoxLeafnums_r( leafList_t *ll, int nodenum ) {
 			ll->storeLeafs( ll, nodenum );
 			return;
 		}
-	
+
 		node = &cm.nodes[nodenum];
 		plane = node->plane;
 		s = BoxOnPlaneSide( ll->bounds[0], ll->bounds[1], plane );
@@ -207,7 +207,7 @@ int CM_BoxBrushes( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int li
 	ll.storeLeafs = CM_StoreBrushes;
 	ll.lastLeaf = 0;
 	ll.overflowed = qfalse;
-	
+
 	CM_BoxLeafnums_r( &ll, 0 );
 
 	return ll.count;
@@ -289,7 +289,7 @@ int	CM_TransformedPointContents( const vec3_t p, clipHandle_t model, const vec3_
 	VectorSubtract (p, origin, p_l);
 
 	// rotate start and end into the models frame of reference
-	if ( model != BOX_MODEL_HANDLE && 
+	if ( model != BOX_MODEL_HANDLE &&
 	(angles[0] || angles[1] || angles[2]) )
 	{
 		AngleVectors (angles, forward, right, up);

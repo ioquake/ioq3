@@ -297,7 +297,7 @@ Type initializer(Type ty, int lev) {
 			error("missing { in initialization of `%t'\n", ty);
 			n = initarray(aty->size, aty, lev + 1);
 		}
-	}	
+	}
 	if (ty->size) {
 		if (n > ty->size)
 			error("too many initializers\n");

@@ -72,7 +72,7 @@ void SNDDMA_MasterGain( float val )
 #endif
 
 
-sfxHandle_t S_RegisterSound( const char *name, qboolean compressed ) 
+sfxHandle_t S_RegisterSound( const char *name, qboolean compressed )
 {
 	return 0;
 }

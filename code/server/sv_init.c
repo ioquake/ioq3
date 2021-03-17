@@ -139,7 +139,7 @@ void SV_SetConfigstring (int index, const char *val) {
 			if ( index == CS_SERVERINFO && client->gentity && (client->gentity->r.svFlags & SVF_NOSERVERINFO) ) {
 				continue;
 			}
-		
+
 			SV_SendConfigstring(client, index);
 		}
 	}
@@ -216,7 +216,7 @@ baseline will be transmitted
 */
 static void SV_CreateBaseline( void ) {
 	sharedEntity_t *svent;
-	int				entnum;	
+	int				entnum;
 
 	for ( entnum = 1; entnum < sv.num_entities ; entnum++ ) {
 		svent = SV_GentityNum(entnum);
@@ -284,7 +284,7 @@ static void SV_Startup( void ) {
 	}
 
 	Cvar_Set( "sv_running", "1" );
-	
+
 	// Join the ipv6 multicast group now that a map is running so clients can scan for us on the local network.
 	NET_JoinMulticast6();
 }
@@ -346,7 +346,7 @@ void SV_ChangeMaxClients( void ) {
 
 	// free the old clients on the hunk
 	Hunk_FreeTempMemory( oldClients );
-	
+
 	// allocate new snapshot entities
 	if ( com_dedicated->integer ) {
 		svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * MAX_SNAPSHOT_ENTITIES;
@@ -421,7 +421,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	// clear collision map data
 	CM_ClearMap();
 
-	// init client structures and svs.numSnapshotEntities 
+	// init client structures and svs.numSnapshotEntities
 	if ( !Cvar_VariableValue("sv_running") ) {
 		SV_Startup();
 	} else {
@@ -482,7 +482,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 	// clear physics interaction links
 	SV_ClearWorld ();
-	
+
 	// media configstring setting should be done during
 	// the loading stage, so connected clients don't have
 	// to load during actual gameplay
@@ -551,7 +551,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 				}
 			}
 		}
-	}	
+	}
 
 	// run another frame to allow things to look at all the players
 	VM_Call (gvm, GAME_RUN_FRAME, sv.time);
@@ -671,7 +671,7 @@ void SV_Init (void)
 
 	sv_allowDownload = Cvar_Get ("sv_allowDownload", "0", CVAR_SERVERINFO);
 	Cvar_Get ("sv_dlURL", "", CVAR_SERVERINFO | CVAR_ARCHIVE);
-	
+
 	sv_master[0] = Cvar_Get("sv_master1", MASTER_SERVER_NAME, 0);
 	sv_master[1] = Cvar_Get("sv_master2", "master.ioquake3.org", 0);
 	for(index = 2; index < MAX_MASTER_SERVERS; index++)
@@ -693,7 +693,7 @@ void SV_Init (void)
 
 	// init the botlib here because we need the pre-compiler in the UI
 	SV_BotInitBotLib();
-	
+
 	// Load saved bans
 	Cbuf_AddText("rehashbans\n");
 }
@@ -712,7 +712,7 @@ to totally exit after returning from this function.
 void SV_FinalMessage( char *message ) {
 	int			i, j;
 	client_t	*cl;
-	
+
 	// send it twice, ignoring rate
 	for ( j = 0 ; j < 2 ; j++ ) {
 		for (i=0, cl = svs.clients ; i < sv_maxclients->integer ; i++, cl++) {
@@ -763,10 +763,10 @@ void SV_Shutdown( char *finalmsg ) {
 	if(svs.clients)
 	{
 		int index;
-		
+
 		for(index = 0; index < sv_maxclients->integer; index++)
 			SV_FreeClient(&svs.clients[index]);
-		
+
 		Z_Free(svs.clients);
 	}
 	Com_Memset( &svs, 0, sizeof( svs ) );

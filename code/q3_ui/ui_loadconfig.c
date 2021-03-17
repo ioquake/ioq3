@@ -32,7 +32,7 @@ LOAD CONFIG MENU
 
 
 #define ART_BACK0			"menu/art/back_0"
-#define ART_BACK1			"menu/art/back_1"	
+#define ART_BACK1			"menu/art/back_1"
 #define ART_FIGHT0			"menu/art/load_0"
 #define ART_FIGHT1			"menu/art/load_1"
 #define ART_FRAMEL			"menu/art/frame2_l"
@@ -133,7 +133,7 @@ static void LoadConfig_MenuInit( void ) {
 	s_configs.framel.generic.type	= MTYPE_BITMAP;
 	s_configs.framel.generic.name	= ART_FRAMEL;
 	s_configs.framel.generic.flags	= QMF_INACTIVE;
-	s_configs.framel.generic.x		= 0;  
+	s_configs.framel.generic.x		= 0;
 	s_configs.framel.generic.y		= 78;
 	s_configs.framel.width			= 256;
 	s_configs.framel.height			= 329;
@@ -218,11 +218,11 @@ static void LoadConfig_MenuInit( void ) {
 	}
 	else if (s_configs.list.numitems > MAX_CONFIGS)
 		s_configs.list.numitems = MAX_CONFIGS;
-	
+
 	configname = s_configs.names;
 	for ( i = 0; i < s_configs.list.numitems; i++ ) {
 		s_configs.list.itemnames[i] = configname;
-		
+
 		// strip extension
 		len = strlen( configname );
 		if (!Q_stricmp(configname +  len - 4,".cfg"))

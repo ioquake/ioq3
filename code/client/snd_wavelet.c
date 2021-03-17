@@ -175,14 +175,14 @@ void decodeWavelet(sndBuffer *chunk, short *to) {
 	byte			*out;
 
 	int size = chunk->size;
-	
+
 	out = (byte *)chunk->sndChunk;
 	for(i=0;i<size;i++) {
 		wksp[i] = mulawToShort[out[i]];
 	}
 
 	wt1(wksp, size, -1);
-	
+
 	if (!to) return;
 
 	for(i=0; i<size; i++) {
@@ -242,7 +242,7 @@ void decodeMuLaw(sndBuffer *chunk, short *to) {
 	byte			*out;
 
 	int size = chunk->size;
-	
+
 	out = (byte *)chunk->sndChunk;
 	for(i=0;i<size;i++) {
 		to[i] = mulawToShort[out[i]];

@@ -180,7 +180,7 @@ extern DECLSPEC void SDLCALL SDL_WaitThread(SDL_Thread * thread, int *status);
  *  \code
  *  static SDL_SpinLock tls_lock;
  *  static SDL_TLSID thread_local_storage;
- * 
+ *
  *  void SetMyThreadData(void *value)
  *  {
  *      if (!thread_local_storage) {
@@ -192,7 +192,7 @@ extern DECLSPEC void SDLCALL SDL_WaitThread(SDL_Thread * thread, int *status);
  *      }
  *      SDL_TLSSet(thread_local_storage, value);
  *  }
- *  
+ *
  *  void *GetMyThreadData(void)
  *  {
  *      return SDL_TLSGet(thread_local_storage);

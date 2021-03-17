@@ -54,7 +54,7 @@ void trap_Error(const char *fmt)
 }
 
 int		trap_Milliseconds( void ) {
-	return syscall( CG_MILLISECONDS ); 
+	return syscall( CG_MILLISECONDS );
 }
 
 void	trap_Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags ) {
@@ -179,7 +179,7 @@ void	trap_CM_TransformedCapsuleTrace( trace_t *results, const vec3_t start, cons
 	syscall( CG_CM_TRANSFORMEDCAPSULETRACE, results, start, end, mins, maxs, model, brushmask, origin, angles );
 }
 
-int		trap_CM_MarkFragments( int numPoints, const vec3_t *points, 
+int		trap_CM_MarkFragments( int numPoints, const vec3_t *points,
 				const vec3_t projection,
 				int maxPoints, vec3_t pointBuffer,
 				int maxFragments, markFragment_t *fragmentBuffer ) {
@@ -286,7 +286,7 @@ void	trap_R_SetColor( const float *rgba ) {
 	syscall( CG_R_SETCOLOR, rgba );
 }
 
-void	trap_R_DrawStretchPic( float x, float y, float w, float h, 
+void	trap_R_DrawStretchPic( float x, float y, float w, float h,
 							   float s1, float t1, float s2, float t2, qhandle_t hShader ) {
 	syscall( CG_R_DRAWSTRETCHPIC, PASSFLOAT(x), PASSFLOAT(y), PASSFLOAT(w), PASSFLOAT(h), PASSFLOAT(s1), PASSFLOAT(t1), PASSFLOAT(s2), PASSFLOAT(t2), hShader );
 }
@@ -295,7 +295,7 @@ void	trap_R_ModelBounds( clipHandle_t model, vec3_t mins, vec3_t maxs ) {
 	syscall( CG_R_MODELBOUNDS, model, mins, maxs );
 }
 
-int		trap_R_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int endFrame, 
+int		trap_R_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int endFrame,
 					   float frac, const char *tagName ) {
 	return syscall( CG_R_LERPTAG, tag, mod, startFrame, endFrame, PASSFLOAT(frac), tagName );
 }
@@ -400,7 +400,7 @@ void trap_SnapVector( float *v ) {
 int trap_CIN_PlayCinematic( const char *arg0, int xpos, int ypos, int width, int height, int bits) {
   return syscall(CG_CIN_PLAYCINEMATIC, arg0, xpos, ypos, width, height, bits);
 }
- 
+
 // stops playing the cinematic and ends it.  should always return FMV_EOF
 // cinematics must be stopped in reverse order of when they are started
 e_status trap_CIN_StopCinematic(int handle) {
@@ -412,13 +412,13 @@ e_status trap_CIN_StopCinematic(int handle) {
 e_status trap_CIN_RunCinematic (int handle) {
   return syscall(CG_CIN_RUNCINEMATIC, handle);
 }
- 
+
 
 // draws the current frame
 void trap_CIN_DrawCinematic (int handle) {
   syscall(CG_CIN_DRAWCINEMATIC, handle);
 }
- 
+
 
 // allows you to resize the animation dynamically
 void trap_CIN_SetExtents (int handle, int x, int y, int w, int h) {

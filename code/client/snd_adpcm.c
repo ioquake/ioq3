@@ -4,10 +4,10 @@ Netherlands.
 
                         All Rights Reserved
 
-Permission to use, copy, modify, and distribute this software and its 
-documentation for any purpose and without fee is hereby granted, 
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in 
+both that copyright notice and this permission notice appear in
 supporting documentation, and that the names of Stichting Mathematisch
 Centrum or CWI not be used in advertising or publicity pertaining to
 distribution of the software without specific, written prior permission.
@@ -52,7 +52,7 @@ static int stepsizeTable[89] = {
     15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
 };
 
-   
+
 void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state *state ) {
     short *inp;			/* Input buffer pointer */
     signed char *outp;		/* output buffer pointer */
@@ -73,7 +73,7 @@ void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state 
     valpred = state->sample;
     index = state->index;
     step = stepsizeTable[index];
-    
+
 	outputbuffer = 0;	// quiet a compiler warning
     bufferstep = 1;
 
@@ -96,7 +96,7 @@ void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state 
 		*/
 		delta = 0;
 		vpdiff = (step >> 3);
-		
+
 		if ( diff >= step ) {
 			delta = 4;
 			diff -= step;
@@ -128,7 +128,7 @@ void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state 
 
 		/* Step 5 - Assemble value, update index and step values */
 		delta |= sign;
-		
+
 		index += indexTable[delta];
 		if ( index < 0 ) index = 0;
 		if ( index > 88 ) index = 88;
@@ -146,7 +146,7 @@ void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state 
     /* Output last step, if needed */
     if ( !bufferstep )
       *outp++ = outputbuffer;
-    
+
     state->sample = valpred;
     state->index = index;
 }
@@ -174,7 +174,7 @@ void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state 
     bufferstep = 0;
     inputbuffer = 0;	// quiet a compiler warning
     for ( ; len > 0 ; len-- ) {
-		
+
 		/* Step 1 - get the delta value */
 		if ( bufferstep ) {
 			delta = inputbuffer & 0xf;

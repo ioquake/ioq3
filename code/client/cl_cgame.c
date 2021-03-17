@@ -158,7 +158,7 @@ qboolean	CL_GetSnapshot( int snapshotNumber, snapshot_t *snapshot ) {
 	}
 	snapshot->numEntities = count;
 	for ( i = 0 ; i < count ; i++ ) {
-		snapshot->entities[i] = 
+		snapshot->entities[i] =
 			cl.parseEntities[ ( clSnap->parseEntitiesNum + i ) & (MAX_PARSE_ENTITIES-1) ];
 	}
 
@@ -218,7 +218,7 @@ void CL_ConfigstringModified( void ) {
 
 	// leave the first 0 for uninitialized strings
 	cl.gameState.dataCount = 1;
-		
+
 	for ( i = 0 ; i < MAX_CONFIGSTRINGS ; i++ ) {
 		if ( i == index ) {
 			dup = s;
@@ -418,7 +418,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_MILLISECONDS:
 		return Sys_Milliseconds();
 	case CG_CVAR_REGISTER:
-		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] ); 
+		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] );
 		return 0;
 	case CG_CVAR_UPDATE:
 		Cvar_Update( VMA(1) );
@@ -530,7 +530,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 	case CG_R_LOADWORLDMAP:
 		re.LoadWorld( VMA(1) );
-		return 0; 
+		return 0;
 	case CG_R_REGISTERMODEL:
 		return re.RegisterModel( VMA(1) );
 	case CG_R_REGISTERSKIN:
@@ -961,7 +961,7 @@ void CL_SetCGameTime( void ) {
 		if ( clc.state != CA_ACTIVE ) {
 			return;
 		}
-	}	
+	}
 
 	// if we have gotten to this point, cl.snap is guaranteed to be valid
 	if ( !cl.snap.valid ) {
@@ -987,10 +987,10 @@ void CL_SetCGameTime( void ) {
 
 	} else {
 		// cl_timeNudge is a user adjustable cvar that allows more
-		// or less latency to be added in the interest of better 
+		// or less latency to be added in the interest of better
 		// smoothness or better responsiveness.
 		int tn;
-		
+
 		tn = cl_timeNudge->integer;
 		if (tn<-30) {
 			tn = -30;

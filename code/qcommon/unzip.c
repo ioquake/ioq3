@@ -544,7 +544,7 @@ extern int ZEXPORT unzGetGlobalInfo (file,pglobal_info)
 local void unzlocal_DosDateToTmuDate OF((
     uLong ulDosDate,
     tm_unz* ptm));
-        
+
 
 local void unzlocal_DosDateToTmuDate (ulDosDate, ptm)
     uLong ulDosDate;

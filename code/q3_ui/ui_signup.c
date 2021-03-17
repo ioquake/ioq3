@@ -72,14 +72,14 @@ Signup_MenuEvent
 */
 static void Signup_MenuEvent( void* ptr, int event ) {
 	//char	cmd[1024];
-	
+
 	if( event != QM_ACTIVATED ) {
 		return;
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
 	case ID_SIGNUP:
-		if( strcmp(s_signup.password_box.field.buffer, 
+		if( strcmp(s_signup.password_box.field.buffer,
 			s_signup.again_box.field.buffer) != 0 )
 		{
 			// GRANK_FIXME - password mismatch
@@ -94,20 +94,20 @@ static void Signup_MenuEvent( void* ptr, int event ) {
 
 		// create account
 		/*
-		sprintf( cmd, "cmd rank_create \"%s\" \"%s\" \"%s\"\n", 
-			s_signup.name_box.field.buffer, 
-			s_signup.password_box.field.buffer, 
+		sprintf( cmd, "cmd rank_create \"%s\" \"%s\" \"%s\"\n",
+			s_signup.name_box.field.buffer,
+			s_signup.password_box.field.buffer,
 			s_signup.email_box.field.buffer );
 		trap_Cmd_ExecuteText( EXEC_APPEND, cmd );
 		*/
 		trap_CL_UI_RankUserCreate(
-			s_signup.name_box.field.buffer, 
-			s_signup.password_box.field.buffer, 
+			s_signup.name_box.field.buffer,
+			s_signup.password_box.field.buffer,
 			s_signup.email_box.field.buffer );
 
 		UI_ForceMenuOff();
 		break;
-		
+
 	case ID_CANCEL:
 		UI_PopMenu();
 		break;
@@ -158,7 +158,7 @@ void Signup_MenuInit( void ) {
 	s_signup.name_box.field.widthInChars	= 16;
 	s_signup.name_box.field.maxchars		= 16;
 	y += 20;
-	
+
 	s_signup.password.generic.type			= MTYPE_PTEXT;
 	s_signup.password.generic.flags			= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 	s_signup.password.generic.id			= ID_PASSWORD;
@@ -240,15 +240,15 @@ void Signup_MenuInit( void ) {
 	status = (grank_status_t)trap_Cvar_VariableValue("client_status");
 	if( (status != QGR_STATUS_NEW) && (status != QGR_STATUS_SPECTATOR) )
 	{
-		s_signup.name_box.generic.flags |= QMF_INACTIVE;	
-		s_signup.password_box.generic.flags |= QMF_INACTIVE;	
-		s_signup.again_box.generic.flags |= QMF_INACTIVE;	
-		s_signup.email_box.generic.flags |= QMF_INACTIVE;	
+		s_signup.name_box.generic.flags |= QMF_INACTIVE;
+		s_signup.password_box.generic.flags |= QMF_INACTIVE;
+		s_signup.again_box.generic.flags |= QMF_INACTIVE;
+		s_signup.email_box.generic.flags |= QMF_INACTIVE;
 		s_signup.signup.generic.flags |= QMF_INACTIVE;
-		
+
 		s_signup.signup.color = colorMdGrey;
 	}
-	
+
 	Menu_AddItem( &s_signup.menu, (void*) &s_signup.frame );
 	Menu_AddItem( &s_signup.menu, (void*) &s_signup.name );
 	Menu_AddItem( &s_signup.menu, (void*) &s_signup.name_box );

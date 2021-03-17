@@ -247,7 +247,7 @@ void S_Update( void )
 			s_muted->modified = qtrue;
 		}
 	}
-	
+
 	if( si.Update ) {
 		si.Update( );
 	}

@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	WAVEVALUE( table, base, amplitude, phase, freq )  ((base) + table[ ( (int64_t) ( ( (phase) + tess.shaderTime * (freq) ) * FUNCTABLE_SIZE ) ) & FUNCTABLE_MASK ] * (amplitude))
 
-static float *TableForFunc( genFunc_t func ) 
+static float *TableForFunc( genFunc_t func )
 {
 	switch ( func )
 	{
@@ -54,7 +54,7 @@ static float *TableForFunc( genFunc_t func )
 **
 ** Evaluates a given waveForm_t, referencing backEnd.refdef.time directly
 */
-static float EvalWaveForm( const waveForm_t *wf ) 
+static float EvalWaveForm( const waveForm_t *wf )
 {
 	float	*table;
 
@@ -123,7 +123,7 @@ void RB_CalcDeformVertexes( deformStage_t *ds )
 		for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 )
 		{
 			R_VaoUnpackNormal(offset, normal);
-			
+
 			xyz[0] += offset[0] * scale;
 			xyz[1] += offset[1] * scale;
 			xyz[2] += offset[2] * scale;
@@ -137,7 +137,7 @@ void RB_CalcDeformVertexes( deformStage_t *ds )
 		{
 			float off = ( xyz[0] + xyz[1] + xyz[2] ) * ds->deformationSpread;
 
-			scale = WAVEVALUE( table, ds->deformationWave.base, 
+			scale = WAVEVALUE( table, ds->deformationWave.base,
 				ds->deformationWave.amplitude,
 				ds->deformationWave.phase + off,
 				ds->deformationWave.frequency );
@@ -215,7 +215,7 @@ void RB_CalcBulgeVertexes( deformStage_t *ds ) {
 		off = (float)( FUNCTABLE_SIZE / (M_PI*2) ) * ( st[0] * ds->bulgeWidth + now );
 
 		scale = tr.sinTable[ off & FUNCTABLE_MASK ] * ds->bulgeHeight;
-			
+
 		xyz[0] += fNormal[0] * scale;
 		xyz[1] += fNormal[1] * scale;
 		xyz[2] += fNormal[2] * scale;
@@ -239,7 +239,7 @@ void RB_CalcMoveVertexes( deformStage_t *ds ) {
 
 	table = TableForFunc( ds->deformationWave.func );
 
-	scale = WAVEVALUE( table, ds->deformationWave.base, 
+	scale = WAVEVALUE( table, ds->deformationWave.base,
 		ds->deformationWave.amplitude,
 		ds->deformationWave.phase,
 		ds->deformationWave.frequency );
@@ -478,7 +478,7 @@ static void Autosprite2Deform( void ) {
 			v2 = xyz + 4 * edgeVerts[j][1];
 
 			VectorSubtract( v1, v2, temp );
-			
+
 			l = DotProduct( temp, temp );
 			if ( l < lengths[0] ) {
 				nums[1] = nums[0];
@@ -506,7 +506,7 @@ static void Autosprite2Deform( void ) {
 		// cross this with the view direction to get minor axis
 		CrossProduct( major, forward, minor );
 		VectorNormalize( minor );
-		
+
 		// re-project the points
 		for ( j = 0 ; j < 2 ; j++ ) {
 			float	l;
@@ -515,7 +515,7 @@ static void Autosprite2Deform( void ) {
 			v2 = xyz + 4 * edgeVerts[nums[j]][1];
 
 			l = 0.5 * sqrt( lengths[j] );
-			
+
 			// we need to see which direction this edge
 			// is used to determine direction of projection
 			for ( k = 0 ; k < 5 ; k++ ) {
@@ -615,7 +615,7 @@ float RB_CalcWaveColorSingle( const waveForm_t *wf )
 	} else {
 		glow = EvalWaveForm( wf ) * tr.identityLight;
 	}
-	
+
 	if ( glow < 0 ) {
 		glow = 0;
 	}
@@ -699,11 +699,11 @@ void RB_CalcFogTexCoords( float *st ) {
 
 	// rotate the gradient vector for this orientation
 	if ( fog->hasSurface ) {
-		fogDepthVector[0] = fog->surface[0] * backEnd.or.axis[0][0] + 
+		fogDepthVector[0] = fog->surface[0] * backEnd.or.axis[0][0] +
 			fog->surface[1] * backEnd.or.axis[0][1] + fog->surface[2] * backEnd.or.axis[0][2];
-		fogDepthVector[1] = fog->surface[0] * backEnd.or.axis[1][0] + 
+		fogDepthVector[1] = fog->surface[0] * backEnd.or.axis[1][0] +
 			fog->surface[1] * backEnd.or.axis[1][1] + fog->surface[2] * backEnd.or.axis[1][2];
-		fogDepthVector[2] = fog->surface[0] * backEnd.or.axis[2][0] + 
+		fogDepthVector[2] = fog->surface[0] * backEnd.or.axis[2][0] +
 			fog->surface[1] * backEnd.or.axis[2][1] + fog->surface[2] * backEnd.or.axis[2][2];
 		fogDepthVector[3] = -fog->surface[3] + DotProduct( backEnd.or.origin, fog->surface );
 
@@ -729,7 +729,7 @@ void RB_CalcFogTexCoords( float *st ) {
 		s = DotProduct( v, fogDistanceVector ) + fogDistanceVector[3];
 		t = DotProduct( v, fogDepthVector ) + fogDepthVector[3];
 
-		// partially clipped fogs use the T axis		
+		// partially clipped fogs use the T axis
 		if ( eyeOutside ) {
 			if ( t < 1.0 ) {
 				t = 1.0/32;	// point is outside, so no fogging

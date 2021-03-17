@@ -288,11 +288,11 @@ static void UI_LegsSequencing( playerInfo_t *pi ) {
 UI_PositionEntityOnTag
 ======================
 */
-static void UI_PositionEntityOnTag( refEntity_t *entity, const refEntity_t *parent, 
+static void UI_PositionEntityOnTag( refEntity_t *entity, const refEntity_t *parent,
 							clipHandle_t parentModel, char *tagName ) {
 	int				i;
 	orientation_t	lerped;
-	
+
 	// lerp the tag
 	trap_CM_LerpTag( &lerped, parentModel, parent->oldframe, parent->frame,
 		1.0 - parent->backlerp, tagName );
@@ -314,7 +314,7 @@ static void UI_PositionEntityOnTag( refEntity_t *entity, const refEntity_t *pare
 UI_PositionRotatedEntityOnTag
 ======================
 */
-static void UI_PositionRotatedEntityOnTag( refEntity_t *entity, const refEntity_t *parent, 
+static void UI_PositionRotatedEntityOnTag( refEntity_t *entity, const refEntity_t *parent,
 							clipHandle_t parentModel, char *tagName ) {
 	int				i;
 	orientation_t	lerped;
@@ -498,7 +498,7 @@ static void UI_SwingAngles( float destination, float swingTolerance, float clamp
 	if ( !*swinging ) {
 		return;
 	}
-	
+
 	// modify the speed depending on the delta
 	// so it doesn't seem so linear
 	swing = AngleSubtract( destination, *angle );
@@ -600,7 +600,7 @@ static void UI_PlayerAngles( playerInfo_t *pi, vec3_t legs[3], vec3_t torso[3], 
 	// --------- yaw -------------
 
 	// allow yaw to drift a bit
-	if ( ( pi->legsAnim & ~ANIM_TOGGLEBIT ) != LEGS_IDLE 
+	if ( ( pi->legsAnim & ~ANIM_TOGGLEBIT ) != LEGS_IDLE
 		|| ( pi->torsoAnim & ~ANIM_TOGGLEBIT ) != TORSO_STAND  ) {
 		// if not standing still, always point all in the same direction
 		pi->torso.yawing = qtrue;	// always center
@@ -783,7 +783,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 
 	// get the rotation information
 	UI_PlayerAngles( pi, legs.axis, torso.axis, head.axis );
-	
+
 	// get the animation state (after rotation, to allow feet shuffle)
 	UI_PlayerAnimation( pi, &legs.oldframe, &legs.frame, &legs.backlerp,
 		 &torso.oldframe, &torso.frame, &torso.backlerp );

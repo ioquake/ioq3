@@ -53,7 +53,7 @@ void trap_Error( const char *text )
 }
 
 int		trap_Milliseconds( void ) {
-	return syscall( G_MILLISECONDS ); 
+	return syscall( G_MILLISECONDS );
 }
 int		trap_Argc( void ) {
 	return syscall( G_ARGC );

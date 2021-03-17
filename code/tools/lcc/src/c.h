@@ -360,7 +360,7 @@ struct code {
 		struct {
 			Coordinate src;
 			int point;
-		} point; 
+		} point;
 		Node forest;
 		struct {
 			Symbol sym;

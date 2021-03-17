@@ -61,14 +61,14 @@ int S_OggOpus_Callback_read(void *datasource, unsigned char *ptr, int size )
 		errno = EFAULT;
 		return -1;
 	}
-	
+
 	if(!size)
 	{
 		// It's not an error, caller just wants zero bytes!
 		errno = 0;
 		return 0;
 	}
- 
+
 	if (size < 0)
 	{
 		errno = EINVAL;
@@ -80,7 +80,7 @@ int S_OggOpus_Callback_read(void *datasource, unsigned char *ptr, int size )
 		errno = EBADF;
 		return -1;
 	}
-	
+
 	// we use a snd_stream_t in the generic pointer to pass around
 	stream = (snd_stream_t *) datasource;
 
@@ -102,7 +102,7 @@ int S_OggOpus_Callback_seek(void *datasource, opus_int64 offset, int whence)
 	// check if input is valid
 	if(!datasource)
 	{
-		errno = EBADF; 
+		errno = EBADF;
 		return -1;
 	}
 
@@ -127,7 +127,7 @@ int S_OggOpus_Callback_seek(void *datasource, opus_int64 offset, int whence)
 			stream->pos = (int) offset;
 			break;
 		}
-  
+
 		case SEEK_CUR :
 		{
 			// set the file position in the actual file with the Q3 function
@@ -143,7 +143,7 @@ int S_OggOpus_Callback_seek(void *datasource, opus_int64 offset, int whence)
 			stream->pos += (int) offset;
 			break;
 		}
- 
+
 		case SEEK_END :
 		{
 			// set the file position in the actual file with the Q3 function
@@ -159,7 +159,7 @@ int S_OggOpus_Callback_seek(void *datasource, opus_int64 offset, int whence)
 			stream->pos = stream->length + (int) offset;
 			break;
 		}
-  
+
 		default :
 		{
 			// unknown whence, so we return an error
@@ -301,7 +301,7 @@ snd_stream_t *S_OggOpus_CodecOpenStream(const char *filename)
 
 	// We use stream->pos for the file pointer in the compressed ogg file
 	stream->pos = 0;
-	
+
 	// We use the generic pointer in stream for the opus codec control structure
 	stream->ptr = of;
 
@@ -320,7 +320,7 @@ void S_OggOpus_CodecCloseStream(snd_stream_t *stream)
 	{
 		return;
 	}
-	
+
 	// let the opus codec cleanup its stuff
 	op_free((OggOpusFile *) stream->ptr);
 
@@ -364,7 +364,7 @@ int S_OggOpus_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 	{
 		// read some samples from the opus codec
 		c = op_read((OggOpusFile *) stream->ptr, bufPtr + samplesRead * stream->info.channels, samplesLeft * stream->info.channels, NULL);
-		
+
 		// no more samples are left
 		if(c <= 0)
 		{
@@ -373,7 +373,7 @@ int S_OggOpus_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 
 		samplesRead += c;
 		samplesLeft -= c;
-  
+
 		// we have enough samples
 		if(samplesLeft <= 0)
 		{
@@ -388,7 +388,7 @@ int S_OggOpus_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 =====================================================================
 S_OggOpus_CodecLoad
 
-We handle S_OggOpus_CodecLoad as a special case of the streaming functions 
+We handle S_OggOpus_CodecLoad as a special case of the streaming functions
 where we read the whole stream at once.
 ======================================================================
 */
@@ -397,20 +397,20 @@ void *S_OggOpus_CodecLoad(const char *filename, snd_info_t *info)
 	snd_stream_t *stream;
 	byte *buffer;
 	int bytesRead;
-	
+
 	// check if input is valid
 	if(!(filename && info))
 	{
 		return NULL;
 	}
-	
+
 	// open the file as a stream
 	stream = S_OggOpus_CodecOpenStream(filename);
 	if(!stream)
 	{
 		return NULL;
 	}
-	
+
 	// copy over the info
 	info->rate = stream->info.rate;
 	info->width = stream->info.width;
@@ -425,24 +425,24 @@ void *S_OggOpus_CodecLoad(const char *filename, snd_info_t *info)
 	if(!buffer)
 	{
 		S_OggOpus_CodecCloseStream(stream);
-	
-		return NULL;	
+
+		return NULL;
 	}
 
 	// fill the buffer
 	bytesRead = S_OggOpus_CodecReadStream(stream, info->size, buffer);
-	
+
 	// we don't even have read a single byte
 	if(bytesRead <= 0)
 	{
 		Hunk_FreeTempMemory(buffer);
 		S_OggOpus_CodecCloseStream(stream);
 
-		return NULL;	
+		return NULL;
 	}
 
 	S_OggOpus_CodecCloseStream(stream);
-	
+
 	return buffer;
 }
 

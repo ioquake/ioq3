@@ -93,7 +93,7 @@ void SND_setup(void) {
 	q = p + scs;
 	while (--q > p)
 		*(sndBuffer **)q = q-1;
-	
+
 	*(sndBuffer **)q = NULL;
 	freelist = p + scs - 1;
 
@@ -121,7 +121,7 @@ static int ResampleSfx( sfx_t *sfx, int channels, int inrate, int inwidth, int s
 	int		sample, samplefrac, fracstep;
 	int			part;
 	sndBuffer	*chunk;
-	
+
 	stepscale = (float)inrate / dma.speed;	// this is usually 0.5, 1, or 2
 
 	outcount = samples / stepscale;
@@ -175,7 +175,7 @@ static int ResampleSfxRaw( short *sfx, int channels, int inrate, int inwidth, in
 	float		stepscale;
 	int			i, j;
 	int			sample, samplefrac, fracstep;
-	
+
 	stepscale = (float)inrate / dma.speed;	// this is usually 0.5, 1, or 2
 
 	outcount = samples / stepscale;
@@ -266,7 +266,7 @@ qboolean S_LoadSound( sfx_t *sfx )
 	}
 
 	sfx->soundChannels = info.channels;
-	
+
 	Hunk_FreeTempMemory(samples);
 	Hunk_FreeTempMemory(data);
 

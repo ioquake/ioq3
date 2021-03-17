@@ -151,7 +151,7 @@ static Tree addtree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else if (isptr(l->type) && isint(r->type))
 		return addtree(ADD, r, l);
 	else if (  isptr(r->type) && isint(l->type)
@@ -447,7 +447,7 @@ Tree bittree(int op, Tree l, Tree r) {
 	if (isint(l->type) && isint(r->type)) {
  		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else
 		typeerror(op, l, r);
 	return simplify(op, ty, l, r);
@@ -460,7 +460,7 @@ static Tree multree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else
 		typeerror(op, l, r);
 	return simplify(op, ty, l, r);
@@ -487,7 +487,7 @@ static Tree subtree(int op, Tree l, Tree r) {
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
 		l = cast(l, ty);
-		r = cast(r, ty);		
+		r = cast(r, ty);
 	} else if (isptr(l->type) && !isfunc(l->type->type) && isint(r->type)) {
 		ty = unqual(l->type);
 		n = unqual(ty->type)->size;

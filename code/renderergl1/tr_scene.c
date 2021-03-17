@@ -140,7 +140,7 @@ void RE_AddPolyToScene( qhandle_t hShader, int numVerts, const polyVert_t *verts
 		poly->hShader = hShader;
 		poly->numVerts = numVerts;
 		poly->verts = &backEndData->polyVerts[r_numpolyverts];
-		
+
 		Com_Memcpy( poly->verts, &verts[numVerts*j], numVerts * sizeof( *verts ) );
 
 		if ( glConfig.hardwareType == GLHW_RAGEPRO ) {
@@ -168,7 +168,7 @@ void RE_AddPolyToScene( qhandle_t hShader, int numVerts, const polyVert_t *verts
 				AddPointToBounds( poly->verts[i].xyz, bounds[0], bounds[1] );
 			}
 			for ( fogIndex = 1 ; fogIndex < tr.world->numfogs ; fogIndex++ ) {
-				fog = &tr.world->fogs[fogIndex]; 
+				fog = &tr.world->fogs[fogIndex];
 				if ( bounds[1][0] >= fog->bounds[0][0]
 					&& bounds[1][1] >= fog->bounds[0][1]
 					&& bounds[1][2] >= fog->bounds[0][2]
@@ -389,7 +389,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	parms.fovX = tr.refdef.fov_x;
 	parms.fovY = tr.refdef.fov_y;
-	
+
 	parms.stereoFrame = tr.refdef.stereoFrame;
 
 	VectorCopy( fd->vieworg, parms.or.origin );

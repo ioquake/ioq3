@@ -38,7 +38,7 @@ DRIVER INFORMATION MENU
 #define DRIVERINFO_BACK0	"menu/art/back_0"
 #define DRIVERINFO_BACK1	"menu/art/back_1"
 
-static char* driverinfo_artlist[] = 
+static char* driverinfo_artlist[] =
 {
 	DRIVERINFO_FRAMEL,
 	DRIVERINFO_FRAMER,
@@ -294,7 +294,7 @@ typedef struct
 } InitialVideoOptions_s;
 
 static InitialVideoOptions_s	s_ivo;
-static graphicsoptions_t		s_graphicsoptions;	
+static graphicsoptions_t		s_graphicsoptions;
 
 static InitialVideoOptions_s s_ivo_templates[] =
 {
@@ -455,8 +455,8 @@ static void GraphicsOptions_GetAspectRatios( void )
 			ratioToRes[i] = r;
 		}
 
-		ratios[r] = ratioBuf[r]; 
-		resToRatio[r] = i; 
+		ratios[r] = ratioBuf[r];
+		resToRatio[r] = i;
 	}
 
 	ratios[r] = NULL;
@@ -642,7 +642,7 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	}
 
 	GraphicsOptions_CheckConfig();
-}	
+}
 
 /*
 =================
@@ -760,7 +760,7 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		s_graphicsoptions.mode.curvalue =
 			ratioToRes[ s_graphicsoptions.ratio.curvalue ];
 		// fall through to apply mode constraints
-		
+
 	case ID_MODE:
 		// clamp 3dfx video modes
 		if ( s_graphicsoptions.driver.curvalue == 1 )
@@ -1034,7 +1034,7 @@ void GraphicsOptions_MenuInit( void )
 
 	GraphicsOptions_GetResolutions();
 	GraphicsOptions_GetAspectRatios();
-	
+
 	GraphicsOptions_Cache();
 
 	s_graphicsoptions.menu.wrapAround = qtrue;

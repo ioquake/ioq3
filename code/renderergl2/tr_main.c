@@ -352,7 +352,7 @@ int R_CullPointAndRadiusEx( const vec3_t pt, float radius, const cplane_t* frust
 	}
 
 	// check against frustum planes
-	for (i = 0 ; i < numPlanes ; i++) 
+	for (i = 0 ; i < numPlanes ; i++)
 	{
 		frust = &frustum[i];
 
@@ -361,7 +361,7 @@ int R_CullPointAndRadiusEx( const vec3_t pt, float radius, const cplane_t* frust
 		{
 			return CULL_OUT;
 		}
-		else if ( dist <= radius ) 
+		else if ( dist <= radius )
 		{
 			mightBeClipped = qtrue;
 		}
@@ -430,7 +430,7 @@ void R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const f
 	int i;
 
 	for ( i = 0 ; i < 4 ; i++ ) {
-		eye[i] = 
+		eye[i] =
 			src[0] * modelMatrix[ i + 0 * 4 ] +
 			src[1] * modelMatrix[ i + 1 * 4 ] +
 			src[2] * modelMatrix[ i + 2 * 4 ] +
@@ -438,7 +438,7 @@ void R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const f
 	}
 
 	for ( i = 0 ; i < 4 ; i++ ) {
-		dst[i] = 
+		dst[i] =
 			eye[0] * projectionMatrix[ i + 0 * 4 ] +
 			eye[1] * projectionMatrix[ i + 1 * 4 ] +
 			eye[2] * projectionMatrix[ i + 2 * 4 ] +
@@ -563,7 +563,7 @@ R_RotateForViewer
 Sets up the modelview matrix for a given viewParm
 =================
 */
-void R_RotateForViewer (void) 
+void R_RotateForViewer (void)
 {
 	float	viewerMatrix[16];
 	vec3_t	origin;
@@ -682,7 +682,7 @@ void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, floa
 	vec3_t ofsorigin;
 	float oppleg, adjleg, length;
 	int i;
-	
+
 	if(stereoSep == 0 && xmin == -xmax)
 	{
 		// symmetric case can be simplified
@@ -703,7 +703,7 @@ void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, floa
 		// In stereo rendering, due to the modification of the projection matrix, dest->or.origin is not the
 		// actual origin that we're rendering so offset the tip of the view pyramid.
 		VectorMA(dest->or.origin, stereoSep, dest->or.axis[1], ofsorigin);
-	
+
 		oppleg = xmax + stereoSep;
 		length = sqrt(oppleg * oppleg + zProj * zProj);
 		VectorScale(dest->or.axis[0], oppleg / length, dest->frustum[0].normal);
@@ -724,7 +724,7 @@ void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, floa
 
 	VectorScale(dest->or.axis[0], oppleg, dest->frustum[3].normal);
 	VectorMA(dest->frustum[3].normal, -adjleg, dest->or.axis[2], dest->frustum[3].normal);
-	
+
 	for (i=0 ; i<4 ; i++) {
 		dest->frustum[i].type = PLANE_NON_AXIAL;
 		dest->frustum[i].dist = DotProduct (ofsorigin, dest->frustum[i].normal);
@@ -756,7 +756,7 @@ void R_SetupProjection(viewParms_t *dest, float zProj, float zFar, qboolean comp
 	float	width, height, stereoSep = r_stereoSeparation->value;
 
 	/*
-	 * offset the view origin of the viewer for stereo rendering 
+	 * offset the view origin of the viewer for stereo rendering
 	 * by setting the projection matrix appropriately.
 	 */
 
@@ -778,7 +778,7 @@ void R_SetupProjection(viewParms_t *dest, float zProj, float zFar, qboolean comp
 
 	width = xmax - xmin;
 	height = ymax - ymin;
-	
+
 	dest->projectionMatrix[0] = 2 * zProj / width;
 	dest->projectionMatrix[4] = 0;
 	dest->projectionMatrix[8] = (xmax + xmin + 2 * stereoSep) / width;
@@ -793,7 +793,7 @@ void R_SetupProjection(viewParms_t *dest, float zProj, float zFar, qboolean comp
 	dest->projectionMatrix[7] = 0;
 	dest->projectionMatrix[11] = -1;
 	dest->projectionMatrix[15] = 0;
-	
+
 	// Now that we have all the data for the projection matrix we can also setup the view frustum.
 	if(computeFrustum)
 		R_SetupFrustum(dest, xmin, xmax, ymax, zProj, zFar, stereoSep);
@@ -809,7 +809,7 @@ Sets the z-component transformation part in the projection matrix
 void R_SetupProjectionZ(viewParms_t *dest)
 {
 	float zNear, zFar, depth;
-	
+
 	zNear = r_znear->value;
 	zFar	= dest->zFar;
 
@@ -920,7 +920,7 @@ void R_SetupProjectionOrtho(viewParms_t *dest, vec3_t viewBounds[2])
 	VectorScale(dest->or.axis[0], -1.0f, dest->frustum[4].normal);
 	VectorMA(dest->or.origin, -viewBounds[1][0], dest->frustum[4].normal, pop);
 	dest->frustum[4].dist = DotProduct(pop, dest->frustum[4].normal);
-	
+
 	for (i = 0; i < 5; i++)
 	{
 		dest->frustum[i].type = PLANE_NON_AXIAL;
@@ -990,18 +990,18 @@ void R_PlaneForSurface (surfaceType_t *surfType, cplane_t *plane) {
 		v2 = tri->verts + tri->indexes[1];
 		v3 = tri->verts + tri->indexes[2];
 		PlaneFromPoints( plane4, v1->xyz, v2->xyz, v3->xyz );
-		VectorCopy( plane4, plane->normal ); 
+		VectorCopy( plane4, plane->normal );
 		plane->dist = plane4[3];
 		return;
 	case SF_POLY:
 		poly = (srfPoly_t *)surfType;
 		PlaneFromPoints( plane4, poly->verts[0].xyz, poly->verts[1].xyz, poly->verts[2].xyz );
-		VectorCopy( plane4, plane->normal ); 
+		VectorCopy( plane4, plane->normal );
 		plane->dist = plane4[3];
 		return;
 	default:
 		Com_Memset (plane, 0, sizeof(*plane));
-		plane->normal[0] = 1;		
+		plane->normal[0] = 1;
 		return;
 	}
 }
@@ -1016,7 +1016,7 @@ be moving and rotating.
 Returns qtrue if it should be mirrored
 =================
 */
-qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum, 
+qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
 							 orientation_t *surface, orientation_t *camera,
 							 vec3_t pvsOrigin, qboolean *mirror ) {
 	int			i;
@@ -1069,8 +1069,8 @@ qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
 		VectorCopy( e->e.oldorigin, pvsOrigin );
 
 		// if the entity is just a mirror, don't use as a camera point
-		if ( e->e.oldorigin[0] == e->e.origin[0] && 
-			e->e.oldorigin[1] == e->e.origin[1] && 
+		if ( e->e.oldorigin[0] == e->e.origin[0] &&
+			e->e.oldorigin[1] == e->e.origin[1] &&
 			e->e.oldorigin[2] == e->e.origin[2] ) {
 			VectorScale( plane.normal, plane.dist, surface->origin );
 			VectorCopy( surface->origin, camera->origin );
@@ -1086,7 +1086,7 @@ qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
 		// an origin point we can rotate around
 		d = DotProduct( e->e.origin, plane.normal ) - plane.dist;
 		VectorMA( e->e.origin, -d, surface->axis[0], surface->origin );
-			
+
 		// now get the camera origin and orientation
 		VectorCopy( e->e.oldorigin, camera->origin );
 		AxisCopy( e->e.axis, camera->axis );
@@ -1146,7 +1146,7 @@ static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 	R_PlaneForSurface( drawSurf->surface, &originalPlane );
 
 	// rotate the plane if necessary
-	if ( entityNum != REFENTITYNUM_WORLD ) 
+	if ( entityNum != REFENTITYNUM_WORLD )
 	{
 		tr.currentEntityNum = entityNum;
 		tr.currentEntity = &tr.refdef.entities[entityNum];
@@ -1161,12 +1161,12 @@ static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 
 		// translate the original plane
 		originalPlane.dist = originalPlane.dist + DotProduct( originalPlane.normal, tr.or.origin );
-	} 
+	}
 
 	// locate the portal entity closest to this plane.
 	// origin will be the origin of the portal, origin2 will be
 	// the origin of the camera
-	for ( i = 0 ; i < tr.refdef.num_entities ; i++ ) 
+	for ( i = 0 ; i < tr.refdef.num_entities ; i++ )
 	{
 		e = &tr.refdef.entities[i];
 		if ( e->e.reType != RT_PORTALSURFACE ) {
@@ -1179,9 +1179,9 @@ static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 		}
 
 		// if the entity is just a mirror, don't use as a camera point
-		if ( e->e.oldorigin[0] == e->e.origin[0] && 
-			e->e.oldorigin[1] == e->e.origin[1] && 
-			e->e.oldorigin[2] == e->e.origin[2] ) 
+		if ( e->e.oldorigin[0] == e->e.origin[0] &&
+			e->e.oldorigin[1] == e->e.origin[1] &&
+			e->e.oldorigin[2] == e->e.origin[2] )
 		{
 			return qtrue;
 		}
@@ -1328,7 +1328,7 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	newParms.isPortal = qtrue;
 	newParms.zFar = 0.0f;
 	newParms.flags &= ~VPF_FARPLANEFRUSTUM;
-	if ( !R_GetPortalOrientations( drawSurf, entityNum, &surface, &camera, 
+	if ( !R_GetPortalOrientations( drawSurf, entityNum, &surface, &camera,
 		newParms.pvsOrigin, &newParms.isMirror ) ) {
 		return qfalse;		// bad portal, no portalentity
 	}
@@ -1340,7 +1340,7 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 
 	VectorSubtract( vec3_origin, camera.axis[0], newParms.portalPlane.normal );
 	newParms.portalPlane.dist = DotProduct( camera.origin, newParms.portalPlane.normal );
-	
+
 	R_MirrorVector (oldParms.or.axis[0], &surface, &camera, newParms.or.axis[0]);
 	R_MirrorVector (oldParms.or.axis[1], &surface, &camera, newParms.or.axis[1]);
 	R_MirrorVector (oldParms.or.axis[2], &surface, &camera, newParms.or.axis[2]);
@@ -1458,7 +1458,7 @@ static void R_RadixSort( drawSurf_t *source, int size )
 R_AddDrawSurf
 =================
 */
-void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader, 
+void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 				   int fogIndex, int dlightMap, int pshadowMap, int cubemap ) {
 	int			index;
 
@@ -1467,8 +1467,8 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 	index = tr.refdef.numDrawSurfs & DRAWSURF_MASK;
 	// the sort data is packed into a single 32 bit value so it can be
 	// compared quickly during the qsorting process
-	tr.refdef.drawSurfs[index].sort = (shader->sortedIndex << QSORT_SHADERNUM_SHIFT) 
-		| tr.shiftedEntityNum | ( fogIndex << QSORT_FOGNUM_SHIFT ) 
+	tr.refdef.drawSurfs[index].sort = (shader->sortedIndex << QSORT_SHADERNUM_SHIFT)
+		| tr.shiftedEntityNum | ( fogIndex << QSORT_FOGNUM_SHIFT )
 		| ((int)pshadowMap << QSORT_PSHADOW_SHIFT) | (int)dlightMap;
 	tr.refdef.drawSurfs[index].cubemapIndex = cubemap;
 	tr.refdef.drawSurfs[index].surface = surface;
@@ -1480,7 +1480,7 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 R_DecomposeSort
 =================
 */
-void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader, 
+void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader,
 					 int *fogNum, int *dlightMap, int *pshadowMap ) {
 	*fogNum = ( sort >> QSORT_FOGNUM_SHIFT ) & 31;
 	*shader = tr.sortedShaders[ ( sort >> QSORT_SHADERNUM_SHIFT ) & (MAX_SHADERS-1) ];
@@ -1564,7 +1564,7 @@ static void R_AddEntitySurface (int entityNum)
 
 	//
 	// the weapon model must be handled special --
-	// we don't want the hacked weapon position showing in 
+	// we don't want the hacked weapon position showing in
 	// mirrors, because the true body position will already be drawn
 	//
 	if ( (ent->e.renderfx & RF_FIRST_PERSON) && (tr.viewParms.flags & VPF_NOVIEWMODEL)) {
@@ -1818,19 +1818,19 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 					VectorSet( shadowParms.or.axis[1],  0,  0, -1);
 					VectorSet( shadowParms.or.axis[2],  0,  1,  0);
 					break;
-				case 1: 
+				case 1:
 					// +X
 					VectorSet( shadowParms.or.axis[0],  1,  0,  0);
 					VectorSet( shadowParms.or.axis[1],  0,  0,  1);
 					VectorSet( shadowParms.or.axis[2],  0,  1,  0);
 					break;
-				case 2: 
+				case 2:
 					// -Y
 					VectorSet( shadowParms.or.axis[0],  0, -1,  0);
 					VectorSet( shadowParms.or.axis[1],  1,  0,  0);
 					VectorSet( shadowParms.or.axis[2],  0,  0, -1);
 					break;
-				case 3: 
+				case 3:
 					// +Y
 					VectorSet( shadowParms.or.axis[0],  0,  1,  0);
 					VectorSet( shadowParms.or.axis[1],  1,  0,  0);
@@ -2105,7 +2105,7 @@ void R_RenderPshadowMaps(const refdef_t *fd)
 		shadowParms.zFar = shadow->lightRadius;
 
 		VectorCopy(shadow->lightOrigin, shadowParms.or.origin);
-		
+
 		VectorCopy(shadow->lightViewAxis[0], shadowParms.or.axis[0]);
 		VectorCopy(shadow->lightViewAxis[1], shadowParms.or.axis[1]);
 		VectorCopy(shadow->lightViewAxis[2], shadowParms.or.axis[2]);
@@ -2224,15 +2224,15 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 
 		if (1) //((fd->time % (scale * 2)) < scale)
 		{
-			lightCol[0] = 
-			lightCol[1] = 
+			lightCol[0] =
+			lightCol[1] =
 			lightCol[2] = CLAMP(sin(angle) * 2.0f, 0.0f, 1.0f) * 2.0f;
 			lightCol[3] = 1.0f;
 		}
 		else
 		{
-			lightCol[0] = 
-			lightCol[1] = 
+			lightCol[0] =
+			lightCol[1] =
 			lightCol[2] = CLAMP(sin(angle) * 2.0f * 0.1f, 0.0f, 0.1f);
 			lightCol[3] = 1.0f;
 		}
@@ -2272,7 +2272,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 			//splitZFar  = 3072;
 			break;
 	}
-	
+
 	if (level != 3)
 		VectorCopy(fd->vieworg, lightOrigin);
 	else
@@ -2364,7 +2364,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 			VectorMA(point, -ly, fd->viewaxis[2], point);
 			Mat4Transform(lightViewMatrix, point, lightViewPoint);
 			AddPointToBounds(lightViewPoint, lightviewBounds[0], lightviewBounds[1]);
-			
+
 
 			// add view far plane
 			lx = splitZFar * tan(fd->fov_x * M_PI / 360.0f);
@@ -2478,7 +2478,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 			VectorScale(lightviewBounds[1], worldUnitsPerTexel, lightviewBounds[1]);
 		}
 
-		//ri.Printf(PRINT_ALL, "level %d znear %f zfar %f\n", level, lightviewBounds[0][0], lightviewBounds[1][0]);		
+		//ri.Printf(PRINT_ALL, "level %d znear %f zfar %f\n", level, lightviewBounds[0][0], lightviewBounds[1][0]);
 		//ri.Printf(PRINT_ALL, "xmin %f xmax %f ymin %f ymax %f\n", lightviewBounds[0][1], lightviewBounds[1][1], -lightviewBounds[1][2], -lightviewBounds[0][2]);
 	}
 
@@ -2512,7 +2512,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 		shadowParms.zFar = lightviewBounds[1][0];
 
 		VectorCopy(lightOrigin, shadowParms.or.origin);
-		
+
 		VectorCopy(lightViewAxis[0], shadowParms.or.axis[0]);
 		VectorCopy(lightViewAxis[1], shadowParms.or.axis[1]);
 		VectorCopy(lightViewAxis[2], shadowParms.or.axis[2]);
@@ -2565,19 +2565,19 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 			VectorSet( refdef.viewaxis[1],  0,  0, -1);
 			VectorSet( refdef.viewaxis[2],  0,  1,  0);
 			break;
-		case 1: 
+		case 1:
 			// +X
 			VectorSet( refdef.viewaxis[0],  1,  0,  0);
 			VectorSet( refdef.viewaxis[1],  0,  0,  1);
 			VectorSet( refdef.viewaxis[2],  0,  1,  0);
 			break;
-		case 2: 
+		case 2:
 			// -Y
 			VectorSet( refdef.viewaxis[0],  0, -1,  0);
 			VectorSet( refdef.viewaxis[1],  1,  0,  0);
 			VectorSet( refdef.viewaxis[2],  0,  0, -1);
 			break;
-		case 3: 
+		case 3:
 			// +Y
 			VectorSet( refdef.viewaxis[0],  0,  1,  0);
 			VectorSet( refdef.viewaxis[1],  1,  0,  0);

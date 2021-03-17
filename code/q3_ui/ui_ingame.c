@@ -183,7 +183,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.team.generic.x				= 320;
 	s_ingame.team.generic.y				= y;
 	s_ingame.team.generic.id			= ID_TEAM;
-	s_ingame.team.generic.callback		= InGame_Event; 
+	s_ingame.team.generic.callback		= InGame_Event;
 	s_ingame.team.string				= "START";
 	s_ingame.team.color					= color_red;
 	s_ingame.team.style					= UI_CENTER|UI_SMALLFONT;
@@ -194,7 +194,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.addbots.generic.x			= 320;
 	s_ingame.addbots.generic.y			= y;
 	s_ingame.addbots.generic.id			= ID_ADDBOTS;
-	s_ingame.addbots.generic.callback	= InGame_Event; 
+	s_ingame.addbots.generic.callback	= InGame_Event;
 	s_ingame.addbots.string				= "ADD BOTS";
 	s_ingame.addbots.color				= color_red;
 	s_ingame.addbots.style				= UI_CENTER|UI_SMALLFONT;
@@ -208,7 +208,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.removebots.generic.x			= 320;
 	s_ingame.removebots.generic.y			= y;
 	s_ingame.removebots.generic.id			= ID_REMOVEBOTS;
-	s_ingame.removebots.generic.callback	= InGame_Event; 
+	s_ingame.removebots.generic.callback	= InGame_Event;
 	s_ingame.removebots.string				= "REMOVE BOTS";
 	s_ingame.removebots.color				= color_red;
 	s_ingame.removebots.style				= UI_CENTER|UI_SMALLFONT;
@@ -222,7 +222,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.teamorders.generic.x			= 320;
 	s_ingame.teamorders.generic.y			= y;
 	s_ingame.teamorders.generic.id			= ID_TEAMORDERS;
-	s_ingame.teamorders.generic.callback	= InGame_Event; 
+	s_ingame.teamorders.generic.callback	= InGame_Event;
 	s_ingame.teamorders.string				= "TEAM ORDERS";
 	s_ingame.teamorders.color				= color_red;
 	s_ingame.teamorders.style				= UI_CENTER|UI_SMALLFONT;
@@ -244,7 +244,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.setup.generic.x			= 320;
 	s_ingame.setup.generic.y			= y;
 	s_ingame.setup.generic.id			= ID_SETUP;
-	s_ingame.setup.generic.callback		= InGame_Event; 
+	s_ingame.setup.generic.callback		= InGame_Event;
 	s_ingame.setup.string				= "SETUP";
 	s_ingame.setup.color				= color_red;
 	s_ingame.setup.style				= UI_CENTER|UI_SMALLFONT;
@@ -255,7 +255,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.server.generic.x			= 320;
 	s_ingame.server.generic.y			= y;
 	s_ingame.server.generic.id			= ID_SERVERINFO;
-	s_ingame.server.generic.callback	= InGame_Event; 
+	s_ingame.server.generic.callback	= InGame_Event;
 	s_ingame.server.string				= "SERVER INFO";
 	s_ingame.server.color				= color_red;
 	s_ingame.server.style				= UI_CENTER|UI_SMALLFONT;
@@ -266,7 +266,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.restart.generic.x			= 320;
 	s_ingame.restart.generic.y			= y;
 	s_ingame.restart.generic.id			= ID_RESTART;
-	s_ingame.restart.generic.callback	= InGame_Event; 
+	s_ingame.restart.generic.callback	= InGame_Event;
 	s_ingame.restart.string				= "RESTART ARENA";
 	s_ingame.restart.color				= color_red;
 	s_ingame.restart.style				= UI_CENTER|UI_SMALLFONT;
@@ -280,7 +280,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.resume.generic.x				= 320;
 	s_ingame.resume.generic.y				= y;
 	s_ingame.resume.generic.id				= ID_RESUME;
-	s_ingame.resume.generic.callback		= InGame_Event; 
+	s_ingame.resume.generic.callback		= InGame_Event;
 	s_ingame.resume.string					= "RESUME GAME";
 	s_ingame.resume.color					= color_red;
 	s_ingame.resume.style					= UI_CENTER|UI_SMALLFONT;
@@ -291,7 +291,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.leave.generic.x			= 320;
 	s_ingame.leave.generic.y			= y;
 	s_ingame.leave.generic.id			= ID_LEAVEARENA;
-	s_ingame.leave.generic.callback		= InGame_Event; 
+	s_ingame.leave.generic.callback		= InGame_Event;
 	s_ingame.leave.string				= "LEAVE ARENA";
 	s_ingame.leave.color				= color_red;
 	s_ingame.leave.style				= UI_CENTER|UI_SMALLFONT;
@@ -302,7 +302,7 @@ void InGame_MenuInit( void ) {
 	s_ingame.quit.generic.x				= 320;
 	s_ingame.quit.generic.y				= y;
 	s_ingame.quit.generic.id			= ID_QUIT;
-	s_ingame.quit.generic.callback		= InGame_Event; 
+	s_ingame.quit.generic.callback		= InGame_Event;
 	s_ingame.quit.string				= "EXIT GAME";
 	s_ingame.quit.color					= color_red;
 	s_ingame.quit.style					= UI_CENTER|UI_SMALLFONT;
@@ -338,7 +338,7 @@ UI_InGameMenu
 */
 void UI_InGameMenu( void ) {
 	// force as top level menu
-	uis.menusp = 0;  
+	uis.menusp = 0;
 
 	// set menu cursor to a nice location
 	uis.cursorx = 319;

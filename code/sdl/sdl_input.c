@@ -929,7 +929,7 @@ static void IN_JoyMove( void )
 			{
 				Sint16 axis = SDL_JoystickGetAxis(stick, i);
 				float f = ( (float) abs(axis) ) / 32767.0f;
-				
+
 				if( f < in_joystickThreshold->value ) axis = 0;
 
 				if ( axis != stick_state.oldaaxes[i] )

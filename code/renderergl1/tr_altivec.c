@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
    on other files, where the compiler might then generate Altivec
    instructions for normal floating point, crashing on G3 (etc) processors. */
 
-#include "tr_local.h" 
+#include "tr_local.h"
 
 #if idppc_altivec
 
@@ -89,14 +89,14 @@ void ProjectDlightTexture_altivec( void ) {
 		if(r_greyscale->integer)
 		{
 			float luminance;
-			
+
 			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
 			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
 		}
 		else if(r_greyscale->value)
 		{
 			float luminance;
-			
+
 			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
 			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
 			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
@@ -114,7 +114,7 @@ void ProjectDlightTexture_altivec( void ) {
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
 			vec_t dist0, dist1, dist2;
-			
+
 			dist0 = origin0 - tess.xyz[i][0];
 			dist1 = origin1 - tess.xyz[i][1];
 			dist2 = origin2 - tess.xyz[i][2];
@@ -247,12 +247,12 @@ void RB_CalcDiffuseColor_altivec( unsigned char *colors )
 	jVecChar = vec_lvsl(0, ent->directedLight);
 	directedLightVec = vec_ld(0,(vector float *)ent->directedLight);
 	jVec = vec_ld(11,(vector float *)ent->directedLight);
-	directedLightVec = vec_perm(directedLightVec,jVec,jVecChar);	 
+	directedLightVec = vec_perm(directedLightVec,jVec,jVecChar);
 
 	jVecChar = vec_lvsl(0, ent->lightDir);
 	lightDirVec = vec_ld(0,(vector float *)ent->lightDir);
 	jVec = vec_ld(11,(vector float *)ent->lightDir);
-	lightDirVec = vec_perm(lightDirVec,jVec,jVecChar);	 
+	lightDirVec = vec_perm(lightDirVec,jVec,jVecChar);
 
 	zero = (vector float)vec_splat_s8(0);
 	VectorCopy( ent->lightDir, lightDir );
@@ -316,11 +316,11 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 		vector unsigned char newNormalsLoadPermute;
 		vector unsigned char newNormalsStorePermute;
 		vector float zero;
-		
+
 		newNormalsStorePermute = vec_lvsl(0,(float *)&newXyzScaleVec);
 		newXyzScaleVec = *(vector float *)&newXyzScale;
 		newXyzScaleVec = vec_perm(newXyzScaleVec,newXyzScaleVec,newNormalsStorePermute);
-		newXyzScaleVec = vec_splat(newXyzScaleVec,0);		
+		newXyzScaleVec = vec_splat(newXyzScaleVec,0);
 		newNormalsLoadPermute = vec_lvsl(0,newXyz);
 		newNormalsStorePermute = vec_lvsr(0,outXyz);
 		zero = (vector float)vec_splat_s8(0);
@@ -329,7 +329,7 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 		//
 		for (vertNum=0 ; vertNum < numVerts ; vertNum++,
 			newXyz += 4, newNormals += 4,
-			outXyz += 4, outNormal += 4) 
+			outXyz += 4, outNormal += 4)
 		{
 			newNormalsLoadPermute = vec_lvsl(0,newXyz);
 			newNormalsStorePermute = vec_lvsr(0,outXyz);
@@ -374,7 +374,7 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 
 		for (vertNum=0 ; vertNum < numVerts ; vertNum++,
 			oldXyz += 4, newXyz += 4, oldNormals += 4, newNormals += 4,
-			outXyz += 4, outNormal += 4) 
+			outXyz += 4, outNormal += 4)
 		{
 			vec3_t uncompressedOldNormal, uncompressedNewNormal;
 

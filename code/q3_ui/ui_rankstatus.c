@@ -64,7 +64,7 @@ static void RankStatus_MenuEvent( void* ptr, int event ) {
 	switch( ((menucommon_s*)ptr)->id ) {
 	case ID_OK:
 		UI_PopMenu();
-		
+
 		switch( s_status )
 		{
 		case QGR_STATUS_NO_USER:

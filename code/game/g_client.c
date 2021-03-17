@@ -212,21 +212,21 @@ gentity_t *SelectRandomFurthestSpawnPoint ( vec3_t avoidPoint, vec3_t origin, ve
 			{
 				if (numSpots >= MAX_SPAWN_POINTS)
 					numSpots = MAX_SPAWN_POINTS - 1;
-					
+
 				for(j = numSpots; j > i; j--)
 				{
 					list_dist[j] = list_dist[j-1];
 					list_spot[j] = list_spot[j-1];
 				}
-				
+
 				list_dist[i] = dist;
 				list_spot[i] = spot;
-				
+
 				numSpots++;
 				break;
 			}
 		}
-		
+
 		if(i >= numSpots && numSpots < MAX_SPAWN_POINTS)
 		{
 			list_dist[numSpots] = dist;
@@ -234,7 +234,7 @@ gentity_t *SelectRandomFurthestSpawnPoint ( vec3_t avoidPoint, vec3_t origin, ve
 			numSpots++;
 		}
 	}
-	
+
 	if(!numSpots)
 	{
 		spot = G_Find(NULL, FOFS(classname), "info_player_deathmatch");
@@ -281,7 +281,7 @@ gentity_t *SelectSpawnPoint ( vec3_t avoidPoint, vec3_t origin, vec3_t angles, q
 		if ( spot == nearestSpot ) {
 			// last try
 			spot = SelectRandomDeathmatchSpawnPoint ( );
-		}		
+		}
 	}
 
 	// find a single player start spot
@@ -309,7 +309,7 @@ gentity_t *SelectInitialSpawnPoint( vec3_t origin, vec3_t angles, qboolean isbot
 	gentity_t	*spot;
 
 	spot = NULL;
-	
+
 	while ((spot = G_Find (spot, FOFS(classname), "info_player_deathmatch")) != NULL)
 	{
 		if(((spot->flags & FL_NO_BOTS) && isbot) ||
@@ -317,7 +317,7 @@ gentity_t *SelectInitialSpawnPoint( vec3_t origin, vec3_t angles, qboolean isbot
 		{
 			continue;
 		}
-		
+
 		if((spot->spawnflags & 0x01))
 			break;
 	}
@@ -385,7 +385,7 @@ void BodySink( gentity_t *ent ) {
 		// the body ques are never actually freed, they are just unlinked
 		trap_UnlinkEntity( ent );
 		ent->physicsObject = qfalse;
-		return;	
+		return;
 	}
 	ent->nextthink = level.time + 100;
 	ent->s.pos.trBase[2] -= 1;
@@ -639,7 +639,7 @@ static void ClientCleanName(const char *in, char *out, int outSize)
 
 	// discard leading spaces
 	for(; *in == ' '; in++);
-	
+
 	for(; *in && outpos < outSize - 1; in++)
 	{
 		out[outpos] = *in;
@@ -649,7 +649,7 @@ static void ClientCleanName(const char *in, char *out, int outSize)
 			// don't allow too many consecutive spaces
 			if(spaces > 2)
 				continue;
-			
+
 			spaces++;
 		}
 		else if(outpos > 0 && out[outpos - 1] == Q_COLOR_ESCAPE)
@@ -657,7 +657,7 @@ static void ClientCleanName(const char *in, char *out, int outSize)
 			if(Q_IsColorString(&out[outpos - 1]))
 			{
 				colorlessLen--;
-				
+
 				if(ColorIndex(*in) == 0)
 				{
 					// Disallow color black in names to prevent players
@@ -677,7 +677,7 @@ static void ClientCleanName(const char *in, char *out, int outSize)
 			spaces = 0;
 			colorlessLen++;
 		}
-		
+
 		outpos++;
 	}
 
@@ -747,7 +747,7 @@ void ClientUserinfoChanged( int clientNum ) {
 
 	if ( client->pers.connected == CON_CONNECTED ) {
 		if ( strcmp( oldname, client->pers.netname ) ) {
-			trap_SendServerCommand( -1, va("print \"%s" S_COLOR_WHITE " renamed to %s\n\"", oldname, 
+			trap_SendServerCommand( -1, va("print \"%s" S_COLOR_WHITE " renamed to %s\n\"", oldname,
 				client->pers.netname) );
 		}
 	}
@@ -843,7 +843,7 @@ void ClientUserinfoChanged( int clientNum ) {
 
 	Q_strncpyz(redTeam, Info_ValueForKey( userinfo, "g_redteam" ), sizeof( redTeam ));
 	Q_strncpyz(blueTeam, Info_ValueForKey( userinfo, "g_blueteam" ), sizeof( blueTeam ));
-	
+
 	// send over a subset of the userinfo keys so other clients can
 	// print scoreboards, display models, and play custom sounds
 	if (ent->r.svFlags & SVF_BOT)
@@ -856,7 +856,7 @@ void ClientUserinfoChanged( int clientNum ) {
 	else
 	{
 		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\g_redteam\\%s\\g_blueteam\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\tt\\%d\\tl\\%d",
-			client->pers.netname, client->sess.sessionTeam, model, headModel, redTeam, blueTeam, c1, c2, 
+			client->pers.netname, client->sess.sessionTeam, model, headModel, redTeam, blueTeam, c1, c2,
 			client->pers.maxHealth, client->sess.wins, client->sess.losses, teamTask, teamLeader);
 	}
 
@@ -1067,13 +1067,13 @@ void ClientSpawn(gentity_t *ent) {
 	// do it before setting health back up, so farthest
 	// ranging doesn't count this client
 	if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
-		spawnPoint = SelectSpectatorSpawnPoint ( 
+		spawnPoint = SelectSpectatorSpawnPoint (
 						spawn_origin, spawn_angles);
 	} else if (g_gametype.integer >= GT_CTF ) {
 		// all base oriented team games use the CTF spawn points
-		spawnPoint = SelectCTFSpawnPoint ( 
-						client->sess.sessionTeam, 
-						client->pers.teamState.state, 
+		spawnPoint = SelectCTFSpawnPoint (
+						client->sess.sessionTeam,
+						client->pers.teamState.state,
 						spawn_origin, spawn_angles,
 						!!(ent->r.svFlags & SVF_BOT));
 	}
@@ -1089,8 +1089,8 @@ void ClientSpawn(gentity_t *ent) {
 		else
 		{
 			// don't spawn near existing origin if possible
-			spawnPoint = SelectSpawnPoint ( 
-				client->ps.origin, 
+			spawnPoint = SelectSpawnPoint (
+				client->ps.origin,
 				spawn_origin, spawn_angles, !!(ent->r.svFlags & SVF_BOT));
 		}
 	}
@@ -1158,7 +1158,7 @@ void ClientSpawn(gentity_t *ent) {
 	ent->waterlevel = 0;
 	ent->watertype = 0;
 	ent->flags = 0;
-	
+
 	VectorCopy (playerMins, ent->r.mins);
 	VectorCopy (playerMaxs, ent->r.maxs);
 
@@ -1279,7 +1279,7 @@ void ClientDisconnect( int clientNum ) {
 	}
 
 	// send effect if they were completely connected
-	if ( ent->client->pers.connected == CON_CONNECTED 
+	if ( ent->client->pers.connected == CON_CONNECTED
 		&& ent->client->sess.sessionTeam != TEAM_SPECTATOR ) {
 		tent = G_TempEntity( ent->client->ps.origin, EV_PLAYER_TELEPORT_OUT );
 		tent->s.clientNum = ent->s.clientNum;

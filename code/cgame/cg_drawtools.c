@@ -145,8 +145,8 @@ void CG_DrawChar( int x, int y, int width, int height, int ch ) {
 	size = 0.0625;
 
 	trap_R_DrawStretchPic( ax, ay, aw, ah,
-					   fcol, frow, 
-					   fcol + size, frow + size, 
+					   fcol, frow,
+					   fcol + size, frow + size,
 					   cgs.media.charsetShader );
 }
 
@@ -161,7 +161,7 @@ to a fixed color.
 Coordinates are at 640 by 480 virtual resolution
 ==================
 */
-void CG_DrawStringExt( int x, int y, const char *string, const float *setColor, 
+void CG_DrawStringExt( int x, int y, const char *string, const float *setColor,
 		qboolean forceColor, qboolean shadow, int charWidth, int charHeight, int maxChars ) {
 	vec4_t		color;
 	const char	*s;
@@ -295,7 +295,7 @@ void CG_TileClear( void ) {
 	w = cgs.glconfig.vidWidth;
 	h = cgs.glconfig.vidHeight;
 
-	if ( cg.refdef.x == 0 && cg.refdef.y == 0 && 
+	if ( cg.refdef.x == 0 && cg.refdef.y == 0 &&
 		cg.refdef.width == w && cg.refdef.height == h ) {
 		return;		// full screen rendering
 	}
@@ -426,7 +426,7 @@ CG_ColorForHealth
 */
 void CG_ColorForHealth( vec4_t hcolor ) {
 
-	CG_GetColorForHealth( cg.snap->ps.stats[STAT_HEALTH], 
+	CG_GetColorForHealth( cg.snap->ps.stats[STAT_HEALTH],
 		cg.snap->ps.stats[STAT_ARMOR], hcolor );
 }
 
@@ -602,7 +602,7 @@ static void UI_DrawBannerString2( int x, int y, const char* str, vec4_t color )
 
 	// draw the colored text
 	trap_R_SetColor( color );
-	
+
 	ax = x * cgs.screenXScale + cgs.screenXBias;
 	ay = y * cgs.screenYScale;
 
@@ -712,7 +712,7 @@ static void UI_DrawProportionalString2( int x, int y, const char* str, vec4_t co
 
 	// draw the colored text
 	trap_R_SetColor( color );
-	
+
 	ax = x * cgs.screenXScale + cgs.screenXBias;
 	ay = y * cgs.screenYScale;
 

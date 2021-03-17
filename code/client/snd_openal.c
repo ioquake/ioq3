@@ -268,7 +268,7 @@ static void S_AL_BufferUnload(sfxHandle_t sfx)
 	if(!knownSfx[sfx].inMemory)
 		return;
 
-	// Delete it 
+	// Delete it
 	S_AL_ClearError( qfalse );
 	qalDeleteBuffers(1, &knownSfx[sfx].buffer);
 	if(qalGetError() != AL_NO_ERROR)
@@ -441,7 +441,7 @@ static void S_AL_BufferLoad(sfxHandle_t sfx, qboolean cache)
 	}
 
 	curSfx->info = info;
-	
+
 	// Free the memory
 	Hunk_FreeTempMemory(data);
 
@@ -574,11 +574,11 @@ typedef struct src_s
 
 	float		curGain;		// gain employed if source is within maxdistance.
 	float		scaleGain;		// Last gain value for this source. 0 if muted.
-	
+
 	float		lastTimePos;		// On stopped loops, the last position in the buffer
 	int		lastSampleTime;		// Time when this was stopped
 	vec3_t		loopSpeakerPos;		// Origin of the loop speaker
-	
+
 	qboolean	local;			// Is this local (relative to the cam)
 } src_t;
 
@@ -650,10 +650,10 @@ Adapt the gain if necessary to get a quicker fadeout when the source is too far 
 static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 {
 	float distance;
-	
+
 	if(!chksrc->local)
 		distance = Distance(origin, lastListenerOrigin);
-		
+
 	// If we exceed a certain distance, scale the gain linearly until the sound
 	// vanishes into nothingness.
 	if(!chksrc->local && (distance -= s_alMaxDistance->value) > 0)
@@ -664,9 +664,9 @@ static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 			scaleFactor = 0.0f;
 		else
 			scaleFactor = 1.0f - distance / s_alGraceDistance->value;
-		
+
 		scaleFactor *= chksrc->curGain;
-		
+
 		if(chksrc->scaleGain != scaleFactor)
 		{
 			chksrc->scaleGain = scaleFactor;
@@ -734,7 +734,7 @@ qboolean S_AL_SrcInit( void )
 		limit = MAX_SRC;
 	else if(limit < 16)
 		limit = 16;
- 
+
 	S_AL_ClearError( qfalse );
 	// Allocate as many sources as possible
 	for(i = 0; i < limit; i++)
@@ -769,7 +769,7 @@ void S_AL_SrcShutdown( void )
 	for(i = 0; i < srcCount; i++)
 	{
 		curSource = &srcList[i];
-		
+
 		if(curSource->isLocked)
 			Com_DPrintf( S_COLOR_YELLOW "WARNING: Source %d is locked\n", i);
 
@@ -797,7 +797,7 @@ static void S_AL_SrcSetup(srcHandle_t src, sfxHandle_t sfx, alSrcPriority_t prio
 
 	// Set up src struct
 	curSource = &srcList[src];
-	
+
 	curSource->lastUsedTime = Sys_Milliseconds();
 	curSource->sfx = sfx;
 	curSource->priority = priority;
@@ -849,9 +849,9 @@ Remove given source as loop master if it is the master and hand off master statu
 static void S_AL_SaveLoopPos(src_t *dest, ALuint alSource)
 {
 	int error;
-	
+
 	S_AL_ClearError(qfalse);
-	
+
 	qalGetSourcef(alSource, AL_SEC_OFFSET, &dest->lastTimePos);
 	if((error = qalGetError()) != AL_NO_ERROR)
 	{
@@ -862,7 +862,7 @@ static void S_AL_SaveLoopPos(src_t *dest, ALuint alSource)
 			Com_Printf(S_COLOR_YELLOW "WARNING: Could not get time offset for alSource %d: %s\n",
 				   alSource, S_AL_ErrorMsg(error));
 		}
-		
+
 		dest->lastTimePos = -1;
 	}
 	else
@@ -881,14 +881,14 @@ static void S_AL_NewLoopMaster(src_t *rmSource, qboolean iskilled)
 	int index;
 	src_t *curSource = NULL;
 	alSfx_t *curSfx;
-	
+
 	curSfx = &knownSfx[rmSource->sfx];
 
 	if(rmSource->isPlaying)
 		curSfx->loopActiveCnt--;
 	if(iskilled)
 		curSfx->loopCnt--;
-	
+
 	if(curSfx->loopCnt)
 	{
 		if(rmSource->priority == SRCPRI_ENTITY)
@@ -907,13 +907,13 @@ static void S_AL_NewLoopMaster(src_t *rmSource, qboolean iskilled)
 
 			// Only if rmSource was the master and if there are still playing loops for
 			// this sound will we need to find a new master.
-	
+
 			if(iskilled || curSfx->loopActiveCnt)
 			{
 				for(index = 0; index < srcCount; index++)
 				{
 					curSource = &srcList[index];
-	
+
 					if(curSource->sfx == rmSource->sfx && curSource != rmSource &&
 					   curSource->isActive && curSource->isLooping && curSource->priority == SRCPRI_AMBIENT)
 					{
@@ -927,7 +927,7 @@ static void S_AL_NewLoopMaster(src_t *rmSource, qboolean iskilled)
 					}
 				}
 			}
-		
+
 			if(!curSfx->loopActiveCnt)
 			{
 				if(firstInactive < 0)
@@ -971,7 +971,7 @@ S_AL_SrcKill
 static void S_AL_SrcKill(srcHandle_t src)
 {
 	src_t *curSource = &srcList[src];
-	
+
 	// I'm not touching it. Unlock it first.
 	if(curSource->isLocked)
 		return;
@@ -984,13 +984,13 @@ static void S_AL_SrcKill(srcHandle_t src)
 		if(curSource->entity != -1)
 		{
 			sentity_t *curEnt = &entityList[curSource->entity];
-			
+
 			curEnt->srcAllocated = qfalse;
 			curEnt->srcIndex = -1;
 			curEnt->loopAddedThisFrame = qfalse;
 			curEnt->startLoopingSound = qfalse;
 		}
-		
+
 		S_AL_NewLoopMaster(curSource, qtrue);
 	}
 
@@ -1040,7 +1040,7 @@ srcHandle_t S_AL_SrcAlloc( alSrcPriority_t priority, int entnum, int channel )
 	for(i = 0; i < srcCount; i++)
 	{
 		curSource = &srcList[i];
-		
+
 		// If it's locked, we aren't even going to look at it
 		if(curSource->isLocked)
 			continue;
@@ -1070,7 +1070,7 @@ srcHandle_t S_AL_SrcAlloc( alSrcPriority_t priority, int entnum, int channel )
 		else
 		{
 			weakest_isplaying = qfalse;
-			
+
 			if(weakest < 0 ||
 			   knownSfx[curSource->sfx].loopCnt > weakest_numloops ||
 			   curSource->priority < weakest_pri ||
@@ -1100,7 +1100,7 @@ srcHandle_t S_AL_SrcAlloc( alSrcPriority_t priority, int entnum, int channel )
 
 	if(empty == -1)
 		empty = weakest;
-	
+
 	if(empty >= 0)
 	{
 		S_AL_SrcKill(empty);
@@ -1210,13 +1210,13 @@ static
 void S_AL_StartLocalSound(sfxHandle_t sfx, int channel)
 {
 	srcHandle_t src;
-	
+
 	if(S_AL_CheckInput(0, sfx))
 		return;
 
 	// Try to grab a source
 	src = S_AL_SrcAlloc(SRCPRI_LOCAL, -1, channel);
-	
+
 	if(src == -1)
 		return;
 
@@ -1245,7 +1245,7 @@ static void S_AL_StartSound( vec3_t origin, int entnum, int entchannel, sfxHandl
 	{
 		if(S_AL_CheckInput(0, sfx))
 			return;
-		
+
 		VectorCopy(origin, sorigin);
 	}
 	else
@@ -1258,12 +1258,12 @@ static void S_AL_StartSound( vec3_t origin, int entnum, int entchannel, sfxHandl
 			S_AL_StartLocalSound(sfx, entchannel);
 			return;
 		}
-		
+
 		VectorCopy(entityList[entnum].origin, sorigin);
 	}
-	
+
 	S_AL_SanitiseVector(sorigin);
-	
+
 	if((srcActiveCnt > 5 * srcCount / 3) &&
 		(DistanceSquared(sorigin, lastListenerOrigin) >=
 		(s_alMaxDistance->value + s_alGraceDistance->value) * (s_alMaxDistance->value + s_alGraceDistance->value)))
@@ -1278,12 +1278,12 @@ static void S_AL_StartSound( vec3_t origin, int entnum, int entchannel, sfxHandl
 		return;
 
 	S_AL_SrcSetup(src, sfx, SRCPRI_ONESHOT, entnum, entchannel, qfalse);
-	
+
 	curSource = &srcList[src];
 
 	if(!origin)
 		curSource->isTracking = qtrue;
-		
+
 	qalSourcefv(curSource->alSource, AL_POSITION, sorigin );
 	S_AL_ScaleGain(curSource, sorigin);
 
@@ -1384,9 +1384,9 @@ static void S_AL_SrcLoop( alSrcPriority_t priority, sfxHandle_t sfx,
 			VectorCopy(sent->origin, sorigin);
 
 		S_AL_SanitiseVector(sorigin);
-		
+
 		VectorCopy(sorigin, curSource->loopSpeakerPos);
-		
+
 		if(velocity)
 		{
 			VectorCopy(velocity, svelocity);
@@ -1446,7 +1446,7 @@ void S_AL_SrcUpdate( void )
 	int entityNum;
 	ALint state;
 	src_t *curSource;
-	
+
 	for(i = 0; i < srcCount; i++)
 	{
 		entityNum = srcList[i].entity;
@@ -1474,7 +1474,7 @@ void S_AL_SrcUpdate( void )
 			if(sent->loopAddedThisFrame)
 			{
 				alSfx_t *curSfx;
-			
+
 				// The sound has changed without an intervening removal
 				if(curSource->isActive && !sent->startLoopingSound &&
 						curSource->sfx != sent->loopSfx)
@@ -1493,11 +1493,11 @@ void S_AL_SrcUpdate( void )
 					S_AL_SrcSetup(i, sent->loopSfx, sent->loopPriority,
 							entityNum, -1, curSource->local);
 					curSource->isLooping = qtrue;
-					
+
 					knownSfx[curSource->sfx].loopCnt++;
 					sent->startLoopingSound = qfalse;
 				}
-				
+
 				curSfx = &knownSfx[curSource->sfx];
 
 				S_AL_ScaleGain(curSource, curSource->loopSpeakerPos);
@@ -1512,7 +1512,7 @@ void S_AL_SrcUpdate( void )
 					}
 					else if(!curSfx->loopActiveCnt && curSfx->masterLoopSrc < 0)
 						curSfx->masterLoopSrc = i;
-					
+
 					continue;
 				}
 
@@ -1530,7 +1530,7 @@ void S_AL_SrcUpdate( void )
 						if(curSfx->loopActiveCnt)
 						{
 							int offset, error;
-						
+
 							// we already have a master loop playing, get buffer position.
 							S_AL_ClearError(qfalse);
 							qalGetSourcei(srcList[curSfx->masterLoopSrc].alSource, AL_SAMPLE_OFFSET, &offset);
@@ -1548,16 +1548,16 @@ void S_AL_SrcUpdate( void )
 						else if(curSfx->loopCnt && curSfx->masterLoopSrc >= 0)
 						{
 							float secofs;
-						
+
 							src_t *master = &srcList[curSfx->masterLoopSrc];
 							// This loop sound used to be played, but all sources are stopped. Use last sample position/time
 							// to calculate offset so the player thinks the sources continued playing while they were inaudible.
-						
+
 							if(master->lastTimePos >= 0)
 							{
 								secofs = master->lastTimePos + (Sys_Milliseconds() - master->lastSampleTime) / 1000.0f;
 								secofs = fmodf(secofs, (float) curSfx->info.samples / curSfx->info.rate);
-						
+
 								qalSourcef(curSource->alSource, AL_SEC_OFFSET, secofs);
 							}
 
@@ -1570,14 +1570,14 @@ void S_AL_SrcUpdate( void )
 					else if(curSource->lastTimePos >= 0)
 					{
 						float secofs;
-						
+
 						// For unsynced loops (SRCPRI_ENTITY) just carry on playing as if the sound was never stopped
-						
+
 						secofs = curSource->lastTimePos + (Sys_Milliseconds() - curSource->lastSampleTime) / 1000.0f;
 						secofs = fmodf(secofs, (float) curSfx->info.samples / curSfx->info.rate);
 						qalSourcef(curSource->alSource, AL_SEC_OFFSET, secofs);
 					}
-						
+
 					curSfx->loopActiveCnt++;
 				}
 
@@ -1592,7 +1592,7 @@ void S_AL_SrcUpdate( void )
 					qalSourcei(curSource->alSource, AL_SOURCE_RELATIVE, AL_FALSE);
 					qalSourcef(curSource->alSource, AL_ROLLOFF_FACTOR, s_alRolloff->value);
 				}
-				
+
 			}
 			else if(curSource->priority == SRCPRI_AMBIENT)
 			{
@@ -1679,7 +1679,7 @@ static void S_AL_AllocateStreamChannel(int stream, int entityNum)
 {
         srcHandle_t cursrc;
         ALuint alsrc;
-        
+
 	if ((stream < 0) || (stream >= MAX_RAW_STREAMS))
 		return;
 
@@ -1709,7 +1709,7 @@ static void S_AL_AllocateStreamChannel(int stream, int entityNum)
 
         	// Lock the streamSource so nobody else can use it, and get the raw streamSource
         	S_AL_SrcLock(cursrc);
-        
+
         	// make sure that after unmuting the S_AL_Gain in S_Update() does not turn
         	// volume up prematurely for this source
         	srcList[cursrc].scaleGain = 0.0f;
@@ -1778,7 +1778,7 @@ void S_AL_RawSamples(int stream, int samples, int rate, int width, int channels,
 	if(streamSourceHandles[stream] == -1)
 	{
 		S_AL_AllocateStreamChannel(stream, entityNum);
-	
+
 		// Failed?
 		if(streamSourceHandles[stream] == -1)
 		{
@@ -1977,7 +1977,7 @@ static void S_AL_CloseMusicFiles(void)
 		S_CodecCloseStream(intro_stream);
 		intro_stream = NULL;
 	}
-	
+
 	if(mus_stream)
 	{
 		S_CodecCloseStream(mus_stream);
@@ -2050,7 +2050,7 @@ void S_AL_MusicProcess(ALuint b)
 			intro_stream = NULL;
 		else
 			mus_stream = S_CodecOpenStream(s_backgroundLoop);
-		
+
 		curstream = mus_stream;
 
 		if(!curstream)
@@ -2138,7 +2138,7 @@ void S_AL_StartBackgroundTrack( const char *intro, const char *loop )
 	// Generate the musicBuffers
 	if (!S_AL_GenBuffers(NUM_MUSIC_BUFFERS, musicBuffers, "music"))
 		return;
-	
+
 	// Queue the musicBuffers up
 	for(i = 0; i < NUM_MUSIC_BUFFERS; i++)
 	{
@@ -2149,7 +2149,7 @@ void S_AL_StartBackgroundTrack( const char *intro, const char *loop )
 
 	// Set the initial gain property
 	S_AL_Gain(musicSource, s_alGain->value * s_musicVolume->value);
-	
+
 	// Start playing
 	qalSourcePlay(musicSource);
 
@@ -2282,7 +2282,7 @@ void S_AL_Update( void )
 			if(srcList[i].isActive)
 				S_AL_Gain(srcList[i].alSource, srcList[i].scaleGain);
 		}
-		
+
 		s_muted->modified = qfalse;
 	}
 

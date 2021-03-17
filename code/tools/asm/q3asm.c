@@ -34,11 +34,11 @@ char	outputFilename[MAX_OS_PATH];
 #define	ZERO_PAGE_SIZE	0		// 256
 
 typedef enum {
-	OP_UNDEF, 
+	OP_UNDEF,
 
-	OP_IGNORE, 
+	OP_IGNORE,
 
-	OP_BREAK, 
+	OP_BREAK,
 
 	OP_ENTER,
 	OP_LEAVE,
@@ -871,7 +871,7 @@ STAT("RET");
 	return 0;
 }
 
-	// pop is needed to discard the return value of 
+	// pop is needed to discard the return value of
 	// a function
 ASM(POP)
 {
@@ -1362,7 +1362,7 @@ static void WriteVmFile( void ) {
 	report( "lit  segment: %7i\n", segment[LITSEG].imageUsed );
 	report( "bss  segment: %7i\n", segment[BSSSEG].imageUsed );
 	report( "instruction count: %i\n", instructionCount );
-  
+
 	if ( errorCount != 0 ) {
 		report( "Not writing a file due to errors\n" );
 		return;
@@ -1550,13 +1550,13 @@ int main( int argc, char **argv ) {
 
 	// default filename is "q3asm"
 	strcpy( outputFilename, "q3asm" );
-	numAsmFiles = 0;	
+	numAsmFiles = 0;
 
 	for ( i = 1 ; i < argc ; i++ ) {
 		if ( argv[i][0] != '-' ) {
 			break;
 		}
-		if( !strcmp( argv[ i ], "-h" ) || 
+		if( !strcmp( argv[ i ], "-h" ) ||
 		    !strcmp( argv[ i ], "--help" ) ||
 		    !strcmp( argv[ i ], "-?") ) {
 			ShowHelp( argv[0] );

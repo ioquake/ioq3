@@ -2397,7 +2397,7 @@ int AAS_Reachability_Ladder(int area1num, int area2num)
 
 	area1 = &aasworld.areas[area1num];
 	area2 = &aasworld.areas[area2num];
-	
+
 	for (i = 0; i < area1->numfaces; i++)
 	{
 		face1num = aasworld.faceindex[area1->firstface + i];
@@ -2641,7 +2641,7 @@ int AAS_Reachability_Ladder(int area1num, int area2num)
 					lreach->next = areareachability[area2num];
 					areareachability[area2num] = lreach;
 					//
-					reach_jump++;	
+					reach_jump++;
 					//
 					return qtrue;
 #ifdef REACH_DEBUG
@@ -3725,7 +3725,7 @@ void AAS_Reachability_JumpPad(void)
 													SE_TOUCHJUMPPAD|SE_TOUCHTELEPORTER|SE_HITGROUNDAREA, area2num, visualize);
 						//if prediction time wasn't enough to fully predict the movement
 						//don't enter slime or lava and don't fall from too high
-						if (move.frames < 30 && 
+						if (move.frames < 30 &&
 								!(move.stopevent & (SE_ENTERSLIME|SE_ENTERLAVA|SE_HITGROUNDDAMAGE))
 								&& (move.stopevent & (SE_HITGROUNDAREA|SE_TOUCHJUMPPAD|SE_TOUCHTELEPORTER)))
 						{
@@ -4076,7 +4076,7 @@ int AAS_Reachability_WeaponJump(int area1num, int area2num)
 												SE_TOUCHJUMPPAD|SE_HITGROUND|SE_HITGROUNDAREA, area2num, visualize);
 					//if prediction time wasn't enough to fully predict the movement
 					//don't enter slime or lava and don't fall from too high
-					if (move.frames < 30 && 
+					if (move.frames < 30 &&
 							!(move.stopevent & (SE_ENTERSLIME|SE_ENTERLAVA|SE_HITGROUNDDAMAGE))
 								&& (move.stopevent & (SE_HITGROUNDAREA|SE_TOUCHJUMPPAD)))
 					{

@@ -262,7 +262,7 @@ static void forstmt(int lab, Swtch swp, int lev) {
 	int once = 0;
 	Tree e1 = NULL, e2 = NULL, e3 = NULL;
 	Coordinate pt2, pt3;
-	
+
 	t = gettok();
 	expect('(');
 	definept(NULL);

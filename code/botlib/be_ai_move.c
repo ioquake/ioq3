@@ -200,7 +200,7 @@ void BotInitMoveState(int handle, bot_initmove_t *initmove)
 	//
 	ms->moveflags &= ~MFL_ONGROUND;
 	if (initmove->or_moveflags & MFL_ONGROUND) ms->moveflags |= MFL_ONGROUND;
-	ms->moveflags &= ~MFL_TELEPORTED;	
+	ms->moveflags &= ~MFL_TELEPORTED;
 	if (initmove->or_moveflags & MFL_TELEPORTED) ms->moveflags |= MFL_TELEPORTED;
 	ms->moveflags &= ~MFL_WATERJUMP;
 	if (initmove->or_moveflags & MFL_WATERJUMP) ms->moveflags |= MFL_WATERJUMP;
@@ -697,7 +697,7 @@ int BotAvoidSpots(vec3_t origin, aas_reachability_t *reach, bot_avoidspot_t *avo
 		{
 			VectorDistanceSquared(avoidspots[i].origin, reach->end);
 			// if the reachability leads closer to the avoid spot
-			if (squareddist < squaredradius && 
+			if (squareddist < squaredradius &&
 				VectorDistanceSquared(avoidspots[i].origin, reach->start) > squareddist)
 			{
 				type = avoidspots[i].type;
@@ -3265,7 +3265,7 @@ void BotMoveToGoal(bot_moveresult_t *result, int movestate, bot_goal_t *goal, in
 #endif //AVOIDREACH
 			} //end if
 #ifdef DEBUG
-			
+
 			else if (botDeveloper)
 			{
 				botimport.Print(PRT_MESSAGE, "goal not reachable\n");

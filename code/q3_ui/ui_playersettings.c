@@ -303,7 +303,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 
 	// model/skin
 	memset( &s_playersettings.playerinfo, 0, sizeof(playerInfo_t) );
-	
+
 	viewangles[YAW]   = 180 - 30;
 	viewangles[PITCH] = 0;
 	viewangles[ROLL]  = 0;

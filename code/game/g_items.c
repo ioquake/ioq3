@@ -54,7 +54,7 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 	if ( !other->client->ps.powerups[ent->item->giTag] ) {
 		// round timing to seconds to make multiple powerup timers
 		// count in sync
-		other->client->ps.powerups[ent->item->giTag] = 
+		other->client->ps.powerups[ent->item->giTag] =
 			level.time - ( level.time % 1000 );
 	}
 
@@ -545,8 +545,8 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	ent->r.contents = 0;
 
 	// ZOID
-	// A negative respawn times means to never respawn this item (but don't 
-	// delete it).  This is used by items that are respawned by third party 
+	// A negative respawn times means to never respawn this item (but don't
+	// delete it).  This is used by items that are respawned by third party
 	// events such as ctf flags
 	if ( respawn <= 0 ) {
 		ent->nextthink = 0;
@@ -629,7 +629,7 @@ gentity_t *Drop_Item( gentity_t *ent, gitem_t *item, float angle ) {
 	AngleVectors( angles, velocity, NULL, NULL );
 	VectorScale( velocity, 150, velocity );
 	velocity[2] += 200 + crandom() * 50;
-	
+
 	return LaunchItem( item, ent->s.pos.trBase, velocity );
 }
 
@@ -984,7 +984,7 @@ void G_RunItem( gentity_t *ent ) {
 	} else {
 		mask = MASK_PLAYERSOLID & ~CONTENTS_BODY;//MASK_SOLID;
 	}
-	trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, 
+	trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin,
 		ent->r.ownerNum, mask );
 
 	VectorCopy( tr.endpos, ent->r.currentOrigin );

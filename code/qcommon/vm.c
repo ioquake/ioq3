@@ -332,7 +332,7 @@ Dlls will call this directly
 
   For speed, we just grab 15 arguments, and don't worry about exactly
    how many the syscall actually needs; the extra is thrown away.
- 
+
 ============
 */
 intptr_t QDECL VM_DllSyscall( intptr_t arg, ... ) {
@@ -341,14 +341,14 @@ intptr_t QDECL VM_DllSyscall( intptr_t arg, ... ) {
   intptr_t args[MAX_VMSYSCALL_ARGS];
   int i;
   va_list ap;
-  
+
   args[0] = arg;
-  
+
   va_start(ap, arg);
   for (i = 1; i < ARRAY_LEN (args); i++)
     args[i] = va_arg(ap, intptr_t);
   va_end(ap);
-  
+
   return currentVM->systemCall( args );
 #else // original id code
 	return currentVM->systemCall( &arg );
@@ -408,7 +408,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 		{
 			VM_Free(vm);
 			FS_FreeFile(header.v);
-			
+
 			Com_Printf(S_COLOR_YELLOW "Warning: %s has bad header\n", filename);
 			return NULL;
 		}
@@ -468,7 +468,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 					"VM_Restart()\n", filename);
 			return NULL;
 		}
-		
+
 		Com_Memset(vm->dataBase, 0, vm->dataAlloc);
 	}
 
@@ -540,8 +540,8 @@ vm_t *VM_Restart(vm_t *vm, qboolean unpure)
 	if ( vm->dllHandle ) {
 		char	name[MAX_QPATH];
 		intptr_t	(*systemCall)( intptr_t *parms );
-		
-		systemCall = vm->systemCall;	
+
+		systemCall = vm->systemCall;
 		Q_strncpyz( name, vm->name, sizeof( name ) );
 
 		VM_Free( vm );
@@ -573,7 +573,7 @@ If image ends in .qvm it will be interpreted, otherwise
 it will attempt to load as a system dll
 ================
 */
-vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *), 
+vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 				vmInterpret_t interpret ) {
 	vm_t		*vm;
 	vmHeader_t	*header;
@@ -613,19 +613,19 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 	do
 	{
 		retval = FS_FindVM(&startSearch, filename, sizeof(filename), module, (interpret == VMI_NATIVE));
-		
+
 		if(retval == VMI_NATIVE)
 		{
 			Com_Printf("Try loading dll file %s\n", filename);
 
 			vm->dllHandle = Sys_LoadGameDll(filename, &vm->entryPoint, VM_DllSyscall);
-			
+
 			if(vm->dllHandle)
 			{
 				vm->systemCall = systemCalls;
 				return vm;
 			}
-			
+
 			Com_Printf("Failed loading dll, trying next\n");
 		}
 		else if(retval == VMI_COMPILED)
@@ -638,7 +638,7 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 			Q_strncpyz(vm->name, module, sizeof(vm->name));
 		}
 	} while(retval >= 0);
-	
+
 	if(retval < 0)
 		return NULL;
 

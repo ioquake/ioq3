@@ -67,7 +67,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 //	0   32   80  112  144   240  320  400   <-- pixel position
 //  bot head bot head score ping time name
-//  
+//
 //  wins/losses are drawn on bot icon now
 
 static qboolean localClient; // true if local client has been displayed
@@ -88,7 +88,7 @@ static void CG_DrawClientScore( int y, score_t *score, float *color, float fade,
 		Com_Printf( "Bad score->client: %i\n", score->client );
 		return;
 	}
-	
+
 	ci = &cgs.clientinfo[score->client];
 
 	iconx = SB_BOTICON_X + (SB_RATING_WIDTH / 2);
@@ -150,7 +150,7 @@ static void CG_DrawClientScore( int y, score_t *score, float *color, float fade,
 	VectorClear( headAngles );
 	headAngles[YAW] = 180;
 	if( largeFormat ) {
-		CG_DrawHead( headx, y - ( ICON_SIZE - BIGCHAR_HEIGHT ) / 2, ICON_SIZE, ICON_SIZE, 
+		CG_DrawHead( headx, y - ( ICON_SIZE - BIGCHAR_HEIGHT ) / 2, ICON_SIZE, ICON_SIZE,
 			score->client, headAngles );
 	}
 	else {
@@ -187,7 +187,7 @@ static void CG_DrawClientScore( int y, score_t *score, float *color, float fade,
 
 		localClient = qtrue;
 
-		if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR 
+		if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR
 			|| cgs.gametype >= GT_TEAM ) {
 			rank = -1;
 		} else {
@@ -212,7 +212,7 @@ static void CG_DrawClientScore( int y, score_t *score, float *color, float fade,
 		}
 
 		hcolor[3] = fade * 0.7;
-		CG_FillRect( SB_SCORELINE_X + BIGCHAR_WIDTH + (SB_RATING_WIDTH / 2), y, 
+		CG_FillRect( SB_SCORELINE_X + BIGCHAR_WIDTH + (SB_RATING_WIDTH / 2), y,
 			640 - SB_SCORELINE_X - BIGCHAR_WIDTH, BIGCHAR_HEIGHT+1, hcolor );
 	}
 
@@ -294,7 +294,7 @@ qboolean CG_DrawOldScoreboard( void ) {
 		fadeColor = colorWhite;
 	} else {
 		fadeColor = CG_FadeColor( cg.scoreFadeTime, FADE_TIME );
-		
+
 		if ( !fadeColor ) {
 			// next time scoreboard comes up, don't print killer
 			cg.deferredPlayerLoading = 0;
@@ -503,7 +503,7 @@ void CG_DrawTourneyScoreboard( void ) {
 		CG_DrawStringExt( 8, y, "Red Team", color, qtrue, qtrue, GIANT_WIDTH, GIANT_HEIGHT, 0 );
 		s = va("%i", cg.teamScores[0] );
 		CG_DrawStringExt( 632 - GIANT_WIDTH * strlen(s), y, s, color, qtrue, qtrue, GIANT_WIDTH, GIANT_HEIGHT, 0 );
-		
+
 		y += 64;
 
 		CG_DrawStringExt( 8, y, "Blue Team", color, qtrue, qtrue, GIANT_WIDTH, GIANT_HEIGHT, 0 );

@@ -71,7 +71,7 @@ Set FPU control word to default value
   #define _MCW_PC	0x00030000U
   #define _RC_NEAR      0x00000000U
   #define _PC_53	0x00010000U
-  
+
   unsigned int _controlfp(unsigned int new, unsigned int mask);
 #endif
 
@@ -123,7 +123,7 @@ char *Sys_DefaultHomePath( void )
 			FreeLibrary(shfolder);
 			return NULL;
 		}
-		
+
 		Com_sprintf(homePath, sizeof(homePath), "%s%c", szPath, PATH_SEP);
 
 		if(com_homepath->string[0])
@@ -777,8 +777,8 @@ void Sys_PlatformInit( void )
 			Com_Printf("Warning: Minimum supported timer resolution is %ums "
 				"on this system, recommended resolution 1ms\n", timerResolution);
 		}
-		
-		timeBeginPeriod(timerResolution);				
+
+		timeBeginPeriod(timerResolution);
 	}
 	else
 		timerResolution = 0;

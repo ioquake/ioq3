@@ -73,7 +73,7 @@ keyname_t keynames[] =
 
 	{"CAPSLOCK", K_CAPSLOCK},
 
-	
+
 	{"F1", K_F1},
 	{"F2", K_F2},
 	{"F3", K_F3},
@@ -176,7 +176,7 @@ keyname_t keynames[] =
 	{"KP_EQUALS",		K_KP_EQUALS },
 
 	{"PAUSE", K_PAUSE},
-	
+
 	{"SEMICOLON", ';'},	// because a raw semicolon separates commands
 
 	{"WORLD_0", K_WORLD_0},
@@ -409,12 +409,12 @@ void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int size, q
 	}
 }
 
-void Field_Draw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape ) 
+void Field_Draw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape )
 {
 	Field_VariableSizeDraw( edit, x, y, width, SMALLCHAR_WIDTH, showCursor, noColorEscape );
 }
 
-void Field_BigDraw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape ) 
+void Field_BigDraw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape )
 {
 	Field_VariableSizeDraw( edit, x, y, width, BIGCHAR_WIDTH, showCursor, noColorEscape );
 }
@@ -468,7 +468,7 @@ void Field_KeyDownEvent( field_t *edit, int key ) {
 	switch ( key ) {
 		case K_DEL:
 			if ( edit->cursor < len ) {
-				memmove( edit->buffer + edit->cursor, 
+				memmove( edit->buffer + edit->cursor,
 					edit->buffer + edit->cursor + 1, len - edit->cursor );
 			}
 			break;
@@ -531,7 +531,7 @@ void Field_CharEvent( field_t *edit, int ch ) {
 
 	if ( ch == 'h' - 'a' + 1 )	{	// ctrl-h is backspace
 		if ( edit->cursor > 0 ) {
-			memmove( edit->buffer + edit->cursor - 1, 
+			memmove( edit->buffer + edit->cursor - 1,
 				edit->buffer + edit->cursor, len + 1 - edit->cursor );
 			edit->cursor--;
 			if ( edit->cursor < edit->scroll )
@@ -561,7 +561,7 @@ void Field_CharEvent( field_t *edit, int ch ) {
 		return;
 	}
 
-	if ( key_overstrikeMode ) {	
+	if ( key_overstrikeMode ) {
 		// - 2 to leave room for the leading slash and trailing \0
 		if ( edit->cursor == MAX_EDIT_LINE - 2 )
 			return;
@@ -572,7 +572,7 @@ void Field_CharEvent( field_t *edit, int ch ) {
 		if ( len == MAX_EDIT_LINE - 2 ) {
 			return; // all full
 		}
-		memmove( edit->buffer + edit->cursor + 1, 
+		memmove( edit->buffer + edit->cursor + 1,
 			edit->buffer + edit->cursor, len + 1 - edit->cursor );
 		edit->buffer[edit->cursor] = ch;
 		edit->cursor++;
@@ -672,7 +672,7 @@ void Console_Key (int key) {
 
 	if ( (key == K_MWHEELUP && keys[K_SHIFT].down) || ( key == K_UPARROW ) || ( key == K_KP_UPARROW ) ||
 		 ( ( tolower(key) == 'p' ) && keys[K_CTRL].down ) ) {
-		if ( nextHistoryLine - historyLine < COMMAND_HISTORY 
+		if ( nextHistoryLine - historyLine < COMMAND_HISTORY
 			&& historyLine > 0 ) {
 			historyLine--;
 		}
@@ -826,7 +826,7 @@ to be configured even if they don't have defined names.
 int Key_StringToKeynum( char *str ) {
 	keyname_t	*kn;
 	int			n;
-	
+
 	if ( !str || !str[0] ) {
 		return -1;
 	}
@@ -858,7 +858,7 @@ given keynum.
 ===================
 */
 char *Key_KeynumToString( int keynum ) {
-	keyname_t	*kn;	
+	keyname_t	*kn;
 	static	char	tinystr[5];
 	int			i, j;
 
@@ -912,7 +912,7 @@ void Key_SetBinding( int keynum, const char *binding ) {
 	if ( keys[ keynum ].binding ) {
 		Z_Free( keys[ keynum ].binding );
 	}
-		
+
 	// allocate memory for new binding
 	keys[keynum].binding = CopyString( binding );
 
@@ -935,7 +935,7 @@ char *Key_GetBinding( int keynum ) {
 	return keys[ keynum ].binding;
 }
 
-/* 
+/*
 ===================
 Key_GetKey
 ===================
@@ -968,7 +968,7 @@ void Key_Unbind_f (void)
 		Com_Printf ("unbind <key> : remove commands from a key\n");
 		return;
 	}
-	
+
 	b = Key_StringToKeynum (Cmd_Argv(1));
 	if (b==-1)
 	{
@@ -987,7 +987,7 @@ Key_Unbindall_f
 void Key_Unbindall_f (void)
 {
 	int		i;
-	
+
 	for (i=0 ; i < MAX_KEYS; i++)
 		if (keys[i].binding)
 			Key_SetBinding (i, "");
@@ -1003,7 +1003,7 @@ void Key_Bind_f (void)
 {
 	int			i, c, b;
 	char		cmd[1024];
-	
+
 	c = Cmd_Argc();
 
 	if (c < 2)
@@ -1026,7 +1026,7 @@ void Key_Bind_f (void)
 			Com_Printf ("\"%s\" is not bound\n", Key_KeynumToString(b) );
 		return;
 	}
-	
+
 // copy the rest of the command line
 	cmd[0] = 0;		// start out with a null string
 	for (i=2 ; i< c ; i++)
@@ -1309,11 +1309,11 @@ void CL_KeyDownEvent( int key, unsigned time )
 	} else if ( Key_GetCatcher( ) & KEYCATCH_UI ) {
 		if ( uivm ) {
 			VM_Call( uivm, UI_KEY_EVENT, key, qtrue );
-		} 
+		}
 	} else if ( Key_GetCatcher( ) & KEYCATCH_CGAME ) {
 		if ( cgvm ) {
 			VM_Call( cgvm, CG_KEY_EVENT, key, qtrue );
-		} 
+		}
 	} else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) {
 		Message_Key( key );
 	} else if ( clc.state == CA_DISCONNECTED ) {
@@ -1394,7 +1394,7 @@ void CL_CharEvent( int key ) {
 	{
 		VM_Call( uivm, UI_KEY_EVENT, key | K_CHAR_FLAG, qtrue );
 	}
-	else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) 
+	else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE )
 	{
 		Field_CharEvent( &chatField, key );
 	}

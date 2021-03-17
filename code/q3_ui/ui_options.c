@@ -139,7 +139,7 @@ void Options_MenuInit( void ) {
 	s_options.framel.generic.type  = MTYPE_BITMAP;
 	s_options.framel.generic.name  = ART_FRAMEL;
 	s_options.framel.generic.flags = QMF_INACTIVE;
-	s_options.framel.generic.x	   = 8;  
+	s_options.framel.generic.x	   = 8;
 	s_options.framel.generic.y	   = 76;
 	s_options.framel.width  	   = 256;
 	s_options.framel.height  	   = 334;

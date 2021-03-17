@@ -78,12 +78,12 @@ static void Login_MenuEvent( void* ptr, int event ) {
 
 		// login
 		trap_CL_UI_RankUserLogin(
-			s_login.name_box.field.buffer, 
+			s_login.name_box.field.buffer,
 			s_login.password_box.field.buffer );
 
 		UI_ForceMenuOff();
 		break;
-		
+
 	case ID_CANCEL:
 		UI_PopMenu();
 		break;
@@ -134,7 +134,7 @@ void Login_MenuInit( void ) {
 	s_login.name_box.field.widthInChars	= 16;
 	s_login.name_box.field.maxchars		= 16;
 	y += 20;
-	
+
 	s_login.password.generic.type		= MTYPE_PTEXT;
 	s_login.password.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 	s_login.password.generic.id			= ID_PASSWORD;

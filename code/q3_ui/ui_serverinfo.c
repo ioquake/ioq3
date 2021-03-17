@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static char* serverinfo_artlist[] =
 {
-	SERVERINFO_FRAMEL,	
+	SERVERINFO_FRAMEL,
 	SERVERINFO_FRAMER,
 	SERVERINFO_BACK0,
 	SERVERINFO_BACK1,
@@ -81,7 +81,7 @@ void Favorites_Add( void )
 			// already in list
 			return;
 		}
-		
+
 		// use first empty available slot
 		if (!adrstr[0] && !best)
 			best = i+1;
@@ -104,7 +104,7 @@ static void ServerInfo_Event( void* ptr, int event )
 		case ID_ADD:
 			if (event != QM_ACTIVATED)
 				break;
-		
+
 			Favorites_Add();
 			UI_PopMenu();
 			break;
@@ -138,7 +138,7 @@ static void ServerInfo_MenuDraw( void )
 			break;
 		}
 
-		Q_strcat( key, MAX_INFO_KEY, ":" ); 
+		Q_strcat( key, MAX_INFO_KEY, ":" );
 
 		UI_DrawString(SCREEN_WIDTH*0.50 - 8,y,key,UI_RIGHT|UI_SMALLFONT,color_red);
 		UI_DrawString(SCREEN_WIDTH*0.50 + 8,y,value,UI_LEFT|UI_SMALLFONT,text_color_normal);
@@ -209,7 +209,7 @@ void UI_ServerInfoMenu( void )
 	s_serverinfo.framel.generic.type  = MTYPE_BITMAP;
 	s_serverinfo.framel.generic.name  = SERVERINFO_FRAMEL;
 	s_serverinfo.framel.generic.flags = QMF_INACTIVE;
-	s_serverinfo.framel.generic.x	  = 0;  
+	s_serverinfo.framel.generic.x	  = 0;
 	s_serverinfo.framel.generic.y	  = 78;
 	s_serverinfo.framel.width  	      = 256;
 	s_serverinfo.framel.height  	  = 329;

@@ -41,9 +41,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	PROGRAM_STACK_MASK	(PROGRAM_STACK_SIZE-1)
 
 typedef enum {
-	OP_UNDEF, 
+	OP_UNDEF,
 
-	OP_IGNORE, 
+	OP_IGNORE,
 
 	OP_BREAK,
 
@@ -148,7 +148,7 @@ struct vm_s {
     intptr_t			(*systemCall)( intptr_t *parms );
 
 	//------------------------------------
-   
+
 	char		name[MAX_QPATH];
 	void	*searchPath;				// hint for FS_ReadFileDir()
 

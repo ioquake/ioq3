@@ -271,7 +271,7 @@ void target_laser_think (gentity_t *self) {
 
 	if ( tr.entityNum ) {
 		// hurt it if we can
-		G_Damage ( &g_entities[tr.entityNum], self, self->activator, self->movedir, 
+		G_Damage ( &g_entities[tr.entityNum], self, self->activator, self->movedir,
 			tr.endpos, self->damage, DAMAGE_NO_KNOCKBACK, MOD_TARGET_LASER);
 	}
 
@@ -375,11 +375,11 @@ The activator can be forced to be from a certain team.
 if RANDOM is checked, only one of the targets will be fired, not all of them
 */
 void target_relay_use (gentity_t *self, gentity_t *other, gentity_t *activator) {
-	if ( ( self->spawnflags & 1 ) && activator->client 
+	if ( ( self->spawnflags & 1 ) && activator->client
 		&& activator->client->sess.sessionTeam != TEAM_RED ) {
 		return;
 	}
-	if ( ( self->spawnflags & 2 ) && activator->client 
+	if ( ( self->spawnflags & 2 ) && activator->client
 		&& activator->client->sess.sessionTeam != TEAM_BLUE ) {
 		return;
 	}
@@ -425,7 +425,7 @@ static void target_location_linkup(gentity_t *ent)
 	int i;
 	int n;
 
-	if (level.locationLinked) 
+	if (level.locationLinked)
 		return;
 
 	level.locationLinked = qtrue;

@@ -185,8 +185,8 @@ typedef enum {
 	GF_SIN,
 	GF_SQUARE,
 	GF_TRIANGLE,
-	GF_SAWTOOTH, 
-	GF_INVERSE_SAWTOOTH, 
+	GF_SAWTOOTH,
+	GF_INVERSE_SAWTOOTH,
 
 	GF_NOISE
 
@@ -387,7 +387,7 @@ typedef enum
 
 typedef struct {
 	qboolean		active;
-	
+
 	textureBundle_t	bundle[NUM_TEXTURE_BUNDLES];
 
 	waveForm_t		rgbWave;
@@ -468,7 +468,7 @@ typedef struct shader_s {
 	qboolean	isPortal;
 
 	cullType_t	cullType;				// CT_FRONT_SIDED, CT_BACK_SIDED, or CT_TWO_SIDED
-	qboolean	polygonOffset;			// set for decals and other items that must be offset 
+	qboolean	polygonOffset;			// set for decals and other items that must be offset
 	qboolean	noMipMaps;				// for console fonts, 2D elements, etc.
 	qboolean	noPicMip;				// for images that must always be full resolution
 
@@ -480,7 +480,7 @@ typedef struct shader_s {
 	deformStage_t	deforms[MAX_SHADER_DEFORMS];
 
 	int			numUnfoggedPasses;
-	shaderStage_t	*stages[MAX_SHADER_STAGES];		
+	shaderStage_t	*stages[MAX_SHADER_STAGES];
 
 	void		(*optimalStageIteratorFunc)( void );
 
@@ -509,7 +509,7 @@ enum
 	ATTR_INDEX_POSITION2      = 10,
 	ATTR_INDEX_TANGENT2       = 11,
 	ATTR_INDEX_NORMAL2        = 12,
-	
+
 	ATTR_INDEX_COUNT          = 13
 };
 
@@ -937,7 +937,7 @@ typedef struct srfBspSurface_s
 	// vertexes
 	int             numVerts;
 	srfVert_t      *verts;
-	
+
 	// SF_GRID specific variables after here
 
 	// lod information, which may be different
@@ -1057,7 +1057,7 @@ SHADOWS
 typedef struct pshadow_s
 {
 	float sort;
-	
+
 	int    numEntities;
 	int    entityNums[8];
 	vec3_t entityOrigins[8];
@@ -1124,7 +1124,7 @@ typedef struct mnode_s {
 
 	// node specific
 	cplane_t	*plane;
-	struct mnode_s	*children[2];	
+	struct mnode_s	*children[2];
 
 	// leaf specific
 	int			cluster;
@@ -1291,7 +1291,7 @@ typedef struct model_s {
 
 void		R_ModelInit (void);
 model_t		*R_GetModelByHandle( qhandle_t hModel );
-int			R_LerpTag( orientation_t *tag, qhandle_t handle, int startFrame, int endFrame, 
+int			R_LerpTag( orientation_t *tag, qhandle_t handle, int startFrame, int endFrame,
 					 float frac, const char *tagName );
 void		R_ModelBounds( qhandle_t handle, vec3_t mins, vec3_t maxs );
 
@@ -1414,7 +1414,7 @@ typedef struct {
 	qboolean textureFloat;
 	textureCompressionRef_t textureCompression;
 	qboolean swizzleNormalmap;
-	
+
 	qboolean framebufferMultisample;
 	qboolean framebufferBlit;
 
@@ -1430,7 +1430,7 @@ typedef struct {
 	int		c_surfaces, c_shaders, c_vertexes, c_indexes, c_totalIndexes;
 	int     c_surfBatches;
 	float	c_overDraw;
-	
+
 	int		c_vaoBinds;
 	int		c_vaoVertexes;
 	int		c_vaoIndexes;
@@ -1477,7 +1477,7 @@ typedef struct {
 } backEndState_t;
 
 /*
-** trGlobals_t 
+** trGlobals_t
 **
 ** Most renderer globals are defined here.
 ** backend functions should never modify any of these fields,
@@ -1515,7 +1515,7 @@ typedef struct {
 	image_t					*identityLightImage;	// full of tr.identityLightByte
 
 	image_t                 *shadowCubemaps[MAX_DLIGHTS];
-	
+
 
 	image_t					*renderImage;
 	image_t					*sunRaysImage;
@@ -1532,7 +1532,7 @@ typedef struct {
 	image_t                 *screenSsaoImage;
 	image_t					*hdrDepthImage;
 	image_t                 *renderCubeImage;
-	
+
 	image_t					*textureDepthImage;
 
 	FBO_t					*renderFbo;
@@ -1871,10 +1871,10 @@ void R_AddLightningBoltSurfaces( trRefEntity_t *e );
 
 void R_AddPolygonSurfaces( void );
 
-void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader, 
+void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader,
 					 int *fogNum, int *dlightMap, int *pshadowMap );
 
-void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader, 
+void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 				   int fogIndex, int dlightMap, int pshadowMap, int cubemap );
 
 void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2,
@@ -2020,7 +2020,7 @@ typedef struct stageVars
 	vec2_t		texcoords[NUM_TEXTURE_BUNDLES][SHADER_MAX_VERTEXES];
 } stageVars_t;
 
-typedef struct shaderCommands_s 
+typedef struct shaderCommands_s
 {
 	glIndex_t	indexes[SHADER_MAX_INDEXES] QALIGN(16);
 	vec4_t		xyz[SHADER_MAX_VERTEXES] QALIGN(16);
@@ -2484,7 +2484,7 @@ void R_AddCapShadowmapCmd( int dlight, int cubeSide );
 void R_AddPostProcessCmd (void);
 
 void RE_SetColor( const float *rgba );
-void RE_StretchPic ( float x, float y, float w, float h, 
+void RE_StretchPic ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2, qhandle_t hShader );
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );

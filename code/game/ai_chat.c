@@ -493,7 +493,7 @@ int BotChat_EndLevel(bot_state_t *bs) {
 	if (BotIsObserver(bs)) return qfalse;
 	if (bs->lastchat_time > FloatTime() - TIME_BETWEENCHATTING) return qfalse;
 	// teamplay
-	if (TeamPlayIsOn()) 
+	if (TeamPlayIsOn())
 	{
 #ifdef MISSIONPACK
 		if (BotIsFirstInRankings(bs)) {

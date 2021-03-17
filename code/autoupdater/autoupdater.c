@@ -57,7 +57,7 @@ static int sha256_hash_index = 0;
 #define AUTOUPDATE_BASEURL "https://upd.ioquake3.org/updates/v1"
 #endif
 
-#ifndef AUTOUPDATE_PACKAGE 
+#ifndef AUTOUPDATE_PACKAGE
 #define AUTOUPDATE_PACKAGE "ioquake3"
 #endif
 

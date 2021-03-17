@@ -123,7 +123,7 @@ doadefine(Tokenrow *trp, int type)
 syntax:
 	error(FATAL, "Illegal -D or -U argument %r", trp);
 }
-			
+
 /*
  * Do macro expansion in a row of tokens.
  * Flag is NULL if more input can be gathered.
@@ -218,7 +218,7 @@ expand(Tokenrow *trp, Nlist *np)
 	insertrow(trp, ntokc, &ntr);
 	trp->tp -= rowlen(&ntr);
 	dofree(ntr.bp);
-}	
+}
 
 /*
  * Gather an arglist, starting in trp with tp pointing at the macro name.
@@ -435,7 +435,7 @@ stringify(Tokenrow *vp)
 		}
 		if (tp->wslen && (tp->flag&XPWS)==0)
 			*sp++ = ' ';
-		for (i=0, cp=tp->t; i<tp->len; i++) {	
+		for (i=0, cp=tp->t; i<tp->len; i++) {
 			if (instring && (*cp=='"' || *cp=='\\'))
 				*sp++ = '\\';
 			*sp++ = *cp++;

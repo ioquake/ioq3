@@ -29,7 +29,7 @@ char *svc_strings[256] = {
 	"svc_nop",
 	"svc_gamestate",
 	"svc_configstring",
-	"svc_baseline",	
+	"svc_baseline",
 	"svc_serverCommand",
 	"svc_download",
 	"svc_snapshot",
@@ -61,7 +61,7 @@ Parses deltas from the given base and adds the resulting entity
 to the current frame
 ==================
 */
-void CL_DeltaEntity (msg_t *msg, clSnapshot_t *frame, int newnum, entityState_t *old, 
+void CL_DeltaEntity (msg_t *msg, clSnapshot_t *frame, int newnum, entityState_t *old,
 					 qboolean unchanged) {
 	entityState_t	*state;
 
@@ -129,7 +129,7 @@ void CL_ParsePacketEntities( msg_t *msg, clSnapshot_t *oldframe, clSnapshot_t *n
 				Com_Printf ("%3i:  unchanged: %i\n", msg->readcount, oldnum);
 			}
 			CL_DeltaEntity( msg, newframe, oldnum, oldstate, qtrue );
-			
+
 			oldindex++;
 
 			if ( oldindex >= oldframe->numEntities ) {
@@ -177,7 +177,7 @@ void CL_ParsePacketEntities( msg_t *msg, clSnapshot_t *oldframe, clSnapshot_t *n
 			Com_Printf ("%3i:  unchanged: %i\n", msg->readcount, oldnum);
 		}
 		CL_DeltaEntity( msg, newframe, oldnum, oldstate, qtrue );
-		
+
 		oldindex++;
 
 		if ( oldindex >= oldframe->numEntities ) {
@@ -239,7 +239,7 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	// If the frame is delta compressed from data that we
 	// no longer have available, we must suck up the rest of
 	// the frame, but not use it, then ask for a non-compressed
-	// message 
+	// message
 	if ( newSnap.deltaNum <= 0 ) {
 		newSnap.valid = qtrue;		// uncompressed frame
 		old = NULL;
@@ -262,13 +262,13 @@ void CL_ParseSnapshot( msg_t *msg ) {
 
 	// read areamask
 	len = MSG_ReadByte( msg );
-	
+
 	if(len > sizeof(newSnap.areamask))
 	{
 		Com_Error (ERR_DROP,"CL_ParseSnapshot: Invalid size %d for areamask", len);
 		return;
 	}
-	
+
 	MSG_ReadData( msg, &newSnap.areamask, len);
 
 	// read playerinfo
@@ -390,12 +390,12 @@ void CL_SystemInfoChanged( void ) {
 	s = systemInfo;
 	while ( s ) {
 		int cvar_flags;
-		
+
 		Info_NextPair( &s, key, value );
 		if ( !key[0] ) {
 			break;
 		}
-		
+
 		// ehw!
 		if (!Q_stricmp(key, "fs_game"))
 		{
@@ -404,7 +404,7 @@ void CL_SystemInfoChanged( void ) {
 				Com_Printf(S_COLOR_YELLOW "WARNING: Server sent invalid fs_game value %s\n", value);
 				continue;
 			}
-				
+
 			gameSet = qtrue;
 		}
 
@@ -486,7 +486,7 @@ void CL_ParseGamestate( msg_t *msg ) {
 		if ( cmd == svc_EOF ) {
 			break;
 		}
-		
+
 		if ( cmd == svc_configstring ) {
 			int		len;
 
@@ -534,7 +534,7 @@ void CL_ParseGamestate( msg_t *msg ) {
 	// stop recording now so the demo won't have an unnecessary level load at the end.
 	if(cl_autoRecordDemo->integer && clc.demorecording)
 		CL_StopRecord_f();
-	
+
 	// reinitialize the filesystem if the game directory has changed
 	if(!cl_oldGameSet && (Cvar_Flags("fs_game") & CVAR_MODIFIED))
 	{
@@ -596,7 +596,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 		Com_Error(ERR_DROP, "CL_ParseDownload: Invalid size %d for download chunk", size);
 		return;
 	}
-	
+
 	MSG_ReadData(msg, data, size);
 
 	if((clc.downloadBlock & 0xFFFF) != block)
@@ -868,7 +868,7 @@ void CL_ParseServerMessage( msg_t *msg ) {
 
 	// get the reliable sequence acknowledge number
 	clc.reliableAcknowledge = MSG_ReadLong( msg );
-	// 
+	//
 	if ( clc.reliableAcknowledge < clc.reliableSequence - MAX_RELIABLE_COMMANDS ) {
 		clc.reliableAcknowledge = clc.reliableSequence;
 	}
@@ -896,12 +896,12 @@ void CL_ParseServerMessage( msg_t *msg ) {
 				SHOWNET( msg, svc_strings[cmd] );
 			}
 		}
-	
+
 	// other commands
 		switch ( cmd ) {
 		default:
 			Com_Error (ERR_DROP,"CL_ParseServerMessage: Illegible server message");
-			break;			
+			break;
 		case svc_nop:
 			break;
 		case svc_serverCommand:

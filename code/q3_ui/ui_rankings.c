@@ -122,7 +122,7 @@ void Rankings_DrawName( void* self )
 	menufield_s		*f;
 	int				length;
 	char*			p;
-	
+
 	f = (menufield_s*)self;
 
 	// GRANK_FIXME - enforce valid characters
@@ -134,14 +134,14 @@ void Rankings_DrawName( void* self )
 			*p = '\0';
 		}
 	}
-	
+
 	// strip color codes
 	Q_CleanStr( f->field.buffer );
 	length = strlen( f->field.buffer );
 	if( f->field.cursor > length )
 	{
 		f->field.cursor = length;
-	}	
+	}
 
 	Rankings_DrawText( f );
 }
@@ -156,7 +156,7 @@ void Rankings_DrawName( void* self )
 {
 	menufield_s*	f;
 	int				length;
-	
+
 	f = (menufield_s*)self;
 
 	// strip color codes
@@ -166,7 +166,7 @@ void Rankings_DrawName( void* self )
 	{
 		f->field.cursor = length;
 	}
-	
+
 	// show beginning of long names
 	/*
 	if( Menu_ItemAtCursor( f->generic.parent ) != f )
@@ -178,7 +178,7 @@ void Rankings_DrawName( void* self )
 		}
 	}
 	*/
-	
+
 	MenuField_Draw( f );
 }
 #endif
@@ -197,7 +197,7 @@ void Rankings_DrawPassword( void* self )
 	char*			p;
 
 	f = (menufield_s*)self;
-	
+
 	// GRANK_FIXME - enforce valid characters
 	for( p = f->field.buffer; *p != '\0'; p++ )
 	{
@@ -207,13 +207,13 @@ void Rankings_DrawPassword( void* self )
 			*p = '\0';
 		}
 	}
-	
+
 	length = strlen( f->field.buffer );
 	if( f->field.cursor > length )
 	{
 		f->field.cursor = length;
 	}
-	
+
 	// save password
 	Q_strncpyz( password, f->field.buffer, sizeof(password) );
 
@@ -251,7 +251,7 @@ static void Rankings_MenuEvent( void* ptr, int event ) {
 		trap_CL_UI_RankUserRequestLogout();
 		UI_ForceMenuOff();
 		break;
-		
+
 	case ID_CREATE:
 		UI_SignupMenu();
 		break;
@@ -264,7 +264,7 @@ static void Rankings_MenuEvent( void* ptr, int event ) {
 	case ID_SETUP:
 		UI_SetupMenu();
 		break;
-		
+
 	case ID_LEAVE:
 		trap_Cmd_ExecuteText( EXEC_APPEND, "disconnect\n" );
 		UI_ForceMenuOff();
@@ -368,13 +368,13 @@ void Rankings_MenuInit( void ) {
 	status = (grank_status_t)trap_Cvar_VariableValue("client_status");
 	if( (status != QGR_STATUS_NEW) && (status != QGR_STATUS_SPECTATOR) )
 	{
-		s_rankings.login.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;	
+		s_rankings.login.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 		s_rankings.create.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 		s_rankings.spectate.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 
 		s_rankings.logout.generic.flags &= ~(QMF_HIDDEN | QMF_INACTIVE);
 	}
-	
+
 	if ( (status == QGR_STATUS_VALIDATING) ||
 		 (status == QGR_STATUS_PENDING) ||
 		 (status == QGR_STATUS_LEAVING) )
@@ -383,7 +383,7 @@ void Rankings_MenuInit( void ) {
 		s_rankings.create.generic.flags |= QMF_GRAYED;
 		s_rankings.logout.generic.flags |= QMF_GRAYED;
 	}
-	
+
 	//GRank FIXME -- don't need setup option any more
 	s_rankings.setup.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 

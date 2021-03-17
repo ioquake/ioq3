@@ -173,14 +173,14 @@ int main(int argc, char *argv[]) {
 		if (callsys(av))
 			errcnt++;
 	}
-	rm(rmlist);	
+	rm(rmlist);
 	return errcnt ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 /* alloc - allocate n bytes or die */
 static void *alloc(int n) {
 	static char *avail, *limit;
-	
+
 	n = (n + sizeof(char *) - 1)&~(sizeof(char *) - 1);
 	if (n >= limit - avail) {
 		avail = malloc(n + 4*1024);
@@ -191,7 +191,7 @@ static void *alloc(int n) {
 	return avail - n;
 }
 
-/* append - append a node with string str onto list, return new list */	
+/* append - append a node with string str onto list, return new list */
 static List append(char *str, List list) {
 	List p = alloc(sizeof *p);
 
@@ -432,7 +432,7 @@ static char *exists(char *name) {
 	&& access(name, 4) == 0)
 		return name;
 	if (!(name[0] == '/' || name[0] == '\\' || name[2] == ':')
-	&& (b = lccinputs))		
+	&& (b = lccinputs))
 		do {
 			b = b->link;
 			if (b->str[0]) {
@@ -527,7 +527,7 @@ static int filename(char *name, char *base) {
 /* find - find 1st occurrence of str in list, return list node or 0 */
 static List find(char *str, List list) {
 	List b;
-	
+
 	if ((b = list))
 		do {
 			if (strcmp(str, b->str) == 0)
@@ -554,7 +554,7 @@ static void help(void) {
 "-E	run only the preprocessor on the named C programs and unsuffixed files\n",
 "-g	produce symbol table information for debuggers\n",
 "-help or -?	print this message\n",
-"-Idir	add `dir' to the beginning of the list of #include directories\n",	
+"-Idir	add `dir' to the beginning of the list of #include directories\n",
 "-lx	search library `x'\n",
 "-N	do not search the standard directories for #include files\n",
 "-n	emit code to check for dereferencing zero pointers\n",
@@ -672,7 +672,7 @@ static void opt(char *arg) {
 		if (strcmp(arg, "-Bstatic") == 0 || strcmp(arg, "-Bdynamic") == 0)
 			llist[1] = append(arg, llist[1]);
 		else
-#endif	
+#endif
 		{
 		static char *path;
 		if (path)
@@ -702,7 +702,7 @@ static void opt(char *arg) {
 				fprintf(stderr, "%s: %s ignored\n", progname, arg);
 			return;
 		}
-#endif         
+#endif
 	}
 	if (arg[2] == 0)
 		switch (arg[1]) {	/* single-character options */

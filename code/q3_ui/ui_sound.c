@@ -255,7 +255,7 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	soundOptionsInfo.framel.generic.type		= MTYPE_BITMAP;
 	soundOptionsInfo.framel.generic.name		= ART_FRAMEL;
 	soundOptionsInfo.framel.generic.flags		= QMF_INACTIVE;
-	soundOptionsInfo.framel.generic.x			= 0;  
+	soundOptionsInfo.framel.generic.x			= 0;
 	soundOptionsInfo.framel.generic.y			= 78;
 	soundOptionsInfo.framel.width				= 256;
 	soundOptionsInfo.framel.height				= 329;

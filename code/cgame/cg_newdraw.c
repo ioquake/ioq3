@@ -73,13 +73,13 @@ void CG_CheckOrderPending(void) {
 				p1 = VOICECHAT_ONDEFENSE;
 				p2 = VOICECHAT_DEFEND;
 				b = "+button8; wait; -button8";
-			break;					
+			break;
 			case TEAMTASK_PATROL:
 				p1 = VOICECHAT_ONPATROL;
 				p2 = VOICECHAT_PATROL;
 				b = "+button9; wait; -button9";
 			break;
-			case TEAMTASK_FOLLOW: 
+			case TEAMTASK_FOLLOW:
 				p1 = VOICECHAT_ONFOLLOW;
 				p2 = VOICECHAT_FOLLOWME;
 				b = "+button10; wait; -button10";
@@ -359,12 +359,12 @@ qhandle_t CG_StatusHandle(int task) {
 			h = cgs.media.campShader;
 			break;
 		case TEAMTASK_RETRIEVE :
-			h = cgs.media.retrieveShader; 
+			h = cgs.media.retrieveShader;
 			break;
 		case TEAMTASK_ESCORT :
-			h = cgs.media.escortShader; 
+			h = cgs.media.escortShader;
 			break;
-		default : 
+		default :
 			h = cgs.media.assaultShader;
 			break;
 	}
@@ -533,7 +533,7 @@ static void CG_DrawSelectedPlayerHead( rectDef_t *rect, qboolean draw2D, qboolea
 
 	  	// calculate distance so the head nearly fills the box
   		// assume heads are taller than wide
-  		len = 0.7 * ( maxs[2] - mins[2] );		
+  		len = 0.7 * ( maxs[2] - mins[2] );
   		origin[0] = len / 0.268;	// len / tan( fov/2 )
 
   		// allow per-model tweaking
@@ -542,7 +542,7 @@ static void CG_DrawSelectedPlayerHead( rectDef_t *rect, qboolean draw2D, qboolea
     	angles[PITCH] = 0;
     	angles[YAW] = 180;
     	angles[ROLL] = 0;
-  	
+
       CG_Draw3DModel( rect->x, rect->y, rect->w, rect->h, ci->headModel, ci->headSkin, origin, angles );
   	} else if ( cg_drawIcons.integer ) {
 	  	CG_DrawPic( rect->x, rect->y, rect->w, rect->h, ci->modelIcon );
@@ -979,8 +979,8 @@ qboolean CG_YourTeamHasFlag(void) {
 	return qfalse;
 }
 
-// THINKABOUTME: should these be exclusive or inclusive.. 
-// 
+// THINKABOUTME: should these be exclusive or inclusive..
+//
 qboolean CG_OwnerDrawVisible(int flags) {
 
 	if (flags & CG_SHOW_TEAMINFO) {
@@ -1125,24 +1125,24 @@ static void CG_DrawKiller(rectDef_t *rect, float scale, vec4_t color, qhandle_t 
 		int x = rect->x + rect->w / 2;
 	  CG_Text_Paint(x - CG_Text_Width(CG_GetKillerText(), scale, 0) / 2, rect->y + rect->h, scale, color, CG_GetKillerText(), 0, 0, textStyle);
 	}
-	
+
 }
 
 
 static void CG_DrawCapFragLimit(rectDef_t *rect, float scale, vec4_t color, qhandle_t shader, int textStyle) {
 	int limit = (cgs.gametype >= GT_CTF) ? cgs.capturelimit : cgs.fraglimit;
-	CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", limit),0, 0, textStyle); 
+	CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", limit),0, 0, textStyle);
 }
 
 static void CG_Draw1stPlace(rectDef_t *rect, float scale, vec4_t color, qhandle_t shader, int textStyle) {
 	if (cgs.scores1 != SCORE_NOT_PRESENT) {
-		CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", cgs.scores1),0, 0, textStyle); 
+		CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", cgs.scores1),0, 0, textStyle);
 	}
 }
 
 static void CG_Draw2ndPlace(rectDef_t *rect, float scale, vec4_t color, qhandle_t shader, int textStyle) {
 	if (cgs.scores2 != SCORE_NOT_PRESENT) {
-		CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", cgs.scores2),0, 0, textStyle); 
+		CG_Text_Paint(rect->x, rect->y, scale, color, va("%2i", cgs.scores2),0, 0, textStyle);
 	}
 }
 
@@ -1163,7 +1163,7 @@ const char *CG_GetGameStatusText(void) {
 	}
 	return s;
 }
-	
+
 static void CG_DrawGameStatus(rectDef_t *rect, float scale, vec4_t color, qhandle_t shader, int textStyle ) {
 	CG_Text_Paint(rect->x, rect->y + rect->h, scale, color, CG_GetGameStatusText(), 0, 0, textStyle);
 }
@@ -1204,7 +1204,7 @@ static void CG_Text_Paint_Limit(float *maxX, float x, float y, float scale, vec4
 		}
 		useScale = scale * font->glyphScale;
 		trap_R_SetColor( color );
-    len = strlen(text);					 
+    len = strlen(text);
 		if (limit > 0 && len > limit) {
 			len = limit;
 		}
@@ -1223,10 +1223,10 @@ static void CG_Text_Paint_Limit(float *maxX, float x, float y, float scale, vec4
 					*maxX = 0;
 					break;
 				}
-		    CG_Text_PaintChar(x, y - yadj, 
+		    CG_Text_PaintChar(x, y - yadj,
 			                    glyph->imageWidth,
 				                  glyph->imageHeight,
-					                useScale, 
+					                useScale,
 						              glyph->s,
 							            glyph->t,
 								          glyph->s2,
@@ -1308,7 +1308,7 @@ void CG_DrawNewTeamInfo(rectDef_t *rect, float text_x, float text_y, float scale
 			CG_DrawPic( xx, y + 1, PIC_WIDTH - 2, PIC_WIDTH - 2, cgs.media.heartShader );
 
 			//Com_sprintf (st, sizeof(st), "%3i %3i", ci->health,	ci->armor);
-			//CG_Text_Paint(xx, y + text_y, scale, hcolor, st, 0, 0); 
+			//CG_Text_Paint(xx, y + text_y, scale, hcolor, st, 0, 0);
 
 			// draw weapon icon
 			xx += PIC_WIDTH + 1;
@@ -1345,7 +1345,7 @@ void CG_DrawNewTeamInfo(rectDef_t *rect, float text_x, float text_y, float scale
 
 
 
-			CG_Text_Paint_Limit(&maxx, xx, y + text_y, scale, color, ci->name, 0, 0); 
+			CG_Text_Paint_Limit(&maxx, xx, y + text_y, scale, color, ci->name, 0, 0);
 
 			p = CG_ConfigString(CS_LOCATIONS + ci->location);
 			if (!p || !*p) {
@@ -1355,7 +1355,7 @@ void CG_DrawNewTeamInfo(rectDef_t *rect, float text_x, float text_y, float scale
 			xx += leftOver / 3 + 2;
 			maxx = rect->w - 4;
 
-			CG_Text_Paint_Limit(&maxx, xx, y + text_y, scale, color, p, 0, 0); 
+			CG_Text_Paint_Limit(&maxx, xx, y + text_y, scale, color, p, 0, 0);
 			y += text_y + 2;
 			if ( y + text_y + 2 > rect->y + rect->h ) {
 				break;
@@ -1406,10 +1406,10 @@ void CG_DrawTeamSpectators(rectDef_t *rect, float scale, vec4_t color, qhandle_t
 		}
 
 		maxX = rect->x + rect->w - 2;
-		CG_Text_Paint_Limit(&maxX, cg.spectatorPaintX, rect->y + rect->h - 3, scale, color, &cg.spectatorList[cg.spectatorOffset], 0, 0); 
+		CG_Text_Paint_Limit(&maxX, cg.spectatorPaintX, rect->y + rect->h - 3, scale, color, &cg.spectatorList[cg.spectatorOffset], 0, 0);
 		if (cg.spectatorPaintX2 >= 0) {
 			float maxX2 = rect->x + rect->w - 2;
-			CG_Text_Paint_Limit(&maxX2, cg.spectatorPaintX2, rect->y + rect->h - 3, scale, color, cg.spectatorList, 0, cg.spectatorOffset); 
+			CG_Text_Paint_Limit(&maxX2, cg.spectatorPaintX2, rect->y + rect->h - 3, scale, color, cg.spectatorList, 0, cg.spectatorOffset);
 		}
 		if (cg.spectatorOffset && maxX > 0) {
 			// if we have an offset ( we are skipping the first part of the string ) and we fit the string
@@ -1489,7 +1489,7 @@ void CG_DrawMedal(int ownerDraw, rectDef_t *rect, float scale, vec4_t color, qha
 
 }
 
-	
+
 //
 void CG_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y, int ownerDraw, int ownerDrawFlags, int align, float special, float scale, vec4_t color, qhandle_t shader, int textStyle) {
 	rectDef_t rect;

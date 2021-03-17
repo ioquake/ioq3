@@ -1,18 +1,18 @@
 ; ===========================================================================
 ; Copyright (C) 2011 Thilo Schulz <thilo@tjps.eu>
-; 
+;
 ; This file is part of Quake III Arena source code.
-; 
+;
 ; Quake III Arena source code is free software; you can redistribute it
 ; and/or modify it under the terms of the GNU General Public License as
 ; published by the Free Software Foundation; either version 2 of the License,
 ; or (at your option) any later version.
-; 
+;
 ; Quake III Arena source code is distributed in the hope that it will be
 ; useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 ; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ; GNU General Public License for more details.
-; 
+;
 ; You should have received a copy of the GNU General Public License
 ; along with Quake III Arena source code; if not, write to the Free Software
 ; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
@@ -40,7 +40,7 @@ qvmcall64 PROC
   xor rbx, rbx						; opStackOfs starts out being 0
   mov rdi, rdx						; opStack
   mov esi, dword ptr [rcx]			; programStack
-  
+
   call qword ptr [r8]				; instructionPointers[0] is also the entry point
 
   pop rcx
@@ -51,7 +51,7 @@ qvmcall64 PROC
   pop rbx
   pop rdi
   pop rsi
-  
+
   ret
 qvmcall64 ENDP
 

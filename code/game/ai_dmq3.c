@@ -1486,7 +1486,7 @@ char *EasyClientName(int client, char *buf, int size) {
 	char name[128] = {0};
 
 	ClientName(client, name, sizeof(name));
-	
+
 	for (i = 0; name[i]; i++) name[i] &= 127;
 	//remove all spaces
 	for (ptr = strstr(name, " "); ptr; ptr = strstr(name, " ")) {
@@ -4827,7 +4827,7 @@ void BotCheckEvents(bot_state_t *bs, entityState_t *state) {
 				bs->enemysuicide = qtrue;
 			}
 			//
-#ifdef MISSIONPACK			
+#ifdef MISSIONPACK
 			if (gametype == GT_1FCTF) {
 				//
 				BotEntityInfo(target, &entinfo);

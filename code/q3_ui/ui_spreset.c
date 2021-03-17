@@ -165,8 +165,8 @@ void UI_ResetMenu(void) {
 		s_reset.menu.fullscreen = qtrue;
 	}
 
-	s_reset.yes.generic.type		= MTYPE_PTEXT;      
-	s_reset.yes.generic.flags		= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS; 
+	s_reset.yes.generic.type		= MTYPE_PTEXT;
+	s_reset.yes.generic.flags		= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_reset.yes.generic.callback	= Reset_MenuEvent;
 	s_reset.yes.generic.id			= ID_YES;
 	s_reset.yes.generic.x			= l1;
@@ -175,8 +175,8 @@ void UI_ResetMenu(void) {
 	s_reset.yes.color				= color_red;
 	s_reset.yes.style				= UI_LEFT;
 
-	s_reset.no.generic.type			= MTYPE_PTEXT;      
-	s_reset.no.generic.flags		= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS; 
+	s_reset.no.generic.type			= MTYPE_PTEXT;
+	s_reset.no.generic.flags		= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_reset.no.generic.callback		= Reset_MenuEvent;
 	s_reset.no.generic.id			= ID_NO;
 	s_reset.no.generic.x		    = l3;
@@ -185,7 +185,7 @@ void UI_ResetMenu(void) {
 	s_reset.no.color			    = color_red;
 	s_reset.no.style			    = UI_LEFT;
 
-	Menu_AddItem( &s_reset.menu,	&s_reset.yes );             
+	Menu_AddItem( &s_reset.menu,	&s_reset.yes );
 	Menu_AddItem( &s_reset.menu,	&s_reset.no );
 
 	UI_PushMenu( &s_reset.menu );

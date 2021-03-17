@@ -34,7 +34,7 @@ idnewt:28000
 =============
 */
 qboolean	NET_StringToAdr (char *s, netadr_t *a)
-{	
+{
 	if (!strcmp (s, "localhost")) {
 		memset (a, 0, sizeof(*a));
 		a->type = NA_LOOPBACK;

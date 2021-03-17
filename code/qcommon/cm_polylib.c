@@ -59,7 +59,7 @@ winding_t	*AllocWinding (int points)
 
 	s = sizeof(vec_t)*3*points + sizeof(int);
 	w = Z_Malloc (s);
-	Com_Memset (w, 0, s); 
+	Com_Memset (w, 0, s);
 	return w;
 }
 
@@ -205,7 +205,7 @@ winding_t *BaseWindingForPlane (vec3_t normal, vec_t dist)
 	vec_t	max, v;
 	vec3_t	org, vright, vup;
 	winding_t	*w;
-	
+
 // find the major axis
 
 	max = -MAX_MAP_BOUNDS;
@@ -221,48 +221,48 @@ winding_t *BaseWindingForPlane (vec3_t normal, vec_t dist)
 	}
 	if (x==-1)
 		Com_Error (ERR_DROP, "BaseWindingForPlane: no axis found");
-		
-	VectorCopy (vec3_origin, vup);	
+
+	VectorCopy (vec3_origin, vup);
 	switch (x)
 	{
 	case 0:
 	case 1:
 		vup[2] = 1;
-		break;		
+		break;
 	case 2:
 		vup[0] = 1;
-		break;		
+		break;
 	}
 
 	v = DotProduct (vup, normal);
 	VectorMA (vup, -v, normal, vup);
 	VectorNormalize2(vup, vup);
-		
+
 	VectorScale (normal, dist, org);
-	
+
 	CrossProduct (vup, normal, vright);
-	
+
 	VectorScale (vup, MAX_MAP_BOUNDS, vup);
 	VectorScale (vright, MAX_MAP_BOUNDS, vright);
 
 // project a really big	axis aligned box onto the plane
 	w = AllocWinding (4);
-	
+
 	VectorSubtract (org, vright, w->p[0]);
 	VectorAdd (w->p[0], vup, w->p[0]);
-	
+
 	VectorAdd (org, vright, w->p[1]);
 	VectorAdd (w->p[1], vup, w->p[1]);
-	
+
 	VectorAdd (org, vright, w->p[2]);
 	VectorSubtract (w->p[2], vup, w->p[2]);
-	
+
 	VectorSubtract (org, vright, w->p[3]);
 	VectorSubtract (w->p[3], vup, w->p[3]);
-	
+
 	w->numpoints = 4;
-	
-	return w;	
+
+	return w;
 }
 
 /*
@@ -306,7 +306,7 @@ winding_t	*ReverseWinding (winding_t *w)
 ClipWindingEpsilon
 =============
 */
-void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist, 
+void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 				vec_t epsilon, winding_t **front, winding_t **back)
 {
 	vec_t	dists[MAX_POINTS_ON_WINDING+4] = { 0 };
@@ -318,7 +318,7 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 	vec3_t	mid;
 	winding_t	*f, *b;
 	int		maxpts;
-	
+
 	counts[0] = counts[1] = counts[2] = 0;
 
 // determine sides for each point
@@ -339,7 +339,7 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 	}
 	sides[i] = sides[0];
 	dists[i] = dists[0];
-	
+
 	*front = *back = NULL;
 
 	if (!counts[0])
@@ -358,11 +358,11 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 
 	*front = f = AllocWinding (maxpts);
 	*back = b = AllocWinding (maxpts);
-		
+
 	for (i=0 ; i<in->numpoints ; i++)
 	{
 		p1 = in->p[i];
-		
+
 		if (sides[i] == SIDE_ON)
 		{
 			VectorCopy (p1, f->p[f->numpoints]);
@@ -371,7 +371,7 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 			b->numpoints++;
 			continue;
 		}
-	
+
 		if (sides[i] == SIDE_FRONT)
 		{
 			VectorCopy (p1, f->p[f->numpoints]);
@@ -385,10 +385,10 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 
 		if (sides[i+1] == SIDE_ON || sides[i+1] == sides[i])
 			continue;
-			
+
 	// generate a split point
 		p2 = in->p[(i+1)%in->numpoints];
-		
+
 		dot = dists[i] / (dists[i]-dists[i+1]);
 		for (j=0 ; j<3 ; j++)
 		{	// avoid round off error when possible
@@ -399,13 +399,13 @@ void	ClipWindingEpsilon (winding_t *in, vec3_t normal, vec_t dist,
 			else
 				mid[j] = p1[j] + dot*(p2[j]-p1[j]);
 		}
-			
+
 		VectorCopy (mid, f->p[f->numpoints]);
 		f->numpoints++;
 		VectorCopy (mid, b->p[b->numpoints]);
 		b->numpoints++;
 	}
-	
+
 	if (f->numpoints > maxpts || b->numpoints > maxpts)
 		Com_Error (ERR_DROP, "ClipWinding: points exceeded estimate");
 	if (f->numpoints > MAX_POINTS_ON_WINDING || b->numpoints > MAX_POINTS_ON_WINDING)
@@ -452,7 +452,7 @@ void ChopWindingInPlace (winding_t **inout, vec3_t normal, vec_t dist, vec_t eps
 	}
 	sides[i] = sides[0];
 	dists[i] = dists[0];
-	
+
 	if (!counts[0])
 	{
 		FreeWinding (in);
@@ -466,18 +466,18 @@ void ChopWindingInPlace (winding_t **inout, vec3_t normal, vec_t dist, vec_t eps
 								// of fp grouping errors
 
 	f = AllocWinding (maxpts);
-		
+
 	for (i=0 ; i<in->numpoints ; i++)
 	{
 		p1 = in->p[i];
-		
+
 		if (sides[i] == SIDE_ON)
 		{
 			VectorCopy (p1, f->p[f->numpoints]);
 			f->numpoints++;
 			continue;
 		}
-	
+
 		if (sides[i] == SIDE_FRONT)
 		{
 			VectorCopy (p1, f->p[f->numpoints]);
@@ -486,10 +486,10 @@ void ChopWindingInPlace (winding_t **inout, vec3_t normal, vec_t dist, vec_t eps
 
 		if (sides[i+1] == SIDE_ON || sides[i+1] == sides[i])
 			continue;
-			
+
 	// generate a split point
 		p2 = in->p[(i+1)%in->numpoints];
-		
+
 		dot = dists[i] / (dists[i]-dists[i+1]);
 		for (j=0 ; j<3 ; j++)
 		{	// avoid round off error when possible
@@ -500,11 +500,11 @@ void ChopWindingInPlace (winding_t **inout, vec3_t normal, vec_t dist, vec_t eps
 			else
 				mid[j] = p1[j] + dot*(p2[j]-p1[j]);
 		}
-			
+
 		VectorCopy (mid, f->p[f->numpoints]);
 		f->numpoints++;
 	}
-	
+
 	if (f->numpoints > maxpts)
 		Com_Error (ERR_DROP, "ClipWinding: points exceeded estimate");
 	if (f->numpoints > MAX_POINTS_ON_WINDING)
@@ -552,13 +552,13 @@ void CheckWinding (winding_t *w)
 
 	if (w->numpoints < 3)
 		Com_Error (ERR_DROP, "CheckWinding: %i points",w->numpoints);
-	
+
 	area = WindingArea(w);
 	if (area < 1)
 		Com_Error (ERR_DROP, "CheckWinding: %f area", area);
 
 	WindingPlane (w, facenormal, &facedist);
-	
+
 	for (i=0 ; i<w->numpoints ; i++)
 	{
 		p1 = w->p[i];
@@ -568,24 +568,24 @@ void CheckWinding (winding_t *w)
 				Com_Error (ERR_DROP, "CheckFace: BUGUS_RANGE: %f",p1[j]);
 
 		j = i+1 == w->numpoints ? 0 : i+1;
-		
+
 	// check the point is on the face plane
 		d = DotProduct (p1, facenormal) - facedist;
 		if (d < -ON_EPSILON || d > ON_EPSILON)
 			Com_Error (ERR_DROP, "CheckWinding: point off plane");
-	
+
 	// check the edge isn't degenerate
 		p2 = w->p[j];
 		VectorSubtract (p2, p1, dir);
-		
+
 		if (VectorLength (dir) < ON_EPSILON)
 			Com_Error (ERR_DROP, "CheckWinding: degenerate edge");
-			
+
 		CrossProduct (facenormal, dir, edgenormal);
 		VectorNormalize2 (edgenormal, edgenormal);
 		edgedist = DotProduct (p1, edgenormal);
 		edgedist += ON_EPSILON;
-		
+
 	// all other points must be on front side
 		for (j=0 ; j<w->numpoints ; j++)
 		{

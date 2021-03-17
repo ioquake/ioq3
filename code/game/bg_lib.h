@@ -74,7 +74,7 @@ typedef char *  va_list;
 #define isupper(c)  ((c) >=  'A' && (c) <= 'Z')
 #define isxdigit(c) (isxupper(c) || isxlower(c))
 #define isxlower(c) (isdigit(c) || (c >= 'a' && c <= 'f'))
-#define isxupper(c) (isdigit(c) || (c >= 'A' && c <= 'F')) 
+#define isxupper(c) (isdigit(c) || (c >= 'A' && c <= 'F'))
 
 // Misc functions
 typedef int cmp_t(const void *, const void *);

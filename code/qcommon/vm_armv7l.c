@@ -1158,7 +1158,7 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 		DIE("mprotect failed");
 	}
 
-	// clear icache, http://blogs.arm.com/software-enablement/141-caches-and-self-modifying-code/ 
+	// clear icache, http://blogs.arm.com/software-enablement/141-caches-and-self-modifying-code/
 	__clear_cache(vm->codeBase, vm->codeBase+vm->codeLength);
 
 	vm->destroy = VM_Destroy_Compiled;

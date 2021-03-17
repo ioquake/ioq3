@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE];
 static int snd_vol;
 
-int*     snd_p;  
+int*     snd_p;
 int      snd_linear_count;
 short*   snd_out;
 
@@ -112,7 +112,7 @@ void S_TransferStereo16 (unsigned long *pbuf, int endtime)
 {
 	int		lpos;
 	int		ls_paintedtime;
-	
+
 	snd_p = (int *) paintbuffer;
 	ls_paintedtime = s_paintedtime;
 
@@ -317,7 +317,7 @@ static void S_PaintChannelFrom16_scalar( channel_t *ch, const sfx_t *sc, int cou
 
 		ooff = sampleOffset;
 		samples = chunk->sndChunk;
-		
+
 
 
 
@@ -550,7 +550,7 @@ void S_PaintChannels( int endtime ) {
 
 		// paint in the channels.
 		ch = s_channels;
-		for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
+		for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {
 			if ( !ch->thesfx || (ch->leftvol<0.25 && ch->rightvol<0.25 )) {
 				continue;
 			}
@@ -568,7 +568,7 @@ void S_PaintChannels( int endtime ) {
 				count = sc->soundLength - sampleOffset;
 			}
 
-			if ( count > 0 ) {	
+			if ( count > 0 ) {
 				if( sc->soundCompressionMethod == 1) {
 					S_PaintChannelFromADPCM		(ch, sc, count, sampleOffset, ltime - s_paintedtime);
 				} else if( sc->soundCompressionMethod == 2) {
@@ -583,7 +583,7 @@ void S_PaintChannels( int endtime ) {
 
 		// paint in the looped channels.
 		ch = loop_channels;
-		for ( i = 0; i < numLoopChannels ; i++, ch++ ) {		
+		for ( i = 0; i < numLoopChannels ; i++, ch++ ) {
 			if ( !ch->thesfx || (!ch->leftvol && !ch->rightvol )) {
 				continue;
 			}
@@ -605,7 +605,7 @@ void S_PaintChannels( int endtime ) {
 					count = sc->soundLength - sampleOffset;
 				}
 
-				if ( count > 0 ) {	
+				if ( count > 0 ) {
 					if( sc->soundCompressionMethod == 1) {
 						S_PaintChannelFromADPCM		(ch, sc, count, sampleOffset, ltime - s_paintedtime);
 					} else if( sc->soundCompressionMethod == 2) {

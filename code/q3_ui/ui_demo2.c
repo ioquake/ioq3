@@ -33,7 +33,7 @@ DEMOS MENU
 
 
 #define ART_BACK0			"menu/art/back_0"
-#define ART_BACK1			"menu/art/back_1"	
+#define ART_BACK1			"menu/art/back_1"
 #define ART_GO0				"menu/art/play_0"
 #define ART_GO1				"menu/art/play_1"
 #define ART_FRAMEL			"menu/art/frame2_l"
@@ -72,7 +72,7 @@ typedef struct {
 
 	int				numDemos;
 	char			names[NAMEBUFSIZE];
-	
+
 	char			*demolist[MAX_DEMOS];
 } demos_t;
 
@@ -139,7 +139,7 @@ static void Demos_MenuInit( void ) {
 	s_demos.framel.generic.type		= MTYPE_BITMAP;
 	s_demos.framel.generic.name		= ART_FRAMEL;
 	s_demos.framel.generic.flags	= QMF_INACTIVE;
-	s_demos.framel.generic.x		= 0;  
+	s_demos.framel.generic.x		= 0;
 	s_demos.framel.generic.y		= 78;
 	s_demos.framel.width			= 256;
 	s_demos.framel.height			= 329;
@@ -235,7 +235,7 @@ static void Demos_MenuInit( void ) {
 		for(; i < s_demos.numDemos; i++)
 		{
 			s_demos.list.itemnames[i] = demoname;
-		
+
 			len = strlen(demoname);
 
 			demoname += len + 1;

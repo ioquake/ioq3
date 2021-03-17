@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ==============================================================================
 
 PACKET FILTERING
- 
+
 
 You can add or remove addresses from the filter list with:
 
@@ -81,13 +81,13 @@ static qboolean StringToFilter (char *s, ipFilter_t *f)
 	int		i, j;
 	byte	b[4];
 	byte	m[4];
-	
+
 	for (i=0 ; i<4 ; i++)
 	{
 		b[i] = 0;
 		m[i] = 0;
 	}
-	
+
 	for (i=0 ; i<4 ; i++)
 	{
 		if (*s < '0' || *s > '9')
@@ -104,7 +104,7 @@ static qboolean StringToFilter (char *s, ipFilter_t *f)
 			G_Printf( "Bad filter address: %s\n", s );
 			return qfalse;
 		}
-		
+
 		j = 0;
 		while (*s >= '0' && *s <= '9')
 		{
@@ -118,10 +118,10 @@ static qboolean StringToFilter (char *s, ipFilter_t *f)
 			break;
 		s++;
 	}
-	
+
 	f->mask = *(unsigned *)m;
 	f->compare = *(unsigned *)b;
-	
+
 	return qtrue;
 }
 
@@ -154,7 +154,7 @@ static void UpdateIPBans (void)
 			else
 				Q_strcat(ip, sizeof(ip), va("%i", b[j]));
 			Q_strcat(ip, sizeof(ip), (j<3) ? "." : " ");
-		}		
+		}
 		if (strlen(iplist_final)+strlen(ip) < MAX_CVAR_VALUE_STRING)
 		{
 			Q_strcat( iplist_final, sizeof(iplist_final), ip);
@@ -193,7 +193,7 @@ qboolean G_FilterPacket (char *from)
 			break;
 		i++, p++;
 	}
-	
+
 	in = *(unsigned *)m;
 
 	for (i=0 ; i<numIPFilters ; i++)
@@ -224,7 +224,7 @@ static void AddIP( char *str )
 		}
 		numIPFilters++;
 	}
-	
+
 	if (!StringToFilter (str, &ipFilters[i]))
 		ipFilters[i].compare = 0xffffffffu;
 
@@ -236,7 +236,7 @@ static void AddIP( char *str )
 G_ProcessIPBans
 =================
 */
-void G_ProcessIPBans(void) 
+void G_ProcessIPBans(void)
 {
 	char *s, *t;
 	char		str[MAX_CVAR_VALUE_STRING];

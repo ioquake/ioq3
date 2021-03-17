@@ -34,7 +34,7 @@ int			sys_curtime;
 void Sys_Error (char *error, ...) {
 	va_list		argptr;
 
-	printf ("Sys_Error: ");	
+	printf ("Sys_Error: ");
 	va_start (argptr,error);
 	vprintf (error,argptr);
 	va_end (argptr);

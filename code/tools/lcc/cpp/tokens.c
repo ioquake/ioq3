@@ -308,7 +308,7 @@ puttokens(Tokenrow *trp)
 				write(1, wbuf, wbp-wbuf);
 			write(1, (char *)p, len);
 			wbp = wbuf;
-		} else {	
+		} else {
 			memcpy(wbp, p, len);
 			wbp += len;
 		}

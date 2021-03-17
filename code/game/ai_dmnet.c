@@ -199,7 +199,7 @@ int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
 		|| Bot1FCTFCarryingFlag(bs) || BotHarvesterCarryingCubes(bs)
 #endif
 		) {
-		//if the bot is just a few secs away from the base 
+		//if the bot is just a few secs away from the base
 		if (trap_AAS_AreaTravelTimeToGoalArea(bs->areanum, bs->origin,
 				bs->teamgoal.areanum, TFL_DEFAULT) < 300) {
 			//make the range really small

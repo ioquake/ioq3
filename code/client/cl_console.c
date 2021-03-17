@@ -169,7 +169,7 @@ void Con_Clear_f (void) {
 	Con_Bottom();		// go to end
 }
 
-						
+
 /*
 ================
 Con_Dump_f
@@ -255,7 +255,7 @@ void Con_Dump_f (void)
 	FS_FCloseFile( f );
 }
 
-						
+
 /*
 ================
 Con_ClearNotify
@@ -263,13 +263,13 @@ Con_ClearNotify
 */
 void Con_ClearNotify( void ) {
 	int		i;
-	
+
 	for ( i = 0 ; i < NUM_CON_TIMES ; i++ ) {
 		con.times[i] = 0;
 	}
 }
 
-						
+
 
 /*
 ================
@@ -309,7 +309,7 @@ void Con_CheckResize (void)
 			numlines = con.totallines;
 
 		numchars = oldwidth;
-	
+
 		if (con.linewidth < numchars)
 			numchars = con.linewidth;
 
@@ -444,15 +444,15 @@ void CL_ConsolePrint( char *txt ) {
 		skipnotify = qtrue;
 		txt += 12;
 	}
-	
+
 	// for some demos we don't want to ever show anything on the console
 	if ( cl_noprint && cl_noprint->integer ) {
 		return;
 	}
-	
+
 	if (!con.initialized) {
-		con.color[0] = 
-		con.color[1] = 
+		con.color[0] =
+		con.color[1] =
 		con.color[2] =
 		con.color[3] = 1.0f;
 		con.linewidth = -1;
@@ -702,7 +702,7 @@ void Con_DrawSolidConsole( float frac ) {
 		y -= SMALLCHAR_HEIGHT;
 		rows--;
 	}
-	
+
 	row = con.display;
 
 	if ( con.x == 0 ) {
@@ -718,7 +718,7 @@ void Con_DrawSolidConsole( float frac ) {
 			break;
 		if (con.current - row >= con.totallines) {
 			// past scrollback wrap point
-			continue;	
+			continue;
 		}
 
 		text = con.text + (row % con.totallines)*con.linewidth;
@@ -786,7 +786,7 @@ void Con_RunConsole (void) {
 		con.finalFrac = 0.5;		// half screen
 	else
 		con.finalFrac = 0;				// none visible
-	
+
 	// scroll towards the destination height
 	if (con.finalFrac < con.displayFrac)
 	{

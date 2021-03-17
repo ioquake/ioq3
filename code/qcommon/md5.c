@@ -210,7 +210,7 @@ static void MD5Update(struct MD5Context *ctx, unsigned char const *buf,
 
 
 /*
- * Final wrapup - pad to 64-byte boundary with the bit pattern 
+ * Final wrapup - pad to 64-byte boundary with the bit pattern
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
 static void MD5Final(struct MD5Context *ctx, unsigned char *digest)
@@ -250,7 +250,7 @@ static void MD5Final(struct MD5Context *ctx, unsigned char *digest)
 
     MD5Transform(ctx->buf, (uint32_t *) ctx->in);
     byteReverse((unsigned char *) ctx->buf, 4);
-    
+
     if (digest!=NULL)
 	    memcpy(digest, ctx->buf, 16);
     memset(ctx, 0, sizeof(*ctx));	/* In case it's sensitive */
@@ -260,7 +260,7 @@ static void MD5Final(struct MD5Context *ctx, unsigned char *digest)
 char *Com_MD5File( const char *fn, int length, const char *prefix, int prefix_len )
 {
 	static char final[33] = {""};
-	unsigned char digest[16] = {""}; 
+	unsigned char digest[16] = {""};
 	fileHandle_t f;
 	MD5_CTX md5;
 	byte buffer[2048];

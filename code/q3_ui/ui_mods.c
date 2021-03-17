@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 
 #define ART_BACK0			"menu/art/back_0"
-#define ART_BACK1			"menu/art/back_1"	
+#define ART_BACK1			"menu/art/back_1"
 #define ART_FIGHT0			"menu/art/load_0"
 #define ART_FIGHT1			"menu/art/load_1"
 #define ART_FRAMEL			"menu/art/frame2_l"
@@ -166,7 +166,7 @@ static void UI_Mods_MenuInit( void ) {
 	s_mods.framel.generic.type		= MTYPE_BITMAP;
 	s_mods.framel.generic.name		= ART_FRAMEL;
 	s_mods.framel.generic.flags		= QMF_INACTIVE;
-	s_mods.framel.generic.x			= 0;  
+	s_mods.framel.generic.x			= 0;
 	s_mods.framel.generic.y			= 78;
 	s_mods.framel.width				= 256;
 	s_mods.framel.height			= 329;

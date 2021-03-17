@@ -80,7 +80,7 @@ void CG_LoadingItem( int itemNum ) {
 	gitem_t		*item;
 
 	item = &bg_itemlist[itemNum];
-	
+
 	if ( item->icon && loadingItemIconCount < MAX_LOADING_ITEM_ICONS ) {
 		loadingItemIcons[loadingItemIconCount++] = trap_R_RegisterShaderNoMip( item->icon );
 	}
@@ -112,7 +112,7 @@ void CG_LoadingClient( int clientNum ) {
 		}
 
 		Com_sprintf( iconName, MAX_QPATH, "models/players/%s/icon_%s.tga", model, skin );
-		
+
 		loadingPlayerIcons[loadingPlayerIconCount] = trap_R_RegisterShaderNoMip( iconName );
 		if ( !loadingPlayerIcons[loadingPlayerIconCount] ) {
 			Com_sprintf( iconName, MAX_QPATH, "models/players/characters/%s/icon_%s.tga", model, skin );
@@ -268,7 +268,7 @@ void CG_DrawInformation( void ) {
 	UI_DrawProportionalString( 320, y, s,
 		UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorWhite );
 	y += PROP_HEIGHT;
-		
+
 	value = atoi( Info_ValueForKey( info, "timelimit" ) );
 	if ( value ) {
 		UI_DrawProportionalString( 320, y, va( "timelimit %i", value ),

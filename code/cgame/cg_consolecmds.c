@@ -79,7 +79,7 @@ Debugging command to print the current position
 */
 static void CG_Viewpos_f (void) {
 	CG_Printf ("(%i %i %i) : %i\n", (int)cg.refdef.vieworg[0],
-		(int)cg.refdef.vieworg[1], (int)cg.refdef.vieworg[2], 
+		(int)cg.refdef.vieworg[1], (int)cg.refdef.vieworg[2],
 		(int)cg.refdefViewAngles[YAW]);
 }
 
@@ -126,7 +126,7 @@ static void CG_LoadHud_f( void) {
 
 	String_Init();
 	Menu_Reset();
-	
+
 	trap_Cvar_VariableStringBuffer("cg_hudFiles", buff, sizeof(buff));
 	hudSet = buff;
 	if (hudSet[0] == '\0') {
@@ -500,7 +500,7 @@ static consoleCommand_t	commands[] = {
 #endif
 	{ "startOrbit", CG_StartOrbit_f },
 	//{ "camera", CG_Camera_f },
-	{ "loaddeferred", CG_LoadDeferredPlayers }	
+	{ "loaddeferred", CG_LoadDeferredPlayers }
 };
 
 

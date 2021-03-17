@@ -62,9 +62,9 @@ typedef struct {
 
 	int			svFlags;			// SVF_NOCLIENT, SVF_BROADCAST, etc
 
-	// only send to this client when SVF_SINGLECLIENT is set	
+	// only send to this client when SVF_SINGLECLIENT is set
 	// if SVF_CLIENTMASK is set, use bitmask for clients to send to (maxclients must be <= 32, up to the mod to enforce this)
-	int			singleClient;		
+	int			singleClient;
 
 	qboolean	bmodel;				// if false, assume an explicit mins / maxs bounding box
 									// only set by trap_SetBrushModel
@@ -196,7 +196,7 @@ typedef enum {
 	// if it is not passed to linkentity.  If the size, position, or
 	// solidity changes, it must be relinked.
 
-	G_UNLINKENTITY,		// ( gentity_t *ent );		
+	G_UNLINKENTITY,		// ( gentity_t *ent );
 	// call before removing an interactive entity
 
 	G_ENTITIES_IN_BOX,	// ( const vec3_t mins, const vec3_t maxs, gentity_t **list, int maxcount );
@@ -226,7 +226,7 @@ typedef enum {
 
 	G_TRACECAPSULE,	// ( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentmask );
 	G_ENTITY_CONTACTCAPSULE,	// ( const vec3_t mins, const vec3_t maxs, const gentity_t *ent );
-	
+
 	// 1.32
 	G_FS_SEEK,
 

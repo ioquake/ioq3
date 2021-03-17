@@ -34,7 +34,7 @@ REMOVE BOTS MENU
 
 #define ART_BACKGROUND		"menu/art/addbotframe"
 #define ART_BACK0			"menu/art/back_0"
-#define ART_BACK1			"menu/art/back_1"	
+#define ART_BACK1			"menu/art/back_1"
 #define ART_DELETE0			"menu/art/delete_0"
 #define ART_DELETE1			"menu/art/delete_1"
 #define ART_ARROWS			"menu/art/arrows_vert_0"

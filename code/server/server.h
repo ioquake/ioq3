@@ -51,7 +51,7 @@ typedef struct voipServerPacket_s
 typedef struct svEntity_s {
 	struct worldSector_s *worldSector;
 	struct svEntity_s *nextEntityInWorldSector;
-	
+
 	entityState_t	baseline;		// for delta compression of initial sighting
 	int			numClusters;		// if -1, use headnode instead
 	int			clusternums[MAX_ENT_CLUSTERS];
@@ -74,7 +74,7 @@ typedef struct {
 	int				checksumFeed;		// the feed key that we use to compute the pure checksum strings
 	// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=475
 	// the serverId associated with the current checksumFeed (always <= serverId)
-	int       checksumFeedServerId;	
+	int       checksumFeedServerId;
 	int				snapshotCounter;	// incremented for each snapshot built
 	int				timeResidual;		// <= 1000 / sv_frame->value
 	int				nextFrameTime;		// when time > nextFrameTime, process world
@@ -195,7 +195,7 @@ typedef struct client_s {
 
 	int				oldServerTime;
 	qboolean		csUpdated[MAX_CONFIGSTRINGS];
-	
+
 #ifdef LEGACY_PROTOCOL
 	qboolean		compat;
 #endif
@@ -254,7 +254,7 @@ typedef struct
 	netadr_t ip;
 	// For a CIDR-Notation type suffix
 	int subnet;
-	
+
 	qboolean isexception;
 } serverBan_t;
 

@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // tr_shade.c
 
-#include "tr_local.h" 
+#include "tr_local.h"
 
 /*
 
@@ -176,7 +176,7 @@ void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 
 
 	if ( primitives == 2 ) {
-		qglDrawElements( GL_TRIANGLES, 
+		qglDrawElements( GL_TRIANGLES,
 						numIndexes,
 						GL_INDEX_TYPE,
 						indexes );
@@ -187,7 +187,7 @@ void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		R_DrawStripElements( numIndexes,  indexes, qglArrayElement );
 		return;
 	}
-	
+
 	if ( primitives == 3 ) {
 		R_DrawStripElements( numIndexes,  indexes, R_ArrayElementDiscrete );
 		return;
@@ -447,7 +447,7 @@ static void ProjectDlightTexture_scalar( void ) {
 		else if(r_greyscale->value)
 		{
 			float luminance;
-			
+
 			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
 			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
 			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
@@ -463,7 +463,7 @@ static void ProjectDlightTexture_scalar( void ) {
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
 			vec3_t	dist;
-			
+
 			VectorSubtract( origin, tess.xyz[i], dist );
 
 			backEnd.pc.c_dlightVertexes++;
@@ -796,7 +796,7 @@ static void ComputeColors( shaderStage_t *pStage )
 			break;
 		}
 	}
-	
+
 	// if in greyscale rendering mode turn all color values into greyscale.
 	if(r_greyscale->integer)
 	{
@@ -810,7 +810,7 @@ static void ComputeColors( shaderStage_t *pStage )
 	else if(r_greyscale->value)
 	{
 		float scale;
-		
+
 		for(i = 0; i < tess.numVertexes; i++)
 		{
 			scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
@@ -880,7 +880,7 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 				break;
 
 			case TMOD_TURBULENT:
-				RB_CalcTurbulentTexCoords( &pStage->bundle[b].texMods[tm].wave, 
+				RB_CalcTurbulentTexCoords( &pStage->bundle[b].texMods[tm].wave,
 						                 ( float * ) tess.svars.texcoords[b] );
 				break;
 
@@ -898,9 +898,9 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 				RB_CalcScaleTexCoords( pStage->bundle[b].texMods[tm].scale,
 									 ( float * ) tess.svars.texcoords[b] );
 				break;
-			
+
 			case TMOD_STRETCH:
-				RB_CalcStretchTexCoords( &pStage->bundle[b].texMods[tm].wave, 
+				RB_CalcStretchTexCoords( &pStage->bundle[b].texMods[tm].wave,
 						               ( float * ) tess.svars.texcoords[b] );
 				break;
 
@@ -998,7 +998,7 @@ void RB_StageIteratorGeneric( void )
 	//
 	// log this call
 	//
-	if ( r_logFile->integer ) 
+	if ( r_logFile->integer )
 	{
 		// don't just call LogComment, or we will get
 		// a call to va() every frame!
@@ -1064,7 +1064,7 @@ void RB_StageIteratorGeneric( void )
 	//
 	RB_IterateStagesGeneric( input );
 
-	// 
+	//
 	// now do any dynamic lighting needed
 	//
 	if ( tess.dlightBits && tess.shader->sort <= SS_OPAQUE
@@ -1079,10 +1079,10 @@ void RB_StageIteratorGeneric( void )
 		RB_FogPass();
 	}
 
-	// 
+	//
 	// unlock arrays
 	//
-	if (qglUnlockArraysEXT) 
+	if (qglUnlockArraysEXT)
 	{
 		qglUnlockArraysEXT();
 		GLimp_LogComment( "glUnlockArraysEXT\n" );
@@ -1117,7 +1117,7 @@ void RB_StageIteratorVertexLitTexture( void )
 	//
 	// log this call
 	//
-	if ( r_logFile->integer ) 
+	if ( r_logFile->integer )
 	{
 		// don't just call LogComment, or we will get
 		// a call to va() every frame!
@@ -1152,7 +1152,7 @@ void RB_StageIteratorVertexLitTexture( void )
 	GL_State( tess.xstages[0]->stateBits );
 	R_DrawElements( input->numIndexes, input->indexes );
 
-	// 
+	//
 	// now do any dynamic lighting needed
 	//
 	if ( tess.dlightBits && tess.shader->sort <= SS_OPAQUE ) {
@@ -1166,10 +1166,10 @@ void RB_StageIteratorVertexLitTexture( void )
 		RB_FogPass();
 	}
 
-	// 
+	//
 	// unlock arrays
 	//
-	if (qglUnlockArraysEXT) 
+	if (qglUnlockArraysEXT)
 	{
 		qglUnlockArraysEXT();
 		GLimp_LogComment( "glUnlockArraysEXT\n" );
@@ -1259,7 +1259,7 @@ void RB_StageIteratorLightmappedMultitexture( void ) {
 	qglShadeModel( GL_SMOOTH );
 #endif
 
-	// 
+	//
 	// now do any dynamic lighting needed
 	//
 	if ( tess.dlightBits && tess.shader->sort <= SS_OPAQUE ) {
@@ -1296,7 +1296,7 @@ void RB_EndSurface( void ) {
 
 	if (input->indexes[SHADER_MAX_INDEXES-1] != 0) {
 		ri.Error (ERR_DROP, "RB_EndSurface() - SHADER_MAX_INDEXES hit");
-	}	
+	}
 	if (input->xyz[SHADER_MAX_VERTEXES-1][0] != 0) {
 		ri.Error (ERR_DROP, "RB_EndSurface() - SHADER_MAX_VERTEXES hit");
 	}

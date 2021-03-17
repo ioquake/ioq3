@@ -136,7 +136,7 @@ qboolean BotLibSetup(char *str)
 int Export_BotLibSetup(void)
 {
 	int		errnum;
-	
+
 	botDeveloper = LibVarGetValue("bot_developer");
  	memset( &botlibglobals, 0, sizeof(botlibglobals) );
 	//initialize byte swapping (litte endian etc.)
@@ -619,7 +619,7 @@ int BotExportTest(int parm0, char *parm1, vec3_t parm2, vec3_t parm3)
 		{
 			AAS_ShowFace(face - aasworld.faces);
 		} //end if
-		
+
 		AAS_DrawPlaneCross(bsptrace.endpos,
 									bsptrace.plane.normal,
 									bsptrace.plane.dist + bsptrace.exp_dist,
@@ -705,7 +705,7 @@ static void Init_AAS_Export( aas_export_t *aas ) {
 	aas->AAS_PredictClientMovement = AAS_PredictClientMovement;
 }
 
-  
+
 /*
 ============
 Init_EA_Export

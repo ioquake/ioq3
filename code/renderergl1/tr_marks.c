@@ -39,7 +39,7 @@ Out must have space for two more vertexes than in
 #define	SIDE_BACK	1
 #define	SIDE_ON		2
 static void R_ChopPolyBehindPlane( int numInPoints, vec3_t inPoints[MAX_VERTS_ON_POLY],
-								   int *numOutPoints, vec3_t outPoints[MAX_VERTS_ON_POLY], 
+								   int *numOutPoints, vec3_t outPoints[MAX_VERTS_ON_POLY],
 							vec3_t normal, vec_t dist, vec_t epsilon) {
 	float		dists[MAX_VERTS_ON_POLY+4] = { 0 };
 	int			sides[MAX_VERTS_ON_POLY+4] = { 0 };
@@ -88,13 +88,13 @@ static void R_ChopPolyBehindPlane( int numInPoints, vec3_t inPoints[MAX_VERTS_ON
 	for ( i = 0 ; i < numInPoints ; i++ ) {
 		p1 = inPoints[i];
 		clip = outPoints[ *numOutPoints ];
-		
+
 		if ( sides[i] == SIDE_ON ) {
 			VectorCopy( p1, clip );
 			(*numOutPoints)++;
 			continue;
 		}
-	
+
 		if ( sides[i] == SIDE_FRONT ) {
 			VectorCopy( p1, clip );
 			(*numOutPoints)++;
@@ -104,7 +104,7 @@ static void R_ChopPolyBehindPlane( int numInPoints, vec3_t inPoints[MAX_VERTS_ON
 		if ( sides[i+1] == SIDE_ON || sides[i+1] == sides[i] ) {
 			continue;
 		}
-			
+
 		// generate a split point
 		p2 = inPoints[ (i+1) % numInPoints ];
 

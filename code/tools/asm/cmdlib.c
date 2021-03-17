@@ -257,7 +257,7 @@ void SetQdirFromPath( const char *path )
 			qprintf ("qdir: %s\n", qdir);
 			for ( i = 0; i < strlen( qdir ); i++ )
 			{
-				if ( qdir[i] == '\\' ) 
+				if ( qdir[i] == '\\' )
 					qdir[i] = '/';
 			}
 
@@ -270,7 +270,7 @@ void SetQdirFromPath( const char *path )
 
 					for ( i = 0; i < strlen( gamedir ); i++ )
 					{
-						if ( gamedir[i] == '\\' ) 
+						if ( gamedir[i] == '\\' )
 							gamedir[i] = '/';
 					}
 
@@ -369,9 +369,9 @@ I_FloatTime
 double I_FloatTime (void)
 {
 	time_t	t;
-	
+
 	time (&t);
-	
+
 	return t;
 #if 0
 // more precise, less portable
@@ -380,13 +380,13 @@ double I_FloatTime (void)
 	static int		secbase;
 
 	gettimeofday(&tp, &tzp);
-	
+
 	if (!secbase)
 	{
 		secbase = tp.tv_sec;
 		return tp.tv_usec/1000000.0;
 	}
-	
+
 	return (tp.tv_sec - secbase) + tp.tv_usec/1000000.0;
 #endif
 }
@@ -437,10 +437,10 @@ returns -1 if not present
 int	FileTime (const char *path)
 {
 	struct	stat	buf;
-	
+
 	if (stat (path,&buf) == -1)
 		return -1;
-	
+
 	return buf.st_mtime;
 }
 
@@ -457,13 +457,13 @@ char *COM_Parse (char *data)
 {
 	int		c;
 	int		len;
-	
+
 	len = 0;
 	com_token[0] = 0;
-	
+
 	if (!data)
 		return NULL;
-		
+
 // skip whitespace
 skipwhite:
 	while ( (c = *data) <= ' ')
@@ -475,7 +475,7 @@ skipwhite:
 		}
 		data++;
 	}
-	
+
 // skip // comments
 	if (c=='/' && data[1] == '/')
 	{
@@ -483,7 +483,7 @@ skipwhite:
 			data++;
 		goto skipwhite;
 	}
-	
+
 
 // handle quoted strings specially
 	if (c == '\"')
@@ -521,7 +521,7 @@ skipwhite:
 	if (c=='{' || c=='}'|| c==')'|| c=='(' || c=='\'' || c==':')
 			break;
 	} while (c>32);
-	
+
 	com_token[len] = 0;
 	return data;
 }
@@ -530,7 +530,7 @@ skipwhite:
 int Q_strncasecmp (const char *s1, const char *s2, int n)
 {
 	int		c1, c2;
-	
+
 	do
 	{
 		c1 = *s1++;
@@ -538,7 +538,7 @@ int Q_strncasecmp (const char *s1, const char *s2, int n)
 
 		if (!n--)
 			return 0;		// strings are equal until end point
-		
+
 		if (c1 != c2)
 		{
 			if (c1 >= 'a' && c1 <= 'z')
@@ -549,7 +549,7 @@ int Q_strncasecmp (const char *s1, const char *s2, int n)
 				return -1;		// strings not equal
 		}
 	} while (c1);
-	
+
 	return 0;		// strings are equal
 }
 
@@ -577,7 +577,7 @@ char *strlower (char *start)
 	in = start;
 	while (*in)
 	{
-		*in = tolower(*in); 
+		*in = tolower(*in);
 		in++;
 	}
 	return start;

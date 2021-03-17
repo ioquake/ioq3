@@ -128,7 +128,7 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 
 	buf_p = buffer.b + bmpHeader.bitmapDataOffset;
 
-	if ( bmpHeader.id[0] != 'B' && bmpHeader.id[1] != 'M' ) 
+	if ( bmpHeader.id[0] != 'B' && bmpHeader.id[1] != 'M' )
 	{
 		ri.Error( ERR_DROP, "LoadBMP: only Windows-style BMP files supported (%s)", name );
 	}
@@ -173,7 +173,7 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 	  ri.Error (ERR_DROP, "LoadBMP: file truncated (%s)", name);
 	}
 
-	if ( width ) 
+	if ( width )
 		*width = columns;
 	if ( height )
 		*height = rows;

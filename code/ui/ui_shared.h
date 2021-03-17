@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define WINDOW_HASFOCUS				0x00000002	// has cursor focus, exclusive
 #define WINDOW_VISIBLE				0x00000004	// is visible
 #define WINDOW_GREY						0x00000008	// is visible but grey ( non-active )
-#define WINDOW_DECORATION			0x00000010	// for decoration only, no mouse, keyboard, etc.. 
+#define WINDOW_DECORATION			0x00000010	// for decoration only, no mouse, keyboard, etc..
 #define WINDOW_FADINGOUT			0x00000020	// fading out, non-active
 #define WINDOW_FADINGIN				0x00000040	// fading in
 #define WINDOW_MOUSEOVERTEXT	0x00000080	// mouse is over it, non exclusive
@@ -61,7 +61,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define WINDOW_AUTOWRAPPED			0x00080000	// auto wrap text
 #define WINDOW_FORCED					0x00100000	// forced open
 #define WINDOW_POPUP					0x00200000	// popup
-#define WINDOW_BACKCOLORSET		0x00400000	// backcolor was explicitly set 
+#define WINDOW_BACKCOLORSET		0x00400000	// backcolor was explicitly set
 #define WINDOW_TIMEDVISIBLE		0x00800000	// visibility timing ( NOT implemented )
 
 
@@ -132,7 +132,7 @@ typedef struct {
   int border;                     //
   int ownerDraw;									// ownerDraw style
 	int ownerDrawFlags;							// show flags for ownerdraw items
-  float borderSize;               // 
+  float borderSize;               //
   int flags;                      // visible, focus, mouseover, cursor
   Rectangle rectEffects;          // for various effects
   Rectangle rectEffects2;         // for various effects
@@ -142,7 +142,7 @@ typedef struct {
   vec4_t backColor;               // border color
   vec4_t borderColor;             // border color
   vec4_t outlineColor;            // border color
-  qhandle_t background;           // background asset  
+  qhandle_t background;           // background asset
 } windowDef_t;
 
 typedef windowDef_t Window;
@@ -156,13 +156,13 @@ typedef struct {
 // FIXME: combine flags into bitfields to save space
 // FIXME: consolidate all of the common stuff in one structure for menus and items
 // THINKABOUTME: is there any compelling reason not to have items contain items
-// and do away with a menu per say.. major issue is not being able to dynamically allocate 
-// and destroy stuff.. Another point to consider is adding an alloc free call for vm's and have 
+// and do away with a menu per say.. major issue is not being able to dynamically allocate
+// and destroy stuff.. Another point to consider is adding an alloc free call for vm's and have
 // the engine just allocate the pool for it based on a cvar
 // many of the vars are re-used for different item types, as such they are not always named appropriately
 // the benefits of c++ in DOOM will greatly help crap like this
 // FIXME: need to put a type ptr that points to specific type info per type
-// 
+//
 #define MAX_LB_COLUMNS 16
 
 typedef struct columnInfo_s {
@@ -189,10 +189,10 @@ typedef struct editFieldDef_s {
   float minVal;                  //	edit field limits
   float maxVal;                  //
   float defVal;                  //
-	float range;									 // 
+	float range;									 //
   int maxChars;                  // for edit fields
   int maxPaintChars;             // for edit fields
-	int paintOffset;							 // 
+	int paintOffset;							 //
 } editFieldDef_t;
 
 #define MAX_MULTI_CVARS 32
@@ -221,7 +221,7 @@ typedef struct modelDef_s {
 
 typedef struct itemDef_s {
   Window window;                 // common positional, border, style, layout info
-  Rectangle textRect;            // rectangle the text ( if any ) consumes     
+  Rectangle textRect;            // rectangle the text ( if any ) consumes
   int type;                      // text, button, radiobutton, checkbox, textfield, listbox, combo
   int alignment;                 // left center right
   int textalignment;             // ( optional ) alignment for text within rect based on text width
@@ -235,11 +235,11 @@ typedef struct itemDef_s {
   const char *mouseEnterText;    // mouse enter script
   const char *mouseExitText;     // mouse exit script
   const char *mouseEnter;        // mouse enter script
-  const char *mouseExit;         // mouse exit script 
+  const char *mouseExit;         // mouse exit script
   const char *action;            // select script
   const char *onFocus;           // select script
   const char *leaveFocus;        // select script
-  const char *cvar;              // associated cvar 
+  const char *cvar;              // associated cvar
   const char *cvarTest;          // associated cvar for enable actions
 	const char *enableCvar;			   // enable, disable, show, or hide based on value, this can contain a list
 	int cvarFlags;								 //	what type of action to take on cvarenables
@@ -248,15 +248,15 @@ typedef struct itemDef_s {
 	colorRangeDef_t colorRanges[MAX_COLOR_RANGES];
 	float special;								 // used for feeder id's etc.. diff per type
   int cursorPos;                 // cursor position in characters
-	void *typeData;								 // type specific data ptr's	
+	void *typeData;								 // type specific data ptr's
 } itemDef_t;
 
 typedef struct {
   Window window;
   const char  *font;								// font
-  qboolean fullScreen;							// covers entire screen 
+  qboolean fullScreen;							// covers entire screen
   int itemCount;										// number of items;
-  int fontIndex;										// 
+  int fontIndex;										//
   int cursorItem;										// which item as the cursor
 	int fadeCycle;										//
 	float fadeClamp;									//
@@ -268,7 +268,7 @@ typedef struct {
 
   vec4_t focusColor;								// focus color for items
   vec4_t disableColor;							// focus color for items
-  itemDef_t *items[MAX_MENUITEMS];	// items this menu contains   
+  itemDef_t *items[MAX_MENUITEMS];	// items this menu contains
 } menuDef_t;
 
 typedef struct {
@@ -354,7 +354,7 @@ typedef struct {
 	void (*keynumToStringBuf)( int keynum, char *buf, int buflen );
 	void (*getBindingBuf)( int keynum, char *buf, int buflen );
 	void (*setBinding)( int keynum, const char *binding );
-	void (*executeText)(int exec_when, const char *text );	
+	void (*executeText)(int exec_when, const char *text );
 	void (*Error)(int level, const char *error, ...) __attribute__ ((noreturn, format (printf, 2, 3)));
 	void (*Print)(const char *msg, ...) __attribute__ ((format (printf, 1, 2)));
 	void (*Pause)(qboolean b);

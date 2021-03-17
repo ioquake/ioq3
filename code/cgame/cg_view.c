@@ -35,7 +35,7 @@ enhanced into a single model testing facility.
 
 Model viewing can begin with either "testmodel <modelname>" or "testgun <modelname>".
 
-The names must be the full pathname after the basedir, like 
+The names must be the full pathname after the basedir, like
 "models/weapons/v_launch/tris.md3" or "players/male/tris.md3"
 
 Testmodel will create a fake entity 100 units in front of the current view
@@ -298,11 +298,11 @@ static void CG_OffsetThirdPersonView( void ) {
 // this causes a compiler bug on mac MrC compiler
 static void CG_StepOffset( void ) {
 	int		timeDelta;
-	
+
 	// smooth out stair climbing
 	timeDelta = cg.time - cg.stepTime;
 	if ( timeDelta < STEP_TIME ) {
-		cg.refdef.vieworg[2] -= cg.stepChange 
+		cg.refdef.vieworg[2] -= cg.stepChange
 			* (STEP_TIME - timeDelta) / STEP_TIME;
 	}
 }
@@ -323,7 +323,7 @@ static void CG_OffsetFirstPersonView( void ) {
 	float			f;
 	vec3_t			predictedVelocity;
 	int				timeDelta;
-	
+
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
 		return;
 	}
@@ -369,7 +369,7 @@ static void CG_OffsetFirstPersonView( void ) {
 
 	delta = DotProduct ( predictedVelocity, cg.refdef.viewaxis[0]);
 	angles[PITCH] += delta * cg_runpitch.value;
-	
+
 	delta = DotProduct ( predictedVelocity, cg.refdef.viewaxis[1]);
 	angles[ROLL] -= delta * cg_runroll.value;
 
@@ -397,7 +397,7 @@ static void CG_OffsetFirstPersonView( void ) {
 	// smooth out duck height changes
 	timeDelta = cg.time - cg.duckTime;
 	if ( timeDelta < DUCK_TIME) {
-		cg.refdef.vieworg[2] -= cg.duckChange 
+		cg.refdef.vieworg[2] -= cg.duckChange
 			* (DUCK_TIME - timeDelta) / DUCK_TIME;
 	}
 
@@ -429,7 +429,7 @@ static void CG_OffsetFirstPersonView( void ) {
 	{
 #define	NECK_LENGTH		8
 	vec3_t			forward, up;
- 
+
 	cg.refdef.vieworg[2] -= NECK_LENGTH;
 	AngleVectors( cg.refdefViewAngles, forward, NULL, up );
 	VectorMA( cg.refdef.vieworg, 3, forward, cg.refdef.vieworg );
@@ -440,7 +440,7 @@ static void CG_OffsetFirstPersonView( void ) {
 
 //======================================================================
 
-void CG_ZoomDown_f( void ) { 
+void CG_ZoomDown_f( void ) {
 	if ( cg.zoomed ) {
 		return;
 	}
@@ -448,7 +448,7 @@ void CG_ZoomDown_f( void ) {
 	cg.zoomTime = cg.time;
 }
 
-void CG_ZoomUp_f( void ) { 
+void CG_ZoomUp_f( void ) {
 	if ( !cg.zoomed ) {
 		return;
 	}

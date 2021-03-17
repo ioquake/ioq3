@@ -293,11 +293,11 @@ Used to resample images in a more general than quartering fashion.
 This will only be filtered properly if the resampled size
 is greater than half the original size.
 
-If a larger shrinking is needed, use the mipmap function 
+If a larger shrinking is needed, use the mipmap function
 before or after.
 ================
 */
-static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *out,  
+static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *out,
 							int outwidth, int outheight ) {
 	int		i, j;
 	unsigned	*inrow, *inrow2;
@@ -307,7 +307,7 @@ static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *
 
 	if (outwidth>2048)
 		ri.Error(ERR_DROP, "ResampleTexture: max width");
-								
+
 	fracstep = inwidth*0x10000/outwidth;
 
 	frac = fracstep>>2;
@@ -423,7 +423,7 @@ static void R_MipMap2( unsigned *in, int inWidth, int inHeight ) {
 		for ( j = 0 ; j < outWidth ; j++ ) {
 			outpix = (byte *) ( temp + i * outWidth + j );
 			for ( k = 0 ; k < 4 ; k++ ) {
-				total = 
+				total =
 					1 * ((byte *)&in[ ((i*2-1)&inHeightMask)*inWidth + ((j*2-1)&inWidthMask) ])[k] +
 					2 * ((byte *)&in[ ((i*2-1)&inHeightMask)*inWidth + ((j*2)&inWidthMask) ])[k] +
 					2 * ((byte *)&in[ ((i*2-1)&inHeightMask)*inWidth + ((j*2+1)&inWidthMask) ])[k] +
@@ -550,13 +550,13 @@ Upload32
 
 ===============
 */
-static void Upload32( unsigned *data, 
-						  int width, int height, 
-						  qboolean mipmap, 
-						  qboolean picmip, 
+static void Upload32( unsigned *data,
+						  int width, int height,
+						  qboolean mipmap,
+						  qboolean picmip,
 							qboolean lightMap,
 						  qboolean allowCompression,
-						  int *format, 
+						  int *format,
 						  int *pUploadWidth, int *pUploadHeight )
 {
 	int			samples;
@@ -671,7 +671,7 @@ static void Upload32( unsigned *data,
 			{
 				bMax = scan[i*4+2];
 			}
-			if ( scan[i*4 + 3] != 255 ) 
+			if ( scan[i*4 + 3] != 255 )
 			{
 				samples = 4;
 				break;
@@ -739,7 +739,7 @@ static void Upload32( unsigned *data,
 	}
 
 	// copy or resample data as appropriate for first MIP level
-	if ( ( scaled_width == width ) && 
+	if ( ( scaled_width == width ) &&
 		( scaled_height == height ) ) {
 		if (!mipmap)
 		{
@@ -883,7 +883,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 
 	GL_Bind(image);
 
-	Upload32( (unsigned *)pic, image->width, image->height, 
+	Upload32( (unsigned *)pic, image->width, image->height,
 								image->flags & IMGFLAG_MIPMAP,
 								image->flags & IMGFLAG_PICMIP,
 								isLightmap,
@@ -1088,10 +1088,10 @@ static void R_CreateDlightImage( void ) {
 			} else if ( b < 75 ) {
 				b = 0;
 			}
-			data[y][x][0] = 
-			data[y][x][1] = 
+			data[y][x][0] =
+			data[y][x][1] =
 			data[y][x][2] = b;
-			data[y][x][3] = 255;			
+			data[y][x][3] = 255;
 		}
 	}
 	tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
@@ -1107,7 +1107,7 @@ void R_InitFogTable( void ) {
 	int		i;
 	float	d;
 	float	exp;
-	
+
 	exp = 0.5;
 
 	for ( i = 0 ; i < FOG_TABLE_SIZE ; i++ ) {
@@ -1171,8 +1171,8 @@ static void R_CreateFogImage( void ) {
 		for (y=0 ; y<FOG_T ; y++) {
 			d = R_FogFactor( ( x + 0.5f ) / FOG_S, ( y + 0.5f ) / FOG_T );
 
-			data[(y*FOG_S+x)*4+0] = 
-			data[(y*FOG_S+x)*4+1] = 
+			data[(y*FOG_S+x)*4+0] =
+			data[(y*FOG_S+x)*4+1] =
 			data[(y*FOG_S+x)*4+2] = 255;
 			data[(y*FOG_S+x)*4+3] = 255*d;
 		}
@@ -1236,10 +1236,10 @@ void R_CreateBuiltinImages( void ) {
 	// for default lightmaps, etc
 	for (x=0 ; x<DEFAULT_SIZE ; x++) {
 		for (y=0 ; y<DEFAULT_SIZE ; y++) {
-			data[y][x][0] = 
-			data[y][x][1] = 
+			data[y][x][0] =
+			data[y][x][1] =
 			data[y][x][2] = tr.identityLightByte;
-			data[y][x][3] = 255;			
+			data[y][x][3] = 255;
 		}
 	}
 
@@ -1274,7 +1274,7 @@ void R_SetColorMappings( void ) {
 	}
 
 	// never overbright in windowed mode
-	if ( !glConfig.isFullscreen ) 
+	if ( !glConfig.isFullscreen )
 	{
 		tr.overbrightBits = 0;
 	}
@@ -1433,14 +1433,14 @@ static char *CommaParse( char **data_p ) {
 			}
 		}
 		// skip /* */ comments
-		else if ( c=='/' && data[1] == '*' ) 
+		else if ( c=='/' && data[1] == '*' )
 		{
 			data += 2;
-			while ( *data && ( *data != '*' || data[1] != '/' ) ) 
+			while ( *data && ( *data != '*' || data[1] != '/' ) )
 			{
 				data++;
 			}
-			if ( *data ) 
+			if ( *data )
 			{
 				data += 2;
 			}
@@ -1584,7 +1584,7 @@ qhandle_t RE_RegisterSkin( const char *name ) {
 		if ( strstr( token, "tag_" ) ) {
 			continue;
 		}
-		
+
 		// parse the shader name
 		token = CommaParse( &text_p );
 
@@ -1664,7 +1664,7 @@ void	R_SkinList_f( void ) {
 
 		ri.Printf( PRINT_ALL, "%3i:%s (%d surfaces)\n", i, skin->name, skin->numSurfaces );
 		for ( j = 0 ; j < skin->numSurfaces ; j++ ) {
-			ri.Printf( PRINT_ALL, "       %s = %s\n", 
+			ri.Printf( PRINT_ALL, "       %s = %s\n",
 				skin->surfaces[j].name, skin->surfaces[j].shader->name );
 		}
 	}

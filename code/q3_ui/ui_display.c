@@ -98,7 +98,7 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 	case ID_BRIGHTNESS:
 		trap_Cvar_SetValue( "r_gamma", displayOptionsInfo.brightness.curvalue / 10.0f );
 		break;
-	
+
 	case ID_SCREENSIZE:
 		trap_Cvar_SetValue( "cg_viewsize", displayOptionsInfo.screensize.curvalue * 10 );
 		break;
@@ -135,7 +135,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.framel.generic.type		= MTYPE_BITMAP;
 	displayOptionsInfo.framel.generic.name		= ART_FRAMEL;
 	displayOptionsInfo.framel.generic.flags		= QMF_INACTIVE;
-	displayOptionsInfo.framel.generic.x			= 0;  
+	displayOptionsInfo.framel.generic.x			= 0;
 	displayOptionsInfo.framel.generic.y			= 78;
 	displayOptionsInfo.framel.width				= 256;
 	displayOptionsInfo.framel.height			= 329;

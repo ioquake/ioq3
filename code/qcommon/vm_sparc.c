@@ -338,7 +338,7 @@ static void pgreg(int reg_num, int arg_index, int flt)
 }
 
 static void pimm(unsigned int val, int bits, int shift, int sgned, int arg_index)
-	
+
 {
 	val >>= shift;
 	val &= ((1 << bits) - 1);
@@ -700,7 +700,7 @@ static void dst_insn_append(struct func_info * const fp)
 }
 
 static void ErrJump(void)
-{ 
+{
 	Com_Error(ERR_DROP, "program tried to execute code outside VM");
 	exit(1);
 }

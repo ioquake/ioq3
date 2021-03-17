@@ -353,7 +353,7 @@ void CG_RegisterCvars( void ) {
 	trap_Cvar_Register(NULL, "team_headmodel", DEFAULT_TEAM_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
 }
 
-/*																																			
+/*
 ===================
 CG_ForceModelChange
 ===================
@@ -512,7 +512,7 @@ static void CG_RegisterItemSounds( int itemNum ) {
 
 		len = s-start;
 		if (len >= MAX_QPATH || len < 5) {
-			CG_Error( "PrecacheItem: %s has bad precache string", 
+			CG_Error( "PrecacheItem: %s has bad precache string",
 				item->classname);
 			return;
 		}
@@ -1099,7 +1099,7 @@ static void CG_RegisterGraphics( void ) {
 
 
 
-/*																																			
+/*
 =======================
 CG_BuildSpectatorString
 
@@ -1121,7 +1121,7 @@ void CG_BuildSpectatorString(void) {
 }
 
 
-/*																																			
+/*
 ===================
 CG_RegisterClients
 ===================
@@ -1220,7 +1220,7 @@ qboolean CG_Asset_Parse(int handle) {
 	if (Q_stricmp(token.string, "{") != 0) {
 		return qfalse;
 	}
-    
+
 	while ( 1 ) {
 		if (!trap_PC_ReadToken(handle, &token))
 			return qfalse;
@@ -1416,7 +1416,7 @@ qboolean CG_Load_Menu(char **p) {
 	while ( 1 ) {
 
 		token = COM_ParseExt(p, qtrue);
-    
+
 		if (Q_stricmp(token, "}") == 0) {
 			return qtrue;
 		}
@@ -1425,7 +1425,7 @@ qboolean CG_Load_Menu(char **p) {
 			return qfalse;
 		}
 
-		CG_ParseMenu(token); 
+		CG_ParseMenu(token);
 	}
 	return qfalse;
 }
@@ -1459,7 +1459,7 @@ void CG_LoadMenus(const char *menuFile) {
 	trap_FS_Read( buf, len, f );
 	buf[len] = 0;
 	trap_FS_FCloseFile( f );
-	
+
 	COM_Compress(buf);
 
 	Menu_Reset();
@@ -1656,7 +1656,7 @@ static const char *CG_FeederItemText(float feederID, int index, int column, qhan
 			case 6:
 				if ( sp->ping == -1 ) {
 					return "connecting";
-				} 
+				}
 				return va("%4i", sp->ping);
 			break;
 		}
@@ -1757,7 +1757,7 @@ void CG_LoadHudMenu( void ) {
 	cgDC.registerModel = &trap_R_RegisterModel;
 	cgDC.modelBounds = &trap_R_ModelBounds;
 	cgDC.fillRect = &CG_FillRect;
-	cgDC.drawRect = &CG_DrawRect;   
+	cgDC.drawRect = &CG_DrawRect;
 	cgDC.drawSides = &CG_DrawSides;
 	cgDC.drawTopBottom = &CG_DrawTopBottom;
 	cgDC.clearScene = &trap_R_ClearScene;
@@ -1785,8 +1785,8 @@ void CG_LoadHudMenu( void ) {
 	//cgDC.getBindingBuf = &trap_Key_GetBindingBuf;
 	//cgDC.keynumToStringBuf = &trap_Key_KeynumToStringBuf;
 	//cgDC.executeText = &trap_Cmd_ExecuteText;
-	cgDC.Error = &Com_Error; 
-	cgDC.Print = &Com_Printf; 
+	cgDC.Error = &Com_Error;
+	cgDC.Print = &Com_Printf;
 	cgDC.ownerDrawWidth = &CG_OwnerDrawWidth;
 	//cgDC.Pause = &CG_Pause;
 	cgDC.registerSound = &trap_S_RegisterSound;
@@ -1796,11 +1796,11 @@ void CG_LoadHudMenu( void ) {
 	cgDC.stopCinematic = &CG_StopCinematic;
 	cgDC.drawCinematic = &CG_DrawCinematic;
 	cgDC.runCinematicFrame = &CG_RunCinematicFrame;
-	
+
 	Init_Display(&cgDC);
 
 	Menu_Reset();
-	
+
 	trap_Cvar_VariableStringBuffer("cg_hudFiles", buff, sizeof(buff));
 	hudSet = buff;
 	if (hudSet[0] == '\0') {

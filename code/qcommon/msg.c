@@ -97,7 +97,7 @@ void MSG_Copy(msg_t *buf, byte *data, int length, msg_t *src)
 =============================================================================
 
 bit functions
-  
+
 =============================================================================
 */
 
@@ -207,7 +207,7 @@ int MSG_ReadBits( msg_t *msg, int bits ) {
 		else if(bits==16)
 		{
 			short temp;
-			
+
 			CopyLittleShort(&temp, &msg->data[msg->readcount]);
 			value = temp;
 			msg->readcount += 2;
@@ -381,22 +381,22 @@ void MSG_WriteAngle16( msg_t *sb, float f ) {
 // returns -1 if no more characters are available
 int MSG_ReadChar (msg_t *msg ) {
 	int	c;
-	
+
 	c = (signed char)MSG_ReadBits( msg, 8 );
 	if ( msg->readcount > msg->cursize ) {
 		c = -1;
-	}	
-	
+	}
+
 	return c;
 }
 
 int MSG_ReadByte( msg_t *msg ) {
 	int	c;
-	
+
 	c = (unsigned char)MSG_ReadBits( msg, 8 );
 	if ( msg->readcount > msg->cursize ) {
 		c = -1;
-	}	
+	}
 	return c;
 }
 
@@ -413,41 +413,41 @@ int MSG_LookaheadByte( msg_t *msg ) {
 
 int MSG_ReadShort( msg_t *msg ) {
 	int	c;
-	
+
 	c = (short)MSG_ReadBits( msg, 16 );
 	if ( msg->readcount > msg->cursize ) {
 		c = -1;
-	}	
+	}
 
 	return c;
 }
 
 int MSG_ReadLong( msg_t *msg ) {
 	int	c;
-	
+
 	c = MSG_ReadBits( msg, 32 );
 	if ( msg->readcount > msg->cursize ) {
 		c = -1;
-	}	
-	
+	}
+
 	return c;
 }
 
 float MSG_ReadFloat( msg_t *msg ) {
 	floatint_t dat;
-	
+
 	dat.i = MSG_ReadBits( msg, 32 );
 	if ( msg->readcount > msg->cursize ) {
 		dat.f = -1;
-	}	
-	
-	return dat.f;	
+	}
+
+	return dat.f;
 }
 
 char *MSG_ReadString( msg_t *msg ) {
 	static char	string[MAX_STRING_CHARS];
 	int		l,c;
-	
+
 	l = 0;
 	do {
 		c = MSG_ReadByte(msg);		// use ReadByte so -1 is out of bounds
@@ -468,16 +468,16 @@ char *MSG_ReadString( msg_t *msg ) {
 		}
 		string[l++] = c;
 	} while (1);
-	
+
 	string[l] = '\0';
-	
+
 	return string;
 }
 
 char *MSG_ReadBigString( msg_t *msg ) {
 	static char	string[BIG_INFO_STRING];
 	int		l,c;
-	
+
 	l = 0;
 	do {
 		c = MSG_ReadByte(msg);		// use ReadByte so -1 is out of bounds
@@ -498,9 +498,9 @@ char *MSG_ReadBigString( msg_t *msg ) {
 		}
 		string[l++] = c;
 	} while (1);
-	
+
 	string[l] = '\0';
-	
+
 	return string;
 }
 
@@ -528,9 +528,9 @@ char *MSG_ReadStringLine( msg_t *msg ) {
 		}
 		string[l++] = c;
 	} while (1);
-	
+
 	string[l] = '\0';
-	
+
 	return string;
 }
 
@@ -570,7 +570,7 @@ extern cvar_t *cl_shownet;
 =============================================================================
 
 delta functions with keys
-  
+
 =============================================================================
 */
 
@@ -712,7 +712,7 @@ void MSG_ReadDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *t
 =============================================================================
 
 entityState_t communication
-  
+
 =============================================================================
 */
 
@@ -741,7 +741,7 @@ typedef struct {
 // using the stringizing operator to save typing...
 #define	NETF(x) #x,(size_t)&((entityState_t*)0)->x
 
-netField_t	entityStateFields[] = 
+netField_t	entityStateFields[] =
 {
 { NETF(pos.trTime), 32 },
 { NETF(pos.trBase[0]), 0 },
@@ -813,7 +813,7 @@ If force is not set, then nothing at all will be generated if the entity is
 identical, under the assumption that the in-order delta code will catch it.
 ==================
 */
-void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entityState_s *to, 
+void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entityState_s *to,
 						   qboolean force ) {
 	int			i, lc;
 	int			numFields;
@@ -895,7 +895,7 @@ void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entity
 					oldsize += FLOAT_INT_BITS;
 			} else {
 				MSG_WriteBits( msg, 1, 1 );
-				if ( trunc == fullFloat && trunc + FLOAT_INT_BIAS >= 0 && 
+				if ( trunc == fullFloat && trunc + FLOAT_INT_BIAS >= 0 &&
 					trunc + FLOAT_INT_BIAS < ( 1 << FLOAT_INT_BITS ) ) {
 					// send as small integer
 					MSG_WriteBits( msg, 0, 1 );
@@ -930,7 +930,7 @@ If the delta removes the entity, entityState_t->number will be set to MAX_GENTIT
 Can go from either a baseline or a previous packet_entity
 ==================
 */
-void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
+void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to,
 						 int number) {
 	int			i, lc;
 	int			numFields;
@@ -952,7 +952,7 @@ void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to,
 
 	// check for a remove
 	if ( MSG_ReadBits( msg, 1 ) == 1 ) {
-		Com_Memset( to, 0, sizeof( *to ) );	
+		Com_Memset( to, 0, sizeof( *to ) );
 		to->number = MAX_GENTITIES - 1;
 		if ( cl_shownet && ( cl_shownet->integer >= 2 || cl_shownet->integer == -1 ) ) {
 			Com_Printf( "%3i: #%-3i remove\n", msg->readcount, number );
@@ -996,14 +996,14 @@ void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to,
 			if ( field->bits == 0 ) {
 				// float
 				if ( MSG_ReadBits( msg, 1 ) == 0 ) {
-						*(float *)toF = 0.0f; 
+						*(float *)toF = 0.0f;
 				} else {
 					if ( MSG_ReadBits( msg, 1 ) == 0 ) {
 						// integral float
 						trunc = MSG_ReadBits( msg, FLOAT_INT_BITS );
 						// bias to allow equal parts positive and negative
 						trunc -= FLOAT_INT_BIAS;
-						*(float *)toF = trunc; 
+						*(float *)toF = trunc;
 						if ( print ) {
 							Com_Printf( "%s:%i ", field->name, trunc );
 						}
@@ -1058,9 +1058,9 @@ plyer_state_t communication
 // using the stringizing operator to save typing...
 #define	PSF(x) #x,(size_t)&((playerState_t*)0)->x
 
-netField_t	playerStateFields[] = 
+netField_t	playerStateFields[] =
 {
-{ PSF(commandTime), 32 },				
+{ PSF(commandTime), 32 },
 { PSF(origin[0]), 0 },
 { PSF(origin[1]), 0 },
 { PSF(bobCycle), 8 },
@@ -1094,7 +1094,7 @@ netField_t	playerStateFields[] =
 { PSF(damagePitch), 8 },
 { PSF(damageCount), 8 },
 { PSF(generic1), 8 },
-{ PSF(pm_type), 8 },					
+{ PSF(pm_type), 8 },
 { PSF(delta_angles[0]), 16 },
 { PSF(delta_angles[2]), 16 },
 { PSF(torsoTimer), 12 },
@@ -1166,7 +1166,7 @@ void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct p
 			fullFloat = *(float *)toF;
 			trunc = (int)fullFloat;
 
-			if ( trunc == fullFloat && trunc + FLOAT_INT_BIAS >= 0 && 
+			if ( trunc == fullFloat && trunc + FLOAT_INT_BIAS >= 0 &&
 				trunc + FLOAT_INT_BIAS < ( 1 << FLOAT_INT_BITS ) ) {
 				// send as small integer
 				MSG_WriteBits( msg, 0, 1 );
@@ -1322,7 +1322,7 @@ void MSG_ReadDeltaPlayerstate (msg_t *msg, playerState_t *from, playerState_t *t
 					trunc = MSG_ReadBits( msg, FLOAT_INT_BITS );
 					// bias to allow equal parts positive and negative
 					trunc -= FLOAT_INT_BIAS;
-					*(float *)toF = trunc; 
+					*(float *)toF = trunc;
 					if ( print ) {
 						Com_Printf( "%s:%i ", field->name, trunc );
 					}
