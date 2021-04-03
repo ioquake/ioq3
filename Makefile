@@ -179,6 +179,11 @@ ifndef USE_CODEC_VORBIS
 USE_CODEC_VORBIS=1
 endif
 
+#note: cin_theora only makes sense with vorbis/ogg
+ifndef USE_CIN_THEORA
+USE_CIN_THEORA=1
+endif
+
 ifndef USE_CODEC_OPUS
 USE_CODEC_OPUS=1
 endif
@@ -205,6 +210,10 @@ endif
 
 ifndef USE_INTERNAL_VORBIS
 USE_INTERNAL_VORBIS=$(USE_INTERNAL_LIBS)
+endif
+
+ifndef USE_INTERNAL_THEORA
+USE_INTERNAL_THEORA=$(USE_INTERNAL_LIBS)
 endif
 
 ifndef USE_INTERNAL_OPUS
@@ -261,6 +270,7 @@ Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-8c
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.3
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.6
+THEORADIR=$(MOUNT_DIR)/libtheora-1.1.1
 OPUSDIR=$(MOUNT_DIR)/opus-1.2.1
 OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.9
 ZDIR=$(MOUNT_DIR)/zlib
@@ -1108,6 +1118,19 @@ ifeq ($(USE_CODEC_VORBIS),1)
   NEED_OGG=1
 endif
 
+ifeq ($(USE_CIN_THEORA),1)
+  CLIENT_CFLAGS += -DUSE_CIN_THEORA
+  ifeq ($(USE_INTERNAL_THEORA),1)
+    CLIENT_CFLAGS += -I$(THEORADIR)/include -I$(THEORADIR)/lib
+  else
+    VORBIS_CFLAGS ?= $(shell $(PKG_CONFIG) --silence-errors --cflags theora || true)
+    VORBIS_LIBS ?= $(shell $(PKG_CONFIG) --silence-errors --libs theora || echo -ltheora)
+  endif
+  CLIENT_CFLAGS += $(THEORA_CFLAGS)
+  CLIENT_LIBS += $(THEORA_LIBS)
+  NEED_OGG=1
+endif
+
 ifeq ($(NEED_OGG),1)
   ifeq ($(USE_INTERNAL_OGG),1)
     OGG_CFLAGS = -I$(OGGDIR)/include
@@ -1118,6 +1141,7 @@ ifeq ($(NEED_OGG),1)
   CLIENT_CFLAGS += $(OGG_CFLAGS)
   CLIENT_LIBS += $(OGG_LIBS)
 endif
+
 
 ifeq ($(USE_RENDERER_DLOPEN),1)
   CLIENT_CFLAGS += -DUSE_RENDERER_DLOPEN
@@ -1438,6 +1462,9 @@ endif
 makedirs:
 	@$(MKDIR) $(B)/autoupdater
 	@$(MKDIR) $(B)/client/opus
+	@$(MKDIR) $(B)/client/theora
+	@$(MKDIR) $(B)/client/theora/x86
+	@$(MKDIR) $(B)/client/theora/x86_vc
 	@$(MKDIR) $(B)/client/vorbis
 	@$(MKDIR) $(B)/renderergl1
 	@$(MKDIR) $(B)/renderergl2
@@ -2161,6 +2188,52 @@ Q3OBJ += \
 endif
 endif
 
+ifeq ($(USE_CIN_THEORA),1)
+ifeq ($(USE_INTERNAL_THEORA),1)
+Q3OBJ += \
+  $(B)/client/theora/apiwrapper.o \
+  $(B)/client/theora/bitpack.o \
+  $(B)/client/theora/decapiwrapper.o \
+  $(B)/client/theora/decinfo.o \
+  $(B)/client/theora/decode.o \
+  $(B)/client/theora/dequant.o \
+  $(B)/client/theora/fragment.o \
+  $(B)/client/theora/huffdec.o \
+  $(B)/client/theora/idct.o \
+  $(B)/client/theora/info.o \
+  $(B)/client/theora/internal.o \
+  $(B)/client/theora/quant.o \
+  $(B)/client/theora/state.o \
+  \
+  $(B)/client/theora/analyze.o \
+  $(B)/client/theora/fdct.o \
+  $(B)/client/theora/encfrag.o \
+  $(B)/client/theora/encapiwrapper.o \
+  $(B)/client/theora/encinfo.o \
+  $(B)/client/theora/encode.o \
+  $(B)/client/theora/huffenc.o \
+  $(B)/client/theora/mathops.o \
+  $(B)/client/theora/mcenc.o \
+  $(B)/client/theora/rate.o \
+  $(B)/client/theora/tokenize.o \
+  $(B)/client/theora/cpu.o \
+  $(B)/client/theora/enquant.o \
+  \
+  $(B)/client/theora/x86/mmxstate.o \
+  $(B)/client/theora/x86/mmxidct.o \
+  $(B)/client/theora/x86/mmxfrag.o \
+  $(B)/client/theora/x86/x86state.o \
+  \
+  $(B)/client/theora/x86/mmxencfrag.o \
+  $(B)/client/theora/x86/x86enc.o \
+  $(B)/client/theora/x86/mmxfdct.o
+
+ifeq ($(ARCH),x86_64)
+  Q3OBJ += $(B)/client/theora/x86/sse2fdct.o
+endif
+endif
+endif
+
 ifeq ($(USE_INTERNAL_ZLIB),1)
 Q3OBJ += \
   $(B)/client/adler32.o \
@@ -2721,6 +2794,12 @@ $(B)/client/%.o: $(OGGDIR)/src/%.c
 $(B)/client/vorbis/%.o: $(VORBISDIR)/lib/%.c
 	$(DO_CC)
 
+$(B)/client/theora/%.o: $(THEORADIR)/lib/%.c
+	$(DO_CC)
+
+$(B)/client/theora/x86/%.o: $(THEORADIR)/lib/x86/%.c
+	$(DO_CC)
+
 $(B)/client/opus/%.o: $(OPUSDIR)/src/%.c
 	$(DO_CC)
 
@@ -2868,7 +2947,7 @@ $(B)/$(BASEGAME)/ui/bg_%.o: $(GDIR)/bg_%.c
 
 $(B)/$(BASEGAME)/ui/wopg_%.o: $(GDIR)/wopg_%.c
 	$(DO_UI_CC)
-	
+
 $(B)/$(BASEGAME)/ui/wopc_%.o: $(CGDIR)/wopc_%.c
 	$(DO_UI_CC)
 
