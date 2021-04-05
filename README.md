@@ -1,4 +1,4 @@
-![Build](https://github.com/ioquake/ioq3/workflows/Build/badge.svg)
+[![Build](https://github.com/ioquake/ioq3/workflows/Build/badge.svg)](https://github.com/ioquake/ioq3/actions/workflows/build.yml)
 
                    ,---------------------------------------.
                    |   _                     _       ____  |
