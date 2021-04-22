@@ -507,7 +507,7 @@ float Q_rsqrt( float number )
 
 	x2 = number * 0.5F;
 	t.f  = number;
-	t.i  = 0x5f3759df - ( t.i >> 1 );               // what the fuck?
+	t.i  = 0x5F375A86 - ( t.i >> 1 );               // what the fuck?
 	y  = t.f;
 	y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
 //	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
