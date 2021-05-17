@@ -527,11 +527,11 @@ static float CG_DrawMessages(float y) {
 
 #######################
 */
-const char *gametype_strs[] = {GAMETYPE_NAME_SHORT(GT_FFA),			  GAMETYPE_NAME_SHORT(GT_TOURNAMENT),
-							   GAMETYPE_NAME_SHORT(GT_SINGLE_PLAYER), GAMETYPE_NAME_SHORT(GT_SPRAYFFA),
-							   GAMETYPE_NAME_SHORT(GT_LPS),			  GAMETYPE_NAME_SHORT(GT_TEAM),
-							   GAMETYPE_NAME_SHORT(GT_CTF),			  GAMETYPE_NAME_SHORT(GT_SPRAY),
-							   GAMETYPE_NAME_SHORT(GT_BALLOON),		  GAMETYPE_NAME_SHORT(GT_MAX_GAME_TYPE)};
+static const char *gametype_strs[] = {
+	GAMETYPE_NAME_SHORT(GT_FFA),	   GAMETYPE_NAME_SHORT(GT_TOURNAMENT),	 GAMETYPE_NAME_SHORT(GT_SINGLE_PLAYER),
+	GAMETYPE_NAME_SHORT(GT_SPRAYFFA),  GAMETYPE_NAME_SHORT(GT_LPS),			 GAMETYPE_NAME_SHORT(GT_TEAM),
+	GAMETYPE_NAME_SHORT(GT_FREEZETAG), GAMETYPE_NAME_SHORT(GT_CTF),			 GAMETYPE_NAME_SHORT(GT_SPRAY),
+	GAMETYPE_NAME_SHORT(GT_BALLOON),   GAMETYPE_NAME_SHORT(GT_MAX_GAME_TYPE)};
 
 static float CG_DrawServerInfos(float y) {
 	const char *s;
@@ -1111,7 +1111,6 @@ static void CG_DrawUpperRight(stereoFrame_t stereoFrame) {
 ===========================================================================================
 */
 
-
 /*
 ================
 CG_DrawPowerups
@@ -1399,11 +1398,9 @@ static void CG_DrawHoldableItem(float y) {
 			CG_FillRect(barX, y + ICON_SIZE - barHeight, 10, barHeight, barColor);
 			CG_DrawRect(barX, y, 10, ICON_SIZE, 1.0f, colorWhite);
 		} else if (bg_itemlist[value].giTag == HI_KILLERDUCKS) {
-			CG_DrawStringExt(640 - 28, y + 8, va("%i", itemState), colorWhite, qtrue, qtrue,
-							 8, 16, 1);
+			CG_DrawStringExt(640 - 28, y + 8, va("%i", itemState), colorWhite, qtrue, qtrue, 8, 16, 1);
 		} else if (bg_itemlist[value].giTag == HI_BOOMIES) {
-			CG_DrawStringExt(640 - 28, y + 8, va("%i", itemState), colorWhite, qtrue, qtrue,
-							 8, 16, 1);
+			CG_DrawStringExt(640 - 28, y + 8, va("%i", itemState), colorWhite, qtrue, qtrue, 8, 16, 1);
 		}
 	}
 }
@@ -2238,6 +2235,8 @@ static void CG_DrawWarmup(void) {
 			s = GAMETYPE_NAME(GT_FFA);
 		} else if (cgs.gametype == GT_TEAM) {
 			s = GAMETYPE_NAME(GT_TEAM);
+		} else if (cgs.gametype == GT_FREEZETAG) {
+			s = GAMETYPE_NAME(GT_FREEZETAG);
 		} else if (cgs.gametype == GT_CTF) {
 			s = GAMETYPE_NAME(GT_CTF);
 		} else {
@@ -2595,11 +2594,11 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 		int lenOfDrawStr, tmpi;
 		vec4_t twhite = {1.0f, 1.0f, 1.0f, 1.0f};
 		const char *s;
-		const char *gametype_strs[] = {GAMETYPE_NAME(GT_FFA),			GAMETYPE_NAME(GT_TOURNAMENT),
-									   GAMETYPE_NAME(GT_SINGLE_PLAYER), GAMETYPE_NAME(GT_SPRAYFFA),
-									   GAMETYPE_NAME(GT_LPS),			GAMETYPE_NAME(GT_TEAM),
-									   GAMETYPE_NAME(GT_CTF),			GAMETYPE_NAME(GT_SPRAY),
-									   GAMETYPE_NAME(GT_BALLOON),		GAMETYPE_NAME(GT_MAX_GAME_TYPE)};
+		const char *gametype_strs[] = {
+			GAMETYPE_NAME(GT_FFA),		 GAMETYPE_NAME(GT_TOURNAMENT),	 GAMETYPE_NAME(GT_SINGLE_PLAYER),
+			GAMETYPE_NAME(GT_SPRAYFFA),	 GAMETYPE_NAME(GT_LPS),			 GAMETYPE_NAME(GT_TEAM),
+			GAMETYPE_NAME(GT_FREEZETAG), GAMETYPE_NAME(GT_CTF),			 GAMETYPE_NAME(GT_SPRAY),
+			GAMETYPE_NAME(GT_BALLOON),	 GAMETYPE_NAME(GT_MAX_GAME_TYPE)};
 
 		if (cg.time - cg.first2dtime < 5000)
 			twhite[3] = 1.0f;
@@ -2615,6 +2614,107 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 		s = CG_ConfigString(CS_MESSAGE); // longmapname (or the msg from the mapper ;) )
 		lenOfDrawStr = strlen(s);
 		CG_DrawStringExt(320 - lenOfDrawStr * 4, 240, s, twhite, qfalse, qfalse, 8, 16, 64);
+	}
+
+	if (CG_FreezeTag() && FT_LocalIsFrozen()) {
+		int x, y, barposy, barposx;
+		int iconsize = 64;
+		int barheight = 12;
+		int barsegments = 6;
+		int segmentwidth = 10;
+		int distance = 5;
+		vec4_t teamcolor;
+		const char *message;
+
+		vec4_t blue = {0.75f, 0.75f, 0.75f, 1.0f};
+		vec4_t orange = {0.75f, 0.0f, 0.0f, 1.0f};
+		int i;
+
+		if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_RED) {
+			teamcolor[0] = 1.0f;
+			teamcolor[1] = 0.0f;
+			teamcolor[2] = 0.0f;
+		} else {
+			teamcolor[0] = 0.0f;
+			teamcolor[1] = 0.0f;
+			teamcolor[2] = 1.0f;
+		}
+
+		teamcolor[3] = 0.50f;
+
+		x = 640 / 2;
+		y = 100;
+
+		barposy = y + iconsize / 2 + distance + barheight / 2;
+		barposx = x - barsegments * segmentwidth / 2;
+
+		// chat background
+		// CG_FillRect( 0, 0, 450, 60, teamcolor );
+
+		i = cg.predictedPlayerState.stats[STAT_CHILL];
+		i = barsegments - i;
+		if (i >= 0) {
+
+			if (i > 6)
+				i = 6;
+
+			// draw the icon
+			CG_DrawPic(x - iconsize / 2, y - iconsize / 2, iconsize, iconsize, cgs.media.thawIcon);
+
+			// draw bar border
+			CG_FillRect(barposx - 2, barposy - 2, barsegments * segmentwidth + 4, barheight + 4, colorWhite);
+
+			// draw the bar background
+			CG_FillRect(barposx, barposy, barsegments * segmentwidth, barheight, blue);
+
+			// draw the bar
+			if (i > 0)
+				CG_FillRect(barposx, barposy, i * segmentwidth, barheight, orange);
+		}
+		trap_R_SetColor(NULL);
+
+		message = "^7You are ^4frozen^7, wait for a teammate to ^3thaw^7 you.";
+		CG_FillRect(x - (CG_DrawStrlen(message) * 12) / 2, 358, CG_DrawStrlen(message) * 12, 22, teamcolor);
+		CG_DrawStringExt(x - (CG_DrawStrlen(message) * 12) / 2, 360, message, colorWhite, qfalse, qtrue, 12,
+						 (int)(12 * 1.5), 0);
+	}
+	/* Thawer's progress bar */
+	else if (CG_FreezeTag()) {
+		int x, y, barposy, barposx;
+		int iconsize = 50;
+		int barheight = 10;
+		int barsegments = 6;
+		int segmentwidth = 10;
+		int distance = 5;
+
+		vec4_t blue = {0.75f, 0.75f, 0.75f, 1.0f};
+		vec4_t orange = {0.75f, 0.0f, 0.0f, 1.0f};
+		int i;
+
+		x = cg_ft_thawerIconX.integer;
+		y = cg_ft_thawerIconY.integer;
+
+		barposy = y + iconsize / 2 + distance + barheight / 2;
+		barposx = x - barsegments * segmentwidth / 2;
+
+		i = cg.predictedPlayerState.stats[STAT_CHILL];
+		i = barsegments - i;
+		if (i < 6) {
+
+			if (i > 6)
+				i = 6;
+
+			CG_DrawPic(x - iconsize / 2, y - iconsize / 2, iconsize, iconsize, cgs.media.thawIcon);
+
+			// draw bar border
+			CG_FillRect(barposx - 2, barposy - 2, barsegments * segmentwidth + 4, barheight + 4, colorWhite);
+
+			CG_FillRect(barposx, barposy, barsegments * segmentwidth, barheight, blue);
+
+			if (i > 0)
+				CG_FillRect(barposx, barposy, i * segmentwidth, barheight, orange);
+		}
+		trap_R_SetColor(NULL);
 	}
 
 	// draw the menu above all
@@ -2926,7 +3026,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 			trap_R_DrawStretchPic(x, y, w * tmpf, h, (1.0f - tmpf), 0, 1, 1, cgs.media.hud_energybar);
 			if (tmpf2 > 0.0f) {
 				//				x=214+10+(1.0f-tmpf2)*w; // hier braeuchte man ein neues AdjustFrom640 ... aber x ist
-				//bei tmpf=1 eh schon da wo es sein soll
+				// bei tmpf=1 eh schon da wo es sein soll
 				x += (1.0f - tmpf2) * w;
 				trap_R_DrawStretchPic(x, y, w * tmpf2, h, (1.0f - tmpf2), 0, 1, 1, cgs.media.hud_energybar2);
 			}
@@ -3088,7 +3188,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame) {
 
 #define CTL_LOLLYMDLX 576 // 573
 #define CTL_LOLLYMDLY 428 // 426
-#define CTL_LOLLYMDLW 46  // 50
+#define CTL_LOLLYMDLW 46 // 50
 #define CTL_LOLLYMDLH 50
 
 #define CTL_STATX 612
@@ -3418,6 +3518,9 @@ void CG_DrawActive(stereoFrame_t stereoView) {
 		trap_R_DrawStretchPic(cg.refdef.x, cg.refdef.y, cg.refdef.width, cg.refdef.height, 0, 0, 1, 1,
 							  cgs.media.WetScreenShader);
 		trap_R_SetColor(NULL);
+	} else if (!cg.renderingThirdPerson && FT_LocalIsFrozen()) {
+		trap_R_DrawStretchPic(cg.refdef.x, cg.refdef.y, cg.refdef.width, cg.refdef.height, 0, 0, 1, 1,
+							  cgs.media.FreezeScreenShader);
 	}
 
 	// ******************

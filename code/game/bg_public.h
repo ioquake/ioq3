@@ -117,6 +117,7 @@ typedef enum {
 	//-- team games go after this --
 
 	GT_TEAM, // team deathmatch
+	GT_FREEZETAG,
 	GT_CTF,	 // capture the flag
 
 	GT_SPRAY, // spray logo GT
@@ -135,7 +136,8 @@ typedef enum {
 #define GTN__GT_TEAM "Free For All Team"
 #define GTN__GT_CTF "Capture The Lolly"
 #define GTN__GT_SPRAY "Spray Your Color Team"
-#define GTN__GT_BALLOON "BigBalloon"
+#define GTN__GT_BALLOON "Big Balloon"
+#define GTN__GT_FREEZETAG "Freeze Tag"
 #define GTN__GT_MAX_GAME_TYPE "Unknown"
 
 #define GTN_S__GT_FFA "FFA"
@@ -147,6 +149,7 @@ typedef enum {
 #define GTN_S__GT_CTF "CTL"
 #define GTN_S__GT_SPRAY "TSYC"
 #define GTN_S__GT_BALLOON "BB"
+#define GTN_S__GT_FREEZETAG "FT"
 #define GTN_S__GT_MAX_GAME_TYPE "?"
 
 #define GAMETYPE_NAME(gametype) GTN__##gametype
@@ -173,6 +176,7 @@ typedef enum {
 	PM_SPECTATOR,	  // still run into walls
 	PM_DEAD,		  // no acceleration or turning, but free falling
 	PM_FREEZE,		  // stuck in place with no control
+	PM_FROZEN,		  // freezetag
 	PM_INTERMISSION,  // no movement or status bar
 	PM_SPINTERMISSION // no movement or status bar
 } pmtype_t;
@@ -267,6 +271,8 @@ typedef enum {
 	STAT_BALLOONTIME,
 	STAT_FORBIDDENITEMS,
 
+	STAT_CHILL,
+
 	STAT_HB_EFLAGS // copy of the higher bytes of eFlags
 } statIndex_t;
 
@@ -349,6 +355,8 @@ typedef enum {
 
 	PW_REDFLAG,
 	PW_BLUEFLAG,
+
+	PW_FREEZE,
 
 	PW_NUM_POWERUPS
 

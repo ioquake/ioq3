@@ -198,6 +198,10 @@ vmCvar_t cg_ambient;
 
 vmCvar_t cg_icons;
 
+// freezetag
+vmCvar_t cg_ft_thawerIconX;
+vmCvar_t cg_ft_thawerIconY;
+
 typedef struct {
 	vmCvar_t *vmCvar;
 	const char *cvarName;
@@ -322,6 +326,10 @@ static cvarTable_t cvarTable[] = {	   // bk001129
 	{&cg_drawBBox, "cg_drawBBox", "0", CVAR_CHEAT},
 
 	{&cg_ambient, "cg_ambient", "1", CVAR_ARCHIVE},
+
+	// freezetag
+	{&cg_ft_thawerIconX, "cg_FT_thawerIconX", "320", CVAR_ARCHIVE},
+	{&cg_ft_thawerIconY, "cg_FT_thawerIconY", "290", CVAR_ARCHIVE},
 
 	// Should match ICON_ALL
 	{&cg_icons, "cg_icons", "31", CVAR_ARCHIVE}};
@@ -938,6 +946,14 @@ static void CG_RegisterGraphics(void) {
 	cgs.media.scoreboardScore = trap_R_RegisterShaderNoMip("scoreboard/score");
 	cgs.media.scoreboardTime = trap_R_RegisterShaderNoMip("scoreboard/time");
 	cgs.media.voiceIcon = trap_R_RegisterShaderNoMip("hud/voiceIcon");
+
+	if (cgs.gametype == GT_FREEZETAG) {
+		cgs.media.FreezeScreenShader = trap_R_RegisterShaderNoMip("gfx/screen/ice");
+		cgs.media.freezeIconShader = trap_R_RegisterShader("icons/hint_freeze");
+		cgs.media.snowMarkShader = trap_R_RegisterShader("gfx/damage/snow_mrk");
+		cgs.media.thawIcon = trap_R_RegisterShader("icons/hint_thaw");
+		cgs.media.iceblockModel = trap_R_RegisterModel("models/iceblock");
+	}
 
 	cgs.media.healthstationIcon = trap_R_RegisterShaderNoMip("icons/healthstation");
 

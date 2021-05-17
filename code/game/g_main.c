@@ -91,6 +91,14 @@ vmCvar_t nextmapBackUp;
 vmCvar_t g_transmitSVboastermissiles;
 vmCvar_t g_suddenDeath;
 
+// freezetag
+vmCvar_t g_ft_numRounds;
+vmCvar_t g_ft_playAllRounds;
+vmCvar_t g_ft_lateJoinTime;
+vmCvar_t g_ft_useWeaponSet;
+vmCvar_t g_ft_weaponSetAmmoRatio;
+vmCvar_t g_ft_debug;
+
 // Modifiers
 vmCvar_t g_modInstagib;
 vmCvar_t g_modInstagib_WeaponJump;
@@ -185,6 +193,13 @@ static cvarTable_t gameCvarTable[] = {
 	{&g_modInstagib, "g_instaPad", "0", CVAR_SERVERINFO | CVAR_LATCH | CVAR_ARCHIVE, 0, qtrue},
 	// TODO: Either rename again or allow instapad-weaponjump in non-instapad gameplay :)
 	{&g_modInstagib_WeaponJump, "g_weaponJump", "1", CVAR_ARCHIVE, 0, qtrue},
+
+	{&g_ft_numRounds, "g_ft_numRounds", "3", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse},
+	{&g_ft_playAllRounds, "g_ft_playAllRounds", "0", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse},
+	{&g_ft_lateJoinTime, "g_FT_lateJoinTime", "30", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse},
+	{&g_ft_useWeaponSet, "g_FT_useWeaponSet", "0", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse}, // freezetag
+	{&g_ft_weaponSetAmmoRatio, "g_FT_weaponSetAmmoRatio", "0.5", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse},
+	{&g_ft_debug, "g_FT_debug", "0", 0, 0, qfalse},
 
 	{NULL, PLAYERINFO_TEAM, PLAYERINFO_NONE, (CVAR_SERVERINFO | CVAR_ROM), 0, qfalse},
 	{NULL, PLAYERINFO_BOT, PLAYERINFO_NONE, (CVAR_SERVERINFO | CVAR_ROM), 0, qfalse},
@@ -479,6 +494,11 @@ static void G_InitGame(int levelTime, int randomSeed, int restart) {
 	// make sure we have flags for CTF, etc
 	if (g_gametype.integer >= GT_TEAM) {
 		G_CheckTeamItems();
+	}
+
+	// freezetag
+	if (G_FreezeTag()) {
+		FT_InitFreezeTag();
 	}
 
 	SaveRegisteredItems();
@@ -982,6 +1002,9 @@ void CalculateRanks(void) {
 		}
 	}
 
+	if (G_FreezeTag())
+		FT_CalculateRoundScores();
+
 	// see if it is time to end the level
 	CheckExitRules();
 
@@ -1153,8 +1176,34 @@ void ExitLevel(void) {
 		return;
 	}
 
-	trap_SendConsoleCommand(EXEC_APPEND, "vstr nextmap\n");
+	if (G_FreezeTag()) {
+		char mapname[256];
+		char info[1024];
 
+		trap_GetServerinfo(info, sizeof(info));
+		Q_strncpyz(mapname, Info_ValueForKey(info, "mapname"), sizeof(mapname));
+
+		// save rounds status
+		trap_Cvar_Set("ftrounds", va("played:%i:redwins:%i:bluewins:%i:map:%s", level.ftNumRoundsPlayed,
+									 level.ftNumRoundsWon[TEAM_RED], level.ftNumRoundsWon[TEAM_BLUE], mapname));
+	}
+
+	if (G_FreezeTag() && !level.allRoundsPlayed) {
+		if (!level.restarted) {
+			trap_SendConsoleCommand(EXEC_APPEND, "map_restart 0\n");
+			level.restarted = qtrue;
+			level.changemap = NULL;
+			level.intermissiontime = 0;
+		}
+		return; // freezetag round ended
+	}
+
+	if (G_FreezeTag()) {
+		// clear rounds status
+		trap_Cvar_Set("ftrounds", va("played:%i:redwins:%i:bluewins:%i:map:%s", 0, 0, 0, ""));
+	}
+
+	trap_SendConsoleCommand(EXEC_APPEND, "vstr nextmap\n");
 	level.changemap = NULL;
 	level.intermissiontime = 0;
 
@@ -1413,7 +1462,7 @@ static void CheckExitRules(void) {
 		return;
 
 	// check for sudden death
-	if (g_suddenDeath.integer && ScoreIsTied()) {
+	if (g_suddenDeath.integer && ScoreIsTied() && !G_FreezeTag()) {
 		// always wait for sudden death
 		return;
 	}
@@ -1476,6 +1525,81 @@ static void CheckExitRules(void) {
 			}
 
 			LogExit("Pointlimit hit.");
+			return;
+		}
+	} else if (G_FreezeTag()) {
+		int numRounds;
+		int thisRoundWinner = 0;
+		int allRoundsWinner = 0;
+
+		numRounds = g_ft_numRounds.integer;
+
+		// if the teams have players, check if anyone won yet ;)
+		if (TeamCount(-1, TEAM_BLUE) >= 1 && TeamCount(-1, TEAM_RED) >= 1) {
+			if (FT_WholeTeamIsFrozen(TEAM_RED)) {
+				thisRoundWinner = TEAM_BLUE;
+				level.ftNumRoundsWon[TEAM_BLUE]++;
+			} else if (FT_WholeTeamIsFrozen(TEAM_BLUE)) {
+				thisRoundWinner = TEAM_RED;
+				level.ftNumRoundsWon[TEAM_RED]++;
+			}
+		}
+		if (!thisRoundWinner)
+			return; // no winner for the round yet
+
+		level.ftNumRoundsPlayed++;
+
+		if (g_ft_playAllRounds.integer) {
+			// We will  play all rounds regardless if it's mathematically
+			// impossible for one of the teams to still win.
+			if (level.ftNumRoundsPlayed >= numRounds) {
+				level.allRoundsPlayed = qtrue;
+
+				// check who gets ZHE PRIZE!!11oneone
+				allRoundsWinner =
+					level.ftNumRoundsWon[TEAM_BLUE] > level.ftNumRoundsWon[TEAM_RED] ? TEAM_BLUE : TEAM_RED;
+			}
+		} else {
+			// check if one team has won enough rounds so that the other can't
+			// possible catch up within the maximum number of rounds
+			int minWins;
+
+			minWins = (numRounds / 2) + 1;
+
+			if (level.ftNumRoundsWon[TEAM_RED] >= minWins) {
+				level.allRoundsPlayed = qtrue;
+				allRoundsWinner = TEAM_RED;
+			} else if (level.ftNumRoundsWon[TEAM_BLUE] >= minWins) {
+				level.allRoundsPlayed = qtrue;
+				allRoundsWinner = TEAM_BLUE;
+			}
+		}
+
+		if (level.allRoundsPlayed) {
+			// All rounds are over, announce the overall winner and exit
+
+			FT_CalculateRoundScores();
+
+			if (allRoundsWinner == TEAM_BLUE)
+				trap_SendServerCommand(-1, va("print \"^4Blue^7 wins the game. With %i Rounds of %i total.\n\"",
+											  level.teamScores[TEAM_BLUE], numRounds));
+			else
+				trap_SendServerCommand(-1, va("print \"^1Red^7 wins the game. With %i Rounds of %i total.\n\"",
+											  level.teamScores[TEAM_RED], numRounds));
+
+			LogExit("AllRoundsPlayed");
+			return;
+		} else if (thisRoundWinner) {
+			// This round ended announce the winner and exit
+
+			FT_CalculateRoundScores();
+
+			if (thisRoundWinner == TEAM_BLUE)
+				trap_SendServerCommand(-1, va("print \"^4Blue^7 wins this round.\n\""));
+			else
+				trap_SendServerCommand(-1, va("print \"^1Red^7 wins this round.\n\""));
+
+			LogExit("FreezeTag round ended.");
 			return;
 		}
 	} else if (g_gametype.integer < GT_CTF && g_fraglimit.integer) {
@@ -1611,6 +1735,15 @@ static void CheckTournament(void) {
 			}
 		} else if (level.numPlayingClients < 2) {
 			notEnough = qtrue;
+		}
+
+		if (G_FreezeTag()) {
+			counts[TEAM_BLUE] = TeamCount(-1, TEAM_BLUE);
+			counts[TEAM_RED] = TeamCount(-1, TEAM_RED);
+
+			if (counts[TEAM_RED] < 1 || counts[TEAM_BLUE] < 1) {
+				notEnough = qtrue;
+			}
 		}
 
 		if (notEnough) {

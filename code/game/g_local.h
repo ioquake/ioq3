@@ -84,6 +84,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define SCORE_SPRAY_S "spray"
 #define SCORE_SPRAY_WRONGWALL_S "spray_wrongwall"
 #define SCORE_TARGET_SCORE_S "target_score"
+#define SCORE_FROZEN_S "frozen"
+#define SCORE_THAWED_S "thawed"
 
 #define SCORE_BONUS_FRAG_CARRIER_S "frag_carrier"
 #define SCORE_BONUS_CARRIER_PROTECT_S "carrier_protect"
@@ -298,6 +300,8 @@ typedef struct {
 	int voteCount;				 // to prevent people from constantly calling votes
 	int teamVoteCount;			 // to prevent people from constantly calling votes
 	qboolean teamInfo;			 // send team overlay updates?
+	qboolean frozen;
+	qboolean ftLateJoin;
 } clientPersistant_t;
 
 // this structure is cleared on each ClientSpawn(),
@@ -387,6 +391,11 @@ struct gclient_s {
 	int dropTime;
 
 	int powerupsBackpack[MAX_POWERUPS];
+	qboolean frozen;
+	vec3_t freezePos;
+	int freezeTime;
+	int freezeCount;
+	int lastProgressTime;
 };
 
 //
@@ -487,6 +496,16 @@ typedef struct {
 	vec3_t cam_spawnangles;
 	int numBambams[TEAM_NUM_TEAMS];
 	int numBoomies[TEAM_NUM_TEAMS];
+
+	// freezetag
+	int ftWeaponSet; // weapon set handed out at client spawn
+	int ftWeaponSetAmmo[WP_NUM_WEAPONS];
+	float ftWeaponSetAmmoRatio; // ratio of ammo pickup to initial fill
+
+	int ftNumRoundsPlayed;
+	int ftNumRoundsWon[TEAM_NUM_TEAMS];
+
+	qboolean allRoundsPlayed;
 } level_locals_t;
 
 //
@@ -754,6 +773,26 @@ void G_InitWorldSession(void);
 void G_WriteSessionData(void);
 
 //
+//	g_freezetag
+//
+qboolean G_FreezeTag(void);
+void FT_InitFreezeTag(void);
+void FT_CalculateRoundScores(void);
+qboolean FT_PlayerIsFrozen(gentity_t *player);
+void FT_FreezePlayer(gentity_t *player, gentity_t *other);
+void FT_ThawPlayer(gentity_t *player, gentity_t *other);
+gentity_t *FT_NearestFrozenPlayer(gentity_t *player);
+qboolean FT_InThawingRange(const gentity_t *player, const gentity_t *other);
+void FT_ProgressThawing(gentity_t *player, gentity_t *thawer);
+qboolean FT_WholeTeamIsFrozen(int team);
+void FT_AddStartWeapons(gclient_t *client);
+qboolean FT_MatchInProgress(void);
+qboolean FT_CanSwitchTeam(gentity_t *player, int team);
+qboolean FT_ClientIsFrozen(const gclient_t *client);
+void FT_RelocateToNearestSpawnPoint(gentity_t *player);
+void FT_AddAmmo(gentity_t *player);
+
+//
 // g_arenas.c
 //
 void UpdateTournamentInfo(void);
@@ -886,6 +925,14 @@ extern vmCvar_t g_LPS_startlives;
 extern vmCvar_t g_LPS_flags;
 extern vmCvar_t g_KillerduckHealth;
 extern vmCvar_t g_transmitSVboastermissiles;
+
+// freezetag
+extern vmCvar_t g_ft_numRounds;
+extern vmCvar_t g_ft_playAllRounds;
+extern vmCvar_t g_ft_lateJoinTime;
+extern vmCvar_t g_ft_useWeaponSet;
+extern vmCvar_t g_ft_weaponSetAmmoRatio;
+extern vmCvar_t g_ft_debug;
 
 // Modifiers
 extern vmCvar_t g_modInstagib;

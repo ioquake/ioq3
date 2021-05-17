@@ -1747,17 +1747,29 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 							 0, LEF_GRAVITY, 0);
 		break;
 	case WP_BETTY:
-		mod = cgs.media.dishFlashModel;
+		if (!CG_FreezeTag()) {
+			mod = cgs.media.dishFlashModel;
+		}
 		shader = cgs.media.rocketExplosionShader;
 		sfx = cgs.media.BettyExplosion;
-		mark = cgs.media.burnMarkShader;
+		if (CG_FreezeTag()) {
+			mark = cgs.media.snowMarkShader;
+		} else {
+			mark = cgs.media.burnMarkShader;
+		}
 		radius = 64;
 		light = 300;
 		isSprite = qtrue;
 		duration = 1000;
-		lightColor[0] = 1;
-		lightColor[1] = 0.75;
-		lightColor[2] = 0.0;
+		if (CG_FreezeTag()) {
+			lightColor[0] = 0.0f;
+			lightColor[1] = 0.2f;
+			lightColor[2] = 1.0f;
+		} else {
+			lightColor[0] = 1;
+			lightColor[1] = 0.75;
+			lightColor[2] = 0.0;
+		}
 		VectorSet(sprVel, 0, 0, 400);
 		CG_GenerateParticles(cgs.media.fireDropModel, 0, origin, 16, sprVel, 120, 250, 30, 0, cg.time, 700, 400, 0, 0,
 							 0, 0, LEF_GRAVITY | LEF_COLLISIONS, 0);
@@ -1783,7 +1795,11 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 		break;
 	case WP_BUBBLEG:
 		// HERBY: Bubble G
-		mark = cgs.media.gumMarkShader;
+		if (CG_FreezeTag()) {
+			mark = cgs.media.snowMarkShader;
+		} else {
+			mark = cgs.media.gumMarkShader;
+		}
 		radius = 24;
 		mod = 0;
 		shader = 0;
@@ -1794,7 +1810,7 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 		le->leType = LE_IMPERIUSBOOM;
 		le->startTime = cg.time;
 		le->endTime = cg.time + 1000;
-		le->lifeRate = 1.0 / (le->endTime - le->startTime);
+		le->lifeRate = 1.0f / (le->endTime - le->startTime);
 		le->radius = rand();
 		VectorMA(origin, 16, dir, le->refEntity.origin);
 		VectorSet(le->angles.trBase, 360 * crandom(), 360 * crandom(), 360 * crandom());
@@ -1810,7 +1826,11 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 		mod = cgs.media.pumperFlashModel;
 		//		shader = cgs.media.railExplosionShader;
 		sfx = cgs.media.pumperexpSound;
-		mark = cgs.media.burnMarkShader;
+		if (CG_FreezeTag()) {
+			mark = cgs.media.snowMarkShader;
+		} else {
+			mark = cgs.media.burnMarkShader;
+		}
 		radius = 24;
 		break;
 
@@ -1820,7 +1840,7 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 		mark = cgs.media.burnMarkShader;
 		radius = 4;
 		break;
-		//	case WP_SPRAYPISTOL://noch mal drüber nachdenken ... eigentlich brauch ich keine explosion
+		//	case WP_SPRAYPISTOL://noch mal drueber nachdenken ... eigentlich brauch ich keine explosion
 		//		break;
 	case WP_KILLERDUCKS:
 		mod = cgs.media.dishFlashModel;
@@ -1877,7 +1897,11 @@ void CG_MissileHitWall(int weapon, int clientNum, vec3_t origin, vec3_t dir, int
 		float *color;
 
 		// colorize with client color
-		color = g_color_table[colorCode]; // HERBY
+		if (CG_FreezeTag()) {
+			color = g_color_table[ColorIndex(COLOR_WHITE)];
+		} else {
+			color = g_color_table[colorCode]; // HERBY
+		}
 
 		CG_ImpactMark(mark, origin, dir, random() * 360, color[0], color[1], color[2], 1, alphaFade, radius, qfalse);
 	} else {

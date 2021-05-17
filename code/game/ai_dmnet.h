@@ -41,6 +41,7 @@ void AIEnter_Battle_Fight(bot_state_t *bs, char *s);
 void AIEnter_Battle_Chase(bot_state_t *bs, char *s);
 void AIEnter_Battle_Retreat(bot_state_t *bs, char *s);
 void AIEnter_Battle_NBG(bot_state_t *bs, char *s);
+void AIEnter_Respawn(bot_state_t *bs, char *s);
 int AINode_Respawn(bot_state_t *bs);
 int AINode_Seek_ActivateEntity(bot_state_t *bs);
 int AINode_Seek_NBG(bot_state_t *bs);

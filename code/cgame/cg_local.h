@@ -408,6 +408,8 @@ typedef struct {
 
 	qboolean glowModel;
 	byte glowColor[4];
+
+	qboolean ftIsFrozen;
 } clientInfo_t;
 
 // each WP_* weapon enum has an associated weaponInfo_t
@@ -763,6 +765,10 @@ typedef struct {
 	qhandle_t BerserkerScreenShader;
 	qhandle_t WetScreenShader;
 
+	// freezetag
+	qhandle_t FreezeScreenShader;
+	qhandle_t iceblockModel;
+
 	qhandle_t tracerShader;
 	qhandle_t crosshairShader[NUM_CROSSHAIRS];
 	qhandle_t lagometerShader;
@@ -791,6 +797,11 @@ typedef struct {
 
 	// powerup shaders
 	qhandle_t invisShader;
+
+	// freezetag
+	qhandle_t snowMarkShader;
+	qhandle_t freezeIconShader;
+	qhandle_t thawIcon;
 
 	qhandle_t lpsIcon;
 	qhandle_t lpsIconLead;
@@ -1360,6 +1371,9 @@ extern vmCvar_t cg_ambient;
 
 extern vmCvar_t cg_icons;
 
+extern vmCvar_t cg_ft_thawerIconX;
+extern vmCvar_t cg_ft_thawerIconY;
+
 //
 // cg_main.c
 //
@@ -1633,6 +1647,13 @@ void Main_SpriteParticles(void);
 // wop_advanced2d.c
 //
 #include "wopc_advanced2d.h"
+
+//
+// cg_freezetag.c
+//
+qboolean CG_FreezeTag(void);
+qboolean FT_LocalIsFrozen(void);
+qboolean FT_PlayerIsFrozen(centity_t *cent);
 
 //
 // cg_cutscene2d.c

@@ -65,6 +65,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define LTG_PICKUPFLAG 20
 #define LTG_PLANTBOOMIE 21
 #define LTG_PLANTBAMBAM 22
+#define LTG_UNFREEZE 23
 
 // some goal dedication times
 
@@ -80,6 +81,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define RUSHBASE_TIME 120		// 2 minutes
 #define CTF_RUSHBASE_TIME 120	// 2 minutes ctf rush base time
 #define CTF_RETURNFLAG_TIME 180 // 3 minutes to return the flag
+#define TEAM_UNFREEZETIME 120
 
 #define PUSHCART_DIST 160
 
@@ -297,6 +299,7 @@ typedef struct bot_state_s {
 	//	float askteamleader_time;						//time asked for team leader
 	//	float becometeamleader_time;					//time the bot will become the team leader
 	//	float teamgiveorders_time;						//time to give team orders
+	int freezecheck_time;
 	int numteammates; // number of team mates
 	int forceorders;  // true if forced to give orders
 	int flagcarrier;  // team mate carrying the enemy flag

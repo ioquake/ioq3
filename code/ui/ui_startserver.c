@@ -96,14 +96,14 @@ typedef struct {
 static startserver_t s_startserver;
 
 // NOTE: The different order is intentional, thus the remapping
-static const char *gametype_items[] = {
-	GAMETYPE_NAME(GT_SPRAYFFA), GAMETYPE_NAME(GT_SPRAY), GAMETYPE_NAME(GT_CTF),	 GAMETYPE_NAME(GT_BALLOON),
-	GAMETYPE_NAME(GT_LPS),		GAMETYPE_NAME(GT_FFA),	 GAMETYPE_NAME(GT_TEAM), NULL};
+static const char *gametype_items[] = {GAMETYPE_NAME(GT_SPRAYFFA), GAMETYPE_NAME(GT_SPRAY),		GAMETYPE_NAME(GT_CTF),
+									   GAMETYPE_NAME(GT_BALLOON),  GAMETYPE_NAME(GT_LPS),		GAMETYPE_NAME(GT_FFA),
+									   GAMETYPE_NAME(GT_TEAM),	   GAMETYPE_NAME(GT_FREEZETAG), NULL};
 
-static int gametype_remap[] = {GT_SPRAYFFA, GT_SPRAY, GT_CTF, GT_BALLOON, GT_LPS, GT_FFA, GT_TEAM};
+static int gametype_remap[] = {GT_SPRAYFFA, GT_SPRAY, GT_CTF, GT_BALLOON, GT_LPS, GT_FFA, GT_TEAM, GT_FREEZETAG};
 // NOTE: Maps g_gametype to gametype_items. Make sure these are defined for all GT_MAX_GAME_TYPE-1 gametypes
 //       and remap to something reasonable for gametypes that do not have an entry in gametype_items.
-static int gametype_remap2[] = {5, 5, 5, 0, 4, 6, 2, 1, 3};
+static int gametype_remap2[] = {5, 5, 5, 0, 4, 6, 2, 1, 3, 3};
 static const char *teamstrs[] = {"free", "Red", "Blue", "spectator", 0};
 
 // static void UI_ServerOptionsMenu( qboolean multiplayer );
@@ -126,7 +126,7 @@ static int GametypeBits(const char *string) {
 			break;
 		}
 
-		if (Q_stricmp(token, "ffa") == 0) {
+		if (Q_stricmp(token, GAMETYPE_NAME_SHORT(GT_FFA)) == 0) {
 			bits |= 1 << GT_FFA;
 			continue;
 		}
@@ -143,10 +143,16 @@ static int GametypeBits(const char *string) {
 
 		if (Q_stricmp(token, "team") == 0) {
 			bits |= 1 << GT_TEAM;
+			bits |= 1 << GT_FREEZETAG;
 			continue;
 		}
 
-		if (Q_stricmp(token, "ctf") == 0 || Q_stricmp(token, "ctl") == 0) {
+		if (Q_stricmp(token, GAMETYPE_NAME_SHORT(GT_FREEZETAG)) == 0) {
+			bits |= 1 << GT_FREEZETAG;
+			continue;
+		}
+
+		if (Q_stricmp(token, "ctf") == 0 || Q_stricmp(token, GAMETYPE_NAME_SHORT(GT_CTF)) == 0) {
 			bits |= 1 << GT_CTF;
 			continue;
 		}
@@ -158,11 +164,11 @@ static int GametypeBits(const char *string) {
 			bits |= 1 << GT_SPRAY;
 			continue;
 		}
-		if (Q_stricmp(token, "LPS") == 0) {
+		if (Q_stricmp(token, GAMETYPE_NAME_SHORT(GT_LPS)) == 0) {
 			bits |= 1 << GT_LPS;
 			continue;
 		}
-		if (Q_stricmp(token, "BB") == 0) {
+		if (Q_stricmp(token, GAMETYPE_NAME_SHORT(GT_BALLOON)) == 0) {
 			bits |= 1 << GT_BALLOON;
 			continue;
 		}

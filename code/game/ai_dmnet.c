@@ -77,7 +77,7 @@ int BotClientTravelTimeToGoal(int client, bot_goal_t *goal) {
 	return trap_AAS_AreaTravelTimeToGoalArea(areanum, ps.origin, goal->areanum, TFL_DEFAULT);
 }
 
-static int BotGetTeammates(bot_state_t *bs, int *teammates, int maxteammates) {
+int BotGetTeammates(bot_state_t *bs, int *teammates, int maxteammates) {
 	int i, numteammates;
 	char buf[MAX_INFO_STRING];
 	static int maxclients;
@@ -651,6 +651,46 @@ static int BotGetLongTermGoal(bot_state_t *bs, int tfl, int retreat, bot_goal_t 
 			}
 		}
 		memcpy(goal, &bs->teamgoal, sizeof(*goal));
+		return qtrue;
+	}
+	if (bs->ltgtype == LTG_UNFREEZE) {
+		gentity_t *mate = &g_entities[bs->teammate];
+		bot_goal_t mategoal;
+
+		// time up?
+		if (bs->teamgoal_time < FloatTime()) {
+			bs->ltgtype = 0;
+			return qfalse;
+		}
+		// mate unfrozen already?
+		if (!FT_PlayerIsFrozen(mate)) {
+			bs->ltgtype = 0;
+			return qfalse;
+		}
+
+		// create goal from mate position
+		VectorCopy(mate->r.currentOrigin, mategoal.origin);
+		mategoal.areanum = trap_AAS_PointAreaNum(mategoal.origin);
+		VectorSet(mategoal.mins, -10, -10, -10);
+		VectorSet(mategoal.maxs, 10, 10, 10);
+		if (!mategoal.areanum) {
+			bs->ltgtype = 0;
+			return qfalse;
+		}
+
+		if (FT_InThawingRange(&g_entities[bs->client], mate)) {
+			// camp
+			// G_Printf("camping \n");
+			VectorCopy(bs->origin, goal->origin);
+			goal->areanum = BotPointAreaNum(bs->origin);
+			VectorSet(goal->mins, -8, -8, -8);
+			VectorSet(goal->maxs, 8, 8, 8);
+			return qtrue;
+		} else {
+			memcpy(goal, &mategoal, sizeof(bot_goal_t));
+			// G_Printf("moving, tt is %d \n", trap_AAS_AreaTravelTimeToGoalArea(bs->areanum, bs->origin, goal->areanum,
+			// TFL_DEFAULT) );
+		}
 		return qtrue;
 	}
 	// if the bot accompanies someone
@@ -1493,6 +1533,41 @@ static int AINode_Stand(bot_state_t *bs) {
 	return qtrue;
 }
 
+int AINode_Frozen(bot_state_t *bs) {
+	if (BotIsObserver(bs)) {
+		AIEnter_Observer(bs, "frozen: observer");
+		return qfalse;
+	}
+	// if in the intermission
+	if (BotIntermission(bs)) {
+		AIEnter_Intermission(bs, "frozen: intermision");
+		return qfalse;
+	}
+	// respawn if dead
+	if (BotIsDead(bs)) {
+		AIEnter_Respawn(bs, "frozen: bot dead");
+		return qfalse;
+	}
+	// unfrozen?
+	if (!FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnter_Seek_LTG(bs, "frozen: unfrozen");
+		return qfalse;
+	}
+
+	if (bs->teammessage_time < level.time) {
+		// use trap_InitialChat and AIEnterStand instead?
+		trap_EA_SayTeam(bs->client, "help me, i'm frozen.\n");
+		bs->teammessage_time = level.time + 20000 + 10000 * random();
+	}
+	return qtrue;
+}
+
+void AIEnterFrozen(bot_state_t *bs, char *s) {
+	BotRecordNodeSwitch(bs, "frozen", "", s);
+	bs->ainode = AINode_Frozen;
+	bs->teammessage_time = 0;
+}
+
 /*
 ==================
 AIEnter_Stand
@@ -1509,7 +1584,7 @@ void AIEnter_Stand(bot_state_t *bs, char *s) {
 AIEnter_Respawn
 ==================
 */
-static void AIEnter_Respawn(bot_state_t *bs, char *s) {
+void AIEnter_Respawn(bot_state_t *bs, char *s) {
 	BotRecordNodeSwitch(bs, "respawn", "", s);
 	// reset some states
 	trap_BotResetMoveState(bs->ms);
@@ -1626,6 +1701,10 @@ int AINode_Seek_ActivateEntity(bot_state_t *bs) {
 	if (BotIsDead(bs)) {
 		BotClearActivateGoalStack(bs);
 		AIEnter_Respawn(bs, "activate entity: bot dead");
+		return qfalse;
+	}
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
 		return qfalse;
 	}
 	//
@@ -1842,6 +1921,10 @@ int AINode_Seek_NBG(bot_state_t *bs) {
 	// respawn if dead
 	if (BotIsDead(bs)) {
 		AIEnter_Respawn(bs, "seek nbg: bot dead");
+		return qfalse;
+	}
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
 		return qfalse;
 	}
 	//
@@ -2180,6 +2263,11 @@ int AINode_Seek_LTG(bot_state_t *bs) {
 		AIEnter_Intermission(bs, "seek ltg: intermission");
 		return qfalse;
 	}
+
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
+		return qfalse;
+	}
 	// respawn if dead
 	if (BotIsDead(bs)) {
 		AIEnter_Respawn(bs, "seek ltg: bot dead");
@@ -2251,6 +2339,8 @@ int AINode_Seek_LTG(bot_state_t *bs) {
 
 		if (bs->ltgtype == LTG_DEFENDKEYAREA)
 			range = 400;
+		else if (bs->ltgtype == LTG_UNFREEZE)
+			range = 50;
 		else
 			range = 150;
 
@@ -2399,7 +2489,10 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 		AIEnter_Respawn(bs, "battle fight: bot dead");
 		return qfalse;
 	}
-
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
+		return qfalse;
+	}
 	if (BotCheckChargedImp(bs)) {
 		return qtrue;
 	}
@@ -2576,6 +2669,10 @@ int AINode_Battle_Chase(bot_state_t *bs) {
 		AIEnter_Respawn(bs, "battle chase: bot dead");
 		return qfalse;
 	}
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
+		return qfalse;
+	}
 	// if no enemy
 	if (bs->enemy < 0 || BotNmyTurnedInvalid(bs)) {
 		AIEnter_Seek_LTG(bs, "battle chase: no enemy");
@@ -2734,7 +2831,10 @@ int AINode_Battle_Retreat(bot_state_t *bs) {
 		AIEnter_Respawn(bs, "battle retreat: bot dead");
 		return qfalse;
 	}
-
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
+		return qfalse;
+	}
 	if (BotCheckChargedImp(bs)) {
 		return qtrue;
 	}
@@ -2880,6 +2980,11 @@ int AINode_Battle_Retreat(bot_state_t *bs) {
 		} else {
 			trap_BotMoveToGoal(&moveresult, bs->ms, &goal, bs->tfl);
 		}
+	} else if (bs->ltgtype == LTG_UNFREEZE) {
+		if (FT_InThawingRange(&g_entities[bs->client], &g_entities[bs->teammate]))
+			moveresult = BotAttackMove(bs, bs->tfl);
+		else
+			trap_BotMoveToGoal(&moveresult, bs->ms, &goal, bs->tfl);
 	} else {
 		// move towards the goal
 		trap_BotMoveToGoal(&moveresult, bs->ms, &goal, bs->tfl);
@@ -2958,6 +3063,10 @@ int AINode_Battle_NBG(bot_state_t *bs) {
 	// respawn if dead
 	if (BotIsDead(bs)) {
 		AIEnter_Respawn(bs, "battle nbg: bot dead");
+		return qfalse;
+	}
+	if (FT_PlayerIsFrozen(&g_entities[bs->client])) {
+		AIEnterFrozen(bs, "seek ltg: frozen");
 		return qfalse;
 	}
 

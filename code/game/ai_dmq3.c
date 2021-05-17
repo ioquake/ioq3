@@ -62,6 +62,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define IDEAL_ATTACKDIST 140
 
 float scorealert[3]; // for both teams, how alarming the current situation is
+extern bot_state_t *botstates[MAX_CLIENTS];
+int BotGetTeammates(bot_state_t *bs, int *teammates, int maxteammates);
 
 //
 
@@ -513,7 +515,7 @@ qboolean BotPickBestBalloonGoal(bot_state_t *bs) {
 	return qtrue;
 }
 
-void BotBalloonSeekGoals(bot_state_t *bs) {
+static void BotBalloonSeekGoals(bot_state_t *bs) {
 	vec3_t dir;
 
 	// dont go for balloon as long as bad equiped
@@ -551,6 +553,89 @@ void BotBalloonSeekGoals(bot_state_t *bs) {
 			}
 		}
 	}
+}
+
+static qboolean PlayerRescuesPlayer(int helper_id, int frozen_id) {
+	gentity_t *helper = &g_entities[helper_id];
+	bot_state_t *bs;
+
+	if (!(helper->r.svFlags & SVF_BOT))
+		return qfalse;
+
+	if (FT_PlayerIsFrozen(helper))
+		return qfalse;
+
+	bs = botstates[helper_id];
+	if (bs->ltgtype != LTG_UNFREEZE)
+		return qfalse;
+
+	return (bs->teammate == frozen_id);
+}
+
+static void BotFreezeTagSeekGoals(bot_state_t *bs) {
+	int mates[MAX_CLIENTS], frozenmates[MAX_CLIENTS];
+	int nummates, numfrozen = 0;
+	int i, j, pick;
+	int matearea;
+	qboolean getting_rescued;
+	char buf[128];
+
+	// no freeze -> no team goals
+	if (!G_FreezeTag())
+		return;
+
+	if (bs->ltgtype == LTG_UNFREEZE)
+		return;
+
+	if (bs->freezecheck_time > level.time)
+		return;
+
+	bs->freezecheck_time = level.time + 1000 + 2000 * random();
+
+	nummates = BotGetTeammates(bs, mates, sizeof(mates));
+	// filter the frozen mates
+	for (i = 0; i < nummates; i++) {
+		if (mates[i] == bs->client)
+			continue;
+		if (!FT_PlayerIsFrozen(&g_entities[mates[i]]))
+			continue;
+
+		// see if the mate is getting rescued already. if so, ignore him
+		getting_rescued = qfalse;
+		for (j = 0; j < nummates; j++) {
+			if (mates[j] == bs->client)
+				continue;
+			if (PlayerRescuesPlayer(mates[j], mates[i])) {
+				getting_rescued = qtrue;
+				break;
+			}
+		}
+		if (getting_rescued)
+			continue;
+
+		// can the mate be reached by bots?
+		matearea = trap_AAS_PointAreaNum(g_entities[mates[i]].r.currentOrigin);
+		if (!matearea)
+			continue;
+
+		frozenmates[numfrozen++] = mates[i];
+	}
+
+	if (!numfrozen) {
+		return;
+	}
+
+	pick = random() * numfrozen;
+	if (pick == numfrozen)
+		pick--;
+
+	bs->ltgtype = LTG_UNFREEZE;
+	bs->teammate = frozenmates[pick];
+	bs->teamgoal_time = FloatTime() + TEAM_UNFREEZETIME;
+
+	// tell the mate you are on the way
+	trap_EA_Command(bs->client, va("tell %d Keep cool %s, i'm on my way!\n", bs->teammate,
+								   EasyClientName(bs->teammate, buf, sizeof(buf))));
 }
 
 qboolean BotWantsCarts(bot_state_t *bs, int *mate) {
@@ -1001,6 +1086,8 @@ void BotTeamGoals(bot_state_t *bs, int retreat) {
 		BotCtfSeekGoals(bs);
 	} else if (gametype == GT_BALLOON) {
 		BotBalloonSeekGoals(bs);
+	} else if (gametype == GT_FREEZETAG) {
+		BotFreezeTagSeekGoals(bs);
 	} else if (gametype == GT_SPRAY || gametype == GT_SPRAYFFA) {
 		if (retreat) {
 			BotSyCRetreatGoals(bs);
@@ -1635,6 +1722,10 @@ int BotWantsToRetreat(bot_state_t *bs) {
 		if (bs->ltgtype == LTG_CAPTUREFLAG || bs->ltgtype == LTG_GETFLAG || bs->ltgtype == LTG_PICKUPFLAG) {
 			return qtrue;
 		}
+	} else if (gametype == GT_FREEZETAG) {
+		if (bs->ltgtype == LTG_UNFREEZE) {
+			return qtrue;
+		}
 	} else if (gametype == GT_BALLOON) {
 		if (bs->ltgtype == LTG_ATTACKENEMYBASE)
 			return qtrue;
@@ -1681,6 +1772,10 @@ int BotWantsToChase(bot_state_t *bs) {
 
 	if (gametype == GT_CTF) {
 		if (bs->ltgtype == LTG_CAPTUREFLAG || bs->ltgtype == LTG_GETFLAG || bs->ltgtype == LTG_PICKUPFLAG) {
+			return qfalse;
+		}
+	} else if (gametype == GT_FREEZETAG) {
+		if (bs->ltgtype == LTG_UNFREEZE) {
 			return qfalse;
 		}
 	} else if (gametype == GT_BALLOON) {

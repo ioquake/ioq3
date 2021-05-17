@@ -348,9 +348,9 @@ UI_CallVote_DownEvent
 =================
 */
 // NOTE: Those are not all gametypes, this is intentional
-static const char *cvGametype_strs[] = {
-	GAMETYPE_NAME(GT_FFA), GAMETYPE_NAME(GT_SPRAYFFA), GAMETYPE_NAME(GT_LPS),	  GAMETYPE_NAME(GT_TEAM),
-	GAMETYPE_NAME(GT_CTF), GAMETYPE_NAME(GT_SPRAY),	   GAMETYPE_NAME(GT_BALLOON), NULL};
+static const char *cvGametype_strs[] = {GAMETYPE_NAME(GT_FFA),	 GAMETYPE_NAME(GT_SPRAYFFA),  GAMETYPE_NAME(GT_LPS),
+										GAMETYPE_NAME(GT_TEAM),	 GAMETYPE_NAME(GT_FREEZETAG), GAMETYPE_NAME(GT_CTF),
+										GAMETYPE_NAME(GT_SPRAY), GAMETYPE_NAME(GT_BALLOON),	  NULL};
 
 static void UI_CallVote_CVType(void *unused, int event) {
 	char info[MAX_INFO_STRING];

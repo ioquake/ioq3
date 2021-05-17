@@ -100,6 +100,10 @@ static void CG_DrawClientScore(int y, score_t *score, float *color, float fade, 
 	iconx = SB_BOTICON_X + (SB_RATING_WIDTH / 2);
 	headx = SB_HEAD_X + (SB_RATING_WIDTH / 2);
 
+	// freeze icon indicating frozen player
+	if (CG_FreezeTag() && ci->powerups & (1 << PW_FREEZE)) {
+		CG_DrawPic(iconx, icony, lineHeight * 0.8, lineHeight * 0.8, cgs.media.freezeIconShader);
+	} else
 	// draw the handicap or bot skill marker (unless player has lolly)
 	if (ci->powerups & (1 << PW_REDFLAG)) {
 		if (cg_drawIcons.integer) {
@@ -377,13 +381,28 @@ qboolean CG_DrawOldScoreboard(void) {
 	} else {
 		// FIXME: Use some sort of team_t define/enum
 		if (cg.teamScores[0] == cg.teamScores[1]) {
-			s = va(S_COLOR_BLACK "Teams are tied at %i", cg.teamScores[0]);
+			if (CG_FreezeTag())
+				s = va(S_COLOR_BLACK "Teams are tied at %i rounds", cg.teamScores[0]);
+			else
+				s = va(S_COLOR_BLACK "Teams are tied at %i", cg.teamScores[0]);
 		} else if (cg.teamScores[0] >= cg.teamScores[1]) {
-			s = va(S_COLOR_RED "Red" S_COLOR_BLACK " leads " S_COLOR_RED "%i" S_COLOR_BLACK " to " S_COLOR_BLUE "%i",
-				   cg.teamScores[0], cg.teamScores[1]);
+			if (CG_FreezeTag())
+				s = va(S_COLOR_RED "Red" S_COLOR_BLACK " leads " S_COLOR_RED "%i" S_COLOR_BLACK " to " S_COLOR_BLUE
+								   "%i" S_COLOR_BLACK " rounds",
+					   cg.teamScores[0], cg.teamScores[1]);
+			else
+				s = va(S_COLOR_RED "Red" S_COLOR_BLACK " leads " S_COLOR_RED "%i" S_COLOR_BLACK " to " S_COLOR_BLUE
+								   "%i",
+					   cg.teamScores[0], cg.teamScores[1]);
 		} else {
-			s = va(S_COLOR_BLUE "Blue" S_COLOR_BLACK " leads " S_COLOR_BLUE "%i" S_COLOR_BLACK " to " S_COLOR_RED "%i",
-				   cg.teamScores[1], cg.teamScores[0]);
+			if (CG_FreezeTag())
+				s = va(S_COLOR_BLUE "Blue" S_COLOR_BLACK " leads " S_COLOR_BLUE "%i" S_COLOR_BLACK " to " S_COLOR_RED
+									"%i" S_COLOR_BLACK " rounds",
+					   cg.teamScores[1], cg.teamScores[0]);
+			else
+				s = va(S_COLOR_BLUE "Blue" S_COLOR_BLACK " leads " S_COLOR_BLUE "%i" S_COLOR_BLACK " to " S_COLOR_RED
+									"%i",
+					   cg.teamScores[1], cg.teamScores[0]);
 		}
 
 		w = (CG_DrawStrlen(s) * BIGCHAR_WIDTH);

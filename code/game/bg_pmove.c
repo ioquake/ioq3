@@ -1995,6 +1995,10 @@ void PmoveSingle(pmove_t *pmove) {
 		PM_DeadMove();
 	}
 
+	if (pm->ps->pm_type == PM_FROZEN) {
+		PM_DeadMove();
+	}
+
 	PM_DropTimers();
 
 	if (pm->ps->pm_flags & PMF_GRAPPLE_PULL) {
@@ -2019,6 +2023,10 @@ void PmoveSingle(pmove_t *pmove) {
 	// set groundentity, watertype, and waterlevel
 	PM_GroundTrace();
 	PM_SetWaterLevel();
+
+	// freezetag
+	if (pm->ps->pm_type == PM_FROZEN)
+		return;
 
 	// weapons
 	PM_Weapon();

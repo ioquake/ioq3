@@ -411,6 +411,15 @@ void Cmd_Noclip_f(gentity_t *ent) {
 	trap_SendServerCommand(ent - g_entities, va("print \"%s\"", msg));
 }
 
+void Cmd_Thaw_f(gentity_t *ent) {
+	if (!CheatsOk(ent)) {
+		return;
+	}
+
+	ent->client->freezeTime = level.time - 6000;
+	FT_ProgressThawing(ent, ent);
+}
+
 /*
 ==================
 Cmd_LevelShot_f
@@ -453,6 +462,12 @@ void Cmd_Kill_f(gentity_t *ent) {
 	if (ent->health <= 0) {
 		return;
 	}
+
+	if (G_FreezeTag()) {
+		FT_FreezePlayer(ent, ent);
+		return;
+	}
+
 	ent->flags &= ~FL_GODMODE;
 	ent->client->ps.stats[STAT_HEALTH] = ent->health = -999;
 	if (ent->client->lastSentFlying > -1) {
@@ -533,6 +548,15 @@ void SetTeam(gentity_t *ent, const char *s) {
 		} else {
 			// pick the team with the least number of players
 			team = PickTeam(clientNum);
+		}
+
+		// freezetag
+		if (G_FreezeTag()) {
+			if (!FT_CanSwitchTeam(ent, team))
+				return;
+
+			if (ent->client->sess.sessionTeam != team)
+				FT_ThawPlayer(ent, NULL);
 		}
 
 		if (g_teamForceBalance.integer && !client->pers.localClient && !(ent->r.svFlags & SVF_BOT)) {
@@ -1908,6 +1932,8 @@ void ClientCommand(int clientNum) {
 		Cmd_DropCartridge_f(ent);
 	else if (Q_stricmp(cmd, "editbotinv") == 0)
 		Cmd_EditBotInv_f(ent);
+	else if (Q_stricmp(cmd, "thaw") == 0)
+		Cmd_Thaw_f(ent);
 	else
 		trap_SendServerCommand(clientNum, va("print \"unknown cmd %s\n\"", cmd));
 }

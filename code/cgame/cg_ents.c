@@ -446,11 +446,17 @@ static void CG_Missile(centity_t *cent) {
 		ent.reType = RT_SPRITE;
 
 		ent.radius = 50;
+		if (CG_FreezeTag()) {
+			ent.radius = 25;
+		}
 		ent.rotation = 110;
 		ent.shaderTime = 0;
 		trap_R_AddRefEntityToScene(&ent);
 
 		ent.radius = 55;
+		if (CG_FreezeTag()) {
+			ent.radius = 30;
+		}
 		ent.rotation = 0;
 		ent.shaderTime = 1.2f;
 		trap_R_AddRefEntityToScene(&ent);
@@ -512,7 +518,11 @@ static void CG_Missile(centity_t *cent) {
 
 	// HERBY: Bubble G
 	if (s1->weapon == WP_BUBBLEG) {
-		VectorScale(g_color_table[s1->generic1], 255, ent.shaderRGBA);
+		if (CG_FreezeTag()) {
+			VectorScale(g_color_table[ColorIndex(COLOR_WHITE)], 255, ent.shaderRGBA);
+		} else {
+			VectorScale(g_color_table[s1->generic1], 255, ent.shaderRGBA);
+		}
 		ent.shaderRGBA[3] = 255;
 	}
 

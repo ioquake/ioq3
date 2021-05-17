@@ -1030,6 +1030,9 @@ void ClientBegin(int clientNum) {
 	client->pers.enterTime = level.time;
 	client->pers.teamState.state = TEAM_BEGIN;
 
+	// freezetag
+	client->pers.ftLateJoin = qfalse;
+
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
 	// want to make sure the teleport bit is set right
@@ -1059,6 +1062,16 @@ void ClientBegin(int clientNum) {
 		}
 	}
 	G_LogPrintf("ClientBegin: %i\n", clientNum);
+
+	/*
+	 * players joining late in the game will be flagged this way to
+	 * get frozen automatically
+	 */
+	if (G_FreezeTag()) {
+		if (client->sess.sessionTeam != TEAM_SPECTATOR && FT_MatchInProgress() &&
+			(level.time - level.startTime) > g_ft_lateJoinTime.integer * 1000)
+			client->pers.ftLateJoin = qtrue;
+	}
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
@@ -1199,6 +1212,8 @@ void ClientSpawn(gentity_t *ent) {
 		// add instagib weapon to client's inventory
 		client->ps.stats[STAT_WEAPONS] = (1 << weapon);
 		client->ps.ammo[weapon] = INFINITE;
+	} else if (G_FreezeTag()) {
+		FT_AddStartWeapons(client);
 	} else {
 		// add normal wop weapons to client's inventory
 		client->ps.stats[STAT_WEAPONS] = (1 << WP_NIPPER);
@@ -1224,6 +1239,10 @@ void ClientSpawn(gentity_t *ent) {
 	if (g_gametype.integer == GT_LPS) {
 		client->ps.stats[STAT_ARMOR] = 100;
 	}
+
+	// freezetag
+	if (G_FreezeTag())
+		client->ps.stats[STAT_ARMOR] = 125;
 
 	G_SetOrigin(ent, spawn_origin);
 	VectorCopy(spawn_origin, client->ps.origin);
@@ -1337,7 +1356,6 @@ void ClientDisconnect(int clientNum) {
 	}
 
 	if (!level.cammode) {
-
 		// send effect if they were completely connected
 		if (ent->client->pers.connected == CON_CONNECTED &&
 			((ent->client->sess.sessionTeam != TEAM_SPECTATOR) && !LPSDeadSpec(ent->client))) {

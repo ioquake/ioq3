@@ -81,6 +81,9 @@ static void Touch_ReloadStation(gentity_t *ent, gentity_t *other, trace_t *trace
 	if (!other->client)
 		return;
 
+	if (G_FreezeTag() && FT_PlayerIsFrozen(other))
+		return;
+
 	if (ent->s.angles2[1] < 0.99f)
 		ent->s.angles2[1] += 0.0006f * (level.time - level.previousTime); // 0.3 / 500 ;)
 	else

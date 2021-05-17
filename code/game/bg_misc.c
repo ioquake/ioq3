@@ -610,6 +610,19 @@ gitem_t bg_itemlist[] = {
 	 /* precache */ "",
 	 /* sounds */ ""},
 
+	/*QUAKED item_freeze (0 1 0) (-16 -16 -16) (16 16 16) suspended
+	 */
+	{"item_freeze",
+	 "sounds/Items/Jumper.wav",
+	 {"models/powerups/instant/jumper.md3", "models/powerups/instant/jumper_ring.md3", 0, 0},
+	 /* icon */ "icons/FREEZEicon",
+	 /* pickup */ "JUMPER",
+	 10,
+	 IT_POWERUP,
+	 PW_FREEZE,
+	 /* precache */ "",
+	 /* sounds */ ""},
+
 	// end of list marker
 	{NULL}};
 
@@ -1287,6 +1300,8 @@ int convertGTStringToGTNumber(const char *argStr) {
 		gt = GT_TEAM;
 	} else if (strstr(buf, GAMETYPE_NAME_SHORT(GT_FFA)) || strstr(buf, "FREE") || strstr(buf, "DM")) {
 		gt = GT_FFA;
+	} else if (strstr(argStr, GAMETYPE_NAME_SHORT(GT_FREEZETAG)) || strstr(argStr, "FREEZE")) {
+		gt = GT_FREEZETAG;
 	}
 
 	return gt;

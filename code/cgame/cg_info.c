@@ -173,6 +173,9 @@ void CG_DrawInformation(void) {
 	case GT_TEAM:
 		info = "menu/help/loadinghelp_teamffa";
 		break;
+	case GT_FREEZETAG:
+		info = "menu/help/loadinghelp_freezetag";
+		break;
 	default:
 		info = "menu/help/loadinghelp_ffa";
 		break;

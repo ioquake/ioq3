@@ -766,7 +766,9 @@ void ClientThink_real(gentity_t *ent) {
 		client->ps.pm_type = PM_NOCLIP;
 	} else if (client->ps.stats[STAT_HEALTH] <= 0) {
 		client->ps.pm_type = PM_DEAD;
-	} else if (client->ps.pm_type != PM_FREEZE) {
+	} else if (FT_ClientIsFrozen(client)) {
+		client->ps.pm_type = PM_FROZEN;
+	} else {
 		client->ps.pm_type = PM_NORMAL;
 	}
 
@@ -865,6 +867,28 @@ void ClientThink_real(gentity_t *ent) {
 	trap_LinkEntity(ent);
 	if (!ent->client->noclip) {
 		G_TouchTriggers(ent);
+	}
+
+	// freezetag
+	if (G_FreezeTag() && FT_PlayerIsFrozen(ent)) {
+		if (!FT_MatchInProgress())
+			FT_ThawPlayer(ent, NULL);
+	} else if (G_FreezeTag()) {
+		gentity_t *frozenPlayer = FT_NearestFrozenPlayer(ent);
+		if (frozenPlayer) {
+			if (FT_InThawingRange(ent, frozenPlayer))
+				FT_ProgressThawing(frozenPlayer, ent);
+		}
+
+		// not thawing for a while, let the client know
+		if (level.time - ent->client->lastProgressTime > 1000)
+			ent->client->ps.stats[STAT_CHILL] = 0;
+
+		// freeze player that joined too late
+		if (ent->client->pers.ftLateJoin) {
+			FT_FreezePlayer(ent, NULL);
+			ent->client->pers.ftLateJoin = qfalse;
+		}
 	}
 
 	// NOTE: now copy the exact origin over otherwise clients can be snapped into solid

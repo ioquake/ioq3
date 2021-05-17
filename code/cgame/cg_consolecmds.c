@@ -201,11 +201,17 @@ static void CG_ReChooseLogo_f(void) {
 	cg.handleInputMillis = cg.millis + 1000;
 }
 
-static const char *gameNames[] = {GAMETYPE_NAME(GT_FFA),		   GAMETYPE_NAME(GT_TOURNAMENT),
-								  GAMETYPE_NAME(GT_SINGLE_PLAYER), GAMETYPE_NAME(GT_SPRAYFFA),
-								  GAMETYPE_NAME(GT_LPS),		   GAMETYPE_NAME(GT_TEAM),
-								  GAMETYPE_NAME(GT_CTF),		   GAMETYPE_NAME(GT_SPRAY),
-								  GAMETYPE_NAME(GT_BALLOON),	   NULL};
+static const char *gameNames[] = {GAMETYPE_NAME(GT_FFA),
+								  GAMETYPE_NAME(GT_TOURNAMENT),
+								  GAMETYPE_NAME(GT_SINGLE_PLAYER),
+								  GAMETYPE_NAME(GT_SPRAYFFA),
+								  GAMETYPE_NAME(GT_LPS),
+								  GAMETYPE_NAME(GT_TEAM),
+								  GAMETYPE_NAME(GT_FREEZETAG),
+								  GAMETYPE_NAME(GT_CTF),
+								  GAMETYPE_NAME(GT_SPRAY),
+								  GAMETYPE_NAME(GT_BALLOON),
+								  NULL};
 
 #define MAX_BUFFERLEN 256
 static void CG_HelpCmd_f(void) {

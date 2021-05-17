@@ -244,7 +244,11 @@ int Pickup_Ammo(gentity_t *ent, gentity_t *other) {
 		}
 	}
 
-	Add_Ammo(other, ent->item->giTag, quantity);
+	if (G_FreezeTag() && Q_stricmp(g_ft_useWeaponSet.string, "") != 0 && Q_stricmp(g_ft_useWeaponSet.string, "0") != 0) {
+		FT_AddAmmo(other);
+	} else {
+		Add_Ammo(other, ent->item->giTag, quantity);
+	}
 
 	other->client->ps.generic1 = other->client->ps.ammo[WP_SPRAYPISTOL];
 
@@ -286,7 +290,7 @@ int Pickup_Weapon(gentity_t *ent, gentity_t *other) {
 		other->client->ps.ammo[ent->item->giTag] = -1; // unlimited ammo
 
 	// team deathmatch has slow weapon respawns
-	if (g_gametype.integer == GT_TEAM) {
+	if (g_gametype.integer == GT_TEAM || g_gametype.integer == GT_FREEZETAG) {
 		return g_weaponTeamRespawn.integer;
 	}
 
@@ -418,6 +422,9 @@ void Touch_Item(gentity_t *ent, gentity_t *other, trace_t *trace) {
 		return;
 	if (other->health < 1)
 		return; // dead people can't pickup
+
+	if (G_FreezeTag() && FT_PlayerIsFrozen(other))
+		return; // frozen people don't pick stuff up
 
 	// the same pickup rules are used for client side and server side
 	if (!BG_CanItemBeGrabbed(g_gametype.integer, &ent->s, &other->client->ps)) {
