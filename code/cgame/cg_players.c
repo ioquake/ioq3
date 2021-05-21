@@ -1846,7 +1846,7 @@ static void CG_PlayerFloatSprite(const centity_t *cent, qhandle_t shader, qboole
 	//       with the award in CTL.
 	if (cgs.gametype == GT_BALLOON && shader == cgs.media.medalPadStar) {
 		int team = cgs.clientinfo[cent->currentState.clientNum].team;
-		ent.customShader = cgs.media.hud_balloon; // FIXME: There is a separate icons/ballonicon
+		ent.customShader = cgs.media.hud_balloon;
 
 		ent.shaderRGBA[0] = ent.shaderRGBA[1] = ent.shaderRGBA[2] = 0;
 		ent.shaderRGBA[3] = 255;

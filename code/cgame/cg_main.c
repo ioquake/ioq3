@@ -945,7 +945,7 @@ static void CG_RegisterGraphics(void) {
 	cgs.media.scoreboardPing = trap_R_RegisterShaderNoMip("scoreboard/ping");
 	cgs.media.scoreboardScore = trap_R_RegisterShaderNoMip("scoreboard/score");
 	cgs.media.scoreboardTime = trap_R_RegisterShaderNoMip("scoreboard/time");
-	cgs.media.voiceIcon = trap_R_RegisterShaderNoMip("hud/voiceIcon");
+	cgs.media.voiceIcon = trap_R_RegisterShaderNoMip("hud/hint_voicechat");
 
 	if (cgs.gametype == GT_FREEZETAG) {
 		cgs.media.FreezeScreenShader = trap_R_RegisterShaderNoMip("gfx/screen/ice");
@@ -955,18 +955,18 @@ static void CG_RegisterGraphics(void) {
 		cgs.media.iceblockModel = trap_R_RegisterModel("models/iceblock");
 	}
 
-	cgs.media.healthstationIcon = trap_R_RegisterShaderNoMip("icons/healthstation");
+	cgs.media.healthstationIcon = trap_R_RegisterShaderNoMip("icons/hint_healthstation");
 
 	if (cgs.gametype == GT_LPS || cg_buildScript.integer) {
 		cgs.media.scoreboardlivesleft = trap_R_RegisterShaderNoMip("scoreboard/livesleft");
 		cgs.media.scoreboardscore_lives = trap_R_RegisterShaderNoMip("scoreboard/score_lives");
 
-		cgs.media.lpsIcon = trap_R_RegisterShaderNoMip("icons/LPSwallhackicon");
-		cgs.media.lpsIconLead = trap_R_RegisterShaderNoMip("icons/LPSwallhackleadicon");
+		cgs.media.lpsIcon = trap_R_RegisterShaderNoMip("icons/hint_lpsarrow");
+		cgs.media.lpsIconLead = trap_R_RegisterShaderNoMip("icons/hint_lpsarrowlead");
 	}
 
 	if (cgs.gametype == GT_BALLOON)
-		cgs.media.bbBoxIcon = trap_R_RegisterShaderNoMip("icons/bb_wallhack");
+		cgs.media.bbBoxIcon = trap_R_RegisterShaderNoMip("icons/hint_balloonbox");
 
 	cgs.media.smokePuffShader = trap_R_RegisterShader("powerupeffect/puff");
 	cgs.media.revivalParticleShader = trap_R_RegisterShader("powerupeffect/revival");
@@ -981,7 +981,7 @@ static void CG_RegisterGraphics(void) {
 		cgs.media.crosshairShader[i] = trap_R_RegisterShaderNoMip(va("gfx/2d/crosshair%c", ('a' + i)));
 	}
 
-	cgs.media.noammoShader = trap_R_RegisterShaderNoMip("icons/noammo");
+	cgs.media.noammoShader = trap_R_RegisterShaderNoMip("gfx/2d/noammo");
 
 	// powerup shaders
 	cgs.media.invisShader = trap_R_RegisterShader("powerups/invisibility");
@@ -1020,7 +1020,7 @@ static void CG_RegisterGraphics(void) {
 		cgs.media.hud_br[8] = trap_R_RegisterShaderNoMip("hud/br_wood");
 		cgs.media.hud_br[9] = trap_R_RegisterShaderNoMip("hud/br_airforce");
 
-		cgs.media.sprayroomIcon = trap_R_RegisterShaderNoMip("icons/sprayroom");
+		cgs.media.sprayroomIcon = trap_R_RegisterShaderNoMip("icons/hint_sprayroom");
 	}
 
 	if (cgs.gametype < GT_TEAM || cg_buildScript.integer) {
@@ -1048,12 +1048,12 @@ static void CG_RegisterGraphics(void) {
 		cgs.media.hud_bl[9] = trap_R_RegisterShaderNoMip("hud/bl_airforce");
 		cgs.media.hud_bc[9] = trap_R_RegisterShaderNoMip("hud/bc_airforce");
 	} else {
-		cgs.media.friendShader = trap_R_RegisterShader("sprites/foe");
+		cgs.media.friendShader = trap_R_RegisterShader("icons/hint_friend");
 
 		if (cgs.gametype == GT_BALLOON || cg_buildScript.integer) {
 			cgs.media.hud_bk_balloon_red = trap_R_RegisterShaderNoMip("hud/bk_balloon_red");
 			cgs.media.hud_bk_balloon_blue = trap_R_RegisterShaderNoMip("hud/bk_balloon_blue");
-			cgs.media.hud_balloon = trap_R_RegisterShaderNoMip("hud/balloonicon");
+			cgs.media.hud_balloon = trap_R_RegisterShaderNoMip("icons/hud_balloon");
 			cgs.media.hud_balloon_bar = trap_R_RegisterShaderNoMip("hud/balloonbar");
 			cgs.media.boomiesSphereModel = trap_R_RegisterModel("models/weaponsfx/boomiessphere");
 			cgs.media.boomiesCoreShader = trap_R_RegisterShader("boomiesCore");
@@ -1063,12 +1063,12 @@ static void CG_RegisterGraphics(void) {
 
 			cgs.media.redFlagModel = trap_R_RegisterModel("models/ctl/lollipop_red");
 			cgs.media.blueFlagModel = trap_R_RegisterModel("models/ctl/lollipop_blue");
-			cgs.media.redFlagShader[0] = trap_R_RegisterShaderNoMip("icons/iconf_red1");
-			cgs.media.redFlagShader[1] = trap_R_RegisterShaderNoMip("icons/iconf_red2");
-			cgs.media.redFlagShader[2] = trap_R_RegisterShaderNoMip("icons/iconf_red3");
-			cgs.media.blueFlagShader[0] = trap_R_RegisterShaderNoMip("icons/iconf_blu1");
-			cgs.media.blueFlagShader[1] = trap_R_RegisterShaderNoMip("icons/iconf_blu2");
-			cgs.media.blueFlagShader[2] = trap_R_RegisterShaderNoMip("icons/iconf_blu3");
+			cgs.media.redFlagShader[0] = trap_R_RegisterShaderNoMip("icons/hud_lolly_red1");
+			cgs.media.redFlagShader[1] = trap_R_RegisterShaderNoMip("icons/hud_lolly_red2");
+			cgs.media.redFlagShader[2] = trap_R_RegisterShaderNoMip("icons/hud_lolly_red3");
+			cgs.media.blueFlagShader[0] = trap_R_RegisterShaderNoMip("icons/hud_lolly_blue1");
+			cgs.media.blueFlagShader[1] = trap_R_RegisterShaderNoMip("icons/hud_lolly_blue2");
+			cgs.media.blueFlagShader[2] = trap_R_RegisterShaderNoMip("icons/hud_lolly_blue3");
 
 			cgs.media.bambamMissileRedShader = trap_R_RegisterShader("bambamMissileRed");
 			cgs.media.bambamMissileBlueShader = trap_R_RegisterShader("bambamMissileBlue");
@@ -1106,7 +1106,7 @@ static void CG_RegisterGraphics(void) {
 
 	cgs.media.star = trap_R_RegisterModel("models/weaponsfx/star");
 
-	cgs.media.balloonShader = trap_R_RegisterShader("sprites/balloon3");
+	cgs.media.balloonShader = trap_R_RegisterShader("icons/hint_textchat");
 	cgs.media.dishFlashModel = trap_R_RegisterModel("models/boom");
 
 	cgs.media.teleportEffectModel = trap_R_RegisterModel("models/special/teleport");
@@ -1122,7 +1122,7 @@ static void CG_RegisterGraphics(void) {
 	}
 
 	cgs.media.medalExcellent = trap_R_RegisterShaderNoMip("icons/medal_excellent");
-	cgs.media.medalGauntlet = trap_R_RegisterShaderNoMip("icons/medal_punchy_padkiller");
+	cgs.media.medalGauntlet = trap_R_RegisterShaderNoMip("icons/medal_snackattack");
 	cgs.media.medalSpraygod = trap_R_RegisterShaderNoMip("icons/medal_spraygod");
 	cgs.media.medalSpraykiller = trap_R_RegisterShaderNoMip("icons/medal_spraykiller");
 	cgs.media.medalPadStar = trap_R_RegisterShaderNoMip("icons/medal_padstar");

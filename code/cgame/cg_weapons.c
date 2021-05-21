@@ -555,9 +555,9 @@ NOADDITIONALMODELS:
 		weaponInfo->flashSound[0] = trap_S_RegisterSound("sounds/weapons/spraypistol/spray", qfalse);
 		// blue spraypistol
 		cgs.media.blueSpraypistolskin = trap_R_RegisterSkin("models/weapons2/spraypistol/spraypistol_blue.skin");
-		cgs.media.blueSpraypistolicon = trap_R_RegisterShader("icons/iconw_spraypistol_blue");
+		cgs.media.blueSpraypistolicon = trap_R_RegisterShader("icons/weapon_spraypistol_blue");
 		cgs.media.neutralSpraypistolskin = trap_R_RegisterSkin("models/weapons2/spraypistol/spraypistol_neutral.skin");
-		cgs.media.neutralSpraypistolicon = trap_R_RegisterShader("icons/iconw_spraypistol_neutral");
+		cgs.media.neutralSpraypistolicon = trap_R_RegisterShader("icons/weapon_spraypistol_neutral");
 		cgs.media.blueCartridgeEntNum = (int)(BG_FindItem("blue Cartridge") - bg_itemlist);
 		cgs.media.redCartridgeEntNum = (int)(BG_FindItem("red Cartridge") - bg_itemlist);
 		cgs.media.neutralCartridgeEntNum = (int)(BG_FindItem("neutral Cartridge") - bg_itemlist);
