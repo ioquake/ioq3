@@ -32,11 +32,7 @@ ifndef USE_INTERNAL_JPEG
 USE_INTERNAL_JPEG=1
 endif
 ifndef SDLDLL
-	ifeq ($(ARCH),x86_64)
-		SDLDLL=SDL264.dll
-	else
-		SDLDLL=SDL2.dll
-	endif
+	SDLDLL=SDL2.dll
 endif
 ifndef OPENALDLL
 	ifeq ($(ARCH),x86_64)

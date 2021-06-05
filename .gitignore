@@ -3,6 +3,8 @@ Makefile.local
 *.swp
 *tags
 *~
+/*.gz
+/*.dmg
 
 # OS X
 ####################
