@@ -515,26 +515,45 @@ ifeq ($(PLATFORM),darwin)
 
   CLIENT_LIBS += -framework IOKit
   RENDERER_LIBS += -framework OpenGL
+	
+  ifeq ($(PANTHER),1)
+   ifeq ($(USE_LOCAL_HEADERS),1)
+     # libSDL2-2.0.0.dylib for PPC is Panther SDL (2.0.3 + changes to compile)
+       BASE_CFLAGS += -I$(SDLHDIR)/include-macppc-panther
 
-  ifeq ($(USE_LOCAL_HEADERS),1)
-    # libSDL2-2.0.0.dylib for PPC is SDL 2.0.1 + changes to compile
-    ifneq ($(findstring $(ARCH),ppc ppc64),)
-      BASE_CFLAGS += -I$(SDLHDIR)/include-macppc
-    else
-      BASE_CFLAGS += -I$(SDLHDIR)/include
-    endif
-
-    # We copy sdlmain before ranlib'ing it so that subversion doesn't think
-    #  the file has been modified by each build.
-    LIBSDLMAIN=$(B)/libSDL2main.a
-    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
-    CLIENT_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-    RENDERER_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+     # We copy sdlmain before ranlib'ing it so that subversion doesn't think
+     #  the file has been modified by each build.
+     LIBSDLMAIN=$(B)/libSDL2main.a
+     LIBSDLMAINSRC=$(LIBSDIR)/macosx-panther/libSDL2main.a
+     CLIENT_LIBS += $(LIBSDIR)/macosx-panther/libSDL2-2.0.0.dylib
+     RENDERER_LIBS += $(LIBSDIR)/macosx-panther/libSDL2-2.0.0.dylib
+     CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx-panther/libSDL2-2.0.0.dylib
+   else
+     BASE_CFLAGS += -I/Library/Frameworks/SDL2.framework/Headers
+     CLIENT_LIBS += -framework SDL2
+     RENDERER_LIBS += -framework SDL2
+   endif
   else
-    BASE_CFLAGS += -I/Library/Frameworks/SDL2.framework/Headers
-    CLIENT_LIBS += -framework SDL2
-    RENDERER_LIBS += -framework SDL2
+   ifeq ($(USE_LOCAL_HEADERS),1)
+     # libSDL2-2.0.0.dylib for PPC is SDL 2.0.1 + changes to compile
+     ifneq ($(findstring $(ARCH),ppc ppc64),)
+       BASE_CFLAGS += -I$(SDLHDIR)/include-macppc
+     else
+       BASE_CFLAGS += -I$(SDLHDIR)/include
+     endif
+
+     # We copy sdlmain before ranlib'ing it so that subversion doesn't think
+     #  the file has been modified by each build.
+     LIBSDLMAIN=$(B)/libSDL2main.a
+     LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
+     CLIENT_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+     RENDERER_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+     CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+   else
+     BASE_CFLAGS += -I/Library/Frameworks/SDL2.framework/Headers
+     CLIENT_LIBS += -framework SDL2
+     RENDERER_LIBS += -framework SDL2
+   endif
   endif
 
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math

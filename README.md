@@ -80,10 +80,17 @@ For Windows,
 
 For Mac OS X, building a Universal Binary
   1. Install MacOSX SDK packages from XCode.  For maximum compatibility,
-     install MacOSX10.4u.sdk and MacOSX10.3.9.sdk, and MacOSX10.2.8.sdk.
+     install the MacOSX10.5.sdk.
   2. Change to the directory containing this README file.
   3. Run './make-macosx-ub.sh'
   4. Copy the resulting ioquake3.app in /build/release-darwin-ub to your
+     /Applications/ioquake3 folder.
+
+For Mac OS X, building for ppc Mac OS X 10.3.9-10.6.8
+  1. Install Xcode 3.1.4 (the latest for ppc) on Mac OS X Leopard.
+  2. Change to the directory containing this README file.
+  3. Run './make-macosx-panther.sh'
+  4. Copy the resulting ioquake3.app in /build/release-darwin-ppc to your
      /Applications/ioquake3 folder.
 
 Installation, for *nix
