@@ -697,22 +697,20 @@ ifdef MINGW
                       $(LIBSDIR)/win32/libSDL2.dll.a
     RENDERER_LIBS += $(LIBSDIR)/win32/libSDL2main.a \
                       $(LIBSDIR)/win32/libSDL2.dll.a
-    SDLDLL=SDL2.dll
     CLIENT_EXTRA_FILES += $(LIBSDIR)/win32/SDL2.dll
     else
-    CLIENT_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
-                      $(LIBSDIR)/win64/libSDL264.dll.a
-    RENDERER_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
-                      $(LIBSDIR)/win64/libSDL264.dll.a
-    SDLDLL=SDL264.dll
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll
+    CLIENT_LIBS += $(LIBSDIR)/win64/libSDL2main.a \
+                      $(LIBSDIR)/win64/libSDL2.dll.a
+    RENDERER_LIBS += $(LIBSDIR)/win64/libSDL2main.a \
+                      $(LIBSDIR)/win64/libSDL2.dll.a
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL2.dll
     endif
   else
     CLIENT_CFLAGS += $(SDL_CFLAGS)
     CLIENT_LIBS += $(SDL_LIBS)
     RENDERER_LIBS += $(SDL_LIBS)
-    SDLDLL=SDL2.dll
   endif
+  SDLDLL=SDL2.dll
 
 else # ifdef MINGW
 
@@ -3011,3 +3009,27 @@ endif
 ifneq ($(findstring clean, $(MAKECMDGOALS)),)
 .NOTPARALLEL:
 endif
+
+SDL2_VERSION=2.0.14
+SDL2_URL=https://www.libsdl.org/release/
+
+SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz SDL2-$(SDL2_VERSION).tar.gz SDL2-$(SDL2_VERSION).dmg:
+	curl $(SDL2_URL)$@ -o $@
+
+download-sdl2: SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz SDL2-$(SDL2_VERSION).tar.gz SDL2-$(SDL2_VERSION).dmg
+
+.PHONY: update-sdl2
+update-sdl2: download-sdl2
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win64 SDL2-$(SDL2_VERSION)/x86_64-w64-mingw32/bin/SDL2.dll
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win64 SDL2-$(SDL2_VERSION)/x86_64-w64-mingw32/lib/libSDL2.dll.a
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win64 SDL2-$(SDL2_VERSION)/x86_64-w64-mingw32/lib/libSDL2main.a
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win32 SDL2-$(SDL2_VERSION)/i686-w64-mingw32/bin/SDL2.dll
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win32 SDL2-$(SDL2_VERSION)/i686-w64-mingw32/lib/libSDL2.dll.a
+	tar --strip-components=3 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/libs/win32 SDL2-$(SDL2_VERSION)/i686-w64-mingw32/lib/libSDL2main.a
+	rm -rf code/SDL2/include/*
+	tar --strip-components=4 -xzf SDL2-devel-$(SDL2_VERSION)-mingw.tar.gz -C code/SDL2/include SDL2-$(SDL2_VERSION)/i686-w64-mingw32/include/SDL2/
+	7z e -ocode/libs/macosx SDL2-$(SDL2_VERSION).dmg SDL2/SDL2.framework/Versions/A/SDL2
+	mv code/libs/macosx/SDL2 code/libs/macosx/libSDL2-2.0.0.dylib
+	install_name_tool -id @executable_path/libSDL2-2.0.0.dylib code/libs/macosx/libSDL2-2.0.0.dylib
+
+# TODO ./code/libs/macosx/libSDL2main.a
