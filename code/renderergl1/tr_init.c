@@ -28,6 +28,7 @@ qboolean    textureFilterAnisotropic = qfalse;
 int         maxAnisotropy = 0;
 float       displayAspect = 0.0f;
 qboolean    haveClampToEdge = qfalse;
+qboolean    readFormatAvailable = qfalse;
 
 glstate_t	glState;
 
@@ -365,20 +366,55 @@ Return value must be freed with ri.Hunk_FreeTempMemory()
 byte *RB_ReadPixels(int x, int y, int width, int height, size_t *offset, int *padlen)
 {
 	byte *buffer, *bufstart;
-	int padwidth, linelen;
-	GLint packAlign;
-	
+	int padwidth, linelen, bytesPerPixel;
+	int yin, xin, xout;
+	GLint packAlign, format, type;
+
+	// OpenGL ES is only required to support reading GL_RGBA
+	if (qglesMajorVersion >= 1) {
+		if (readFormatAvailable) {
+			qglGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES, &format);
+			qglGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE_OES, &type);
+		} else {
+			format = GL_RGBA;
+			type = GL_UNSIGNED_BYTE;
+		}
+
+		if (format == GL_RGB && type == GL_UNSIGNED_BYTE) {
+			bytesPerPixel = 3;
+		} else {
+			format = GL_RGBA;
+			bytesPerPixel = 4;
+		}
+	} else {
+		format = GL_RGB;
+		bytesPerPixel = 3;
+	}
+
 	qglGetIntegerv(GL_PACK_ALIGNMENT, &packAlign);
-	
-	linelen = width * 3;
+
+	linelen = width * bytesPerPixel;
 	padwidth = PAD(linelen, packAlign);
-	
+
 	// Allocate a few more bytes so that we can choose an alignment we like
 	buffer = ri.Hunk_AllocateTempMemory(padwidth * height + *offset + packAlign - 1);
-	
+
 	bufstart = PADP((intptr_t) buffer + *offset, packAlign);
-	qglReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, bufstart);
-	
+	qglReadPixels(x, y, width, height, format, GL_UNSIGNED_BYTE, bufstart);
+
+	linelen = width * 3;
+
+	// Convert RGBA to RGB, in place, line by line
+	if (format == GL_RGBA) {
+		for (yin = 0; yin < height; yin++) {
+			for (xin = 0, xout = 0; xout < linelen; xin += 4, xout += 3) {
+				bufstart[yin*padwidth + xout + 0] = bufstart[yin*padwidth + xin + 0];
+				bufstart[yin*padwidth + xout + 1] = bufstart[yin*padwidth + xin + 1];
+				bufstart[yin*padwidth + xout + 2] = bufstart[yin*padwidth + xin + 2];
+			}
+		}
+	}
+
 	*offset = bufstart - buffer;
 	*padlen = padwidth - linelen;
 	
@@ -757,26 +793,51 @@ const void *RB_TakeVideoFrameCmd( const void *data )
 {
 	const videoFrameCommand_t	*cmd;
 	byte				*cBuf;
-	size_t				memcount, linelen;
+	size_t				memcount, bytesPerPixel, linelen, avilinelen;
 	int				padwidth, avipadwidth, padlen, avipadlen;
-	GLint packAlign;
+	int				yin, xin, xout;
+	GLint packAlign, format, type;
 	
 	cmd = (const videoFrameCommand_t *)data;
 	
+	// OpenGL ES is only required to support reading GL_RGBA
+	if (qglesMajorVersion >= 1) {
+		if (readFormatAvailable) {
+			qglGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES, &format);
+			qglGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE_OES, &type);
+		} else {
+			format = GL_RGBA;
+			type = GL_UNSIGNED_BYTE;
+		}
+
+		if (format == GL_RGB && type == GL_UNSIGNED_BYTE) {
+			bytesPerPixel = 3;
+		} else {
+			format = GL_RGBA;
+			bytesPerPixel = 4;
+		}
+	} else {
+		format = GL_RGB;
+		bytesPerPixel = 3;
+	}
+
 	qglGetIntegerv(GL_PACK_ALIGNMENT, &packAlign);
 
-	linelen = cmd->width * 3;
+	linelen = cmd->width * bytesPerPixel;
 
 	// Alignment stuff for glReadPixels
 	padwidth = PAD(linelen, packAlign);
 	padlen = padwidth - linelen;
+
+	avilinelen = cmd->width * 3;
+
 	// AVI line padding
-	avipadwidth = PAD(linelen, AVI_LINE_PADDING);
-	avipadlen = avipadwidth - linelen;
+	avipadwidth = PAD(avilinelen, AVI_LINE_PADDING);
+	avipadlen = avipadwidth - avilinelen;
 
 	cBuf = PADP(cmd->captureBuffer, packAlign);
 		
-	qglReadPixels(0, 0, cmd->width, cmd->height, GL_RGB,
+	qglReadPixels(0, 0, cmd->width, cmd->height, format,
 		GL_UNSIGNED_BYTE, cBuf);
 
 	memcount = padwidth * cmd->height;
@@ -787,7 +848,21 @@ const void *RB_TakeVideoFrameCmd( const void *data )
 
 	if(cmd->motionJpeg)
 	{
-		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, linelen * cmd->height,
+		// Convert RGBA to RGB, in place, line by line
+		if (format == GL_RGBA) {
+			linelen = cmd->width * 3;
+			padlen = padwidth - linelen;
+
+			for (yin = 0; yin < cmd->height; yin++) {
+				for (xin = 0, xout = 0; xout < linelen; xin += 4, xout += 3) {
+					cBuf[yin*padwidth + xout + 0] = cBuf[yin*padwidth + xin + 0];
+					cBuf[yin*padwidth + xout + 1] = cBuf[yin*padwidth + xin + 1];
+					cBuf[yin*padwidth + xout + 2] = cBuf[yin*padwidth + xin + 2];
+				}
+			}
+		}
+
+		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, avilinelen * cmd->height,
 			r_aviMotionJpegQuality->integer,
 			cmd->width, cmd->height, cBuf, padlen);
 		ri.CL_WriteAVIVideoFrame(cmd->encodeBuffer, memcount);
@@ -810,7 +885,7 @@ const void *RB_TakeVideoFrameCmd( const void *data )
 				*destptr++ = srcptr[2];
 				*destptr++ = srcptr[1];
 				*destptr++ = srcptr[0];
-				srcptr += 3;
+				srcptr += bytesPerPixel;
 			}
 			
 			Com_Memset(destptr, '\0', avipadlen);
@@ -961,7 +1036,7 @@ void GfxInfo_f( void )
 		ri.Printf( PRINT_ALL, "rendering primitives: " );
 		primitives = r_primitives->integer;
 		if ( primitives == 0 ) {
-			if ( qglLockArraysEXT ) {
+			if ( qglLockArraysEXT || qglesMajorVersion >= 1 ) {
 				primitives = 2;
 			} else {
 				primitives = 1;
@@ -1296,6 +1371,7 @@ void RE_Shutdown( qboolean destroyWindow ) {
 		maxAnisotropy = 0;
 		displayAspect = 0.0f;
 		haveClampToEdge = qfalse;
+		readFormatAvailable = qfalse;
 
 		Com_Memset( &glState, 0, sizeof( glState ) );
 	}

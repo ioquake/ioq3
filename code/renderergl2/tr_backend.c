@@ -671,8 +671,8 @@ Used for cinematics.
 void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty) {
 	int			i, j;
 	int			start, end;
-	vec4_t quadVerts[4];
-	vec2_t texCoords[4];
+	vec4_t		quadVerts[4];
+	vec2_t		texCoords[4];
 
 	if ( !tr.registered ) {
 		return;
@@ -716,22 +716,22 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 
 	RB_SetGL2D();
 
-	VectorSet4(quadVerts[0], x,     y,     0.0f, 1.0f);
-	VectorSet4(quadVerts[1], x + w, y,     0.0f, 1.0f);
-	VectorSet4(quadVerts[2], x + w, y + h, 0.0f, 1.0f);
-	VectorSet4(quadVerts[3], x,     y + h, 0.0f, 1.0f);
+	Vector4Set( quadVerts[0], x,     y,     0.0f, 1.0f );
+	Vector4Set( quadVerts[1], x + w, y,     0.0f, 1.0f );
+	Vector4Set( quadVerts[2], x + w, y + h, 0.0f, 1.0f );
+	Vector4Set( quadVerts[3], x,     y + h, 0.0f, 1.0f );
 
-	VectorSet2(texCoords[0], 0.5f / cols,          0.5f / rows);
-	VectorSet2(texCoords[1], (cols - 0.5f) / cols, 0.5f / rows);
-	VectorSet2(texCoords[2], (cols - 0.5f) / cols, (rows - 0.5f) / rows);
-	VectorSet2(texCoords[3], 0.5f / cols,          (rows - 0.5f) / rows);
+	Vector2Set( texCoords[0], 0.5f / cols,          0.5f / rows );
+	Vector2Set( texCoords[1], (cols - 0.5f) / cols, 0.5f / rows );
+	Vector2Set( texCoords[2], (cols - 0.5f) / cols, (rows - 0.5f) / rows );
+	Vector2Set( texCoords[3], 0.5f / cols,          (rows - 0.5f) / rows );
 
 	GLSL_BindProgram(&tr.textureColorShader);
 	
 	GLSL_SetUniformMat4(&tr.textureColorShader, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 	GLSL_SetUniformVec4(&tr.textureColorShader, UNIFORM_COLOR, colorWhite);
 
-	RB_InstantQuad2(quadVerts, texCoords);
+	RB_InstantQuad2( quadVerts, texCoords );
 }
 
 void RE_UploadCinematic (int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty) {
@@ -1221,6 +1221,7 @@ void RB_ShowImages( void ) {
 	image_t	*image;
 	float	x, y, w, h;
 	int		start, end;
+	vec4_t	quadVerts[4];
 
 	RB_SetGL2D();
 
@@ -1244,18 +1245,14 @@ void RB_ShowImages( void ) {
 			h *= image->uploadHeight / 512.0f;
 		}
 
-		{
-			vec4_t quadVerts[4];
+		GL_BindToTMU( image, TB_COLORMAP );
 
-			GL_BindToTMU(image, TB_COLORMAP);
+		Vector4Set( quadVerts[0], x, y, 0, 1 );
+		Vector4Set( quadVerts[1], x + w, y, 0, 1 );
+		Vector4Set( quadVerts[2], x + w, y + h, 0, 1 );
+		Vector4Set( quadVerts[3], x, y + h, 0, 1 );
 
-			VectorSet4(quadVerts[0], x, y, 0, 1);
-			VectorSet4(quadVerts[1], x + w, y, 0, 1);
-			VectorSet4(quadVerts[2], x + w, y + h, 0, 1);
-			VectorSet4(quadVerts[3], x, y + h, 0, 1);
-
-			RB_InstantQuad(quadVerts);
-		}
+		RB_InstantQuad( quadVerts );
 	}
 
 	qglFinish();

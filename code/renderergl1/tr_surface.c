@@ -288,7 +288,8 @@ static void RB_SurfaceBeam( void )
 	int	i;
 	vec3_t perpvec;
 	vec3_t direction, normalized_direction;
-	vec3_t	start_points[NUM_BEAM_SEGS], end_points[NUM_BEAM_SEGS];
+	vec4_t vertexes[(NUM_BEAM_SEGS+1)*2] QALIGN(16);
+	float *start_point, *end_point; // pointers to vec4_t
 	vec3_t oldorigin, origin;
 
 	e = &backEnd.currentEntity->e;
@@ -314,10 +315,17 @@ static void RB_SurfaceBeam( void )
 
 	for ( i = 0; i < NUM_BEAM_SEGS ; i++ )
 	{
-		RotatePointAroundVector( start_points[i], normalized_direction, perpvec, (360.0/NUM_BEAM_SEGS)*i );
-//		VectorAdd( start_points[i], origin, start_points[i] );
-		VectorAdd( start_points[i], direction, end_points[i] );
+		start_point = vertexes[i*2];
+		end_point = vertexes[i*2+1];
+
+		RotatePointAroundVector( start_point, normalized_direction, perpvec, (360.0/NUM_BEAM_SEGS)*i );
+//		VectorAdd( start_point, origin, start_point );
+		VectorAdd( start_point, direction, end_point );
 	}
+
+	// duplicate first start/end points
+	VectorCopy( vertexes[0], vertexes[NUM_BEAM_SEGS*2] );
+	VectorCopy( vertexes[1], vertexes[NUM_BEAM_SEGS*2+1] );
 
 	GL_Bind( tr.whiteImage );
 
@@ -325,12 +333,22 @@ static void RB_SurfaceBeam( void )
 
 	qglColor3f( 1, 0, 0 );
 
-	qglBegin( GL_TRIANGLE_STRIP );
-	for ( i = 0; i <= NUM_BEAM_SEGS; i++ ) {
-		qglVertex3fv( start_points[ i % NUM_BEAM_SEGS] );
-		qglVertex3fv( end_points[ i % NUM_BEAM_SEGS] );
+	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	qglDisableClientState( GL_COLOR_ARRAY );
+
+	qglVertexPointer( 3, GL_FLOAT, 16, vertexes );	// padded for SIMD
+
+	if (qglLockArraysEXT) {
+		qglLockArraysEXT(0, ARRAY_LEN(vertexes));
+		GLimp_LogComment( "glLockArraysEXT\n" );
 	}
-	qglEnd();
+
+	qglDrawArrays( GL_TRIANGLE_STRIP, 0, ARRAY_LEN(vertexes) );
+
+	if (qglUnlockArraysEXT) {
+		qglUnlockArraysEXT();
+		GLimp_LogComment( "glUnlockArraysEXT\n" );
+	}
 }
 
 //================================================================================
@@ -1026,20 +1044,35 @@ Draws x/y/z lines from the origin for orientation debugging
 ===================
 */
 static void RB_SurfaceAxis( void ) {
+	vec4_t colors[6] = {
+		{ 1,0,0,1 },
+		{ 1,0,0,1 },
+		{ 0,1,0,1 },
+		{ 0,1,0,1 },
+		{ 0,0,1,1 },
+		{ 0,0,1,1 }
+	};
+	vec4_t vertexes[6] = {
+		{  0,  0,  0, 0 },
+		{ 16,  0,  0, 0 },
+		{  0,  0,  0, 0 },
+		{  0, 16,  0, 0 },
+		{  0,  0,  0, 0 },
+		{  0,  0, 16, 0 }
+	};
+
 	GL_Bind( tr.whiteImage );
 	GL_State( GLS_DEFAULT );
 	qglLineWidth( 3 );
-	qglBegin( GL_LINES );
-	qglColor3f( 1,0,0 );
-	qglVertex3f( 0,0,0 );
-	qglVertex3f( 16,0,0 );
-	qglColor3f( 0,1,0 );
-	qglVertex3f( 0,0,0 );
-	qglVertex3f( 0,16,0 );
-	qglColor3f( 0,0,1 );
-	qglVertex3f( 0,0,0 );
-	qglVertex3f( 0,0,16 );
-	qglEnd();
+
+	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	qglEnableClientState( GL_COLOR_ARRAY );
+
+	qglColorPointer( 4, GL_FLOAT, 0, colors );
+	qglVertexPointer( 3, GL_FLOAT, 16, vertexes ); // padded for SIMD
+
+	qglDrawArrays( GL_LINES, 0, 6 );
+
 	qglLineWidth( 1 );
 }
 

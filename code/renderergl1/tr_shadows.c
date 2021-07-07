@@ -44,7 +44,8 @@ typedef struct {
 static	edgeDef_t	edgeDefs[SHADER_MAX_VERTEXES][MAX_EDGE_DEFS];
 static	int			numEdgeDefs[SHADER_MAX_VERTEXES];
 static	int			facing[SHADER_MAX_INDEXES/3];
-static	vec3_t		shadowXyz[SHADER_MAX_VERTEXES];
+static	glIndex_t	shadowIndexes[SHADER_MAX_VERTEXES*MAX_EDGE_DEFS*6];
+static	int			numShadowIndexes;
 
 void R_AddEdgeDef( int i1, int i2, int facing ) {
 	int		c;
@@ -59,7 +60,7 @@ void R_AddEdgeDef( int i1, int i2, int facing ) {
 	numEdgeDefs[ i1 ]++;
 }
 
-void R_RenderShadowEdges( void ) {
+void R_CalculateShadowEdges( void ) {
 	int		i;
 
 #if 0
@@ -67,6 +68,8 @@ void R_RenderShadowEdges( void ) {
 
 	// dumb way -- render every triangle's edges
 	numTris = tess.numIndexes / 3;
+
+	numShadowIndexes = 0;
 
 	for ( i = 0 ; i < numTris ; i++ ) {
 		int		i1, i2, i3;
@@ -79,15 +82,16 @@ void R_RenderShadowEdges( void ) {
 		i2 = tess.indexes[ i*3 + 1 ];
 		i3 = tess.indexes[ i*3 + 2 ];
 
+		// FIXME: Convert to using shadowIndexes
 		qglBegin( GL_TRIANGLE_STRIP );
 		qglVertex3fv( tess.xyz[ i1 ] );
-		qglVertex3fv( shadowXyz[ i1 ] );
+		qglVertex3fv( tess.xyz[ i1 + tess.numVertexes ] );
 		qglVertex3fv( tess.xyz[ i2 ] );
-		qglVertex3fv( shadowXyz[ i2 ] );
+		qglVertex3fv( tess.xyz[ i2 + tess.numVertexes ] );
 		qglVertex3fv( tess.xyz[ i3 ] );
-		qglVertex3fv( shadowXyz[ i3 ] );
+		qglVertex3fv( tess.xyz[ i3 + tess.numVertexes ] );
 		qglVertex3fv( tess.xyz[ i1 ] );
-		qglVertex3fv( shadowXyz[ i1 ] );
+		qglVertex3fv( tess.xyz[ i1 + tess.numVertexes ] );
 		qglEnd();
 	}
 #else
@@ -96,6 +100,8 @@ void R_RenderShadowEdges( void ) {
 	int		i2;
 	int		c_edges, c_rejected;
 	int		hit[2];
+
+	numShadowIndexes = 0;
 
 	// an edge is NOT a silhouette edge if its face doesn't face the light,
 	// or if it has a reverse paired edge that also faces the light.
@@ -123,14 +129,23 @@ void R_RenderShadowEdges( void ) {
 			}
 
 			// if it doesn't share the edge with another front facing
-			// triangle, it is a sil edge
+			// triangle, it is a silhouette edge
 			if ( hit[ 1 ] == 0 ) {
+/*
 				qglBegin( GL_TRIANGLE_STRIP );
 				qglVertex3fv( tess.xyz[ i ] );
-				qglVertex3fv( shadowXyz[ i ] );
+				qglVertex3fv( tess.xyz[ i + tess.numVertexes ] );
 				qglVertex3fv( tess.xyz[ i2 ] );
-				qglVertex3fv( shadowXyz[ i2 ] );
+				qglVertex3fv( tess.xyz[ i2 + tess.numVertexes ] );
 				qglEnd();
+*/
+				shadowIndexes[numShadowIndexes++] = i;
+				shadowIndexes[numShadowIndexes++] = i + tess.numVertexes;
+				shadowIndexes[numShadowIndexes++] = i2;
+
+				shadowIndexes[numShadowIndexes++] = i2;
+				shadowIndexes[numShadowIndexes++] = i + tess.numVertexes;
+				shadowIndexes[numShadowIndexes++] = i2 + tess.numVertexes;
 				c_edges++;
 			} else {
 				c_rejected++;
@@ -166,7 +181,7 @@ void RB_ShadowTessEnd( void ) {
 
 	// project vertexes away from light direction
 	for ( i = 0 ; i < tess.numVertexes ; i++ ) {
-		VectorMA( tess.xyz[i], -512, lightDir, shadowXyz[i] );
+		VectorMA( tess.xyz[i], -512, lightDir, tess.xyz[i + tess.numVertexes] );
 	}
 
 	// decide which triangles face the light
@@ -204,11 +219,23 @@ void RB_ShadowTessEnd( void ) {
 		R_AddEdgeDef( i3, i1, facing[ i ] );
 	}
 
+	R_CalculateShadowEdges();
+
 	// draw the silhouette edges
 
 	GL_Bind( tr.whiteImage );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
 	qglColor3f( 0.2f, 0.2f, 0.2f );
+
+	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+	qglDisableClientState( GL_COLOR_ARRAY );
+
+	qglVertexPointer( 3, GL_FLOAT, 16, tess.xyz );	// padded for SIMD
+
+	if (qglLockArraysEXT) {
+		qglLockArraysEXT(0, tess.numVertexes*2);
+		GLimp_LogComment( "glLockArraysEXT\n" );
+	}
 
 	// don't write to the color buffer
 	qglGetBooleanv(GL_COLOR_WRITEMASK, rgba);
@@ -220,16 +247,23 @@ void RB_ShadowTessEnd( void ) {
 	GL_Cull( CT_BACK_SIDED );
 	qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
 
-	R_RenderShadowEdges();
+	R_DrawElements( numShadowIndexes, shadowIndexes );
 
 	GL_Cull( CT_FRONT_SIDED );
 	qglStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
 
-	R_RenderShadowEdges();
+	R_DrawElements( numShadowIndexes, shadowIndexes );
 
+	if (qglUnlockArraysEXT) {
+		qglUnlockArraysEXT();
+		GLimp_LogComment( "glUnlockArraysEXT\n" );
+	}
 
 	// reenable writing to the color buffer
 	qglColorMask(rgba[0], rgba[1], rgba[2], rgba[3]);
+
+	// FIXME: kind of ugly to have to clear this to avoid overflow detection.
+	memset( tess.xyz[SHADER_MAX_VERTEXES-1], 0, sizeof ( tess.xyz[0] ) );
 }
 
 
@@ -244,6 +278,8 @@ overlap and double darken.
 =================
 */
 void RB_ShadowFinish( void ) {
+	vec4_t quadVerts[4];
+
 	if ( r_shadows->integer != 2 ) {
 		return;
 	}
@@ -266,12 +302,12 @@ void RB_ShadowFinish( void ) {
 //	qglColor3f( 1, 0, 0 );
 //	GL_State( GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
 
-	qglBegin( GL_QUADS );
-	qglVertex3f( -100, 100, -10 );
-	qglVertex3f( 100, 100, -10 );
-	qglVertex3f( 100, -100, -10 );
-	qglVertex3f( -100, -100, -10 );
-	qglEnd ();
+	Vector4Set( quadVerts[0], -100,  100, -10, 0 );
+	Vector4Set( quadVerts[1],  100,  100, -10, 0 );
+	Vector4Set( quadVerts[2],  100, -100, -10, 0 );
+	Vector4Set( quadVerts[3], -100, -100, -10, 0 );
+
+	RB_InstantQuad( quadVerts );
 
 	qglColor4f(1,1,1,1);
 	qglDisable( GL_STENCIL_TEST );

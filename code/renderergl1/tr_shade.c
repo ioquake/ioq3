@@ -165,8 +165,19 @@ void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 
 	primitives = r_primitives->integer;
 
+	if ( qglesMajorVersion >= 1 ) {
+		if ( primitives == 0 ) {
+			primitives = 2;
+		}
+
+		if ( primitives == 1 || primitives == 3 ) {
+			ri.Printf( PRINT_WARNING, "OpenGL ES does not support glBegin() required for r_primitives %d\n", primitives );
+			ri.Cvar_Set( "r_primitives", "0" );
+			primitives = 2;
+		}
+	}
 	// default is to use triangles if compiled vertex arrays are present
-	if ( primitives == 0 ) {
+	else if ( primitives == 0 ) {
 		if ( qglLockArraysEXT ) {
 			primitives = 2;
 		} else {
@@ -254,14 +265,30 @@ Draws triangle outlines for debugging
 ================
 */
 static void DrawTris (shaderCommands_t *input) {
+	glIndex_t lineIndexes[SHADER_MAX_INDEXES*2];
+	int i, numTris;
+
 	GL_Bind( tr.whiteImage );
 	qglColor3f (1,1,1);
 
-	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE );
+	GL_State( GLS_DEPTHMASK_TRUE );
 	qglDepthRange( 0, 0 );
 
 	qglDisableClientState (GL_COLOR_ARRAY);
 	qglDisableClientState (GL_TEXTURE_COORD_ARRAY);
+
+	// convert triangles to lines
+	numTris = tess.numIndexes / 3;
+	for (i = 0 ; i < numTris; i++) {
+		lineIndexes[i*6+0] = input->indexes[i*3+0];
+		lineIndexes[i*6+1] = input->indexes[i*3+1];
+
+		lineIndexes[i*6+2] = input->indexes[i*3+1];
+		lineIndexes[i*6+3] = input->indexes[i*3+2];
+
+		lineIndexes[i*6+4] = input->indexes[i*3+2];
+		lineIndexes[i*6+5] = input->indexes[i*3+0];
+	}
 
 	qglVertexPointer (3, GL_FLOAT, 16, input->xyz);	// padded for SIMD
 
@@ -270,7 +297,7 @@ static void DrawTris (shaderCommands_t *input) {
 		GLimp_LogComment( "glLockArraysEXT\n" );
 	}
 
-	R_DrawElements( input->numIndexes, input->indexes );
+	qglDrawElements( GL_LINES, numTris*6, GL_INDEX_TYPE, lineIndexes );
 
 	if (qglUnlockArraysEXT) {
 		qglUnlockArraysEXT();
@@ -288,23 +315,41 @@ Draws vertex normals for debugging
 ================
 */
 static void DrawNormals (shaderCommands_t *input) {
+	glIndex_t lineIndexes[SHADER_MAX_INDEXES*2];
 	int		i;
-	vec3_t	temp;
 
 	GL_Bind( tr.whiteImage );
 	qglColor3f (1,1,1);
 	qglDepthRange( 0, 0 );	// never occluded
-	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE );
+	GL_State( GLS_DEPTHMASK_TRUE );
 
-	qglBegin (GL_LINES);
+	qglDisableClientState (GL_COLOR_ARRAY);
+	qglDisableClientState (GL_TEXTURE_COORD_ARRAY);
+
 	for (i = 0 ; i < input->numVertexes ; i++) {
-		qglVertex3fv (input->xyz[i]);
-		VectorMA (input->xyz[i], 2, input->normal[i], temp);
-		qglVertex3fv (temp);
-	}
-	qglEnd ();
+		VectorMA( input->xyz[i], 2, input->normal[i], input->xyz[i + input->numVertexes] );
 
+		lineIndexes[i*2] = i;
+		lineIndexes[i*2+1] = i + input->numVertexes;
+	}
+
+	qglVertexPointer (3, GL_FLOAT, 16, input->xyz);	// padded for SIMD
+
+	if (qglLockArraysEXT) {
+		qglLockArraysEXT(0, input->numVertexes * 2);
+		GLimp_LogComment( "glLockArraysEXT\n" );
+	}
+
+	qglDrawElements( GL_LINES, input->numVertexes * 2, GL_INDEX_TYPE, lineIndexes );
+
+	if (qglUnlockArraysEXT) {
+		qglUnlockArraysEXT();
+		GLimp_LogComment( "glUnlockArraysEXT\n" );
+	}
 	qglDepthRange( 0, 1 );
+
+	// FIXME: kind of ugly to have to clear this to avoid overflow detection.
+	memset( input->xyz[SHADER_MAX_VERTEXES-1], 0, sizeof ( input->xyz[0] ) );
 }
 
 /*
