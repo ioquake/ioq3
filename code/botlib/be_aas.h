@@ -217,5 +217,5 @@ typedef struct aas_predictroute_s
 	int endcontents;		//contents at the end of movement prediction
 	int endtravelflags;		//end travel flags
 	int numareas;			//number of areas predicted ahead
-	int time;				//time predicted ahead (in hundreth of a sec)
+	int time;				//time predicted ahead (in hundredths of a sec)
 } aas_predictroute_t;

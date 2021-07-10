@@ -277,7 +277,7 @@ void AAS_FileInfo(void)
 					aasworld.reachabilitysize * sizeof(aas_reachability_t) +
 					aasworld.numportals * sizeof(aas_portal_t) +
 					aasworld.numclusters * sizeof(aas_cluster_t);
-	botimport.Print(PRT_MESSAGE, "optimzed size %d KB\n", optimized >> 10);
+	botimport.Print(PRT_MESSAGE, "optimized size %d KB\n", optimized >> 10);
 } //end of the function AAS_FileInfo
 #endif //AASFILEDEBUG
 //===========================================================================
