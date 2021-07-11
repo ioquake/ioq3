@@ -73,10 +73,24 @@ char *Sys_DefaultHomePath(void)
 			else
 				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_MACOSX);
 #else
-			if(com_homepath->string[0])
-				Q_strcat(homePath, sizeof(homePath), com_homepath->string);
-			else
-				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_UNIX);
+#if STANDALONE
+			if( ( p = getenv( "XDG_DATA_HOME" ) ) != NULL )
+			{
+				Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
+			}
+			else if( ( p = getenv( "HOME" ) ) != NULL )
+			{
+				Com_sprintf(homePath, sizeof(homePath), "%s%c.local%cshare%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
+			}
+
+			if(*homePath)
+#endif
+			{
+				if(com_homepath->string[0])
+					Q_strcat(homePath, sizeof(homePath), com_homepath->string);
+				else
+					Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_UNIX);
+			}
 #endif
 		}
 	}
