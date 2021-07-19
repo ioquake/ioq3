@@ -75,8 +75,7 @@ For *nix
   2. Run 'make'.
 
 For Windows,
-  1. Please refer to the excellent instructions here:
-     http://wiki.ioquake3.org/Building_ioquake3
+  1. View the following document: [Build instructions on Windows](BUILD_INSTRUCTIONS_WINDOWS.md)
 
 For Mac OS X, building a Universal Binary
   1. Install MacOSX SDK packages from XCode.  For maximum compatibility,
