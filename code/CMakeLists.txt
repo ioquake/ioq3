@@ -72,12 +72,7 @@ function(q3_add_library)
 
 	cmake_parse_arguments(_LIB "${_OPTIONS_ARGS}" "${_ONE_VALUE_ARGS}" "${_MULTI_VALUE_ARGS}" ${ARGN} )
 
-	set(ARCH x86)
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(ARCH x86_64)
-	endif()
-
-	set(OUTPUTNAME "${_LIB_TARGET}_${ARCH}")
+	set(OUTPUTNAME "${_LIB_TARGET}_${ARCH_STRING}")
 	set(LIB_BINARY_DIR "${ENGINE_BINARY_DIR}")
 
 	if (_LIB_GAME_NAME)
