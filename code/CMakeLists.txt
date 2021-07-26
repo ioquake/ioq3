@@ -210,7 +210,7 @@ function(add_qvm TARGET_SHORT GAME_NAME)
 		endif()
 	endforeach()
 
-	set(QVM_PATH ${GAME_NAME}/vm/${TARGET}.qvm)
+	set(QVM_PATH ${GAME_NAME}/vm/${TARGET_SHORT}.qvm)
 	add_custom_command(
 		OUTPUT "${ENGINE_BINARY_DIR}/${QVM_PATH}"
 		COMMAND q3asm
