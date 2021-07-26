@@ -2,6 +2,7 @@ set(SRCS
 	cl_cgame.c
 	cl_cin.c
 	cl_console.c
+	cl_curl.c cl_curl.h
 	cl_input.c
 	cl_keys.c
 	cl_main.c
@@ -10,20 +11,24 @@ set(SRCS
 	cl_scrn.c
 	cl_ui.c
 	cl_avi.c
+	client.h
+	keycodes.h
+	keys.h
+	qal.c qal.h
 	snd_altivec.c
 	snd_adpcm.c
 	snd_dma.c
+	snd_local.h
 	snd_mem.c
 	snd_mix.c
 	snd_wavelet.c
 	snd_main.c
-	snd_codec.c
+	snd_codec.c snd_codec.h
 	snd_codec_wav.c
 	snd_codec_ogg.c
 	snd_codec_opus.c
-	qal.c
+	snd_public.h
 	snd_openal.c
-	cl_curl.c
 	../qcommon/cm_load.c
 	../qcommon/cm_patch.c
 	../qcommon/cm_polylib.c
@@ -59,6 +64,8 @@ set(SRCS
 	../sdl/sdl_input.c
 	../sdl/sdl_snd.c
 	../sys/con_log.c
+	../sys/sys_loadlib.h
+	../sys/sys_local.h
 	../sys/sys_main.c
 	../sys/sys_autoupdater.c
 )
@@ -76,7 +83,7 @@ else()
 endif()
 
 if (USE_MUMBLE)
-	list(APPEND SRCS libmumblelink.c)
+	list(APPEND SRCS libmumblelink.c libmumblelink.h)
 endif()
 
 project(${CLIENTBIN})

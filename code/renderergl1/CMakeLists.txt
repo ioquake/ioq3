@@ -9,6 +9,7 @@ set(SRCS
 	tr_image.c
 	tr_init.c
 	tr_light.c
+	tr_local.h
 	tr_main.c
 	tr_marks.c
 	tr_mesh.c
@@ -22,6 +23,9 @@ set(SRCS
 	tr_sky.c
 	tr_surface.c
 	tr_world.c
+	../renderercommon/iqm.h
+	../renderercommon/qgl.h
+	../renderercommon/tr_common.h
 	../renderercommon/tr_font.c
 	../renderercommon/tr_image_bmp.c
 	../renderercommon/tr_image_jpg.c
@@ -29,6 +33,8 @@ set(SRCS
 	../renderercommon/tr_image_png.c
 	../renderercommon/tr_image_tga.c
 	../renderercommon/tr_noise.c
+	../renderercommon/tr_public.h
+	../renderercommon/tr_types.h
 	../sdl/sdl_gamma.c
 	../sdl/sdl_glimp.c
 )

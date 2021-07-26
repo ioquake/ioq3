@@ -4,22 +4,24 @@ set(SRCS
 	tr_bsp.c
 	tr_cmds.c
 	tr_curve.c
-	tr_dsa.c
-	tr_extramath.c
+	tr_dsa.c tr_dsa.h
+	tr_extramath.c tr_extramath.h
 	tr_extensions.c
-	tr_fbo.c
+	tr_extratypes.h
+	tr_fbo.c tr_fbo.h
 	tr_flares.c
 	tr_glsl.c
 	tr_image.c
 	tr_image_dds.c
 	tr_init.c
 	tr_light.c
+	tr_local.h
 	tr_main.c
 	tr_marks.c
 	tr_mesh.c
 	tr_model.c
 	tr_model_iqm.c
-	tr_postprocess.c
+	tr_postprocess.c tr_postprocess.h
 	tr_scene.c
 	tr_shade.c
 	tr_shade_calc.c
@@ -30,6 +32,9 @@ set(SRCS
 	tr_vbo.c
 	tr_world.c
 
+	../renderercommon/iqm.h
+	../renderercommon/qgl.h
+	../renderercommon/tr_common.h
 	../renderercommon/tr_font.c
 	../renderercommon/tr_image_bmp.c
 	../renderercommon/tr_image_jpg.c
@@ -37,6 +42,8 @@ set(SRCS
 	../renderercommon/tr_image_png.c
 	../renderercommon/tr_image_tga.c
 	../renderercommon/tr_noise.c
+	../renderercommon/tr_public.h
+	../renderercommon/tr_types.h
 
 	../sdl/sdl_gamma.c
 	../sdl/sdl_glimp.c
@@ -72,6 +79,7 @@ set(SHADER_SRCS
 	glsl/tonemap_fp.glsl
 	glsl/tonemap_vp.glsl
 )
+list(APPEND SRCS ${SHADER_SRCS})
 
 foreach (shader ${SHADER_SRCS})
 	get_filename_component(shaderfile ${shader} NAME_WE)

@@ -29,6 +29,8 @@ set(SRCS
 	../qcommon/unzip.c
 	${QCOMMON_VM_SRCS}
 	../sys/con_log.c
+	../sys/sys_loadlib.h
+	../sys/sys_local.h
 	../sys/sys_main.c
 	../sys/sys_autoupdater.c
 )
