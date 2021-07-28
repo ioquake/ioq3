@@ -151,10 +151,22 @@ function(q3_add_executable)
 	endforeach()
 
 	if (APPLE)
-		configure_file(${ROOT_DIR}/misc/osx/application.plist.in ${CMAKE_CURRENT_BINARY_DIR}/application.plist)
-		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/application.plist)
+		set(APPLE_ICONS ${CMAKE_CURRENT_BINARY_DIR}/quake3_flat.icns)
+		add_custom_command(
+			OUTPUT ${APPLE_ICONS}
+			COMMAND iconutil -c icns --output ${APPLE_ICONS} ${ROOT_DIR}/misc/quake3_flat.iconset
+		)
+		set(BUNDLE_RESOURCES ${APPLE_ICONS})
+		set_target_properties(${_EXE_TARGET} PROPERTIES RESOURCE "${BUNDLE_RESOURCES}")
+		target_sources(${_EXE_TARGET} PUBLIC ${BUNDLE_RESOURCES})
+		set_source_files_properties(${APPLE_ICONS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources GENERATED TRUE)
+
+		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "${CMAKE_PROJECT_NAME}")
+		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${ROOT_DIR}/misc/osx/application.plist.in)
 		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE ON)
 		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "${CMAKE_PROJECT_NAME}")
+		set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_ICON_FILE "quake3_flat")
+		#set_target_properties(${_EXE_TARGET} PROPERTIES MACOSX_BUNDLE_COPYRIGHT "")
 		#set_target_properties(${_EXE_TARGET} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "YES")
 		#set_target_properties(${_EXE_TARGET} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer")
 		#set_target_properties(${_EXE_TARGET} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CODESIGNIDENTITY})

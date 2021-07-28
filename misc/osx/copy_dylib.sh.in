@@ -6,7 +6,7 @@
 EXE_NAME=@OUTPUTNAME@
 # Path to the executable directory inside the bundle.
 # This must be an absolute path, so use $PWD.
-EXEPATH=$PWD/@CMAKE_PROJECT_NAME@.app/Contents/MacOS
+EXEPATH=$PWD/@OUTPUTNAME@.app/Contents/MacOS
 # Libraries to explicitly bundle, even though they
 # may not be in /opt/local. One per line. These
 # are used with grep, so only a portion of the name
