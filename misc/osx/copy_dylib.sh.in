@@ -3,7 +3,7 @@
 #### Configuration:
 # The name of the executable. It is assumed
 # that it is in the current working directory.
-EXE_NAME=@COMMANDLINE@
+EXE_NAME=@OUTPUTNAME@
 # Path to the executable directory inside the bundle.
 # This must be an absolute path, so use $PWD.
 EXEPATH=$PWD/@CMAKE_PROJECT_NAME@.app/Contents/MacOS
