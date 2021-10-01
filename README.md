@@ -362,6 +362,11 @@ The defaults for these variables differ depending on the target platform.
 
 * `set rocketjump 1` - disable self damage and damage from your team 
 
+Add guns and ammo at start. `-1` means infinite ammo. 
+* `set withrocket -1` - add rocket (infinite ammo)
+* `set withbfg 1` - add BFG (one shot)
+* `set withplasma 10` - add plasma gun (10 shots)
+
 # README for Developers
 
 ## pk3dir
