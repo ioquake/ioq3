@@ -358,6 +358,9 @@ The defaults for these variables differ depending on the target platform.
   addbot random           - the bot name "random" now selects a random bot
 ```
 
+## New mods
+
+* `set rocketjump 1` - disable self damage and damage from your team 
 
 # README for Developers
 
