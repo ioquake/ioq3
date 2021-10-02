@@ -366,6 +366,11 @@ Add guns and ammo at start. `-1` means infinite ammo.
 * `set withrocket -1` - add rocket (infinite ammo)
 * `set withbfg 1` - add BFG (one shot)
 * `set withplasma 10` - add plasma gun (10 shots)
+* `set withmachinegun -1` - add machine gun
+* `set withshotgun -1` - add shotgun
+* `set withgrenade -1` - add grenade
+* `set withlightning -1` - add lightning
+* `set withrailgun -1` - add railgun
 
 # README for Developers
 
