@@ -371,6 +371,10 @@ Add guns and ammo at start. `-1` means infinite ammo.
 * `set withgrenade -1` - add grenade
 * `set withlightning -1` - add lightning
 * `set withrailgun -1` - add railgun
+Guns from mission pack
+* `set withnailgun -1` - add nailgun
+* `set withprox -1` - add prox
+* `set withchaingun -1` - add chaingun
 
 # README for Developers
 
