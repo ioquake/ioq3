@@ -1,3 +1,5 @@
+![Build](https://github.com/ioquake/ioq3/workflows/Build/badge.svg)
+
                    ,---------------------------------------.
                    |   _                     _       ____  |
                    |  (_)___  __ _ _  _ __ _| |_____|__ /  |
@@ -397,11 +399,13 @@ value in the prototype with intptr_t (arg0, arg1, ...stay int).
 
 Add the following code snippet to q_shared.h:
 
-    #ifdef Q3_VM
-    typedef int intptr_t;
-    #else
-    #include <stdint.h>
-    #endif
+```c
+#ifdef Q3_VM
+typedef int intptr_t;
+#else
+#include <stdint.h>
+#endif
+```
 
 Note if you simply wish to run mods on a 64bit platform you do not need to
 recompile anything since by default Q3 uses a virtual machine system.

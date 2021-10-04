@@ -264,6 +264,7 @@ VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.6
 OPUSDIR=$(MOUNT_DIR)/opus-1.2.1
 OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.9
 ZDIR=$(MOUNT_DIR)/zlib
+TOOLSDIR=$(MOUNT_DIR)/tools
 Q3ASMDIR=$(MOUNT_DIR)/tools/asm
 LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
 Q3CPPDIR=$(MOUNT_DIR)/tools/lcc/cpp
@@ -633,7 +634,19 @@ ifdef MINGW
 
   ifeq ($(COMPILE_PLATFORM),cygwin)
     TOOLS_BINEXT=.exe
-    TOOLS_CC=$(CC)
+
+    # Under cygwin the default of using gcc for TOOLS_CC won't work, so
+    # we need to figure out the appropriate compiler to use, based on the
+    # host architecture that we're running under (as tools run on the host)
+    ifeq ($(COMPILE_ARCH),x86_64)
+      TOOLS_MINGW_PREFIXES=x86_64-w64-mingw32 amd64-mingw32msvc
+    endif
+    ifeq ($(COMPILE_ARCH),x86)
+      TOOLS_MINGW_PREFIXES=i686-w64-mingw32 i586-mingw32msvc i686-pc-mingw32
+    endif
+
+    TOOLS_CC=$(firstword $(strip $(foreach TOOLS_MINGW_PREFIX, $(TOOLS_MINGW_PREFIXES), \
+      $(call bin_path, $(TOOLS_MINGW_PREFIX)-gcc))))
   endif
 
   LIBS= -lws2_32 -lwinmm -lpsapi
@@ -1222,9 +1235,7 @@ endef
 define DO_REF_STR
 $(echo_cmd) "REF_STR $<"
 $(Q)rm -f $@
-$(Q)echo "const char *fallbackShader_$(notdir $(basename $<)) =" >> $@
-$(Q)cat $< | sed -e 's/^/\"/;s/$$/\\n\"/' | tr -d '\r' >> $@
-$(Q)echo ";" >> $@
+$(Q)$(STRINGIFY) $< $@
 endef
 
 define DO_BOT_CC
@@ -1385,6 +1396,9 @@ endif
 	@echo "  SERVER_CFLAGS:"
 	$(call print_wrapped, $(SERVER_CFLAGS))
 	@echo ""
+	@echo "  TOOLS_CFLAGS:"
+	$(call print_wrapped, $(TOOLS_CFLAGS))
+	@echo ""
 	@echo "  LDFLAGS:"
 	$(call print_wrapped, $(LDFLAGS))
 	@echo ""
@@ -1490,6 +1504,7 @@ Q3RCC       = $(B)/tools/q3rcc$(TOOLS_BINEXT)
 Q3CPP       = $(B)/tools/q3cpp$(TOOLS_BINEXT)
 Q3LCC       = $(B)/tools/q3lcc$(TOOLS_BINEXT)
 Q3ASM       = $(B)/tools/q3asm$(TOOLS_BINEXT)
+STRINGIFY   = $(B)/tools/stringify$(TOOLS_BINEXT)
 
 LBURGOBJ= \
   $(B)/tools/lburg/lburg.o \
@@ -1582,6 +1597,10 @@ $(B)/tools/etc/%.o: $(Q3LCCETCDIR)/%.c
 $(Q3LCC): $(Q3LCCOBJ) $(Q3RCC) $(Q3CPP)
 	$(echo_cmd) "LD $@"
 	$(Q)$(TOOLS_CC) $(TOOLS_CFLAGS) $(TOOLS_LDFLAGS) -o $@ $(Q3LCCOBJ) $(TOOLS_LIBS)
+
+$(STRINGIFY): $(TOOLSDIR)/stringify.c
+	$(echo_cmd) "TOOLS_CC $@"
+	$(Q)$(TOOLS_CC) $(TOOLS_CFLAGS) $(TOOLS_LDFLAGS) -o $@ $(TOOLSDIR)/stringify.c $(TOOLS_LIBS)
 
 define DO_Q3LCC
 $(echo_cmd) "Q3LCC $<"
@@ -2725,7 +2744,7 @@ $(B)/renderergl1/%.o: $(RGL1DIR)/%.c
 $(B)/renderergl1/tr_altivec.o: $(RGL1DIR)/tr_altivec.c
 	$(DO_REF_CC_ALTIVEC)
 
-$(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
+$(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl $(STRINGIFY)
 	$(DO_REF_STR)
 
 $(B)/renderergl2/glsl/%.o: $(B)/renderergl2/glsl/%.c
@@ -2950,7 +2969,7 @@ toolsclean2:
 	@echo "TOOLS_CLEAN $(B)"
 	@rm -f $(TOOLSOBJ)
 	@rm -f $(TOOLSOBJ_D_FILES)
-	@rm -f $(LBURG) $(DAGCHECK_C) $(Q3RCC) $(Q3CPP) $(Q3LCC) $(Q3ASM)
+	@rm -f $(LBURG) $(DAGCHECK_C) $(Q3RCC) $(Q3CPP) $(Q3LCC) $(Q3ASM) $(STRINGIFY)
 
 distclean: clean toolsclean
 	@rm -rf $(BUILD_DIR)
