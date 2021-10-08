@@ -370,10 +370,26 @@ intptr_t		QDECL VM_Call( vm_t *vm, int callNum, ... );
 
 void	VM_Debug( int level );
 
-void	*VM_ArgPtr( intptr_t intValue );
+void	*VM_ArgPtr( intptr_t intValue, size_t requiredSpace );
+void	*VM_ArgPtrDyn( intptr_t intValue, intptr_t requestedCount, size_t sizePerUnit, size_t maxCount );
+void	*VM_ArgPtrDynSized( intptr_t intValue, intptr_t requestedCount, intptr_t requestedSizePerUnit, size_t minSizePerUnit, size_t maxCount );
 void	*VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue );
+size_t	VM_ArgPtrLimit( intptr_t intValue, size_t nativeLimit );
 
-#define	VMA(x) VM_ArgPtr(args[x])
+// VMA_STR is for input strings only.  For output strings, use VMA_DYN(x, char, capacity)
+#define	VMA_STR(x) ((const char *)VM_ArgPtr(args[x], 0))
+#define	VMA_N(x, type, n) ((type *)VM_ArgPtr(args[x], sizeof(type) * n))
+#define	VMA_1(x, type) VMA_N(x, type, 1)
+#define	VMA_UNBOUNDED(x, type) VMA_N(x, char, 0)
+#define	VMA_VEC3(x) VMA_N(x, vec_t, 3)
+#define	VMA_DYN(x, type, count) ((type*)VM_ArgPtrDyn(args[x], count, sizeof(type), (SIZE_MAX / sizeof(type))))
+#define	VMA_DYN_SIZED(x, type, count, sizePerUnit) ((type*)VM_ArgPtrDynSized(args[x], count, sizePerUnit, sizeof(type), (SIZE_MAX / sizeof(type))))
+//#define VMA(x) VM_ArgPtr(args[x], 0)
+
+// Compatibility hack for legacy syscalls that don't specify buffer size.
+// In this case, we pass the expected size of the array for native DLLs.  For VMs, we use the actual available space.
+#define VMA_HACK_AVAILABLE(x, fallback) VM_ArgPtrLimit(args[x], fallback - 1)
+
 static ID_INLINE float _vmf(intptr_t x)
 {
 	floatint_t fi;
