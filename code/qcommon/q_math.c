@@ -218,21 +218,31 @@ void ByteToDir( int b, vec3_t dir ) {
 
 unsigned ColorBytes3 (float r, float g, float b) {
 	unsigned	i;
+	int	x;
 
 	( (byte *)&i )[0] = r * 255;
 	( (byte *)&i )[1] = g * 255;
 	( (byte *)&i )[2] = b * 255;
+	for (x=3 ; x<sizeof(unsigned) ; x++)
+	{
+		( (byte *)&i )[x] = 0;
+	}
 
 	return i;
 }
 
 unsigned ColorBytes4 (float r, float g, float b, float a) {
 	unsigned	i;
+	int	x;
 
 	( (byte *)&i )[0] = r * 255;
 	( (byte *)&i )[1] = g * 255;
 	( (byte *)&i )[2] = b * 255;
 	( (byte *)&i )[3] = a * 255;
+	for (x=4 ; x<sizeof(unsigned) ; x++)
+	{
+		( (byte *)&i )[x] = 0;
+	}
 
 	return i;
 }
