@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ALC_NO_PROTOTYPES
 #endif
 
-#ifdef USE_LOCAL_HEADERS
+#ifdef USE_INTERNAL_OPENAL
 #include "../AL/al.h"
 #include "../AL/alc.h"
 #else
