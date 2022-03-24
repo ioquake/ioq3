@@ -27,6 +27,10 @@ cvar_t *sv_voip;
 cvar_t *sv_voipProtocol;
 #endif
 
+#ifdef USE_HTTP_SERVER
+extern void HTTP_Frame(void);
+#endif
+
 serverStatic_t	svs;				// persistant server info
 server_t		sv;					// local server
 vm_t			*gvm = NULL;				// game virtual machine
@@ -1067,6 +1071,11 @@ void SV_Frame( int msec ) {
 
 		return;
 	}
+
+#ifdef USE_HTTP_SERVER
+	// a map must be running in dedicated server mode
+	HTTP_Frame();
+#endif
 
 	// allow pause if only the local client is connected
 	if ( SV_CheckPaused() ) {
