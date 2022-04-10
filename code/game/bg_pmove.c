@@ -981,14 +981,14 @@ static void PM_CrashLand( void ) {
 	// SURF_NODAMAGE is used for bounce pads where you don't ever
 	// want to take damage or play a crunch sound
 	if ( !(pml.groundTrace.surfaceFlags & SURF_NODAMAGE) )  {
-		if ( delta > 60 ) {
-			PM_AddEvent( EV_FALL_FAR );
-		} else if ( delta > 40 ) {
-			// this is a pain grunt, so don't play it if dead
-			if ( pm->ps->stats[STAT_HEALTH] > 0 ) {
+		// these two are pain grunts, so don't play if dead
+		if ( pm->ps->stats[STAT_HEALTH] > 0 ) {
+			if ( delta > 60 ) {
+				PM_AddEvent( EV_FALL_FAR );
+			} else if ( delta > 40 ) {
 				PM_AddEvent( EV_FALL_MEDIUM );
 			}
-		} else if ( delta > 7 ) {
+		} if ( delta > 7 ) {
 			PM_AddEvent( EV_FALL_SHORT );
 		} else {
 			PM_AddEvent( PM_FootstepForSurface() );
