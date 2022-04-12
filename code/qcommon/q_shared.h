@@ -19,12 +19,12 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-//
+
 #ifndef __Q_SHARED_H
 #define __Q_SHARED_H
 
-// q_shared.h -- included first by ALL program modules.
-// A user mod should never modify this file
+/* q_shared.h -- included first by ALL program modules.
+A user mod should never modify this file */
 
 #ifdef STANDALONE
   #define PRODUCT_NAME				"iofoo3"
@@ -34,8 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define HOMEPATH_NAME_UNIX		".foo"
   #define HOMEPATH_NAME_WIN			"FooBar"
   #define HOMEPATH_NAME_MACOSX		HOMEPATH_NAME_WIN
-//  #define STEAMPATH_NAME			"Foo Bar"
-//  #define STEAMPATH_APPID         ""
+/*  #define STEAMPATH_NAME			"Foo Bar"
+  #define STEAMPATH_APPID         "" */
   #define GAMENAME_FOR_MASTER		"foobar"	// must NOT contain whitespace
   #define CINEMATICS_LOGO		"foologo.roq"
   #define CINEMATICS_INTRO		"intro.roq"
@@ -61,8 +61,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Heartbeat for dpmaster protocol. You shouldn't change this unless you know what you're doing
 #define HEARTBEAT_FOR_MASTER		"DarkPlaces"
 
-// When com_gamename is LEGACY_MASTER_GAMENAME, use quake3 master protocol.
-// You shouldn't change this unless you know what you're doing
+/* When com_gamename is LEGACY_MASTER_GAMENAME, use quake3 master
+protocol. You shouldn't change this unless you know what you're doing */
 #define LEGACY_MASTER_GAMENAME		"Quake3Arena"
 #define LEGACY_HEARTBEAT_FOR_MASTER	"QuakeArena-1"
 
@@ -95,13 +95,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #pragma warning(disable : 4127)		// conditional expression is constant
 #pragma warning(disable : 4136)
 #pragma warning(disable : 4152)		// nonstandard extension, function/data pointer conversion in expression
-//#pragma warning(disable : 4201)
-//#pragma warning(disable : 4214)
+/*#pragma warning(disable : 4201)
+#pragma warning(disable : 4214)*/
 #pragma warning(disable : 4244)
 #pragma warning(disable : 4142)		// benign redefinition
-//#pragma warning(disable : 4305)		// truncation from const double to float
-//#pragma warning(disable : 4310)		// cast truncates constant value
-//#pragma warning(disable:  4505) 	// unreferenced local function has been removed
+/*#pragma warning(disable : 4305)		// truncation from const double to float
+#pragma warning(disable : 4310)		// cast truncates constant value
+#pragma warning(disable:  4505) 	// unreferenced local function has been removed */
 #pragma warning(disable : 4514)
 #pragma warning(disable : 4702)		// unreachable code
 #pragma warning(disable : 4711)		// selected for automatic inline expansion
@@ -183,8 +183,8 @@ typedef int intptr_t;
 #endif
 
 #ifdef _WIN32
-  // vsnprintf is ISO/IEC 9899:1999
-  // abstracting this to make it portable
+  /* vsnprintf is ISO/IEC 9899:1999
+  abstracting this to make it portable */
   int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap);
 #else
   #define Q_vsnprintf vsnprintf
@@ -242,8 +242,8 @@ typedef int		clipHandle_t;
 #define	YAW					1		// left / right
 #define	ROLL				2		// fall over
 
-// the game guarantees that no string from the network will ever
-// exceed MAX_STRING_CHARS
+/* the game guarantees that no string from
+the network will ever exceed MAX_STRING_CHARS */
 #define	MAX_STRING_CHARS	1024	// max length of a string passed to Cmd_TokenizeString
 #define	MAX_STRING_TOKENS	1024	// max tokens resulting from Cmd_TokenizeString
 #define	MAX_TOKEN_CHARS		1024	// max length of an individual token
@@ -277,9 +277,9 @@ typedef enum {
 } cbufExec_t;
 
 
-//
-// these aren't needed by any of the VMs.  put in another header?
-//
+/*
+these aren't needed by any of the VMs.  put in another header?
+*/
 #define	MAX_MAP_AREA_BYTES		32		// bit vector of area visibility
 
 
@@ -382,8 +382,8 @@ typedef	int	fixed16_t;
 #define NUMVERTEXNORMALS	162
 extern	vec3_t	bytedirs[NUMVERTEXNORMALS];
 
-// all drawing is done to a 640*480 virtual screen size
-// and will be automatically scaled to the real resolution
+/* all drawing is done to a 640*480 virtual screen size
+and will be automatically scaled to the real resolution */
 #define	SCREEN_WIDTH		640
 #define	SCREEN_HEIGHT		480
 
@@ -474,8 +474,8 @@ int Q_isnan(float x);
   extern int (QDECL *Q_VMftol)(void);
   extern void (QDECL *Q_SnapVector)(vec3_t vec);
 #else
-  // Q_ftol must expand to a function name so the pluggable renderer can take
-  // its address
+  /* Q_ftol must expand to a function name so
+  the pluggable renderer can take its address */
   #define Q_ftol lrintf
   #define Q_SnapVector(vec)\
 	do\
@@ -603,9 +603,8 @@ void AddPointToBounds( const vec3_t v, vec3_t mins, vec3_t maxs );
 
 #if !defined( Q3_VM ) || ( defined( Q3_VM ) && defined( __Q3_VM_MATH ) )
 static ID_INLINE int VectorCompare( const vec3_t v1, const vec3_t v2 ) {
-	if (v1[0] != v2[0] || v1[1] != v2[1] || v1[2] != v2[2]) {
+	if (v1[0] != v2[0] || v1[1] != v2[1] || v1[2] != v2[2])
 		return 0;
-	}			
 	return 1;
 }
 
@@ -631,8 +630,8 @@ static ID_INLINE vec_t DistanceSquared( const vec3_t p1, const vec3_t p2 ) {
 	return v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
 }
 
-// fast vector normalize routine that does not check to make sure
-// that length != 0, nor does it return length, uses rsqrt approximation
+/* fast vector normalize routine that does not check to make sure
+that length != 0, nor does it return length, uses rsqrt approximation */
 static ID_INLINE void VectorNormalizeFast( vec3_t v )
 {
 	float ilength;
@@ -838,8 +837,8 @@ int Q_CountChar(const char *string, char tocount);
 
 //=============================================
 
-// 64-bit integers for global rankings interface
-// implemented as a struct for qvm compatibility
+/* 64-bit integers for global rankings interface
+implemented as a struct for qvm compatibility */
 typedef struct
 {
 	byte	b0;
@@ -872,9 +871,9 @@ void Com_TruncateLongString( char *buffer, const char *s );
 
 //=============================================
 
-//
-// key / value info strings
-//
+/*
+key / value info strings
+*/
 char *Info_ValueForKey( const char *s, const char *key );
 void Info_RemoveKey( char *s, const char *key );
 void Info_RemoveKey_Big( char *s, const char *key );
@@ -955,8 +954,8 @@ struct cvar_s {
 
 typedef int	cvarHandle_t;
 
-// the modules that run in the virtual machine can't access the cvar_t directly,
-// so they must ask for structured updates
+/* The modules that run in the virtual machine can't access
+the cvar_t directly, so they must ask for structured updates. */
 typedef struct {
 	cvarHandle_t	handle;
 	int			modificationCount;
@@ -978,8 +977,8 @@ VoIP
 #define VOIP_SPATIAL		0x01		// spatialized voip message
 #define VOIP_DIRECT		0x02		// non-spatialized voip message
 
-// number of flags voip knows. You will have to bump protocol version number if you
-// change this.
+/* number of flags voip knows. You will have to
+bump protocol version number if you change this. */
 #define VOIP_FLAGCNT		2
 
 /*
@@ -992,8 +991,8 @@ COLLISION DETECTION
 
 #include "surfaceflags.h"			// shared with the q3map utility
 
-// plane types are used to speed some tests
-// 0-2 are axial planes
+/* Plane types are used to speed
+some tests. 0-2 are axial planes */
 #define	PLANE_X			0
 #define	PLANE_Y			1
 #define	PLANE_Z			2
@@ -1008,8 +1007,8 @@ PlaneTypeForNormal
 
 #define PlaneTypeForNormal(x) (x[0] == 1.0 ? PLANE_X : (x[1] == 1.0 ? PLANE_Y : (x[2] == 1.0 ? PLANE_Z : PLANE_NON_AXIAL) ) )
 
-// plane_t structure
-// !!! if this is changed, it must be changed in asm code too !!!
+/* plane_t structure
+!!! if this is changed, it must be changed in asm code too !!! */
 typedef struct cplane_s {
 	vec3_t	normal;
 	float	dist;
@@ -1031,8 +1030,8 @@ typedef struct {
 	int			entityNum;	// entity the contacted sirface is a part of
 } trace_t;
 
-// trace->entityNum can also be 0 to (MAX_GENTITIES-1)
-// or ENTITYNUM_NONE, ENTITYNUM_WORLD
+/* trace->entityNum can also be 0 to (MAX_GENTITIES-1)
+or ENTITYNUM_NONE, ENTITYNUM_WORLD */
 
 
 // markfragments are returned by R_MarkFragments()
@@ -1051,17 +1050,17 @@ typedef struct {
 //=====================================================================
 
 
-// in order from highest priority to lowest
-// if none of the catchers are active, bound key strings will be executed
+/* In order from highest priority to lowest; if none of
+the catchers are active, bound key strings will be executed */
 #define KEYCATCH_CONSOLE		0x0001
 #define	KEYCATCH_UI					0x0002
 #define	KEYCATCH_MESSAGE		0x0004
 #define	KEYCATCH_CGAME			0x0008
 
 
-// sound channels
-// channel 0 never willingly overrides
-// other channels will allways override a playing sound on that channel
+/* Sound channels, channel 0 never willingly
+overrides other channels will always override
+a playing sound on that channel */
 typedef enum {
 	CHAN_AUTO,
 	CHAN_LOCAL,		// menu sounds, etc
@@ -1089,18 +1088,18 @@ typedef enum {
 #define	SNAPFLAG_NOT_ACTIVE		2	// snapshot used during connection and for zombies
 #define SNAPFLAG_SERVERCOUNT	4	// toggled every map_restart so transitions can be detected
 
-//
-// per-level limits
-//
+/*
+Per-level limits
+*/
 #define	MAX_CLIENTS			64		// absolute limit
 #define MAX_LOCATIONS		64
 
 #define	GENTITYNUM_BITS		10		// don't need to send any more
 #define	MAX_GENTITIES		(1<<GENTITYNUM_BITS)
 
-// entitynums are communicated with GENTITY_BITS, so any reserved
-// values that are going to be communcated over the net need to
-// also be in this range
+/* Entitynums are communicated with GENTITY_BITS,
+so any reserved values that are going to be
+communcated over the net need to also be in this range */
 #define	ENTITYNUM_NONE		(MAX_GENTITIES-1)
 #define	ENTITYNUM_WORLD		(MAX_GENTITIES-2)
 #define	ENTITYNUM_MAX_NORMAL	(MAX_GENTITIES-2)
@@ -1112,8 +1111,8 @@ typedef enum {
 
 #define	MAX_CONFIGSTRINGS	1024
 
-// these are the only configstrings that the system reserves, all the
-// other ones are strictly for servergame to clientgame communication
+/* These are the only configstrings that the system reserves, all the
+other ones are strictly for servergame to clientgame communication. */
 #define	CS_SERVERINFO		0		// an info string with all the serverinfo cvars
 #define	CS_SYSTEMINFO		1		// an info string for server system to client system configuration (timescale, etc)
 
@@ -1138,16 +1137,14 @@ typedef struct {
 
 #define PS_PMOVEFRAMECOUNTBITS	6
 
-// playerState_t is the information needed by both the client and server
-// to predict player motion and actions
-// nothing outside of pmove should modify these, or some degree of prediction error
-// will occur
+/* playerState_t is the information needed by both the client and server
+to predict player motion and actions. Nothing outside of pmove should
+modify these, or some degree of prediction error will occur. You
+can't add anything to this without modifying the code in msg.c
 
-// you can't add anything to this without modifying the code in msg.c
-
-// playerState_t is a full superset of entityState_t as it is used by players,
-// so if a playerState_t is transmitted, the entityState_t can be fully derived
-// from it.
+playerState_t is a full superset of entityState_t as it is used by players,
+so if a playerState_t is transmitted, the entityState_t can be fully derived
+from it. */
 typedef struct playerState_s {
 	int			commandTime;	// cmd->serverTime of last executed command
 	int			pm_type;
@@ -1171,10 +1168,10 @@ typedef struct playerState_s {
 	int			torsoTimer;		// don't change low priority animations until this runs out
 	int			torsoAnim;		// mask off ANIM_TOGGLEBIT
 
-	int			movementDir;	// a number 0 to 7 that represents the relative angle
-								// of movement to the view angle (axial and diagonals)
-								// when at rest, the value will remain unchanged
-								// used to twist the legs during strafing
+	int			movementDir;	/* A number 0 to 7 that represents the relative angle
+						of movement to the view angle (axial and diagonals)
+						when at rest, the value will remain unchanged
+						used to twist the legs during strafing. */
 
 	vec3_t		grapplePoint;	// location of grapple to pull towards if PMF_GRAPPLE_PULL
 
@@ -1221,19 +1218,15 @@ typedef struct playerState_s {
 //====================================================================
 
 
-//
-// usercmd_t->button bits, many of which are generated by the client system,
-// so they aren't game/cgame only definitions
-//
+/* Usercmd_t->button bits, many of which are generated by the
+client system, so they aren't game/cgame only definitions */
 #define	BUTTON_ATTACK		1
 #define	BUTTON_TALK			2			// displays talk balloon and disables actions
 #define	BUTTON_USE_HOLDABLE	4
 #define	BUTTON_GESTURE		8
-#define	BUTTON_WALKING		16			// walking can't just be inferred from MOVE_RUN
-										// because a key pressed late in the frame will
-										// only generate a small move value for that frame
-										// walking will use different animations and
-										// won't generate footsteps
+#define	BUTTON_WALKING		16			/* Walking can't just be inferred from MOVE_RUN because a key pressed late
+							in the frame will only generate a small move value for that frame walking
+							will use different animations and won't generate won't generate footsteps */
 #define BUTTON_AFFIRMATIVE	32
 #define	BUTTON_NEGATIVE		64
 
@@ -1244,8 +1237,8 @@ typedef struct playerState_s {
 
 #define	BUTTON_ANY			2048			// any key whatsoever
 
-#define	MOVE_RUN			120			// if forwardmove or rightmove are >= MOVE_RUN,
-										// then BUTTON_WALKING should be set
+#define	MOVE_RUN			120			/* If forwardmove or rightmove are >= MOVE_RUN,
+									then BUTTON_WALKING should be set */
 
 // usercmd_t is sent to the server each client frame
 typedef struct usercmd_s {
@@ -1278,12 +1271,11 @@ typedef struct {
 	vec3_t	trDelta;			// velocity, etc
 } trajectory_t;
 
-// entityState_t is the information conveyed from the server
-// in an update message about entities that the client will
-// need to render in some way
-// Different eTypes may use the information in different ways
-// The messages are delta compressed, so it doesn't really matter if
-// the structure size is fairly large
+/* entityState_t is the information conveyed from the server in an
+update message about entities that the client will need to render
+in some way. Different eTypes may use the information in different
+ways. The messages are delta compressed so it doesn't really
+matter if the structure size the structure size is fairly large */
 
 typedef struct entityState_s {
 	int		number;			// entity index
