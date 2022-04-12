@@ -19,7 +19,7 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-//
+
 // bg_local.h -- local definitions for the bg (both games) files
 
 #define	MIN_WALK_NORMAL	0.7f		// can't walk on very steep slopes
@@ -33,9 +33,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	OVERCLIP		1.001f
 
-// all of the locals will be zeroed before each
-// pmove, just to make damn sure we don't have
-// any differences when running on client or server
+/* All of the locals will be zeroed before each
+pmove, just to make damn sure we don't have any
+differences when running on client or server. */
 typedef struct {
 	vec3_t		forward, right, up;
 	float		frametime;
