@@ -19,9 +19,9 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-
-/* bg_pmove.c -- both games player movement code
-takes a playerstate and a usercmd as input and returns a modifed playerstate */
+//
+// bg_pmove.c -- both games player movement code
+// takes a playerstate and a usercmd as input and returns a modifed playerstate
 
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
@@ -463,9 +463,9 @@ static void PM_WaterMove( void ) {
 	PM_Friction ();
 
 	scale = PM_CmdScale( &pm->cmd );
-	/*
-	user intentions
-	*/
+	//
+	// user intentions
+	//
 	if ( !scale ) {
 		wishvel[0] = 0;
 		wishvel[1] = 0;
@@ -533,9 +533,9 @@ static void PM_FlyMove( void ) {
 	PM_Friction ();
 
 	scale = PM_CmdScale( &pm->cmd );
-	/*
-	user intentions
-	*/
+	//
+	// user intentions
+	//
 	if ( !scale ) {
 		wishvel[0] = 0;
 		wishvel[1] = 0;
@@ -599,17 +599,18 @@ static void PM_AirMove( void ) {
 	// not on ground, so little effect on velocity
 	PM_Accelerate (wishdir, wishspeed, pm_airaccelerate);
 
-	/* We may have a ground plane that is very steep, even though we
-	don't have a groundentity slide along the steep plane */
+	// we may have a ground plane that is very steep, even 
+	// though we don't have a groundentity
+	// slide along the steep plane
 	if ( pml.groundPlane ) {
 		PM_ClipVelocity (pm->ps->velocity, pml.groundTrace.plane.normal, 
 			pm->ps->velocity, OVERCLIP );
 	}
 
 #if 0
-	/*ZOID: If we are on the grapple, try stair-stepping
-	this allows a player to use the grapple to pull himself
-	over a ledge*/
+	// ZOID:  If we are on the grapple, try stair-stepping
+	// this allows a player to use the grapple to pull himself
+	// over a ledge
 	if (pm->ps->pm_flags & PMF_GRAPPLE_PULL)
 		PM_StepSlideMove ( qtrue );
 	else
@@ -739,8 +740,8 @@ static void PM_WalkMove( void ) {
 
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
 		pm->ps->velocity[2] -= pm->ps->gravity * pml.frametime;
-	else	/* don't reset the z velocity for slopes
-		pm->ps->velocity[2] = 0;*/
+	else	// don't reset the z velocity for slopes
+//		pm->ps->velocity[2] = 0;
 	}
 
 	vel = VectorLength(pm->ps->velocity);
@@ -922,8 +923,8 @@ static void PM_CrashLand( void ) {
 
 	// create a local entity event to play the sound
 
-	/* SURF_NODAMAGE is used for bounce pads where you
-	don't ever want to take damage or play a crunch sound */
+	// SURF_NODAMAGE is used for bounce pads where you don't ever
+	// want to take damage or play a crunch sound
 	if(!(pml.groundTrace.surfaceFlags & SURF_NODAMAGE)) {
 		if(pm->ps->stats[STAT_HEALTH] > 0) {	//UNOFFICIAL PATCH: Check player health before determining whether to play pain grunt!
 			if(delta > 60)
@@ -1015,8 +1016,8 @@ static void PM_GroundTraceMissed( void ) {
 		if ( pm->debugLevel )
 			Com_Printf("%i:lift\n", c_pmove);
 
-		/* If they aren't in a jumping animation and the ground is a ways away, force into
-		it; if we didn't do the trace, the player would be backflipping down staircases */
+		// if they aren't in a jumping animation and the ground is a ways away, force into it
+		// if we didn't do the trace, the player would be backflipping down staircases
 		VectorCopy( pm->ps->origin, point );
 		point[2] -= 64;
 
@@ -1091,8 +1092,8 @@ static void PM_GroundTrace( void ) {
 	if ( trace.plane.normal[2] < MIN_WALK_NORMAL ) {
 		if ( pm->debugLevel )
 			Com_Printf("%i:steep\n", c_pmove);
-		/* FIXME: if they can't slide down the
-		slope, let them walk (sharp crevices) */
+		// FIXME: if they can't slide down the slope, let them
+		// walk (sharp crevices)
 		pm->ps->groundEntityNum = ENTITYNUM_NONE;
 		pml.groundPlane = qtrue;
 		pml.walking = qfalse;
@@ -1194,7 +1195,7 @@ static void PM_CheckDuck (void)
 		else {
 			VectorSet( pm->mins, -15, -15, MINS_Z );
 			VectorSet( pm->maxs, 15, 15, 16 );
-		}
+		}14
 		pm->ps->pm_flags |= PMF_DUCKED;
 		pm->ps->viewheight = CROUCH_VIEWHEIGHT;
 		return;
@@ -1216,11 +1217,11 @@ static void PM_CheckDuck (void)
 		return;
 	}
 
-	if (pm->cmd.upmove < 0)
-		pm->ps->pm_flags |= PMF_DUCKED;	//duck
+	if (pm->cmd.upmove < 0)	//duck
+		pm->ps->pm_flags |= PMF_DUCKED;
 	else
-	{
-		if (pm->ps->pm_flags & PMF_DUCKED)	// stand up if possible
+	{	// stand up if possible
+		if (pm->ps->pm_flags & PMF_DUCKED)
 		{
 			// try to stand up
 			pm->maxs[2] = 32;
@@ -1257,8 +1258,10 @@ static void PM_Footsteps( void ) {
 	int			old;
 	qboolean	footstep;
 
-	/* calculate speed and cycle to be
-	used for all cyclic walking effects */
+	//
+	// calculate speed and cycle to be used for
+	// all cyclic walking effects
+	//
 	pm->xyspeed = sqrt( pm->ps->velocity[0] * pm->ps->velocity[0]
 		+  pm->ps->velocity[1] * pm->ps->velocity[1] );
 
@@ -1346,27 +1349,27 @@ Generate sound events for entering and leaving water
 ==============
 */
 static void PM_WaterEvents( void ) {		// FIXME?
-	/*
-	if just entered a water volume, play a sound
-	*/
+	//
+	// if just entered a water volume, play a sound
+	//
 	if (!pml.previous_waterlevel && pm->waterlevel)
 		PM_AddEvent( EV_WATER_TOUCH );
 
-	/*
-	if just completely exited a water volume, play a sound
-	*/
+	//
+	// if just completely exited a water volume, play a sound
+	//
 	if (pml.previous_waterlevel && !pm->waterlevel)
 		PM_AddEvent( EV_WATER_LEAVE );
 
-	/*
-	check for head just going under water
-	*/
+	//
+	// check for head just going under water
+	//
 	if (pml.previous_waterlevel != 3 && pm->waterlevel == 3)
 		PM_AddEvent( EV_WATER_UNDER );
 
-	/*
-	check for head just coming out of water
-	*/
+	//
+	// check for head just coming out of water
+	//
 	if (pml.previous_waterlevel == 3 && pm->waterlevel != 3)
 		PM_AddEvent( EV_WATER_CLEAR );
 }
@@ -1477,9 +1480,9 @@ static void PM_Weapon( void ) {
 	if ( pm->ps->weaponTime > 0 )
 		pm->ps->weaponTime -= pml.msec;
 
-	/* Check for weapon change. You can't
-	change if weapon is firing, but can
-	do so if lowering or raising */
+	// check for weapon change
+	// can't change if weapon is firing, but can change
+	// again if lowering or raising
 	if ( pm->ps->weaponTime <= 0 || pm->ps->weaponstate != WEAPON_FIRING ) {
 		if ( pm->ps->weapon != pm->cmd.weapon )
 			PM_BeginWeaponChange( pm->cmd.weapon );
@@ -1532,7 +1535,7 @@ static void PM_Weapon( void ) {
 		return;
 	}
 
-	// take ammo away if not infinite
+	// take an ammo away if not infinite
 	if ( pm->ps->ammo[ pm->ps->weapon ] != -1 )
 		pm->ps->ammo[ pm->ps->weapon ]--;
 
@@ -1723,8 +1726,8 @@ void trap_SnapVector( float *v );
 void PmoveSingle (pmove_t *pmove) {
 	pm = pmove;
 
-	/* This counter lets us debug movement problems with a journal
-	by setting a conditional breakpoint fot the previous frame */
+	// this counter lets us debug movement problems with a journal
+	// by setting a conditional breakpoint fot the previous frame
 	c_pmove++;
 
 	// clear results
@@ -1735,8 +1738,8 @@ void PmoveSingle (pmove_t *pmove) {
 	if ( pm->ps->stats[STAT_HEALTH] < 1 )
 		pm->tracemask &= ~CONTENTS_BODY;	// corpses can fly through bodies
 
-	/* Make sure walking button is clear if they
-	are running, to avoid proxy no-footsteps cheats */
+	// make sure walking button is clear if they are running, to avoid
+	// proxy no-footsteps cheats
 	if ( abs( pm->cmd.forwardmove ) > 64 || abs( pm->cmd.rightmove ) > 64 )
 		pm->cmd.buttons &= ~BUTTON_WALKING;
 
@@ -1756,12 +1759,12 @@ void PmoveSingle (pmove_t *pmove) {
 	if ( pm->ps->stats[STAT_HEALTH] > 0 && !( pm->cmd.buttons & (BUTTON_ATTACK | BUTTON_USE_HOLDABLE) ) )
 		pm->ps->pm_flags &= ~PMF_RESPAWNED;
 
-	/* If talk button is down, dissallow all other
-	input; this is to prevent any possible intercept
-	proxy from adding fake talk balloons */
+	// if talk button is down, dissallow all other input
+	// this is to prevent any possible intercept proxy from
+	// adding fake talk balloons
 	if ( pmove->cmd.buttons & BUTTON_TALK ) {
-		/* keep the talk button set tho for when the cmd.serverTime > 66 msec
-		and the same cmd is used multiple times in Pmove */
+		// keep the talk button set tho for when the cmd.serverTime > 66 msec
+		// and the same cmd is used multiple times in Pmove
 		pmove->cmd.buttons = BUTTON_TALK;
 		pmove->cmd.forwardmove = 0;
 		pmove->cmd.rightmove = 0;
@@ -1903,8 +1906,8 @@ void Pmove (pmove_t *pmove) {
 
 	pmove->ps->pmove_framecount = (pmove->ps->pmove_framecount+1) & ((1<<PS_PMOVEFRAMECOUNTBITS)-1);
 
-	/* Chop the move up if it is too long, to
-	prevent framerate dependent behavior. */
+	// chop the move up if it is too long, to prevent framerate
+	// dependent behavior
 	while ( pmove->ps->commandTime != finalTime ) {
 		int		msec;
 
