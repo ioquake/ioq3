@@ -19,11 +19,11 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-//
-// bg_public.h -- definitions shared by both the server game and client game modules
 
-// because games can change separately from the main system version, we need a
-// second version that must match between game and cgame
+/* bg_public.h -- definitions shared by both the server game and client game modules.
+
+Because games can change separately from the main system version,
+we need a second version that must match between game and cgame */
 
 #define	GAME_VERSION		BASEGAME "-1"
 
@@ -51,10 +51,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CROUCH_VIEWHEIGHT	12
 #define	DEAD_VIEWHEIGHT		-16
 
-//
-// config strings are a general means of communicating variable length strings
-// from the server to all connected clients.
-//
+/* Config strings are a general means of communicating variable
+length stringsfrom the server to all connected clients. */
 
 // CS_SERVERINFO and CS_SYSTEMINFO are defined in q_shared.h
 #define	CS_MUSIC				2
@@ -185,8 +183,8 @@ typedef struct {
 	int			pmove_fixed;
 	int			pmove_msec;
 
-	// callbacks to test the world
-	// these will be different functions during game and cgame
+	/* Callbacks to test the world. These will
+	be different functions during game and cgame */
 	void		(*trace)( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentMask );
 	int			(*pointcontents)( const vec3_t point, int passEntityNum );
 } pmove_t;
@@ -198,8 +196,8 @@ void Pmove (pmove_t *pmove);
 //===================================================================================
 
 
-// player_state->stats[] indexes
-// NOTE: may not have more than 16
+/* player_state->stats[] indexes
+NOTE: may not have more than 16 */
 typedef enum {
 	STAT_HEALTH,
 	STAT_HOLDABLE_ITEM,
@@ -214,10 +212,9 @@ typedef enum {
 } statIndex_t;
 
 
-// player_state->persistant[] indexes
-// these fields are the only part of player_state that isn't
-// cleared on respawn
-// NOTE: may not have more than 16
+/* player_state->persistant[] indexes
+these fields are the only part of player_state that isn't
+cleared on respawn. NOTE: may not have more than 16 */
 typedef enum {
 	PERS_SCORE,						// !!! MUST NOT CHANGE, SERVER AND GAME BOTH REFERENCE !!!
 	PERS_HITS,						// total points damage inflicted so damage beeps can sound on change
@@ -329,15 +326,15 @@ typedef enum {
 #define	PLAYEREVENT_GAUNTLETREWARD		0x0002
 #define PLAYEREVENT_HOLYSHIT			0x0004
 
-// entityState_t->event values
-// entity events are for effects that take place relative
-// to an existing entities origin.  Very network efficient.
+/* entityState_t->event values
+Entity events are for effects that take place relative
+to an existing entities origin. Very network efficient. */
 
-// two bits at the top of the entityState->event field
-// will be incremented with each change in the event so
-// that an identical event started twice in a row can
-// be distinguished.  And off the value with ~EV_EVENT_BITS
-// to retrieve the actual event number
+/* Two bits at the top of the entityState->event field
+will be incremented with each change in the event so
+that an identical event started twice in a row can be
+distinguished. And off the value with ~EV_EVENT_BITS
+to retrieve the actual event number */
 #define	EV_EVENT_BIT1		0x00000100
 #define	EV_EVENT_BIT2		0x00000200
 #define	EV_EVENT_BITS		(EV_EVENT_BIT1|EV_EVENT_BIT2)
@@ -536,8 +533,8 @@ typedef struct animation_s {
 } animation_t;
 
 
-// flip the togglebit every time an animation
-// changes so a restart of the same anim can be detected
+/* flip the togglebit every time an animation
+changes so a restart of the same anim can be detected */
 #define	ANIM_TOGGLEBIT		128
 
 
@@ -668,9 +665,9 @@ qboolean	BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 #define	MASK_SHOT				(CONTENTS_SOLID|CONTENTS_BODY|CONTENTS_CORPSE)
 
 
-//
-// entityState_t->eType
-//
+/*
+entityState_t->eType
+*/
 typedef enum {
 	ET_GENERAL,
 	ET_PLAYER,
