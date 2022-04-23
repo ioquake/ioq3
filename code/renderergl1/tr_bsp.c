@@ -1837,9 +1837,9 @@ void RE_LoadWorldMap( const char *name ) {
 	fileBase = (byte *)header;
 
 	i = LittleLong (header->version);
-	if ( i != BSP_VERSION ) {
-		ri.Error (ERR_DROP, "RE_LoadWorldMap: %s has wrong version number (%i should be %i)", 
-			name, i, BSP_VERSION);
+	if ( i !=  BSP_VERSION && i != BSP_VERSION_QUAKELIVE ) {
+		ri.Error (ERR_DROP, "RE_LoadWorldMap: %s has wrong version number (%i should be %i or %i)",
+			name, i, BSP_VERSION, BSP_VERSION_QUAKELIVE);
 	}
 
 	// swap all the lumps

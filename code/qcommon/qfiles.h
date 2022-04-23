@@ -314,6 +314,7 @@ typedef struct {
 		// little-endian "IBSP"
 
 #define BSP_VERSION			46
+#define BSP_VERSION_QUAKELIVE			47
 
 
 // there shouldn't be any problem with increasing these values at the
@@ -381,7 +382,8 @@ typedef struct {
 #define	LUMP_LIGHTMAPS		14
 #define	LUMP_LIGHTGRID		15
 #define	LUMP_VISIBILITY		16
-#define	HEADER_LUMPS		17
+#define	LUMP_ADVERTISEMENTS	17
+#define	HEADER_LUMPS		18
 
 typedef struct {
 	int			ident;

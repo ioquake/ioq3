@@ -474,6 +474,34 @@ void CMod_LoadVisibility( lump_t *l ) {
 
 //==================================================================
 
+typedef struct advertisement_s {
+	uint32_t celld;
+	vec3_t normal;
+	vec3_t rect[4];
+	char model[64];
+} advertisement_t;
+
+static void CMod_LoadAdvertisements ( lump_t *advertisements ) {
+	int count, i, j;
+	advertisement_t *in;
+
+	if (advertisements->filelen % sizeof(advertisement_t) != 0) {
+		Com_Error(ERR_DROP, "Invalid advertisement lump size");
+	}
+	in = (void *)(cmod_base + advertisements->fileofs);
+	count = advertisements->filelen / sizeof(*in);
+	for ( i = 0 ; i < count ; i++, in++ ) {
+		in->celld = LittleLong( in->celld );
+		in->normal[0] = LittleFloat( in->normal[0] );
+		in->normal[1] = LittleFloat( in->normal[1] );
+		in->normal[2] = LittleFloat( in->normal[2] );
+		for ( j = 0; j < 4; ++j ) {
+			in->rect[j][0] = LittleFloat( in->rect[j][0] );
+			in->rect[j][1] = LittleFloat( in->rect[j][1] );
+			in->rect[j][2] = LittleFloat( in->rect[j][2] );
+		}
+	}
+}
 
 /*
 =================
@@ -626,9 +654,9 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 		((int *)&header)[i] = LittleLong ( ((int *)&header)[i]);
 	}
 
-	if ( header.version != BSP_VERSION ) {
-		Com_Error (ERR_DROP, "CM_LoadMap: %s has wrong version number (%i should be %i)"
-		, name, header.version, BSP_VERSION );
+	if ( header.version != BSP_VERSION && header.version != BSP_VERSION_QUAKELIVE ) {
+		Com_Error (ERR_DROP, "CM_LoadMap: %s has wrong version number (%i should be %i or %i)"
+		, name, header.version, BSP_VERSION, BSP_VERSION_QUAKELIVE );
 	}
 
 	cmod_base = (byte *)buf.i;
@@ -646,6 +674,9 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 	CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES]);
 	CMod_LoadVisibility( &header.lumps[LUMP_VISIBILITY] );
 	CMod_LoadPatches( &header.lumps[LUMP_SURFACES], &header.lumps[LUMP_DRAWVERTS] );
+	if ( header.version == BSP_VERSION_QUAKELIVE ) {
+		CMod_LoadAdvertisements( &header.lumps[LUMP_ADVERTISEMENTS] );
+	}
 
 	// we are NOT freeing the file, because it is cached for the ref
 	FS_FreeFile (buf.v);
