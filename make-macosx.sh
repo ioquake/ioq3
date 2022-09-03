@@ -106,14 +106,19 @@ if [ ! -d $DESTDIR ]; then
 fi
 
 # For parallel make on multicore boxes...
-NCPU=`sysctl -n hw.ncpu`
-
+SYSCTL_PATH=`command -v sysctl 2> /dev/null`
+if [ -n "$SYSCTL_PATH" ]; then
+	NCPU=`sysctl -n hw.ncpu`
+else
+	# osxcross on linux
+	NCPU=`nproc`
+fi
 
 # intel client and server
 #if [ -d build/release-darwin-${BUILDARCH} ]; then
 #	rm -r build/release-darwin-${BUILDARCH}
 #fi
-(ARCH=${BUILDARCH} CFLAGS=$ARCH_CFLAGS MACOSX_VERSION_MIN=$ARCH_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=${BUILDARCH} CFLAGS=$ARCH_CFLAGS MACOSX_VERSION_MIN=$ARCH_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 # use the following shell script to build an application bundle
 export MACOSX_DEPLOYMENT_TARGET="${ARCH_MACOSX_VERSION_MIN}"

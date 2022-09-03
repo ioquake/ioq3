@@ -73,13 +73,19 @@ echo "Building PPC Client/Dedicated Server against \"$PPC_SDK\""
 echo
 
 # For parallel make on multicore boxes...
-NCPU=`sysctl -n hw.ncpu`
+SYSCTL_PATH=`command -v sysctl 2> /dev/null`
+if [ -n "$SYSCTL_PATH" ]; then
+	NCPU=`sysctl -n hw.ncpu`
+else
+	# osxcross on linux
+	NCPU=`nproc`
+fi
 
 # x86_64 client and server
 #if [ -d build/release-release-x86_64 ]; then
 #	rm -r build/release-darwin-x86_64
 #fi
-(ARCH=x86_64 CC=gcc-4.0 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=x86_64 CC=gcc-4.0 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo;echo
 
@@ -87,7 +93,7 @@ echo;echo
 #if [ -d build/release-darwin-x86 ]; then
 #	rm -r build/release-darwin-x86
 #fi
-(ARCH=x86 CC=gcc-4.0 CFLAGS=$X86_CFLAGS MACOSX_VERSION_MIN=$X86_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=x86 CC=gcc-4.0 CFLAGS=$X86_CFLAGS MACOSX_VERSION_MIN=$X86_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo;echo
 
@@ -95,7 +101,7 @@ echo;echo
 #if [ -d build/release-darwin-ppc ]; then
 #	rm -r build/release-darwin-ppc
 #fi
-(ARCH=ppc CC=gcc-4.0 CFLAGS=$PPC_CFLAGS MACOSX_VERSION_MIN=$PPC_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=ppc CC=gcc-4.0 CFLAGS=$PPC_CFLAGS MACOSX_VERSION_MIN=$PPC_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo
 

@@ -28,13 +28,19 @@ if [ "$1" == "" ]; then
 fi
 
 # For parallel make on multicore boxes...
-NCPU=`sysctl -n hw.ncpu`
+SYSCTL_PATH=`command -v sysctl 2> /dev/null`
+if [ -n "$SYSCTL_PATH" ]; then
+	NCPU=`sysctl -n hw.ncpu`
+else
+	# osxcross on linux
+	NCPU=`nproc`
+fi
 
 # x86_64 client and server
 #if [ -d build/release-release-x86_64 ]; then
 #	rm -r build/release-darwin-x86_64
 #fi
-(ARCH=x86_64 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=x86_64 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo;echo
 
@@ -42,7 +48,7 @@ echo;echo
 #if [ -d build/release-release-arm64 ]; then
 #	rm -r build/release-darwin-arm64
 #fi
-(ARCH=arm64 CFLAGS=$ARM64_CFLAGS MACOSX_VERSION_MIN=$ARM64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=arm64 CFLAGS=$ARM64_CFLAGS MACOSX_VERSION_MIN=$ARM64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo
 
