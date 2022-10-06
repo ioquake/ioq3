@@ -503,7 +503,10 @@ static void IN_InitJoystick( void )
 		Q_strcat(buf, sizeof(buf), "\n");
 	}
 
-	Cvar_Get( "in_availableJoysticks", buf, CVAR_ROM );
+	Cvar_Get( "in_availableJoysticks", "", CVAR_ROM );
+
+	// Update cvar on in_restart or controller add/remove.
+	Cvar_Set( "in_availableJoysticks", buf );
 
 	if( !in_joystick->integer ) {
 		Com_DPrintf( "Joystick is not active.\n" );
@@ -657,7 +660,14 @@ static void IN_GamepadMove( void )
 		qboolean pressed = SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A + i);
 		if (pressed != stick_state.buttons[i])
 		{
-			Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + i, pressed, 0, NULL);
+#if SDL_VERSION_ATLEAST( 2, 0, 14 )
+			if ( i >= SDL_CONTROLLER_BUTTON_MISC1 ) {
+				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_MISC1 + i - SDL_CONTROLLER_BUTTON_MISC1, pressed, 0, NULL);
+			} else
+#endif
+			{
+				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + i, pressed, 0, NULL);
+			}
 			stick_state.buttons[i] = pressed;
 		}
 	}
