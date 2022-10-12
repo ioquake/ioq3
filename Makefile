@@ -6,6 +6,14 @@
 COMPILE_PLATFORM=$(shell uname | sed -e 's/_.*//' | tr '[:upper:]' '[:lower:]' | sed -e 's/\//_/g')
 COMPILE_ARCH=$(shell uname -m | sed -e 's/i.86/x86/' | sed -e 's/^arm.*/arm/')
 
+#arm64 hack!
+ifeq ($(shell uname -m), arm64)
+  COMPILE_ARCH=arm64
+endif
+ifeq ($(shell uname -m), aarch64)
+  COMPILE_ARCH=arm64
+endif
+
 ifeq ($(COMPILE_PLATFORM),sunos)
   # Solaris uname and GNU uname differ
   COMPILE_ARCH=$(shell uname -p | sed -e 's/i.86/x86/')
@@ -437,6 +445,12 @@ ifeq ($(PLATFORM),darwin)
   # Default minimum Mac OS X version
   ifeq ($(MACOSX_VERSION_MIN),)
     MACOSX_VERSION_MIN=10.7
+    ifneq ($(findstring $(ARCH),ppc ppc64),)
+      MACOSX_VERSION_MIN=10.5
+    endif
+    ifeq ($(ARCH),arm64)
+      MACOSX_VERSION_MIN=11.0
+    endif
   endif
 
   MACOSX_MAJOR=$(shell echo $(MACOSX_VERSION_MIN) | cut -d. -f1)
@@ -452,6 +466,11 @@ ifeq ($(PLATFORM),darwin)
   LDFLAGS += -mmacosx-version-min=$(MACOSX_VERSION_MIN)
   BASE_CFLAGS += -mmacosx-version-min=$(MACOSX_VERSION_MIN) \
                  -DMAC_OS_X_VERSION_MIN_REQUIRED=$(MAC_OS_X_VERSION_MIN_REQUIRED)
+
+  MACOSX_ARCH=$(ARCH)
+  ifeq ($(ARCH),x86)
+    MACOSX_ARCH=i386
+  endif
 
   ifeq ($(ARCH),ppc)
     BASE_CFLAGS += -arch ppc
@@ -471,6 +490,10 @@ ifeq ($(PLATFORM),darwin)
     OPTIMIZEVM += -mfpmath=sse
     BASE_CFLAGS += -arch x86_64
   endif
+  ifeq ($(ARCH),arm64)
+    # HAVE_VM_COMPILED=false # TODO: implement compiled vm
+    BASE_CFLAGS += -arch arm64
+  endif
 
   # When compiling on OSX for OSX, we're not cross compiling as far as the
   # Makefile is concerned, as target architecture is specified as a compiler
@@ -480,17 +503,38 @@ ifeq ($(PLATFORM),darwin)
   endif
 
   ifeq ($(CROSS_COMPILING),1)
-    ifeq ($(ARCH),x86_64)
-      CC=x86_64-apple-darwin13-cc
-      RANLIB=x86_64-apple-darwin13-ranlib
-    else
-      ifeq ($(ARCH),x86)
-        CC=i386-apple-darwin13-cc
-        RANLIB=i386-apple-darwin13-ranlib
-      else
-        $(error Architecture $(ARCH) is not supported when cross compiling)
+    # If CC is already set to something generic, we probably want to use
+    # something more specific
+    ifneq ($(findstring $(strip $(CC)),cc gcc),)
+      CC=
+    endif
+
+    ifndef CC
+      ifndef DARWIN
+        # macOS 10.9 SDK
+        DARWIN=13
+        ifneq ($(findstring $(ARCH),ppc ppc64),)
+          # macOS 10.5 SDK, though as of writing osxcross doesn't support ppc/ppc64
+          DARWIN=9
+        endif
+        ifeq ($(ARCH),arm64)
+          # macOS 11.3 SDK
+          DARWIN=20.4
+        endif
+      endif
+
+      CC=$(MACOSX_ARCH)-apple-darwin$(DARWIN)-cc
+      RANLIB=$(MACOSX_ARCH)-apple-darwin$(DARWIN)-ranlib
+      LIPO=$(MACOSX_ARCH)-apple-darwin$(DARWIN)-lipo
+
+      ifeq ($(call bin_path, $(CC)),)
+        $(error Unable to find osxcross $(CC))
       endif
     endif
+  endif
+
+  ifndef LIPO
+    LIPO=lipo
   endif
 
   BASE_CFLAGS += -fno-strict-aliasing -fno-common -pipe
@@ -2236,7 +2280,11 @@ endif
 ifneq ($(strip $(LIBSDLMAIN)),)
 ifneq ($(strip $(LIBSDLMAINSRC)),)
 $(LIBSDLMAIN) : $(LIBSDLMAINSRC)
+ifeq ($(PLATFORM),darwin)
+	$(LIPO) -extract $(MACOSX_ARCH) $< -o $@
+else
 	cp $< $@
+endif
 	$(RANLIB) $@
 endif
 endif
