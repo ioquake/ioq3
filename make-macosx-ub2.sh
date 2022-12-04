@@ -64,14 +64,9 @@ if [ "$1" == "notarize" ]; then
 	# identity as specified in Keychain
 	SIGNING_IDENTITY="Developer ID Application: Your Name (XXXXXXXXX)"
 
-	ASC_USERNAME="your@apple.id"
-
-	# signing password is app-specific (https://appleid.apple.com/account/manage) and stored in Keychain (as "notarize-app" in this case)
-	ASC_PASSWORD="@keychain:notarize-app"
-
-	# ProviderShortname can be found with
-	# xcrun altool --list-providers -u your@apple.id -p "@keychain:notarize-app"
-	ASC_PROVIDER="XXXXXXXXX"
+	# The keychain profile to use, previously created using the notarytool store-credentials
+	# command.
+	KEYCHAIN_PROFILE="XXXXXXXXX"
 	# ****************************************************************************************
 
 	source make-macosx-values.local
@@ -87,8 +82,6 @@ if [ "$1" == "notarize" ]; then
 
 	# Post-notarized zip file (shipped)
 	POST_NOTARIZED_ZIP="ioquake3_notarized.zip"
-
-	BUNDLE_ID="org.ioquake3.ioquake3"
 
 	# allows for unsigned executable memory in hardened runtime
 	# see: https://developer.apple.com/documentation/bundleresources/entitlements/com_apple_security_cs_allow-unsigned-executable-memory
@@ -119,29 +112,17 @@ if [ "$1" == "notarize" ]; then
 
 	echo "submitting..."
 	# submit app for notarization
-	if xcrun altool --notarize-app --primary-bundle-id "$BUNDLE_ID" --asc-provider "$ASC_PROVIDER" --username "$ASC_USERNAME" --password "$ASC_PASSWORD" -f "$PRE_NOTARIZED_ZIP" > "$NOTARIZE_APP_LOG" 2>&1; then
-		cat "$NOTARIZE_APP_LOG"
-		RequestUUID=$(awk -F ' = ' '/RequestUUID/ {print $2}' "$NOTARIZE_APP_LOG")
-
-		# check status periodically
-		while sleep 60 && date; do
-			# check notarization status
-			if xcrun altool --notarization-info "$RequestUUID" --asc-provider "$ASC_PROVIDER" --username "$ASC_USERNAME" --password "$ASC_PASSWORD" > "$NOTARIZE_INFO_LOG" 2>&1; then
-				cat "$NOTARIZE_INFO_LOG"
-
-				# once notarization is complete, run stapler and exit
-				if ! grep -q "Status: in progress" "$NOTARIZE_INFO_LOG"; then
-					xcrun stapler staple "$RELEASE_BUILD"
-					break
-				fi
-			else
-				cat "$NOTARIZE_INFO_LOG" 1>&2
-				exit 1
-			fi
-		done
-	else
+	xcrun notarytool submit "$PRE_NOTARIZED_ZIP" --keychain-profile "$KEYCHAIN_PROFILE" --wait > "$NOTARIZE_APP_LOG" 2>&1
+	result=$?
+	if [[ $result -ne 0 ]]; then
 		cat "$NOTARIZE_APP_LOG" 1>&2
 		exit 1
+	else
+		cat "$NOTARIZE_INFO_LOG"
+
+		# once notarization is complete, staple the result
+		echo "stapling..."
+		xcrun stapler staple "$RELEASE_BUILD"
 	fi
 
 	echo "notarized"
