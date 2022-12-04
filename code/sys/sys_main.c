@@ -682,39 +682,42 @@ void Sys_SigHandler( int signal )
 }
 
 /*
-=================
-Sys_SetFileLimit
-=================
-*/
-const size_t kUnlimitedNumberOfFiles = 0;
+ =================
+ Sys_SetFileLimit
+ =================
+ */
 #ifdef _WIN32
-static int Sys_SetFileLimit(const size_t inNumFiles)
+static int Sys_SetMaxFileLimit(void)
 {
 	// A Windows implementation of this function probably is not needed.
 	return 0;
 }
 #else
 #include <sys/resource.h>
-#if !defined(MIN)
-#	define MIN(i, j) (((i) < (j)) ? (i) : (j))
-#endif
-static int Sys_SetFileLimit(const size_t inNumFiles)
+static int Sys_SetMaxFileLimit(void)
 {
+	int result = 0;
+	
+#if defined(RLIMIT_NOFILE)
 	// Get the current open file limit.
 	struct rlimit limit;
-	int result = getrlimit(RLIMIT_NOFILE, &limit);
+	result = getrlimit(RLIMIT_NOFILE, &limit);
 	if (0 == result)
 	{
-		// Figure out the new limit. Note that according to the Max OS X man page, we have to limit
-		// the value by the constant OPEN_MAX.
-		rlim_t requestedCurLimit = (kUnlimitedNumberOfFiles == inNumFiles) ? limit.rlim_max : (rlim_t)inNumFiles;
-		size_t actualLimitRequested = MIN((rlim_t)OPEN_MAX, requestedCurLimit);
-		
-		// Set the new limit
-		limit.rlim_cur = actualLimitRequested;
+		// Set the file limit to the maximum
+		limit.rlim_cur = limit.rlim_max;
 		result = setrlimit(RLIMIT_NOFILE, &limit);
-		assert( 0 == result );
+#	if defined(__APPLE__) && defined(OPEN_MAX)
+		// On older macOS versions an error can happen trying to set a file limit above
+		// OPEN_MAX. If we see an error, then try again with OPEN_MAX as the limit.
+		if (result)
+		{
+			limit.rlim_cur = OPEN_MAX;
+			result = setrlimit(RLIMIT_NOFILE, &limit);
+		}	// Error on first attempt to set the limit
+#	endif	// Apple
 	}	// No error getting the current file limit
+#endif	// defined(RLIMIT_NOFILE)
 	
 	return result;
 }
@@ -733,7 +736,7 @@ int main( int argc, char **argv )
 	// Set the maximum number of files. Unlimited maps! Must be called early on before any
 	// system calls latch the default limit in place.
 	{
-		int result = Sys_SetFileLimit(kUnlimitedNumberOfFiles);
+		int result = Sys_SetMaxFileLimit();
 		if (result)
 		{
 			Com_Printf("Error trying to set the maxumim file limit: %d\n", result);
