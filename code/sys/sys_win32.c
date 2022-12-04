@@ -910,3 +910,13 @@ qboolean Sys_OpenFolderInPlatformFileManager( const char *path )
 {
 	return ShellExecute( NULL, "explore", path, NULL, NULL, SW_SHOWDEFAULT ) > (HINSTANCE)32;
 }
+
+/*
+=================
+Sys_SetMaxFileLimit
+=================
+*/
+qboolean Sys_SetMaxFileLimit( void )
+{
+	return qtrue;
+}

@@ -39,6 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <fenv.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <sys/resource.h>
 
 qboolean stdinIsATTY;
 
@@ -1306,4 +1307,42 @@ qboolean Sys_OpenFolderInPlatformFileManager( const char *path )
 	Sys_AppendToExecBuffer( path );
 
 	return Sys_Exec( ) == 0;
+}
+
+/*
+=================
+Sys_SetMaxFileLimit
+=================
+*/
+qboolean Sys_SetMaxFileLimit( void )
+{
+#ifdef RLIMIT_NOFILE
+	struct rlimit limit;
+
+	// Get the current open file limit
+	if( getrlimit( RLIMIT_NOFILE, &limit ) == 0 )
+	{
+		// Set the file limit to the maximum
+		limit.rlim_cur = limit.rlim_max;
+		if( setrlimit( RLIMIT_NOFILE, &limit ) == 0 )
+			return qtrue;
+		else
+			Com_DPrintf( S_COLOR_YELLOW "WARNING: setrlimit (rlim_max) failed\n" );
+
+#ifdef OPEN_MAX
+		// On older macOS versions an error can happen trying to set a file limit above
+		// OPEN_MAX. If we see an error, then try again with OPEN_MAX as the limit.
+		limit.rlim_cur = OPEN_MAX;
+		if( setrlimit( RLIMIT_NOFILE, &limit ) == 0 )
+			return qtrue;
+		else
+			Com_DPrintf( S_COLOR_YELLOW "WARNING: setrlimit (OPEN_MAX) failed\n" );
+#endif
+	}
+	else
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: getrlimit failed\n" );
+
+#endif // RLIMIT_NOFILE
+
+	return qfalse;
 }
