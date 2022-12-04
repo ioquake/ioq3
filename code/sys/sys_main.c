@@ -683,6 +683,45 @@ void Sys_SigHandler( int signal )
 
 /*
 =================
+Sys_SetFileLimit
+=================
+*/
+const size_t kUnlimitedNumberOfFiles = 0;
+#ifdef _WIN32
+static int Sys_SetFileLimit(const size_t inNumFiles)
+{
+	// A Windows implementation of this function probably is not needed.
+	return 0;
+}
+#else
+#include <sys/resource.h>
+#if !defined(MIN)
+#	define MIN(i, j) (((i) < (j)) ? (i) : (j))
+#endif
+static int Sys_SetFileLimit(const size_t inNumFiles)
+{
+	// Get the current open file limit.
+	struct rlimit limit;
+	int result = getrlimit(RLIMIT_NOFILE, &limit);
+	if (0 == result)
+	{
+		// Figure out the new limit. Note that according to the Max OS X man page, we have to limit
+		// the value by the constant OPEN_MAX.
+		rlim_t requestedCurLimit = (kUnlimitedNumberOfFiles == inNumFiles) ? limit.rlim_max : (rlim_t)inNumFiles;
+		size_t actualLimitRequested = MIN((rlim_t)OPEN_MAX, requestedCurLimit);
+		
+		// Set the new limit
+		limit.rlim_cur = actualLimitRequested;
+		result = setrlimit(RLIMIT_NOFILE, &limit);
+		assert( 0 == result );
+	}	// No error getting the current file limit
+	
+	return result;
+}
+#endif	// !_WIN32
+
+/*
+=================
 main
 =================
 */
@@ -690,6 +729,16 @@ int main( int argc, char **argv )
 {
 	int   i;
 	char  commandLine[ MAX_STRING_CHARS ] = { 0 };
+	
+	// Set the maximum number of files. Unlimited maps! Must be called early on before any
+	// system calls latch the default limit in place.
+	{
+		int result = Sys_SetFileLimit(kUnlimitedNumberOfFiles);
+		if (result)
+		{
+			Com_Printf("Error trying to set the maxumim file limit: %d\n", result);
+		}
+	}
 
 	extern void Sys_LaunchAutoupdater(int argc, char **argv);
 	Sys_LaunchAutoupdater(argc, argv);
