@@ -207,8 +207,16 @@ ifndef USE_INTERNAL_LIBS
 USE_INTERNAL_LIBS=1
 endif
 
+ifndef USE_INTERNAL_CURL
+USE_INTERNAL_CURL=$(USE_INTERNAL_LIBS)
+endif
+
 ifndef USE_INTERNAL_OGG
 USE_INTERNAL_OGG=$(USE_INTERNAL_LIBS)
+endif
+
+ifndef USE_INTERNAL_OPENAL
+USE_INTERNAL_OPENAL=$(USE_INTERNAL_LIBS)
 endif
 
 ifndef USE_INTERNAL_VORBIS
@@ -217,6 +225,10 @@ endif
 
 ifndef USE_INTERNAL_OPUS
 USE_INTERNAL_OPUS=$(USE_INTERNAL_LIBS)
+endif
+
+ifndef USE_INTERNAL_SDL
+USE_INTERNAL_SDL=$(USE_INTERNAL_LIBS)
 endif
 
 ifndef USE_INTERNAL_ZLIB
@@ -560,7 +572,7 @@ ifeq ($(PLATFORM),darwin)
   CLIENT_LIBS += -framework IOKit
   RENDERER_LIBS += -framework OpenGL
 
-  ifeq ($(USE_LOCAL_HEADERS),1)
+  ifeq ($(USE_INTERNAL_SDL),1)
     # libSDL2-2.0.0.dylib for PPC is SDL 2.0.1 + changes to compile
     ifneq ($(findstring $(ARCH),ppc ppc64),)
       BASE_CFLAGS += -I$(SDLHDIR)/include-macppc
@@ -710,7 +722,7 @@ ifdef MINGW
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
-      ifeq ($(USE_LOCAL_HEADERS),1)
+      ifeq ($(USE_INTERNAL_CURL),1)
         CLIENT_CFLAGS += -DCURL_STATICLIB
         ifeq ($(ARCH),x86_64)
           CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
@@ -734,7 +746,7 @@ ifdef MINGW
   CLIENT_LIBS += -lmingw32
   RENDERER_LIBS += -lmingw32
 
-  ifeq ($(USE_LOCAL_HEADERS),1)
+  ifeq ($(USE_INTERNAL_SDL),1)
     CLIENT_CFLAGS += -I$(SDLHDIR)/include
     ifeq ($(ARCH),x86)
     CLIENT_LIBS += $(LIBSDIR)/win32/libSDL2main.a \
@@ -1217,8 +1229,20 @@ ifdef DEFAULT_BASEDIR
   BASE_CFLAGS += -DDEFAULT_BASEDIR=\\\"$(DEFAULT_BASEDIR)\\\"
 endif
 
-ifeq ($(USE_LOCAL_HEADERS),1)
-  BASE_CFLAGS += -DUSE_LOCAL_HEADERS
+ifeq ($(USE_INTERNAL_OPENAL),1)
+  BASE_CFLAGS += -DUSE_INTERNAL_OPENAL
+endif
+
+ifeq ($(USE_INTERNAL_CURL),1)
+  BASE_CFLAGS += -DUSE_INTERNAL_CURL
+endif
+
+ifeq ($(USE_INTERNAL_SDL),1)
+  BASE_CFLAGS += -DUSE_INTERNAL_SDL
+endif
+
+ifeq ($(USE_INTERNAL_ZLIB),1)
+  BASE_CFLAGS += -DUSE_INTERNAL_ZLIB
 endif
 
 ifeq ($(BUILD_STANDALONE),1)
