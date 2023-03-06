@@ -1,6 +1,1972 @@
 *In compliance with the [GPL-2.0](https://opensource.org/licenses/GPL-2.0) license: I declare that this version of the program contains my modifications, which can be seen through the usual "git" mechanism.*  
 
 
+2022-03  
+Contributor(s):  
+Eugene  
+>More predictable mesh normals generation  
+ 
+
+
+2022-02  
+Contributor(s):  
+Johan Mattsson  
+>Fix memset  
+>Fix hex digit  
+ 
+
+
+2021-12  
+Contributor(s):  
+Mickaël Thomas  
+>Fix memory corruption in S_TransferPaintBufferWhen using a non-default sound configuration (such as 6 channels), aftera long time (about 4.5hours for 6 channels at 22050 Hz) an overflow willoccur in `S_TransferPaintBuffer`, causing an out of bounds write intothe dma buffer.The problematic line is:```out_idx = (s_paintedtime * dma.channels) % dma.samples;```With `s_paintedtime` large enough, the result of the multiplication willoverflow to a negative number (since `s_paintedtime` is signed), and theindex into the output buffer will be negative.  
+ 
+
+
+2021-11  
+Contributor(s):  
+Zack Middleton  
+>Fix passing arguments to VM dylib on Apple M1The engine function pointer to vmMain used variadic arguments butthe vmMain function in the dylib has explicit arguments. Evidentlythe arguments are stored on the stack and/or registers differently.Found by fretn.  
+ 
+
+
+2021-10  
+Contributor(s):  
+Zack Middleton  
+Tom Kidd  
+>Fix being unable to enter Team Arena CD keyThe CD key defaulted to spaces. Q3 UI uses text overwrite mode bydefault so typing the CD key writes over the spaces. Team Arena UIuses text insert mode by default so to enter the CD key the userhad to delete the spaces or toggling overwrite mode by pressingthe insert key.Now the CD key defaults to empty so in Team Arena you can just typeit in.  
+>Merge pull request #482 from tomkidd/vs2019Upgrade to build and run from VS2019  
+>Merge pull request #481 from tomkidd/xcodeUpgrades to Xcode project and Apple Silicon support  
+>Merge remote-tracking branch 'upstream/main' into vs2019  
+>Merge remote-tracking branch 'upstream/main' into xcode  
+ 
+
+
+2021-09  
+Contributor(s):  
+Tom Kidd  
+Adam Mizerski  
+>Added rudimentary support for automatically finding Microsoft Store version of Quake 3Unlike the Steam and GOG support I'm not doing a registry search as I don't see anything in the registry that would show us the path. If we find more official ways to search for it later we can address that, in the meantime the path is just hardcoded to where it's installed by default.  
+>qsort cannot be called with NULLresolves #519  
+ 
+
+
+2021-02  
+Contributor(s):  
+Zack Middleton  
+>Restore bots crushing unseen player on q3tourney6 in non-CTFThe affect of my 2017 commit c3e64d380685419f96f71035c961907b9dc09a9a    "Make bots only use q3tourney6 crusher to kill their enemy"made it easier to beat the last map of the Quake 3 single playercampaign. It was mainly intended for CTF and Team Arena gametypesvariants of the map. (Team deathmatch is usually treated as deathmatchwith teams rather than an actual team based gametype.)Restore original difficulty for non-CTF/Team Arena gametypes; bot willcrush player even if bot hasn't seen the player since either they orplayer respawned. [This is not good in CTF where all five bots on theteam suddenly flip around and shoot at the crusher trigger.]Team deathmatch still uses my added behavior of not triggering crusherif there is a teammate under the crusher.  
+ 
+
+
+2021-01  
+Contributor(s):  
+Tom Kidd  
+>Upgrades to Xcode project and Apple Silicon support- Reorganized Xcode project- Added missionpack support to Xcode project- Incorporated changes from MaddTheSane for Apple Silicon support https://github.com/maddthesane/ioq3- Built SDL 2.0.14 for Apple Siicon, added to existing SDL dylib- Built SDLMain for Apple Silicon, added to existing libSDL2main.a  
+ 
+
+
+2019-11  
+Contributor(s):  
+Zack Middleton  
+>Fix duplicate team join center print for bots and g_teamAutoJoinMy 2017 commit f7c3276 ("Fix g_teamAutoJoin and g_teamForceBalance")caused BroadcastTeamChange() to be run an extra time when bots connect.This caused a duplicate center print message to be sent to all clients.g_teamAutoJoin 1 sent an extra center print when any player or botconnects. Though that is the original behavior from Team Arena.Team set during connection no longer sends broadcast as it will besent later in ClientConnect().Reported by Pascal Brochart (pbrochart) as causing clients to bekicked due to server command overflow if many bots join at thesame time.  
+ 
+
+
+2019-10  
+Contributor(s):  
+Zack Middleton  
+>Fix team orders menu not listing clients with lower clientnumsIf bots join before the local client (dedicated server) the bots wouldnot be listed in the Q3A team orders menu and so they could not be givenorders using the menu.The Q3A team orders menu got local client's team while looping throughall clients. Ignoring any bots with clientnum lower than the localclient. Get local client's team before the loop so all bots arelisted.  
+>Fix lightning gun handling for corpses and single player podiumsThe lightning trail is fired from the real non-predicted entity forthe local client so it can show the server location. The real cliententity was always used to check if a player entity is firing thelighting gun. This potentially causes corpses and players on singleplayer podiums with lightning gun to render the lightning trail ifthe real (living) client is firing the lightning gun.I'm not aware of this causing any issues without modifying the gamelogic. Corpses have no weapon and it's not possible to fire duringsingle player intermission.  
+ 
+
+
+2019-05  
+Contributor(s):  
+Zack Middleton  
+>Restore OpenGL 1.1 support (GL_CLAMP)GL_CLAMP (clamp to border) was changed to GL_CLAMP_TO_EDGE in 2008(f2baf359). In 2018 (ce1d5406) I made OpenGL 1.2 be required sinceGL_CLAMP_TO_EDGE is used.Restore support for GL_CLAMP in order to support OpenGL 1.1 like vanillaQuake 3 does. This should allow using the default Microsoft WindowsGDI Generic OpenGL 1.1 driver (untested but it won't fail the versioncheck at least).From gpuinfo.org, it looks like drivers stopped advertising support forGL_SGIS_texture_edge_clamp so use a version check in addition to theextension check.r_allowExtensions 0 disables using GL_CLAMP_TO_EDGE in the opengl1renderer. GL_CLAMP support wasn't added to the opengl2 renderer.  
+ 
+
+
+2019-04  
+Contributor(s):  
+Zack Middleton  
+Ane-Jouke Schat  
+>Add current (custom) resolution to Q3 UI video mode listCustom resolution is displayed when entering system options menu andsettings can be changed without being forced to change video resolution.  
+>Fix PRINT_ERROR print level missing from CL_RefPrintfIt's used for one message in the OpenGL2 renderer.  
+>Override video mode list in Team Arena UIOverride the video mode list in the Team Arena data files with detectedmodes from SDL like in ioquake3's Q3 UI. Add the aspect ratio to theend of the video resolution (i.e., "640x480 (4:3)"). Add the current(custom) video mode to the list.Before when using a custom resolution in the menu you could not changethe video mode using the mouse because the resolution text was blank.Now custom video resolution is displayed and can be clicked.  
+ 
+
+
+2018-10  
+Contributor(s):  
+Zack Middleton  
+>Allow binds to use hex values for all key codes  
+>Fix SDL audio playback with 16-bit stereo soundMy commit last month "Fix SDL audio playback with surround sound" broke16-bit stereo sound. S_TransferStereo16() still assumed that dma.sampleswas a power of two. I also cleaned up code related to the previouslymentioned commit.  
+>Make s_info command display channels instead of stereochannels-1 was displayed as '# stereo', affectively a boolean formono or stereo. However '3 stereo' for quad surround sound doesn'tmake sense.  
+>Make Team Arena prevTeamMember command loop around player listTeam Arena HUD's team member info box can be cycled through usingnextTeamMember and prevTeamMember commands. nextTeamMember command loopsaround when end of list is reached but prevTeamMember command got stuckat last entry in list (team overview).  
+ 
+
+
+2018-09  
+Contributor(s):  
+Zack Middleton  
+>Fix SDL audio playback with surround soundIf user has surround sound enabled, ioq3 would not play any sound.Fix painting sound buffer for 4/5.1 audio channels. Extra channelscurrently play no audio.  
+>Improve finding obelisk entitynum for bot AIBotSetEntityNumForGoal() was checking all entities that are notteam_redobelisk (which is the obelisk visual entity) to find theuntitled obelisk collision entity. This may fail in rare cases wherethere is an another entity within 10 units of the obelisk origin.Failing to find the correct entity may cause bots to not attack theobelisk.Instead add BotSetEntityNumForGoalWithActivator() for looking for theobelisk collision entity by activator classname (team_redobelisk) whichshould be less likely to find the wrong entity.This doesn't affect official Team Arena maps (unknown if it affects anyothers).Reversed strcmp check was reported by Thomas Köppe.  
+>Fix predicting entity origin on rotating moverBased on G_TryPushingEntity() in code/game/g_mover.c.  
+ 
+
+
+2018-08  
+Contributor(s):  
+Zack Middleton  
+>Fix loading favorites as initial source in server browserWhen I added UIAS_GLOBAL0 in 2017 I missed changing ui_browserMasterrange clamp from 6 to 7.Reported by cdev-tux.  
+ 
+
+
+2018-07  
+Contributor(s):  
+Zack Middleton  
+>OpenGL1: Use RE_UploadCinematic() instead of duplicate codeAlready done in opengl2 renderer.  
+ 
+
+
+2018-06  
+Contributor(s):  
+Zack Middleton  
+>Make testgun command without argument disable test gun model  
+ 
+
+
+2018-05  
+Contributor(s):  
+Simon McVittie  
+Zack Middleton  
+>Fix not closing description.txt and fix path seperator0 length description.txt files were not closed.  
+>Fix client kicked as unpure when missing the latest cgame/ui pk3sIn 2013 ioquake3 stopped referencing the pk3 file that qagame.qvm wasloaded from. This had the unintended side affect of causingnon-dedicated pure servers to no longer reference a pk3 that onlycontains the three QVM files.Non-dedicated pure servers did not reference the pk3 containing thelatest cgame.qvm so if client did not have the pk3 file they were kickedas unpure instead of the client trying to download the pk3 file.Also make server touch ui.qvm since it's required to pass pure check andmay be separate from cgame.qvm.  
+>Fix duplicate bots displayed in Team Arena ingame add bot menuThe key handler allowed going 2 beyond the end of the bot list and thedisplay function clamped to 0 causing the first bot to be shown 3 times.Attempting to add the bot in gametypes < GT_TEAM would fallback toSarge in UI_GetBotNameByNumber() (who isn't the first bot) and gametypes>= GT_TEAM would access characterList past known values (typically NULLbut if teaminfo.txt contained 63 characters it would access out ofbounds memory).  
+>Fix console offset while Team Arena voiceMenu is openFix console text being on top of the Tema Arena voice chat head inscreen resolutions higher than 640x480.  
+>Isolate the Altivec code so non-Altivec PPC targets can use the same binary.Moved all the code using Altivec intrinsics to separate files. This 
+means we can optionally use GCC's -maltivec on just these files, which
+are chosen at runtime if the CPU supports Altivec, and compile the rest
+without it, making a single binary that has Altivec optimizations but
+can still work on G3.
+
+Unlike SSE and similar extensions on x86, there does not seem to be
+a way to enable conditional, targeted use of Altivec based on runtime
+detection (which is what ioquake3 wants to do) without also giving the
+compiler permission to use Altivec in code generation; so to not crash
+on CPUs that do not implement Altivec, we'll have to turn it off
+altogether, except in translation units that are only entered when
+runtime Altivec detection is successful.
+
+This has been tested on Linux PPC (on an Altivec-enabled CPU),
+but we may need further work after testing trickles out to other
+PowerPC devices and ancient Mac OS X builds.
+
+I did a little work on this patch, but the majority of the effort belongs 
+to Simon McVittie (thanks!).  
+ 
+
+
+2018-04  
+Contributor(s):  
+IR4T4  
+Ryan C. Gordon  
+Zack Middleton  
+Eugene C  
+>Fix uninitialized bot_goal_t fields  
+>Make UI_DrawProportionalString handle NULL stringThis makes the function consistent with UI_DrawString.  
+>Fix nullptr dereference in front of nullptr check in FS_CheckPak0Found using LLVM sanitizer. Reported by Dominic "lonkamikaze" Fandreyand David "devnexen" CARLIER.  
+>Improvements for dedicated camera followers (team follow1/2)Switching to dedicated camera follower with no possible players tofollow would spawn at the intermission point and display "connectioninterrupted" HUD message. Pmove() was not run for the client sops.commandTime was too far behind. I made it so that dedicated camerafollowers and scoreboard run Pmove() but cannot move (PM_FREEZE).When all players possible to follow leave, the dedicated camera followerwould continue to display the old player state of the player they werefollowing (along with "connection interrupted" HUD message). Unlike theregular case of a spectator following a specific player, dedicatedcamera followers did not reset their player state to the intermissionpoint after the followed player was no longer valid.Now a client can be set as 'team follow1' to automatically switchbetween displaying the intermission point and following a player whenpossible.  
+>Fix clearing keys for control in Team Arena UIWhen a control is selected for binding a key, pressing backspace wouldclear the displayed keys in the menu but not actually unbind the keys.  
+>Added audio capture support to SDL backend.This lets you speak through VoIP when not using OpenAL. Previously you couldlisten but not speak.  
+>Revert "Removed "Color Depth" from q3_ui system settings, it didn't control anything."The r_colorbits cvar still exists and gfxinfo reports it works onDebian Jessie in both git master and building the commit where Iremoved r_colorbits from q3_ui. So it does indeed control something.Maybe I expected 16-bit color to look different? I don't know.This reverts my commit 8e689739f426e01b696ff346b54a6eb9a198e42efrom August 11 2011.  
+>Fix possible bot goal state NULL pointer dereference  
+>Fix array index in CanDamage() function - discovered by MARTYThe wrong array element was accessed. However the correct element is thesame value so fixing it does not affect gameplay.  
+>Support SDL audio devices that require float32 samples.Fixes missing audio when playing on Windows with SDL 2.0.7, which startedusing WASAPI, which demands floating point audio.  
+>Fix map list in Team Arena start server menu after entering SP menuIn September 2017 I moved loading arenas.txt/*.arena files from enteringstart server menu to at startup to fix running out of memory in Team ArenaUI after opening the start server menu several times.However, Team Arena completely replaces the uiInfo.mapList array whenswitching between single player and start server menus. So after mychange, entering single player and then entering start server would onlydisplay single player maps. It caused SP endofgame menu to use MP maplist for replay/next map since arenas were loaded after gameinfo.txt.Continue loading arena info at start up to avoid reallocating arena infobut move setting up uiInfo.mapList to when entering the start servermenu.  
+>Restore setting r_colorbits in q3_uiIn 2007 in ioquake3 unified-sdl branch (revision 1144) settingr_colorbits in q3_ui was removed but the Color Depth menu option wasstill kept. Setting r_colorbits was not removed from the Team Arena UI.In 2011 I removed the Color Depth menu option from q3_ui as it did notchange any cvars. Yesterday I restored the option not realizing thisand thinking that requesting 16-bit color depth worked.Add setting r_colorbits back to q3_ui so Color Depth menu option worksagain. I changed Color Depth options 'Default' to reset r_stencilbitsinstead of 0 and '32 bit' to use r_stencilbits 8 instead of not changingthe value.However I discovered r_colorbits 16 does not actually work on my system(Debian Jessie x86_64 nvidia). ioquake3 was reporting the requestedvalue instead of the actual obtained value. Fixed in my previous commit.  
+>Remove unnecessary NULL pointer check in Cmd_RemoveCommand  
+>Fix the behaviour of CVAR_LATCH|CVAR_CHEAT cvarsFix the output/behaviour of CVAR_CHEAT flagged cvars in case they are
+also of type CVAR_LATCH (avoid the early latch case return to make it
+work as intended).  
+>Fix q3history buffer not cleared between mods and OOB-accessLoading a 1024-byte q3history file will fill the whole consoleSaveBufferleaving no space for a string terminator. Com_Parse will read at leastone byte beyond the end of consoleSaveBuffer. The written consolehistory file can only be 1023 bytes (enforced by Q_strcat) so don'tallow loading size of 1024.If switching to a mod with a shorter q3history file, the data inconsoleSaveBuffer that isn't overwritten will be parsed. So alwaysadd a string terminator.String not terminated reported by David "devnexen" CARLIER.  
+>Fix shifting bits out of byte in tr_font.cFound using LLVM sanitizer. Reported by Dominic "lonkamikaze" Fandrey.  
+>Fix MSG_Read*String*() functions not being able to read last byte from messageThis is exact root of q3msgboom bug http://aluigi.altervista.org/adv/q3msgboom-adv.txt
+Unfortunately, server still need this ugly '1022 char limit' hack to support unfixed clients in some degree.
+And as it affects MSG_ReadBigString() - unfixed clients can still be crashed by 8191-chars long configstrings that comes with gamestate  
+>Fix exploit to reset player by sending wrong serverIdIf client sends wrong serverId but is already active in the world(CS_ACTIVE) don't resend initial gamestate for the map. This isn't avalid situation. The player should be CS_CONNECTED or CS_PRIMED.Resending gamestate to an active player will cause them to respawnwithout dying or disconnecting. If the player had a CTF flag it getslost until the map is changed or restarted.Reported by Ensiform at:    https://bugzilla.icculus.org/show_bug.cgi?id=6324  
+>Fix "Going to CS_ZOMBIE for [clientname]" developer messageClient name was cleared before printing the message resulting ina blank name.  
+>Make setting r_stencilbits more consistent in Team Arena UII changed Color Depth options 'Default' to reset r_stencilbits insteadof 0 and '32 bit' to use r_stencilbits 8 instead of not changing thevalue. (This matches my q3_ui changes in the previous commit.)Set r_stencilbits when changing graphics presets like when changingColor Depth.  
+ 
+
+
+2018-02  
+Contributor(s):  
+Thomas Köppe  
+Zack Middleton  
+>Fix timelimit causing an infinite map ending loopA negative timelimit value or a value that would overflow themultiplication by 60000 caused an endless map change/reload.Based on patch and description by @vloup.  
+>Make FS_InvalidGameDir() consider subdirectories invalidfs_game shouldn't be a subdirectory and it simplifies the code.  
+>[qcommon] Make several zone variables and functions static.  
+>[qcommon] Remove dead serialization code  
+>Increase q3_ui .arena filename list buffer size to 4096 bytesAllow listing about 273 .arena filenames for loading in q3_ui insteadof only about 136 that fit in a 2048 byte buffer (average 15 bytes perfile name).The buffer for filename list runs out of space long before the bufferfor arena file content does. There is no warning for file list out ofspace but there is a warning for arena file content.This was requested by a user with many maps.  
+>Fix negative frag/capturelimit causing an infinite map end loopReported by @vloup.  
+>Fix invalid access to cluster 0 in AAS_AreaRouteToGoalArea()Newer versions of BSPC such as 2.1h included with the Quake 3 GPL sourcecode create AAS files containing areas in cluster 0 if the area has noreachabilities.The AAS files included with Quake 3 and Team Arena do not contain areasin cluster 0. It's apparent that BSPC would not create them. Instead itcreated clusters with no reachability areas.It seems the intention was to check if the areanum and goalareanum havereachable areas using AAS_AreaReachability(areanum) everywhere beforecalling AAS_AreaRouteToGoalArea(). This prevents adding cluster 0 tothe routing cache and portal cache. However, it is not checkedeverywhere and including some places in the Game VM.Fix AAS_AreaRouteToGoalArea() instead of trying to wack-a-mole with allthe places that call it.Cluster 0 access reported by Thomas Köppe (github @tkoeppe) as causingcrashes in rare cases.  
+ 
+
+
+2018-01  
+Contributor(s):  
+Thomas Köppe  
+Zack Middleton  
+>Fix VMs being able to change CVAR_PROTECTED cvarsVM could use Cvar_Register to set a protected cvar as user created andwas then able to use Cvar_Register with CVAR_ROM to change the value.Don't allow Cvar_Register to affect protected cvars and prevent VMsfrom adding internal flags to any cvars (creator, modified, protected,nonexistent).Reported by Noah Metzger (Chomenor).  
+>Remove extra plus sign from Huff_Compress()There was an extra plus sign in Huff_Compress(). It wasn't causing anyissues as it does not affect the generated code. Removing it makes thesource code the same as Huff_Decompress().The odd source code was brought to my attention by Tobias Kuehnhammer.  
+>Change shift expressions to unsigned types. Shifting signed values toa result that is not representable has undefined behaviour.  
+>Don't let VMs change engine latch cvars immediatelyIf a VM increases sv_maxclients while a server is running the enginewill crash. The value should be latched until engine decides to updatethe cvar; the same as when a user sets it.  
+>Fix VMs forcing engine latch cvar to update to latched valueA few commits ago I stopped VM's Cvar_Set() from instantly updatinglatched values. Now VM can't call Cvar_Register() afterword to forcelatched value to be used.Reported by Noah Metzger (Chomenor).  
+>Don't register fs_game cvar everywhere just to get the value  
+>Fix fs_game '..' reading outside of home and base pathVMs could set fs_game to '..' at anytime to access files outside of homeand base path. fs_game sent by server to clients could also be '..' toaccess files outside of home and base path.'..' was not caught by FS_CheckDirTraversal() as it expects filenamesnot a single directory.I've made fs_game be latched to prevent VMs from changing it with nogood way to validate it before it's used. com_basegame and fs_basegameare now latched as well.Additionally, it's now possible to change com_basegame while the engineis running. game_restart or vid_restart will make it take affect.com_homepath is now CVAR_PROTECTED to prevent VMs from changing itto a directory traversal.This requires my two previous commits for preventing VMs from changingengine latch cvars and only Cvar_Get fs_game in FS_Startup (so CVAR_INITisn't added in serveral other places).Reported by Noah Metzger (Chomenor).  
+>Revert my recent cvar latch changesMy cvar latch system changes prevent the Game VM from changingg_gametype when the value is out of range due to it being registed inthe engine. It's been pointed out as fragile method of security, whichwas still exploitable, by Noah Metzger (Chomenor). It doesn't seem likethis is working out to be a good solution.The issue of fs_game '..' on server being relicated on client viasysteminfo exploit is still fixed as it's not affected by latch.There are a few cases from current values of fs_game are used whichideally should use fs_gamedir char array which has been validated.Revert "Don't let VMs change engine latch cvars immediately"Partially revert "Fix fs_game '..' reading outside of home and base path"Revert "Fix VMs forcing engine latch cvar to update to latched value"  
+>Use standard offsetof facility. Dereferencing a null pointer resultsin undefined behaviour.  
+ 
+
+
+2017-12  
+Contributor(s):  
+Eugene C  
+David CARLIER  
+Zack Middleton  
+>Don't allow qagame module to create "botlib.log" at ANY filesystem location  
+>Make FS_BuildOSPath for botlib.log consistent with typical usageI don't think anywhere else uses "" to mean current game directory.Though it's only an issue for my fork where I removed that behavior.  
+>Fix GCC 6 misleading-indentation warning  
+>fix a few potential buffer overwrite in Game VM  
+ 
+
+
+2017-11  
+Contributor(s):  
+Edward Betts  
+Zack Middleton  
+>Fix my previous commit about -1 ammo  
+>Fix invalid model frame developer warnings in Team ArenaModels for Team Arena's holdable medkit and invulnerability effects usethe frames numbers from the player's torso but the actual models onlyhave one frame (0).  
+>Fix Team Arena server refresh time formatMake minute less than 10 have a leading 0. Change '7:1' to '7:01'.  
+>Fix -1 (unlimited) ammo decreasing ammo time remainingGauntlet and Grappling Hook use -1 ammo. Gauntlet is excluded fromthe check ammo loop but Grappling Hook causes ammo time remainingto decrease 200 milliseconds.The out of ammo check tests time remaining is equal to zero. Thismeans carrying Grappling Hook and out of ammo will have negativetime remaining which results in the low ammo message being displayedinstead of out of ammo.  
+>Correct spelling mistakes.  
+>Correct spelling of two more wordsThanks Undeference for pointing out abreviations.  
+ 
+
+
+2017-10  
+Contributor(s):  
+Thomas Köppe  
+Zack Middleton  
+>Fix memory leak in (unused) AAS_FloodAreas()  
+>Don't send team overlay info to bots  
+>[qcommon] Use unsigned types where wrapping arithmetic is intendedThe use of signed types in these expressions lead to overflow, hence undefined behaviour. The "sum" aggregator in Com_TouchMemory isn't even used (and presumbably just exists to inhibit optimizations from removing the memory access).  
+>Don't redefine MAX_PATH in bot code  
+>[botlib/be_aas_def.h] Change array size from MAX_PATH to MAX_QPATHThe array is part of a structure and should have a fixed size that does
+not depend on inclusion order.  
+ 
+
+
+2017-09  
+Contributor(s):  
+Zack Middleton  
+>Don't draw crosshair 0 in Team Arena setup menuDon't draw crosshair 0 in Team Arena setup menu. It isn't drawnin CGame. Wrap cg_drawCrosshair in missionpack menu like CGameinstead of treating as index 0 which is no longer drawn.  
+>Fix hit accuracy stats for lightning gun and shotgun killsIf a lightning bolt killed a player or the first shotgun pellet thathit a player killed them, the shot was not counted as accurate.Check if shot player is alive for hit accuracy before dealing damage.  
+>Fix listen server sending snapshots each client frameRunning a server using the client engine would send server snapshotsto loopback and LAN clients each client frame (com_maxfps).This causes excessive network traffic and likely does not provide newinformation to the clients because SV_Frame() won't have run betweenthe extra snapshots.This commit restores the original behavior of respecting local/LANclient's snaps userinfo and sv_fps. The issue was introduced by thefollowing commit:    Commit ac30d86db01a43130d2c9ff6fe31d6135d8e2592    From: Thilo Schulz    Date: Wed, 13 Jul 2011 17:11:30 +0000    Subject: - Improve snapshot rate and data rate controlReported by Eugene C.  
+>Limit ui_smallFont/ui_bigFont/cg_noTaunt cvars to missionpackui_smallFont and ui_bigFont are for missionpack HUD font sizeselection. cg_noTaunt disables missionpack taunt voice chats.  
+>Update UI player animation handling to match CGameFix "Error parsing animation file" messages in UI. Caused by fixing thehandling of missing tokens in animation.cfg parser in a past commit.Fix new Team Arena torso animation frame numbers in UI.Add support for fixedtorso and fixedlegs keywords.Add support for reversed animations (negative numframes).  
+>Don't reload arenas.txt/*.arena files in Team Arena UIEntering Team Arena's start server or in-game callvote menu causesarenas to be reloaded. The existing memory is not freed so aftera entering the menus a few times the UI runs out of memory andcrashes.Just load arenas once when the UI loads like in q3_ui.  
+>Fix going to previous browser source in q3_uiIt wasn't possible to go to previous source from favorites ifsv_master5 cvar wasn't set.  
+>Make map names in q3_ui map select menu be uppercaseMakes map names match on both pages of start server menu.  
+>Fix team chat box for spectatorsMake spectators use green background for team chat box when followingplayers. The team chat messages are from spectators not the team ofthe followed player.Make spectators draw team chat box even when not following a player.  
+>Fix loading renderer DLLs on Windows x86After 'Fix floating point precision loss in renderer', Windows x86client won't load the renderer DLLs. The problem is a 64 bit modulus.I couldn't find any reports of this online. However, client withbuilt-in renderer worked with the 64 bit modulus.Only tested with mingw-w64.  
+>Fix crash when out of memory in Team Arena's String_Alloc  
+ 
+
+
+2017-08  
+Contributor(s):  
+Tobias Kuehnhammer  
+Zack Middleton  
+>Make bots use crusher on other q3tourney6 mapsMake bots activate crusher on q3tourney6_ctf and mpq3tourney6.Check if player is inside the crush bounds instead of below thecrusher. There is a jumppad the goes under it in mpq3tourney6.  
+>Check for all command separators in callTeamVoteMake callTeamVote check for all command separators like in callVote.It's not exploitable as the only vote option (leader) always uses aninteger argument.Also the ioquake3 engine remove command separators from client gamecommands in Cmd_Args_Sanitize().  
+>Add spawnflags to QUAKED for trigger_multiple  
+>Remove CVAR_PROTECTED from cl_rendererSetting cl_renderer isn't a security concern and valid behavior fora menu to provide. Sys_LoadDLL ensures only libries are loaded andengine prevents QVMs from writing them.  
+>Make warmup in Team Deathmatch wait for players to join both teamsReported by Cyrax.  
+>Fix floating point precision loss in renderer [part 2]Fix floatTime using float precision instead of double using GCC.Fix R_BindAnimatedImage to be in sync with function table.Fix vertexDeform bulge, vertexDeform normals, noise wave functionat high level time.Revert unnecessary float -> double conversions.  
+>Fix crash when pmove_msec is 0When pmove_fixed is set to 1, setting pmove_msec to 0 would crash.  
+>Make bots only use q3tourney6 crusher to kill their enemyOnly use the crusher for killing the bot's enemy. This doesn'taffect 1v1 very much but prevents the whole team of bots in CTFfrom suddenly shooting at the crusher button. Entering the crusherbounds was basically instant death.  
+>Fix compiling Cmd_CallTeamVote_f  
+>Fix/improve buffer overflow in MSG_ReadBits/MSG_WriteBitsPrevent reading past end of message in MSG_ReadBits. If read pastend of msg->data buffer (16348 bytes) the engine could SEGFAULT.Make MSG_WriteBits use an exact buffer overflow check instead ofpossibly failing with a few bytes left.  
+>Fix floating point precision loss in renderer [part 1]Patch for https://bugzilla.icculus.org/show_bug.cgi?id=5931 byEugene C. from 2013 plus recent fix for tcMod rotate.I merged the changes into the OpenGL2 renderer though the fix fortcMod turb doesn't translate.  
+>Combine mouse movement events in event queueFixes 'Com_QueueEvent: overflow' spam after hitch / map load.Based on patch by @ec-.  
+>Remove newlines from chat messages in Game VMThis has no affect due to ioquake3 engine already removing commandseparators (which includes newlines) in Cmd_Args_Sanitize().  
+>Improve client input responsivenessMove sampling input to the other side of framerate limiter.Thanks to Alexander "wareya" Nadeau and Juraj "youurayy" Vitko forpointing this out.  
+>Fix friction in AAS_ClientMovementPredictionGround and water friction were reversed.  
+ 
+
+
+2017-07  
+Contributor(s):  
+Zack Middleton  
+Brenton Bostick  
+>Make Team Arena UI aspect correct in widescreen  
+>Add score bonus for defending the flag carrier in 1 Flag CTFSet flag_pw to neutral flag instead of using CTF value for red orblue flag so that flag carrier is detected correctly.  
+>Fix nonresponsive favorites in q3_ui having no hostnameArenaServers_InsertFavorites() fails to do anything because favoritesare added to the server list even if nonresponsive.Set nonresponsive favorite server hostname to address.  
+>Restore not giving defense score bonus to flag carrierThe Team Arena code for giving defense bonus for fragging playerwho recently damaged a skull carrier unintentionally applied tothe flag carrier.The skull carrier case would of been handled by the flag carrierblock above it. However, Harvest mode doesn't callTeam_CheckHurtCarrier() so the skull carrier defense bonus doesnot work.This restores the pre-Team Arena behavior of not giving defensescore bonus to flag carrier.  
+>Add warnings for animMap and videoMap shader keywords  
+>Fix warning about using abs() with floats (#222)  
+>Fix misleading-indentation warnings in cl_cin.c  
+>Allow changing q3_ui server source during refreshThis makes it easier to scroll through the list, especially since"Local" source now refreshes until a local server is found.  
+>Make UI continue searching for local servers until foundWhen refreshing local servers, Team Arean UI never changed the statusmessage when it timed out. This gave a false impression it was stilllooking for servers.Let's continue looking for local servers in q3_ui and Team Arena UIuntil one is found.  
+>Fix q3_ui cursor going off screen in widescreen  
+>Make 'globalservers 0' fetch all mastersThis commit fixes the vanilla Q3 UI VMs not displaying a server list
+when id Software's master server is down.
+
+Originally master 0 for the globalservers command was Internet and
+master 1 was MPlayer (defunct). In 2008 ioquake3 changed it so that
+master 0 to 4 were five separate master servers with no affect on
+original Quake3/Team Arena UI VMs; they continued to get the server
+list from master.quake3arena.com.
+
+id Software's master server (master.quake3arena.com) goes down
+occasionally. Using ioq3's UI VM additional master servers can be
+accessed but players using the original UI VMs are unable to get a
+server list.
+
+In order to fix the original UI VMs in Quake3/Team Arena's pk3s this
+commit makes 'globalservers 0' fetch all master servers. So players
+get a combined list of id Software's and ioquake3's master list. Or
+just ioquake3's list if id Software's master is down.
+
+Getting lists from individual master servers using globalservers has
+changed from 0 through 4 to 1 through 5 to accommodate using 0 for
+other purposes. This commit modifies ioq3's UI code to support the new
+values for globalservers command.
+
+A side affect of these changes is that UI VMs based on ioq3 since 2008
+will have Internet1 fetch all master servers and Internet2 request
+sv_master1 instead of sv_master2 and so on. It may be worth noting that
+getting server list from masters 3-5 could not be done using ioq3's UI
+before 2011.  
+>Silence g_util.c warning about set but not read variableProbably caused by my commit on June 2 2017.  commit 4006358492b800db0602ed0eca600166caec22e4  Fix spawn/freed entity logic (specifically harvester skulls)  
+>Echo server say/tell/sayto message to console  
+>Allow more than 32 surfaces in skin filesModels don't have a surface limit; skins shouldn't either. Some playermodels require more than 32 surfaces since vanilla Quake 3 did notenforce the limit.Skins are now limited to 256 surfaces because having no limit wouldrequire parsing the skin file twice. The skin surfaces are dynamicallyallocated so it doesn't increase memory usage when less surfacesare used.  
+>Fix score bonus for defending the flag carrier in CTFFix copy-paste error in the original Quake 3 code. The wrong valuesare used for v1 and v2. v2 was previously set to distance of attackerto flag base; which should be handled already.The game now gives defense score bonus to player when they frag anenemy near their team's flag carrier while the player is more than1000 units from the flag carrier.This may also fix not giving defense bonus when near carrier due tochecking if carrier and enemy (instead of attacker) are in PVS.Found by @Razish.  
+ 
+
+
+2017-06  
+Contributor(s):  
+Tobias Kuehnhammer  
+Zack Middleton  
+>Only auto update empty Team Arena internet server cachePreviously tested a mod cvar which may be wrong when multiplemods are involved or config is reset. Let's check the servercache's internet server count directly.  
+>Fix score info being dropped by serverServer drops reliable command string if it's length is more than 1022.  
+>Make Team Arena win logic handle more game types/blue teamThe Team Arena menu uses red team for single player but q3_ui(and mods could) use blue. Also handle all the game types, notjust the ones used by Team Arena. Fixes FFA and Team DM.  
+>Split G_AddRandomBot into multiple functions  
+>Don't start game entity loops at index 1  
+>Make cg_teamChatsOnly only affect team gametypesAlso made it so that 'tell voice chats' are always allowed forconsistancy with 'tell chat'.Reported by Tobias Kuehnhammer.  
+>Add con_autochat and con_autoclear cvars  
+>Allow spectators to use noclip cheat  
+>Fix comment for CG_SetInitialSnapshot  
+>Unify checks for missing COM_Parse() token  
+>Fix levelshot displayed in Team Arena server browserLevelshot was not updated when server list was initially loaded orserver list was sorted.  
+>Fix Coverity warning that endVelocity is uninitialized  
+>Fix notarget cheatBots no longer target players in 'no target mode'.  
+>Make 'addbot random' command select a random bot infoIt reuses the random bot selection code for bot_minplayers cvar.  
+>Remove unused define MAX_COMMANDARGUMENTS from be_ea.c  
+>Make bots stop attacking player after disconnectBots did not notice player disconnected, so they kept attackingthe last known position.Checking if entity is valid in BotEntityVisible might fix othersimilar issues too.  
+>Range check client number for trap_BotUserCommand  
+>Fix g_teamAutoJoin and g_teamForceBalanceThere are various issues caused by not knowing the initial team forthe local client and bots when they connect. This is can be reproducedby starting a team game from the main menu.When g_teamAutoJoin is enabled, bots and local client join a randomteam at connect and then execute their team command a few frameslater. This may result in the player being killed if they specify adifferent team. In Team Arena's Harvester mode this causes harvesterskulls to be spawned at the beginning of the game.When g_teamForceBalance is enabled, the local client and bots may notbe able to join their desired team. This may result in them beingspectators. If g_teamAutoJoin is also enabled they may be left onthe opposite (red/blue) team they were meant to join.There is a hack for including bot's team in their player info string(used by cgame for which team skin to use) before the bot joinstheir desired team. Bots aren't guaranteed to join their desired team(as may happen when both g_teamAutoJoin and g_teamForceBalance areenabled) so clients may see them as being on the wrong team!----Add teampref userinfo option for team preference. If teampref is setit will be used for attempting to join the team immediately at connect.Bots now join team at connect using teampref userinfo. So removethe hack for setting bot's team in player info string before the botjoins the team.To avoid the client sending teampref userinfo to all network servers,the local client uses a g_localTeamPref cvar. The g_localTeamPrefcvar is cleared after it's used so it doesn't get used when startinganother server later. Another reason not to use a teampref userinfocvar is there isn't a reliable way to clear it in CGame/UI which arelikely loaded from baseq3 pk3.Make it so g_teamAutoJoin doesn't affect clients who specifyteampref. If teampref is invalid, the client will join a random teamlike g_teamAutoJoin.Don't apply g_teamForceBalance to the local client or bots. Otherwisethey may be left as spectators when starting team game from menu.The start server menus use team command and g_localTeamPref to setthe human player's team. This way it's compatible with vanilla Q3game VMs and the new setting team at connect feature.  
+>Make server browser default to InternetThe default use to be local. In q3_ui you have to press spacebar orwait for scan to time out before you can switch to Internet.  
+>Use const char pointers when possible in botlib's libvar code  
+>Stop caching sv_maxclients in bot code  
+>Make Team Arena server list sub-sort clients by max clientsThe player column in Team Arena UI lists clients and max clientsin format of "clients [maxclients]". When sorting by clients themax clients is ignored which results in player column beingdisorganized.When servers have the same number of clients, sort based on maxclients. Otherwise client sort is sub-sorted based on order ofgetinfo responses (ping).  
+>Draw disconnect icon over lagometer in Team Arena tooThe blinking disconnect icon is drawn over lagometer in Q3.Team Arena moved the lagometer location. Now let's draw thedisconnect icon over lagometer in Team Arena too!  
+>Fix random bot not looking for bots by funnameQuake 3's Anarki bot has a 'funname' with colors in it.This commit fixes Anarki not being detected as in use.  
+>Add range check for bot skill in addbot commandAdding a bot with skill of 0 doesn't show icon on hud.  
+>Fix not adding random bot when all bot info are in use on teamIf there are two bot infos in scripts/bots.txt then each team canonly add two random bots via bot_minplayers or addbot random.Pick random bot info from least used bot infos instead of only onesthat are used by zero players. That way a random bot can always beadded to the game.This rarely affected Quake 3 since there is 32 bot infos. It couldeasily affect new games though.  
+>Fix hitch when opening Team Arena find friend menuOpening the find friend menu in the Team Arena server browserhitches due to trying to resolve blank host names.In UI_BuildFindPlayerList() status requests that are initial orcompleted state or have timed out get reset. This means it startswith MAX_SERVERSTATUSREQUESTS (16) blank host names. So just ignorethem in UI_GetServerStatusInfo().  
+>Fix overdraw in CG_DrawRectIt was noticeable in the corners when alpha was less than 1.  
+>Fix (unused) check for map restart in CG_TransitionSnapshot  
+>Fix favorite servers player count message in Team Arena UIThe console message "1 servers listed in browser with 2 players."would count clients multiple times when viewing favorite servers.When viewing favorite servers in Team Arena UI, servers are addedto list before getting ping response. Each time UI checked pingsand inserted server it incremented the player count.  
+>Fix spawn/freed entity logic (specifically harvester skulls)- Actually use the second 'force' pass in G_Spawn when out ofavailable slots.- Make G_EntitiesFree return qtrue if we can open a new slot.(Only used when spawning Harvester skulls.)Fixes not spawning Harvester skulls when there are no 'open freedslots', but we have other slots available to open.  
+>Don't build score info for bots, they don't parse it  
+>Show client's name in callvote clientkick vote display messageMake callvote always kick by client num so player can't rename toavoid being kicked. Don't allow calling a vote to kick host ornon-existent players.  
+>Have spectator always be in first personFlying around in third person with no body is weird.  
+>Fix filtering favorite servers in Team Arena UIFilter favorite servers based on cached server info and new infoinstead of only the cached info.If cached server info is filtered out, don't add it to server listbut wait for getinfo response before marking server as invisible.  
+>Remove unneeded 'angles' variables/clearing in ai_dmq3.c  
+>Fix joining team when starting local team play serverAKA fix joining team in Team Arena single player. Though it alsoaffects starting Q3 skirmish in team dm or ctf modes.  
+>Check for unlimited time power up using INT_MAXIt is possible for a power up to exceed 999 seconds without it beingunlimited time.  
+>Fix Team Arena team base models not dropping to floorTeam Arena's Overload gametype has red and blue team Obelisk baseobjects. It uses separate entities for visual and damage. Only thedamageable entity was dropped to floor. Leaving model floating offthe ground.Team Arena's Harvester base has the same problem. Model entityfloats in air but trigger entity drops to floor.Drop all Team Arena team base models to floor. Fixes CTF, 1Flag,Overload, and Harvester base models.  
+>Don't pick duplicate random bots until all bot types are addedDon't add the same bot to multiple teams until there are as manybots on the server as there are bot types.Previously each team would have unique bots until all bot typeswere added to the team but other teams may have the same bot. Nowthere will not be any duplicate bots until there are more bots thanbot types.Now Quake 3 (32 bot types) in 16 vs 16 bot CTF will not containduplicate bot types. (You have to increase memory in code/game/g_mem.c in order to add 32 bots though.)I had to change G_AddRandomBot() to use 'addbot random' or else thesame bot could be added to red and blue teams. The bot was selectedand stored in console command buffer so game doesn't know not toselect the bot again.  
+>Fix "brought in 1 skulls" Harvester messageUse correct singular/plural form of skulls for Harvester's brought inskulls message.Reported by Tobias.  
+>Enable tourney scoreboard in Team Arena"/team score" draws an oversized scoreboard in Q3. In Team Arenait draws nothing. They probably intended to replace it with thenew .menu UI. But since it didn't happen, go ahead and use the Q3tournament scoreboard.  
+>Only allow connectionless print/echo from server/rcon addressReported by Ensiform.  
+>Fix bot_minplayers passing delay as team to addbot in non-team gametypes  
+>Fix duplicate (delayed) random bots being choosenCount delayed bots when looking for least used bot infos for decidingwhich bot to add.  
+>Fix strncpy usage in botlibAll usage of strncpy in botlib should now either set stringterminator or use Q_strncpyz.  
+>Replace constant value with UIAS_GLOBAL1  
+>Don't copy p->org to itself in cg_particles.c  
+>Fix 'missing token' in parsers for animations.cfg  
+>Add mouse wheel support to UI list boxesAllows scrolling server browser list and some other lists.  
+>Don't use uninitialized ps from BotAI_GetClientStateIf BotAI_GetPlayerState returns qfalse, ps is untouched and insome cases means uninitialized. So don't use it if not valid.  
+>Automatically get initial Internet servers in Team Arena UIHaving to manually request the list, with two buttons (get newlist, refresh list) is somewhat confusing. Also since it lookslike there are no servers, users might not try to figure outhow to get the server list.The first time viewing a master server list in Team Arena UI,automatically request a new server list. After that the cachewill be available with a timestamp of the last refresh time.I think this will make it easier to understand how the menuworks.This may cause unneeded updating of the server cache because thelast refresh timestamp is per-fs_game but the server cache isshared by all games. This will only occur once for each gamethough so it's not a big concern.  
+>Check delayed bot's team when counting bots for bot_minplayersnote: This requires my previous commit that added teampref userinfoso that bots choose correct team in ClientConnect.  
+>Fix comment in BotAIPredictObstacles  
+ 
+
+
+2017-05  
+Contributor(s):  
+Zack Middleton  
+>Merge pull request #270 from mickael9/unused-warningDon't include (mission)pak_checksums in standalone build  
+>Merge pull request #254 from WolfWings/patch-1Redundant #ifndef MISSIONPACK block  
+>Merge pull request #199 from UniQP/typosFix some typos in comments  
+>Fix compiling debug code for writing VoIP data  
+>Merge pull request #198 from UniQP/deadvariableRemove dead variables  
+>Don't repeat alt+enter key eventHolding alt+enter should not continuously toggle fullscreen mode.  
+>Don't load libraries with non-standard file extensionsAlso don't allow writting files ending in a library extension suchas ".so.0" or ".dylib.0".  
+>Save connect and playdemo argument before calling CL_Disconnect()Save argument instead of using a pointer to cmd token memory thatmight be overwritten when Cmd_TokenizeString() is called.No known method for causing the issue without engine changes.Cmd_TokenizeString() is called by FS_PureServerSetReferencedPaks()in CL_Disconnect() but it's not an issue because the string isblank.Thanks @mickael9.  
+>Merge pull request #256 from WolfWings/patch-4...too much MISSIONPACK ifdeffery.  
+>Refresh master server address cache every 24 hoursResolve master server addresses every 24 hours instead of keepingresult forever. Don't clear sv_master[1-5] cvar if the address failsto resolve; it might work later.  
+ 
+
+
+2017-04  
+Contributor(s):  
+Tim Angus  
+Max Crofts  
+Zack Middleton  
+>Improve FS_GetModList- Paths to search for mods are now specified in an array- Mods can now consist solely of ".pk3dir" folders and still beconsidered valid- The function now has a consistent style  
+>Merge pull request #286 from maxcrofts/install-pathUpdate install path detection  
+>Merge pull request #288 from maxcrofts/list-pk3dir-modsImprove FS_GetModList  
+>Detect GOG install path  
+>Don't start a vote after vote passed for map changeProcessing a callvote command after a vote passed to change maps buthas not been executed yet will result in 1) map change immediatelyhappening 2) after new map loads players have vote HUD messages butGame VM doesn't have a vote in progress. The phantom vote status willonly be removed if players start a new vote or run vid_restart.The underlying issue is that a second callvote sets vote configstrings but a map change is executed before they are sent to clients.Resulting in clients getting "cs" reliable commands with the configstring changes _after_ the map change. Out of sync config strings.Even if the underlying issue was fixed, the second vote would be lost.So it's best to not force a map change to happen immediately anyway.Reported by Tobias Kuehnhammer.  
+ 
+
+
+2017-03  
+Contributor(s):  
+Mickaël Thomas  
+Eugene C  
+ec-  
+SmileTheory  
+>Don't include (mission)pak_checksums in standalone buildAvoids a compiler warning  
+>Merge some file writing extension checks from OpenJK.Thanks Ensiform.https://github.com/JACoders/OpenJK/commit/05928a57f9e4aae15a3bd0https://github.com/JACoders/OpenJK/commit/ef124fd0fc48af164581176  
+>Fix comment  
+>Don't load .pk3s as .dlls, and don't load user config files from .pk3s.  
+>Fill in filename in Com_WriteConfig_f() before checking extension.Thanks BartoCH for pointing out.  
+>Allow unaligned load/store in QVM interpreter/x86 compiler constructions like (dataMask & ~3) was used to protect against out-of-bound load/store when address is 4-byte closer to dataMask but at the same time it effectively cut low address bits for ALL load/store operations which is totally wrong in terms of conformance to ALLOWED (i.e. generated by q3lcc from C sources) low-level operations like packed binary data parsing  
+>Remove FS_Read2().Functionally the same as FS_Read().Streaming functionality was removed in https://github.com/ioquake/ioq3/commit/672cfbf16f83fb67f6ce9bb1d3571dc32a5b3083 but flag remained.  
+ 
+
+
+2017-02  
+Contributor(s):  
+Zack Middleton  
+Wolf  
+>Redundant #ifndef MISSIONPACK blockMISSIONPACK define is already required for this file or else it triggers an #error at the top of the file - removing redundant test that will never occur.  
+>Fix source filename/includepath length in l_precomp.csource_t filename and includepath are 1024 but MAX_PATH is 64. As far asI know the paths don't exceed that so this probably doesn't fix anything.Similar changes were already made to l_script.c so this makes thingsconsistent. This was found because it was fixed in RTCW's code.  
+>Fix command line variables not being set correctly+seta, +sets, and +setu were ignored because Com_AddStartupCommandsthought Com_StartupVariable handled it.+set didn't allow value to be multiple tokens which due to Unix shellunintuitively removing quotes causes the variable to only be set tothe first token. This could be worked around by escaping quotes    ioq3ded +set g_motd \"hello world\"but it doesn't match behavior of other start up commands (which nowincludes seta, sets, and setu) that use all tokens.  
+>...too much MISSIONPACK ifdeffery.  
+>Fix swapping AAS bboxesFound in RTCW SP.  
+ 
+
+
+2017-01  
+Contributor(s):  
+Tim Angus  
+Zachary J. Slater  
+>Merge pull request #230 from fmwviormv/patch-1reset samplefrac to 8-bits, to prevent overflow  
+>Merge pull request #227 from smcv/old-style-declarationDon't use mostly obsolete 'register' keyword (Merge or get off the pot.)  
+>Merge pull request #99 from openmoh/ioq3-SSE-msgrephrase SSE availability message (thanks)  
+ 
+
+
+2016-11  
+Contributor(s):  
+Dominic Fandrey  
+>Add missing address operator in cm_polylib.cAlso avoid nullptr dereference.  
+>Fix signed bit operations in MSG_ReadBits  
+>OpenGL1: Decay float[8] to float * in tr_marks.c  
+>Fix undefined behaviour due to shifting signed in snd_mem.c  
+>Fix shift into sign in cl_cin.c  
+ 
+
+
+2016-10  
+Contributor(s):  
+Zack Middleton  
+fmwviormv  
+SmileTheory  
+>Handle ERR_DROP during Com_GameRestartIf ERR_DROP during Com_GameRestart after shutting down client, Com_Errorneeds to restart the client otherwise there is just a black window. Also,clear the game restarting flag in Com_Error otherwise it's not possible torun Com_GameRestart again later.I don't know of a way to trigger ERR_DROP, in FS_Restart for instance,without engine changes however.  
+>reset samplefrac to 8-bits, to prevent overflowissue: https://github.com/ioquake/ioq3/issues/106  
+>Avoid shuting down opus voip codec multiple times  
+>Fix removing/creating PID file for base game when switching to/from mods  
+>Default cl_renderer to opengl2.  
+>Offer post-crash safe settings on a per-mod basisOffer to restore settings when loading a mod that crashed, not the firstmod that gets loaded after a crash. Before the first mod loaded (usuallybaseq3) would get the option even if missionpack or some other mod crashed.- Make pid files separate for each fs_game.- Remove/write pid every time switching fs_game.- Create path before writing pid file otherwise it fails on first run.- Show mod description.txt or fs_game instead of engine name in abnormal  exit message.- Check com_fullyInitialized in Com_Error before removing PID,  otherwise "ioquake3 --version" segfaults when accessing fs_gamevar->string  (plus not fully initialized isn't really a normal shutdown).  
+ 
+
+
+2016-09  
+Contributor(s):  
+Tim Angus  
+Simon McVittie  
+Thomas Köppe  
+SmileTheory  
+>snd_wavelet: avoid undefined pointer below array boundsGiven an array b[] of length n, pointers to &b[0]..&b[n] are defined(where only &b[0]..&b[n-1] can be validly dereferenced). &b[-1], orequivalently b-1, is not something we can use in valid Standard C.gcc 6 diagnoses this as:code/client/snd_wavelet.c:33:9: warning: array subscript is below array bounds [-Warray-bounds]and might take this undefined behaviour as permission to emit"more efficient" object code that is not what the author expected,for example nothing at all. Use a macro to fake a 1-based array instead.  
+>Merge pull request #226 from smcv/underflowFix array underflow compiler warnings  
+>[code/botlib/l_precomp.c] Fix string buffer overflow  
+>Avoid 'register' declarationsgcc 6 with -Wall -Wextra warns:code/botlib/l_precomp.c: In function ‘PC_NameHash’:code/botlib/l_precomp.c:551:2: warning: ‘register’ is not at beginning of declaration [-Wold-style-declaration]  int register hash, i;  ^~~Modern compilers either ignore the register storage class whengenerating code, or generate better code without it, so just removemost of them.The remaining uses are in third-party bundled libraries (libjpeg, zlib),and in a PowerPC-specific inline function consisting of inlineassembler (because I'm not 100% confident that it doesn't havesome practical use there).  
+>Fix undefined behavior when shifting left by 32.https://bugzilla.icculus.org/show_bug.cgi?id=6432  
+>Merge pull request #220 from tkoeppe/shift[qcommon/msg.c] Remove dead code  
+>[qcommon/msg.c] Remove dead code (which had undefined behaviour)  
+>Merge pull request #223 from smcv/seperatingFix mis-spellings of "separating" as "seperating"  
+>Merge pull request #221 from tkoeppe/strncpy[code/botlib/l_precomp.c] Fix string buffer overflow  
+>Fix mis-spellings of "separating" as "seperating"Found by Debian's Lintian tool.  
+>Merge pull request #225 from smcv/reproducible-datePick up date from SOURCE_DATE_EPOCH, for reproducible builds  
+>UI_BuildFindPlayerList: avoid array underflowThis function is used in the Team Arena menusI don't think it's actually possible to reach this line withfoundPlayerServerNames < 1, because by the time we get here we haveset it to 1 + the actual number of servers; but if we did, it wouldclearly underflow into foundPlayerServerNames[-1], which would beundefined behaviour. gcc 6 diagnoses this with a warning:code/ui/ui_main.c: In function ‘UI_BuildFindPlayerList’:code/ui/ui_main.c:4138:16: warning: array subscript is below array bounds [-Warray-bounds]Also correct the sizeof() invocation to make it more obviouslycorrect (in fact the buffers for names and addresses happen to bothbe of size MAX_ADDRESSLENGTH, so it was fine, but it's good to beobvious).  
+>UI_BuildFindPlayerList: make a sizeof() more obviously correctAs with the other branch of the if/else, each element offoundPlayerServerNames is in fact the same size as each element offoundPlayerServerAddresses, so it was fine; but it's better to makeit obvious that we are using the right array sizes.  
+ 
+
+
+2016-08  
+Contributor(s):  
+Tim Angus  
+Thomas Köppe  
+SmileTheory  
+>Merge pull request #213 from tkoeppe/abs[game/ai_main.c] Use floating-point fabs() for floating-point values  
+>Better gamepad support.  
+>[game/ai_main.c] Use floating-point fabs() for floating-point values  
+>Better defaults for joystick axes.These changed from SDL1->SDL2 afaict.  
+ 
+
+
+2016-07  
+Contributor(s):  
+Sebastian Buchwald  
+Tim Angus  
+Thomas Köppe  
+Zack Middleton  
+>Merge pull request #195 from tkoeppe/intfixFix signedness and float/int issues with abs()  
+>[botlib] Use floating point absolute value rather than truncate to integer  
+>Remove dead variables  
+>Fix bot team order to kill last player it killedBot's lastkilledplayer was set to -1 after carrying out an ordered kill.Later in BotChat_Random() the PlayerName function was passed -1 whichcaused a "Error: PlayerName: playernum out of range" message.I think the reason it was set to negative one is so that if the bot isordered to kill the player again, the bot will not say it's done anddrop the goal. Though, if the bot killed the player based on it's owndecision, it will just say it's done and drop the goal (bug?).Let's check the time of the last kill to see if it happened since theteam order was received instead of setting lastkilledplayer to -1after completing the team ordered kill. This fixes bot dropping goalif target player was the last player they killed and the PlayerNameout of range error.  
+>Merge pull request #197 from tkoeppe/null[null/null_glimp.c] Fix bitrot in null impl  
+>[null/null_glimp.c] Fix up bitrot in null impl  
+>Fix some typos in comments  
+ 
+
+
+2016-06  
+Contributor(s):  
+Thilo Schulz  
+Zachary J. Slater  
+Zack Middleton  
+Victor Roemer  
+>Merge pull request #190 from wtfbbqhax/OSX_64bit_buildsFix Makefile for OSX  
+>Only play logo/intro if their filenames have been defined in q_shared.h  
+>Fix typo of empty in ai_main.c  
+>Missed this Cvar_Get() on com_introPlayed  
+>Fix Makefile for OSXBump base SDK from 10.5 -> 10.7Just use the builtin __APPLE__  
+>Prevent CL_RunCinematic from reading cinTable[-1]At the end of CL_RunCinematic, RoQShutdown sets currentHandle to -1.This causes the return at the end to be return cinTable[-1].status.Use return FMV_EOF when RoQShutdown is called.I think FMV_EOF should be returned instead of FMV_IDLE which is set inRoQShutdown because RoQShutdown is clearing out state so it can be reusedfor a new cinematic.The return value isn't actually read by the ioq3 client, renderers,cgame, or ui.  
+ 
+
+
+2016-05  
+Contributor(s):  
+Zack Middleton  
+>Don't have clients use private slots when sv_privatePassword is unset  
+>Improve keyboard/joystick input in Team Arena UIMake Yes/No, Multi, Slider, and Bind items allow enter key to changevalue without mouse over item. Add support for left and right arrow keysand joystick button 1-4 to Yes/No, Multi, and Slider and many itemspecific 'ownerdraw' key handlers.Listbox still requires mouse hover and Team Arena main menu requiresmouse hover to get anywhere...Enabling K_JOY1-4 to select in default key handler also caused additionalmouse button (K_AUX1-16) to select, which is done in q3_ui as well. Bothhandle K_AUX equally badly (not treated as a mouse button and not handledby item specific key handlers), so it's probably fine.  
+>Fix warnings that names passed to Name_PlayerNameCompletion is not const  
+>Explicitly set cull type for skyboxExplicitly set cull type for skybox to front, instead of using whatevercull type the previous shader used (which could result in the skyboxnot being visible due to only drawing back faces). The sky cloud stagesset the cull type so they are not affected by previous cull type.  
+>Fix iamamonkey printing 'levels' instead of 'awards'  
+ 
+
+
+2016-01  
+Contributor(s):  
+Zachary J. Slater  
+SmileTheory  
+>Fix frame_msec possibly being zero in cl_input.c.This fixes a mouse freezing bug.  
+>Merge pull request #42 from zturtleman/opus_voip_2Use Opus for VoIP [updated]  
+ 
+
+
+2015-12  
+Contributor(s):  
+Zachary J. Slater  
+>Merge pull request #103 from openmoh/ioq3-introHave custom intro cinematics for standalone game  
+>Merge pull request #73 from Pan7/saytosayto cmd with player name completion  
+ 
+
+
+2015-10  
+Contributor(s):  
+Tim Angus  
+>Fix check for empty rconpassword in CL_Rcon_f  
+ 
+
+
+2015-09  
+Contributor(s):  
+Tim Angus  
+Zack Middleton  
+Dion Williams  
+SmileTheory  
+>Use correct array size for facets in cm_patch.c  
+>Search for mods in steam path as well as home and base paths.  
+>Add Steam's Quake 3 Arena dir to game dirs on Windows.  
+>Merge pull request #152 from dionrhys/cvar-unset-notifyFix Cvar_Unset not notifying cvar_modifiedFlags  
+>Remove unused define MAC_EVENT_PUMP_MSEC  
+>Make add bots menu use standard menu drawingMade add bots menu draw banner and background like remove bots menu.  
+>Fix Cvar_Unset not notifying cvar_modifiedFlagsUpstream: JACoders/OpenJK@9a5e9e87ff2d1302261978fa3f1adafb851bd6d6  
+>Fix glyph width calculation in Text_Paint_LimitText_Width's scale argument will be multiplied by glyphScale, so don'tpass useScale that is already multiplied by glyphScale as this makesthe scale too big.  
+>Early out of Cmd_CompleteArgument and Cmd_SetCommandCompletionFuncReported by Ensiform.  
+ 
+
+
+2015-08  
+Contributor(s):  
+Zachary J. Slater  
+Zack Middleton  
+>Remove unused define CG_FONT_THRESHOLD  
+>more helpful error messageCan’t find your pak0.pk3? Here’s where we tried looking.  
+>Better language, less tense  
+ 
+
+
+2015-07  
+Contributor(s):  
+Tobias Kuehnhammer  
+Zack Middleton  
+>Fix range checks for numBorders in CM_AddFacetBevelsFound by Coverity.  
+>Apply greyscaling to fog blocks  
+>Fix (unused) watertype checks in PM_WaterMove  
+>Backport ignoring values outside lightgrid to OpenGL1Fixes possibly of reading memory past end of lightGridData or readingwrong light grid data (wrapping around to next row).  
+>Fix cgs.teamVoteString buffer overflow in CG_ConfigStringModifiedFound by Coverity.  
+>Don't segfault in FS_CreatePath when there are no path seperators  
+>Fix OpenGL2 ignoring last light grid point on each axisAlso change light grid bounds clamping to make it more clear what invalidvalues are.  
+>Fix CGame CG_WaterLevel() comparisonsMy last commit made it so that CGame "waterlevel 1" is feet in water,but before it was erroneously about waist deep in water. The placeswhere it is checked it is suppose to be view position underwater.Change comparisons to use correct value for view position underwater.  
+>Fix handling too many teams in Team Arena UI  
+>Remove logically dead code from CL_GetServerStatusFound by Coverity.  
+>Fix CG_WaterLevel() checks for waterlevel 2 and 3CG_WaterLevel() added lerpOrigin to itself instead of adding view heightwhen checking for waterlevel 2 and 3. This did not cause issues becauseioq3 only compared the calculated waterlevel to more or equal to 1.  
+>Make more vm_x86 macros use braces so they work with if blah run macroMASK_REG in EmitMovEDXStack would incorrectly emit asm if 'andit' was 0.'andit' would never be 0 though so it wasn't causing issues.Found by Coverity.  
+ 
+
+
+2015-06  
+Contributor(s):  
+Zack Middleton  
+>Merge pull request #118 from jkent/masterfix buffer overflow in CL_CheckForResend  
+>Make cinematic times be int like CL_ScaledMillisecondsCinematic's startTime and lastTime are always set from CL_ScaledMillisecondswhich returns int and are converted back and forth to int and unsigned int.This fixes a warning that abs() is used on an unsigned int.  
+>Remove check for cg_recordSPDemoName.string array addressIt will always be true.  
+>Fix abs() being used for long int in l_precomp.c  
+>Fix abs() being used for float in cl_input.c  
+ 
+
+
+2015-05  
+Contributor(s):  
+Zack Middleton  
+>Save bot accompany distance across map change or restartIf a bot is accompanying someone before map change or restart, the bot wouldcontinue accompanying them but press up against them and orbit around them.This is caused by the bot's formation distance being 0.Save the formation distance so they maintain proper distance and do notorbit around the player.  
+ 
+
+
+2015-04  
+Contributor(s):  
+Simon McVittie  
+>Pick up date from SOURCE_DATE_EPOCH, for reproducible buildsThe goal of reproducible builds is that a rebuild of the same sourcecode with the same compiler, libraries, etc. should result in the samebinaries. SOURCE_DATE_EPOCH provides a standard way for build systemsto fill in the date of the latest source change, typically from a gitcommit or from metadata like the debian/changelog in Debian packages.This does not change anything if SOURCE_DATE_EPOCH is not defined;the intention is that a larger build system like a Debian packagewill define it.Please see https://reproducible-builds.org/ for more information aboutreproducible builds.  
+ 
+
+
+2015-03  
+Contributor(s):  
+Jeff Kent  
+/dev/humancontroller  
+Zack Middleton  
+>Fix return values in nested system calls from QVMsWhen the engine is compiled with Clang it appears that the return valueis being written to the WRONG address, either due to the vm_ variables beingchanged (unexpectedly) elsewhere, or as a result of bad assembly assumptions;having a stack variable pointing to where to write the return value seemsto do the trick.This fixes the case where, for a trap_Register()-like call, weird numbersare being returned when, during the process, an error message is printed(which in Tremulous results in a QVM call and (nested) system call).  
+>Add a comment about non-functional bot code  
+>Let's not ifdef MISSIONPACK inside of ifdef MISSIONPACK  
+>Clean up CG_DrawProxWarning designHopefully fixes the following warningcg_draw.c:2315 assuming signed overflow does not occur when assuming that (X + c) < X is always false [-Wstrict-overflow]  
+>Fix Com_RandomBytes weak-random case255 is valid for unsigned char too.  
+>Fix attacker icon being default image if attacker leftWith cg_draw3dicons 0 if attacker is kicked or disconnects, theattacker icon becomes the default image.  
+>Fix crosshair drawing not clearing colorThe renderer color is set to health color when drawing crosshair. Afterdrawing the crosshair, the renderer color was not cleared and could affectother things. With cg_draw3dicons 0 and cg_drawCrosshairNames 0 it affectedthe attacker icon.  
+>fix buffer overflow in CL_CheckForResend  
+ 
+
+
+2015-02  
+Contributor(s):  
+Zack Middleton  
+>Fix AAS_Reachability_Grapple's sky surface checkSurface flags are stored in bsptrace.surface.value not flags.  
+>Set bsp_trace_t::surface.flags to surfaceFlags in server and gameRevert last commit so that grapple sky check is compatible with BSPCBotImport_Trace in (removed from repo) code/bspc/be_aas_bspq3.c.Set bsp_trace_t::surface.flags instead of surface.value to trace_t::surfaceFlags.surface.flags is only used for the sky check for grapple AAS reachability.surface.value is not used at all.bsp_trace_t is not part of the game VM API, so this does not affect VM compatibility.BotAI_Trace in game was changed to match server. surface.value/flags are not used in game.  
+ 
+
+
+2015-01  
+Contributor(s):  
+Michael Rieder  
+Ensiform  
+Zack Middleton  
+>Fix (unused) "orders" menu script logic"orders" menu script is not used by Team Arena.The same C format string was given an int or string argument depending on ifordering a single person or everyone. Make it always use int.  
+>Remove logically dead code from UI_GetServerStatusInfo  
+>Merge pull request #22 from zturtleman/cvar_modifiedAdd cvar_modified command  
+>Fix possible levelPicNames buffer overflow in q3_ui  
+>Inform how many shader stages the max is in the warning message  
+>Have custom intro cinematics for standalone game  
+>Make Window_Paint check if w is NULL before dereference  
+>Fix parsing bots in arena info with trailing spacesq3_ui would shown bot at index of number of bots in list.game would send empty name to addbot command and command would think skill(i.e., 2.000000) was the bot name.  
+>Fix off-by-one range checks in Team Arena UI  
+>Fix handling too many characters or aliases in Team Arena UI  
+>rephrase SSE availability message  
+>Fix possible string buffer overflows in Team Arena UI  
+>Make barrel/flash model name buffer safe  
+ 
+
+
+2014-12  
+Contributor(s):  
+Tim Angus  
+vloup  
+Zack Middleton  
+>Fix saving/loading glyph 255 in RegisterFontThe glyph for character 255 (lower case y with two dots above it) wasrendered, but it's glyph information was not stored in fontInfo_t andnot saved into .dat file (including the ones in Team Arena).Attempting to load it from existing .dat font files is fine becauseshader name is "" and gets 0 handle. The handle was already 0 anyway.  
+>Fix negative glyph index in Team Arena text functionsTeam Arena's text functions cast signed char values to int and use as an array index.This works fine for values 0 to 127, but not for -128 to -1 which are a negative array index.Instead use "character & 255" like client and original Q3 ui/cgame string drawing code.  
+>Fix bot's teamleader name field being too shortPlayers using names with 32 to 35 characters could not be recognized asthe team leader.Reported by Razor.  
+>Fix cg.intermissionStarted only being enabled at first intermissionGame sets CS_INTERMISSION to 1 at intermission, but does not clear it atmap_restart so it's only sent the first time. CG_MapRestart manually clearscg.intermissionStarted (which is set to value of CS_INTERMISSION when it'smodified). So subsequent intermissions do not have cg.intermissionStartedenabled.Now CS_INTERMISSION is cleared and sent each time intermission is startedand cg.intermissionStarted is enabled each time.This makes subsequent intermissions not play sounds in CG_CheckLocalSoundsduring the 1 second between intermission starting and switching to scoreboard(PM_INTERMISSION) and makes Team Arena voice chats not play.  
+>Fix case where interval overflows (thanks jackeri)[17:58] <Jacker> hey, you might be interested in checking out thishttps://github.com/etlegacy/etlegacy/commit/4da5a397b5994bfe5fddb9dad35bef5ddbea64c9#diff-acaedc9d8b492f9af8966ae68597392cR615[17:58] <Jacker> its related to the ddos protection code you wrote[17:59] <Jacker> in continuation to:ab9b08e5845b0ff19814c996ad0cfb1dccab2790[17:59] <Jacker> in a case if the client has in the past connected tothe server days/weeks earlier and time wraps the client wont be able toconnect[18:00] <Jacker> since in that case if the bucket of that clients ipstill exists it wont get checked correctly  
+>Fix Team Arena tauntGauntlet command  
+>When player stops following a player, keep view anglesNow player keeps looking the same direction instead of facing somewhere elsewhich is slightly disorienting.  
+>Unfix warning  
+>Fix warning  
+>Don't use dead view angles after stop following a dead playerIf ps.stats[STAT_HEALTH] is less or equal to 0, cgame uses fixed view angles.When stop following a player, make sure health isn't less or equal to 0.  
+>Add weapon barrel to gauntlet/mg/bfg items in baseq3 too  
+>Fix weapon barrel angle on Gauntlet and BFG items in Team ArenaThe barrels were rotated 90 degrees from what they should be.Used barrel code from CG_AddPlayerWeapon to fix them.  
+ 
+
+
+2014-11  
+Contributor(s):  
+Zack Middleton  
+>Remove unfinished OpenGL display list codeIt seems unlikely anyone is going to do anything with this aside from stubit out in OpenGLES ports.  
+>Correct a few OpenGL variable typesAffectly no change for desktop OpenGL.Use correct types for OpenGLES support.  
+>Fix stencil shadows not drawing if has 500 or more vertexesStencil shadow is not drawn if a mesh, or multiple meshes with the sameentity and shader, have more than 500 vertexes. The issue is caused by storingthe projected positions in the tess vertex buffer. Use a new array instead.  
+ 
+
+
+2014-10  
+Contributor(s):  
+Zack Middleton  
+>Add missing EV_USE_ITEM15 casesAdd EV_USE_ITEM15 to cg_event.c and ai_dmq3.c for consistency.  
+>Always use GL_Cull to change cull stateManually changing cull state can cause later GL_Cull calls to not changethe cull state.  
+ 
+
+
+2014-09  
+Contributor(s):  
+Tim Angus  
+Zack Middleton  
+MAN-AT-ARMS  
+>Actually, that's not suppressing, that's changing behaviour  
+>Fix game warnings  
+>Add function for clearing global shader instead of duplicating the code  
+>Merge pull request #81 from MAN-AT-ARMS/sndmix_altivecFix possible division by zero in S_PaintChannelFrom16_altivec  
+>Fix cgame warnings  
+>Use correct type for thinktime  
+>Fix ui warnings  
+>Fix possible division by zero in S_PaintChannelFrom16_altivec  
+>Fix client warnings  
+>Fix more warnings  
+>Add facility to describe cvars  
+>Suppress warning of (deliberate) null pointer deference  
+>Fix renderergl1 warnings  
+ 
+
+
+2014-08  
+Contributor(s):  
+Tim Angus  
+Zack Middleton  
+Pan7  
+>SDL 2 scroll/caps/num lock keys send KEYUP event when key is released  
+>Fix incorrect strncat usage in CL_ServerInfoPacket  
+>Fix incorrect rgbGen const reading uninitialized memoryIf ParseVector fails, color isn't fully set.  
+>Fix assorted warnings  
+>Add ColorIndexForNumber macro replacing '& 0x07'Makes it easier to add more colors.  
+>Use ColorIndexForNumber in Con_DrawSolidConsole  
+>Fix a few warnings  
+>Remove unused functions from null_main.c and null_input.cSys_mkdir is suppose to have a capital M, which is also in null_main.c.  
+>Don't scale cinematic time by timescale twiceReported by Ensiform.  
+ 
+
+
+2014-07  
+Contributor(s):  
+/dev/humancontroller  
+Zack Middleton  
+Pan7  
+>Restore drawing a cut off client console line in 1920x1080The text lines don't meet at top of the sceen in 1920x1080, restoredrawing a cut off line across the top. In 640x480 this line isn't seenat all. This is still better then trying to draw twice as many linesthan are actually seen (the way it was before the last commit).  
+>Fix overstrike/insert logic being reversed in q3_ui  
+>sayto cmd with player name completion  
+>guard against out-of-bounds jump table targets  
+>Don't draw client console buffer past top of screenThanks @Pan7.  
+ 
+
+
+2014-05  
+Contributor(s):  
+Ensiform  
+Zack Middleton  
+>Fix max bans range check in SV_AddBanToListAdding too many bans would write out of bounds. Found by Coverity.  
+>Fix potential buffer overflow caused by long tcMod argsFound by Coverity.  
+>Fix potential out of bounds access caused by CM_GridPlaneCoverity doesn't care if there is a warning, out of bounds access is bad.  
+>Fix Gauntlet barrel axis in UIUI's PositionRotatedEntityOnTag is different than CGame's andUI has switched pitch/roll for Gauntlet/BFG axis to get it tolook like /close to/ how it looks in CGame.Making UI use the same *PositionRotatedEntityOnTag and axis asCGame fixes the Gauntlet blade being wobbly in controls menu.  
+>Fix cg.skulltrails out of bounds access in Team Arena Harvester modeIn Team Arena's Harvester mode, players corrupt your memory from beyondthe grave. Gib the players to stop the corruption!CG_PlayerTokens is called for player entities, including corpses.The entity number is used for the index in cg.skulltrails which only hasMAX_CLIENTS elements. This results in incorrect memory being overwrittenfor corpse entities (as the entity number is >= MAX_CLIENTS).So limit skull trails to valid entities (entity number < MAX_CLIENTS).  
+>Fix unchecked buffer size issues in l_script.c and l_precomp.cFound by Coverity.  
+>Fix always switching back to mgun in Q3 controls menuCaused by 120e296a74b0317f29d7f516d904bdc70f71b006.  
+>Fix potential buffer overflow in PS_ReadPrimitiveFound by Coverity.  
+>Fix OOB access in CM_EdgePlaneNum without erroring in CM_GridPlaneI changed warning to error in 9d74227559d46b85d0c43d395cd280d3de7ae8f4,which broke JA's mp/ctf4 map and probably others.  
+>Fix an invalid null deref check in the slider code.  
+ 
+
+
+2014-03  
+Contributor(s):  
+Ensiform  
+Tequila  
+Tim Angus  
+Tobias Kuehnhammer  
+Zack Middleton  
+>Merge pull request #55 from MAN-AT-ARMS/status_commandFix colored name padding and allow IPv6 address to fit in output of 'status' command  
+>Revert "DMA 44100Hz needs more memory for sound buffers"This reverts commit 0e6632f464c08dcb76f26a52f33d97228e64fda1.Cause crashes if com_soundMegs is 32.  
+>Parse q3map_sunExt in OpenGL1 tooUsed for drawing sun, which is supported by both OpenGL1 and OpenGL2.OpenGL2 already parses it.  
+>DMA 44100Hz needs more memory for sound buffersIt doubles the size of the data compared to the default (22050),so increase the buffer automatically. Likewise, decreasing speeddoesn't need as much (though that doesn't really matter).  
+>Bunch of comment fixes  
+>Don't mix sfx with NULL soundDataCaused a crash. Already done for looping sounds.  
+>Fix R_GetEntityToken ending prematurelyIf spawn var key or value is "" it caused R_GetEntityToken (available tocgame, used by opengl2) to stop parsing, whereas game VM would continue.Changed it to match parsing used for game VM(see G_GET_ENTITY_TOKEN in code/server/sv_game.c).The map poq3dm5 has a "wait" key with value "".  
+>Merge pull request #60 from smokin-guns/masterBunch of comment fixes  
+>Fix compiling game VM with OBSTACLEDEBUG defined  
+>Fix FS_FOpenFileReadDir non-zero file handle when file not found in pk3If a pk3 search path is passed to FS_FOpenFileReadDir, a non-zerofile handle is returned if file is not found. This causes incorrectbehavior in FS_ReadFileDir (when a pk3 search path is passed in)which only checks file handle, not length, for seeing if file exists.I don't know of any issues in ioq3 caused by this.  
+>Fix native trap_BotMutateGoalFuzzyLogic  
+>Fix typo in animMap and videoMap warnings  
+ 
+
+
+2014-02  
+Contributor(s):  
+Zack Middleton  
+Anthony Pesch  
+MAN-AT-ARMS  
+>Fix sending pk3 download error messages to clientsDisabled in e52a492f615e1245d6d22a84d2cc100c6d2f9f88.  
+>Merge pull request #33 from inolen/widescreen_clear_fixdon't clear screen during CA_LOADING and CA_PRIMED  
+>restart the renderer after the hunk mark has been set  
+>Merge pull request #35 from inolen/no_renderer_restartdon't restart renderer in SV_SpawnServer unless client running dedicated  
+>Fix colored name padding and allow IPv6 address to fit in output of'status' command  
+>Clear referenced paks when disconnectingAfter playing Team Arena, if you switch to Q3A and try to play a demo withcl_allowDownload enabled it would print "Need Paks: blah blah" and not play the demo.  
+ 
+
+
+2014-01  
+Contributor(s):  
+Zack Middleton  
+Anthony Pesch  
+>Check for buffer overflow for rail/lightning surfaces  
+>don't clear screen during CA_LOADING and CA_PRIMED  
+>Remove unused code path from S_Base_StartBackgroundTrackWe make sure intro isn't NULL. Then if loop is NULL, set it to intro.  
+>Fix music studder in base sound when starting silent cinematics  
+>Remove extra client_t::csUpdated[] slotsv.configstrings[] is limited to 0 to MAX_CONFIGSTRINGS-1, make client_t::csUpdated[] the same.  
+>Fix demoName Com_sprintf size larger than bufferMaybe this is why demoName is a static global with the comment 'compiler bug workaround'?  
+>Don't read clc.voipIncomingSequence until range checked sender  
+>Fix some opus_decode issuesIt was able to fail the assert before. I was using opus_decode wrong.  
+ 
+
+
+2013-12  
+Contributor(s):  
+Zack Middleton  
+>Use Opus for VoIPServer/client VoIP protocol is handled by adding new cvarscl_voipProtocol and sv_voipProtocol, sv_voip and cl_voipare used to auto set/clear them. All users need to touchare cl/sv_voip as 0 or 1 just like before.Old Speex VoIP packets in demos are skipped.New VoIP packets are skipped in demos if sv_voipProtocoldoesn't match cl_voipProtocol.Notable difference between usage of speex and opus codecs,when using Speex client would be sent 80ms at a time.Using Opus, 60ms is sent at a time. This was changed becausethe Opus codec supports encoding up to 60ms at a time.(Simpler to send only one codec frame in a packet.)  
+>Support spatialized raw streams in base sound, e.g. for VoIP  
+>Add cvar_modified commandBased on cvarlist command, it only lists modified cvars.  
+>Fix playback of stereo sounds in Base sound systemAlready works correctly in OpenAL.  
+>Have ui_test cmd in missionpack ui return qtrue  
+ 
+
+
+2013-11  
+Contributor(s):  
+Tim Angus  
+Ensiform  
+Zack Middleton  
+SmileTheory  
+>Remove unused cvar_t variable cl_trn  
+>Fix signal 6 in S_Base_StartBackgroundTrack on OS X 10.9In S_UpdateBackgroundTrack, s_backgroundLoop was passed toS_Base_StartBackgroundTrack and tried to copy to itself using Q_strncpyz.  
+>Fix video recording sync drift (patch refactored but original author unknown)  
+>End current draw surface before drawing cinematicFixes drawing StretchPic *before* CIN_DrawCinematic resultingin cinematic being drawn before the StretchPic.  
+>Readd backspace char event for UI VM text fieldsUI VMs expect a backspace char event, but sdl2 branch only was only sending a key event.Revert cl_keys.c to master branch (it would cause backspace to happen twice in console).  
+>Remove vertexLightmap from textureBundle_t, it's never qtrue  
+>Make kamikaze timer loops use level.num_entities instead of MAX_GENTITIESOptimization. Many other loops use level.num_entities, there was nospecial reason that MAX_GENTITIES was used for these.  
+>#6069: Remove md4 model support.  
+ 
+
+
+2013-10  
+Contributor(s):  
+Zack Middleton  
+>Remove unused variable baseOffset from fsh[]  
+>Support FS_SEEK_END and negative offset for zipped files in FS_SeekUse FS_SEEK_END in sound code instead of working around it.If FS_SEEK_SET and going to current position, just return.  
+>Remove old comment that FS_Seek doesn't work on zipped files  
+>Fix VM FOpenFile( FS_READ ) files seeking twice in FS_Seek  
+>Remove function prototypes for non-existant Sys_* DLL functions  
+>Drop sounds starting with * before allocating sfx slotCauses handle 0 to be returned by S_RegisterSound.  
+>Clear more variables in CL_InitServerInfoHave cls.localServers use CL_InitServerInfo.Don't set cls.localServers netType to from.type, it's the wrong value.Note: server->visible is not cleared in CL_InitServerInfo, as stated by a comment below a place where CL_InitServerInfo is used.  
+ 
+
+
+2013-09  
+Contributor(s):  
+Razish  
+Zack Middleton  
+>Fix warning message in animation.cfg parsing functionsSigned-off-by: Zack Middleton <zturtleman@gmail.com>  
+>Make cgame's tcmd use trap_SendClientCommand for "gc"gc command was forwarded to server after if wasn't recognized locally, but let's just send straight to server.(trap_SendConsoleCommand should of had a \n at end, but using trap_SendClientCommand makes more sense.)  
+>Free bot client if cannot load botIntroduced by commit a57a5cfd9b5dcc51696777c67b275c55c5b4b452.  
+>Fix UI parse message for menu filesMissing a space after colon.  
+>Fix targetNum check in cgame's tcmd  
+ 
+
+
+2013-08  
+Contributor(s):  
+Zack Middleton  
+>Fix "bind <key>" message for unbound keys"bind X cmd; unbind X; bind X" now says '"x" is unbound' instead of '"x" = ""'  
+ 
+
+
+2013-07  
+Contributor(s):  
+Zack Middleton  
+morturp  
+>out seems to be unnecessarily large for one byte per pixel  
+>Fix bind commands getting run when closing UIIntroduced in commit "Add togglemenu command" bf2b04.Don't let UI key event changing key catcher affect bind parsing. Bind parsing itself will never change the key catcher.Example of issue: if mouse1 is bound to +attack when clicking Resume Game, player will shoot until releasing the mouse button.Mouse button should have to be released and pressed again before player will shoot.  
+>Merge pull request #6 from morturp/patch-2out seems to be unnecessarily large for one byte per pixel  
+>Free Team Arena fonts/fontImage_X.dat bufferCaused temp memory to be present all the time, so Hunk_Alloc ignored memory low/high preference.May have caused other issues as well.  
+>Fix getting servers from and being listed on id's q3 master serverUse q3 master protocol when com_gamename is Quake3Arena (the default), otherwise use dpmaster protocol.  
+>(bug #5984) Unload renderer lib  
+>Remove unused models from server_t  
+ 
+
+
+2013-06  
+Contributor(s):  
+Tim Angus  
+Zack Middleton  
+morturp  
+>Rate limit getchallenge  
+>Prevent the skip of the glyph if it does not fit  
+>Allow recording VoIP in SP for demo commentaries  
+>Allow adjusting VoIP gain and mute during SP demo playback  
+>Check for shaders without closing braceShaders without closing brace can eat shaders in other files.Pass depth to SkipBracedSection instead of reparsing text as it messed up parse line numbers.  
+>Allow adjusting VoIP gain and mute during demo playback  
+>Merge pull request #5 from morturp/patch-1Prevent the skip of the glyph if it does not fit  
+>Improve warning for shader missing opening brace  
+ 
+
+
+2013-05  
+Contributor(s):  
+Tim Angus  
+Zack Middleton  
+>Fix Freetype build problems  
+>Catch more bad shader syntax casesUse to only ignore file in cases where both { and \0 were missing after shader name. Now ignore file when either are missing, such as "}\0".  
+>Fix null model axis disappearing if sky is in view  
+>Allow drawing sun in OpenGL1 rendererRemoved #if 0 ... #endif around RB_DrawSun().Merged improvements and changes from OpenGL2 renderer.  
+>Fix predicting touching items in CTF and 1FCTFIn CTF, rail or plasma gun/ammo were not predicted for pickup depending on what team player is on. The rail and plasma values are the same as PW_REDFLAG and PW_BLUEFLAG.In 1FCTF, only neutral flag, BFG, and BFG ammo were predicted for pickup. WP_BFG is equal to PW_NEUTRALFLAG.  
+ 
+
+
+2013-04  
+Contributor(s):  
+Harley Laue  
+/dev/humancontroller  
+Zack Middleton  
+>Rename FS_CheckFilenameIsNotImmutable to ..IsMutable  
+>drop some useless return statements  
+>remove some unused stuff  
+>add some noreturn annotations  
+>Correct TeamCount return type and team argument type  
+>Add fallback for __func__ (ioq3 isn't compiled as c99 by default)Using Debian gcc version 4.7.2 and clang 3.0-6.1 anyway.  
+>Don't allow modifying qvms or pk3sException for allowing pk3s to be downloaded.  
+>Fix setting CVAR_VM_CREATED flag on user created cvarsFix setting CVAR_VM_CREATED flag on cvars created using set[asu] commands (including archived cvars from cfg) and trap_Cvar_Set.trap_Cvar_Register called Cvar_Get which cleared CVAR_USER_CREATED flag, but CVAR_VM_CREATED wasn't set because the cvar already existed.  
+>fix some OOB enumerator usages(should be no-op with usual compiler workings)  
+>reduce the amount of compiler warnings for variable shadowing  
+>clean up return statements a bit more  
+>when using the condump command, do not say "dumped console text" prematurely, before trying to open the file  
+>Rename FS_CheckFilenameIsNotExecutable to ..NotImmutable  
+>remove some redundant exit() calls  
+>Give botlib com_basegame for botlib.log pathBefore it always used BASEGAME fallback code.  
+>Fix referencing pk3 with only qagame QVM  
+ 
+
+
+2013-03  
+Contributor(s):  
+Tim Angus  
+Ensiform  
+Zack Middleton  
+SmileTheory  
+>Use PATH_SEP for a debug message in FS_FOpenFileReadDir  
+>Fix displaying demo name when loading demo  
+>Remove RAVENMD4 #define  
+>Show lowercased ascii in bind command  
+>Fix some of the things clang --analyze flagged  
+>Fix Key_StringToKeynum to return lowercased asciiFixes bind and unbind uppercase ascii and uppercase ascii in cl_consoleKeys.keycodes.h states "normal keys should be passed as lowercased ascii"  
+>Fix the warning caused by fixing the warnings  
+>Remove some more automatic sRGB image flags.  
+>Move renderers a bit closer together  
+>Fix vote Y/1 and teamvote Y/1  
+ 
+
+
+2013-02  
+Contributor(s):  
+Jeremy Davis  
+Andrew Browne  
+Ensiform  
+Tim Angus  
+Tobias Kuehnhammer  
+Zack Middleton  
+>Update invalid g_gametype right away  
+>5289 - Support for .pk3dir  
+>Fix IPv6 favorites in q3_uiThis does however allow favorites to contain hostnames which was explicitly not allowed before.  
+>Add renderercommon/tr_common.h  
+>Add missing traps to cg_local.h  
+>Remove MSG_WriteDeltaUsercmd and MSG_ReadDeltaUsercmd  
+>Unify/cleanup max snapshot entities on client and server  
+>Fix BotExportTest's args for BotGetReachabilityToGoal  
+>Remove Sys_SnapVector  
+>Fix compiling  
+>Fix possible delta from invalid entity  
+>Fix freeing source while parsing botfiles/items.c  
+>renderer -> renderergl1, rend2 -> renderergl2  
+>Fix MSG_ReadDeltaKey setting bit 1<<bits oftenMSG_ReadDeltaKey would often set 1<<bits, it should never be set. It exceeds the size of what was being read.Worked okay for weapons/forward/right/up as they stored as chars (value would wrap around to correct value, lucky).Angles had the wrong value, not sure if it was causing issues.  
+>Adds Z checking to CanDamage function.  
+>Remove unused config string code from botlib  
+>Fix comment for gametype parsing in ui  
+>condump improvementsDefault output file extension to ".txt"Show output filename in error message.Use Windows line endings on Windows.Dynamically allocate line buffer. (by ZTM)  
+>Fix creating favorite when not on view favorite servers  
+>Increase favorite address buffer size in Team Arena UINow it can hold an IPv6 address.  
+>Don't add pk3dirs if connecting to a pure serverOnly .cfg etc would be read from pk3dirs, but they should be treated like pk3s that are not on the pure list.  
+>be_ai_weap.c: s/move state/weapon state/g  
+>Remove some unused defines from msg.c  
+>Remove a few name tags  
+>Extend Team Arena name edit fields to MAX_NAME_LENGTH  
+>Use Q_strncpyz in G_AddRandomBot  
+>Remove unneeded variable extern  
+>Fix resolving IPv6 favorites in Team Arena UI  
+>Extend Team Arena Favorite Address edit field to hold an IPv6 address  
+>5717 - Gamecode can open file "" for reading  
+>Change pk3dir README / comments to fit in better  
+ 
+
+
+2013-01  
+Contributor(s):  
+Tim Angus  
+Jeremy Davis  
+Zack Middleton  
+Zachary Slater  
+>Use SDL 2 instead of SDL 1.2  
+>Fix FS_FOpenFileRead corner caseFS_FOpenFileRead is a fairly mental function that changes its returnbehaviour depending on whether or not file is NULL or not. It turns outin the case where file is NULL, we were returning the wrong value whenthe file didn't exist.  
+>Make UI_CVAR_CREATE use VM specific codeMakes cvar be flagged as VM created and unset ROM if ARCHIVE is set.  
+>Remove the SMP renderer feature  
+>Fix screwed up whitespace in files.cApologies to anyone merging this :(  
+>Add togglemenu to q3_ui controls menu  
+>Run toggleconsole in binds while in menu or message mode  
+>Increase various arbitrary limits - Bug #5463  
+>Fix error message in BG_EvaluateTrajectory  
+>Fix error message in BG_EvaluateTrajectoryDelta  
+>Add togglemenu commandAllow togglemenu to be run in binds while in menu or message mode.  
+ 
+
+
+2012-12  
+Contributor(s):  
+Thilo Schulz  
+Zack Middleton  
+>Fix dedicated server crashing when using MSG_ReadDelta*, though it only happens if someone modifies the engine. (#5449)  
+>Fix reconnect command to work after leaving server. (#5794)  
+>Fix writting voip data in demos (broke in r2102).  
+>In q3_ui if uis.demoversion is set, hide "Team Arena" and "Mods" in main menu. (They aren't shown in id's q3a demo and use to be drawn under demo message).  
+>- Fix spectator client being switched from follow to free after map_restart if following a client with a higher client number.- Fix client unlinking issue caused by ent->s.number being set to followed client's ps->clientNum after map_restart. Reported by Ensiform.  
+>Fix server ignoring client move commands if voip data is included.  
+>- Allow changing cl_voip without restarting.- Fix assert failing in CL_ParseVoip() while flipping cl_voip off and on.  
+>Changes from Ensiform:- In G_AddBot, try to allocate clientNum before doing anything else.- In G_AddBot, don't set SVF_BOT and inuse. It's done in ClientConnect, plus inuse causes ClientDisconnect to be run for no reason.- In G_AddBot, only set skill in bot useinfo once.- Avoid using cl->ps.clientNum to check if cl is a bot.  
+>Fix passing arg9 (qvm only), arg10, and arg11 to vmMain for native libs and non-i386 compiled or interpated qvms. (Currently they aren't use in vmMain in game, cgame, or ui.)Fix passing args[11] to args[15] from vm to engine on ppc64 and sparc64. Some of the args are used by game bot prediction syscalls. May have been causing bugs. Note: This was fixed for x86_64 in r2163.  
+>Add length check here as well, thanks Ensiform  
+>Save all arguments from connect for reconnect command.Remove unnecessary localhost check from reconnect command.  
+>Fix bot skill format so it doesn't always have a space at the beginning of it.  
+>Fix clients being able to reset their player state and respawn using donedl.  
+ 
+
+
+2012-11  
+Contributor(s):  
+Zack Middleton  
+>- Check for invalid filename in OpenAL's RegisterSound function.- Changed Base sound system to warn not error when sound filename is empty or too long.  
+>Fix follow command to find clients whose name begins with a number.  
+>Remove unused function CL_DisconnectPacket. Pointed out by Ensiform.  
+>Remove references to non-existent functions CM_MarkFragments and CM_LerpTag.  
+>#5799 - Change messagemode text box to display colors like in console input box.  
+>- Fix up "gc" command, make it more like "tell". Based on patch by Ensiform.- Add usage messages for gc, tell, vtell, and votell commands.- Check player names in gc, tell, vtell, and votell commands.  
+>Changes suggested by DevHC:- Remove "!target" checks from tell, vtell, and gc commands. Target was just set, cannot be NULL.- Validate "order" in gc command before "player id."  
+>Remove anti tamper leftover code 'CL_ChangeReliableCommand'. From Ensiform.  
+>Change error message in CL_ConfigstringModified to specify out of range index like in server.  
+>Fix some "> MAX_*" to be ">= MAX_*".  
+>Change more operator commands to require sv_running to be usable. Patch by Ensiform.  
+ 
+
+
+2012-10  
+Contributor(s):  
+Zack Middleton  
+>Show reason non-default renderer failed to load.  
+>Fix restoring old fs_game upon leaving a server. Patch by Ensiform.  
+>Fix restoring fs_game when default.cfg is missing.  
+>When in third person, don't play player's sounds as full volume in Base sound system. OpenAL already does this. (Related to bug 5741.)  
+>Add smiletheory to credits in q3_ui.  
+>Remove initializing "sv_mapname" cvar in game. It's set to "" and never used.  
+>Don't draw cursor during Team Arena's loading screen.  
+>Play correct team sounds when in spectator mode and following a player.  
+ 
+
+
+2012-09  
+Contributor(s):  
+Zack Middleton  
+>Fix g_warmup < 2 causing client prediction issues (bug #5740). (Reused code for tournament gametype.)  
+>Remove a redundant code statement.  
+>Send team info for team overlay to spectators for the team of the client they're following (bug #5740).  
+>Added myself to ioq3 credits in q3_ui.  
+>Cache servers for each master server in q3_ui, otherwise servers from last updated master for shown for all Internet# sources.  
+>Fix arrow buttons in q3_ui join server menu to be selectable by mouse.  
+>Fix UI player model FOV when using non-640x480 resolution.  
+>Don't have g_teamAutoJoin affect bot's teamBots set their team later, setting it here causes some bots to change team and die later. Can cause extra skulls to be spawn at beginning of harvester (bug #5740).  
+>Fix game getting stuck in a do-while loop when "team follow1" or "team follow2" client sends a follownext or followprev command.  
+>Fix resetting single player level selection in q3_ui when there is no training level, such as in demoq3.  
+ 
+
+
+2012-08  
+Contributor(s):  
+Thilo Schulz  
+Zack Middleton  
+>Added MISSIONPACK ifdef around GT_1FCTF code.  
+>Oops, still need this  
+>Don't replay to status OOB requests in Team Arena single player.  
+>More MISSIONPACK ifdeffery.  
+>Removed a check that was made unnessicary by r1644.  
+>Move argument passing from VM to engine to global variables which allows to get rid of lots of OS specific stuff and also fixes errors that happens when compilers add lots of boilerplate to the DoSyscall() function  
+ 
+
+
+2012-07  
+Contributor(s):  
+Thilo Schulz  
+Zack Middleton  
+>Fixed G_LogPrintf format warning on 64 bit systems added in r2294.  
+>Support for .pk3dir (#5298) - Patch by Andrew (dersaidin@gmail.com)  
+>Revert pk3dir patch because some users report the code gets stuck in an infinite loop in the new code  
+>prevent using getinfo as an amplifier for DDOS attacks (#5678). Patch by DevHC  
+>Various bugfixes by Tobias Kuehnhammer (#5270)- A stupid bug where bots re-trigger jumppads if they fell onto it.- A small "memset" bug concerning player animations.- Reward sounds were never cleared and thus they are played on a map restart.- Safer and more secure handling of disconnected clients and clients with   malformed or illegal info strings.- first_gauntlet_hit.wav was not played (ops/ps) bug- capturelimit not hit (from OAX)  
+ 
+
+
+2012-06  
+Contributor(s):  
+Zachary Slater  
+Zack Middleton  
+>REFACTOR [reletive -> relative]From /dev/humancontroller.  
+>add a missing '\n', remove some unwanted onesFrom /dev/humancontroller.  
+>non-missionpack build throws up a few "0" plumsfound by Ensiform  
+>Fixed comment in server.h (ent->v.absmax to ent->r.absmax).  
+>Added kicknum, kickall, and kickbots commands, patch by Ensiform.  
+>add missing commands to autocompletitionfound by Ensiform  
+>fix the usage description of the clientkick server command (also rename SV_KickNum_f() to SV_ClientKick_f())found by Ensiform  
+>fix some typosFrom /dev/humancontroller.  
+>CVE-2012-3345  
+>when interacting with QVMs, Clang/LLVM requires the standard use of the va_*() macros instead of (fast) call hacksFrom /dev/humancontroller.  
+>Call sound files 'audio' not 'wav' in debug messages.  
+>remove a bunch of superfluous formatting callsFrom /dev/humancontroller.  
+>Made more code for Team Arena be inside ifdef MISSIONPACK, from Ensiform.  
+>Removed unneeded va() and use CG_Error instead of trap_Error in cgame. Found by Ensiform.  
+>REFACTOR [a vs an]From /dev/humancontroller.  
+>static-ize inline functions for Clang/LLVMFrom /dev/humancontroller.  
+>remove a bunch of unused stuff from gameFrom /dev/humancontroller.  
+>REFACTORFrom /dev/humancontroller.  
+>more '\n' businessFrom /dev/humancontroller.  
+>rename trap_Printf() to trap_Print() in the game module, as that function has nothing to do with printf()-like formattingFrom /dev/humancontroller.  
+>REFACTOR [anough to enough]  
+>Let's actually use MOD_CHAINGUN! From Ensiform.  
+>Only have bots issue vtaunt commands in Team Arena.  
+>add the "execq" command, a more quiet version of the "exec" commandin exec/execq, always print the extension for the filenameFrom /dev/humancontroller.  
+>Cleaned up game server command usage messages.  
+>never set groundEntityNum to -1, use ENTITYNUM_NONE insteadFrom /dev/humancontroller.  
+>bring some freeish()ing operations ahead from after Errorish() callsFrom /dev/humancontroller.  
+ 
+
+
+2012-05  
+Contributor(s):  
+Zack Middleton  
+>In CheckTeamLeader, make sure to only set one client as team leader. Reported by Tobias Kuehnhammer.  
+>Fixed two issues pointed out in a PVS-Studio static code analyzer article (bug #5505).  
+>#5462 - do not require clients to have a matching qagame.qvm (adapted from OpenArena)  
+ 
+
+
+2012-04  
+Contributor(s):  
+Zack Middleton  
+>#5485 - Use Sys_LoadDll to search in the local directory for the fallback default renderer. Patch by Harley Laue.  
+>#5453 - Tell command for server.  
+ 
+
+
+2012-02  
+Contributor(s):  
+Zack Middleton  
+>Allow analog joystick up axis to be remapped too.  
+>Added range checks to j_*_axis cvars.  
+>Support up to 16 joystick axes, select which to use with j_*_axis cvars.  
+>Patches by symlink.#5313 - EF_CONNECTION set on wrong eFlags#5314 - snc drawn in nirvana instead at lagometer  
+ 
+
+
+2012-01  
+Contributor(s):  
+Thilo Schulz  
+Zack Middleton  
+>Add the new ioquake3 master server as standard for sv_master2  
+>Changed three filename buffers to be MAX_QPATH (not MAX_QPATH*2), filename lengths are limited to MAX_QPATH by engine and elsewhere in game logic.  
+>Fixed UI to use MAX_QPATH for skin filename buffer length.  
+ 
+
+
+2011-12  
+Contributor(s):  
+Zachary Slater  
+Zack Middleton  
+>Removed unused functoin Hunk_Trash.  
+>Enable zone and hunk debug in debug build.  
+>bugzilla bug #5273exploit resolved, we're now disallowing forwardmove of -128 and vice versaThanks, devhc!  
+>Use GENTITYNUM_BITS for jumppad_ent bits.  
+>Show file/line/label in Com_Error messages when run out of memory in debug build.  
+ 
+
+
+2011-11  
+Contributor(s):  
+Zack Middleton  
+>Client no longer tries to run UI_SHUTDOWN on ui vms with an unsupported API version.  
+>Disable blood on HUD when com_blood is 0.  
+>Fixed usage of various entity defines.  
+>Removed duplicate setting of contents for trigger_hurt.  
+>Added missing newlines to game dedicated chat messages.  
+ 
+
+
+2011-10  
+Contributor(s):  
+Tim Angus  
+Thilo Schulz  
+Zack Middleton  
+>[18:48:20] <Ensiform> Thilo: http://pastebin.com/2UUmSCQK fixes point contents on the server side related to the cg fix with moving water.  Dunno why s.origin and s.angles was ever used, the rest of sv_world.c always uses r.currentOrigin and r.currentAngles[18:58:10] <Thilo> mhm[18:58:15] <Thilo> Ensiform: it doesnt break anything?[18:59:20] <Ensiform> nah  
+>Fixed showing number of qvm jump table targets (r2180 caused it to show 0 on alloc).  
+>* Fix various warnings with GCC and clang  
+>* clang support  
+ 
+
+
+2011-09  
+Contributor(s):  
+Thilo Schulz  
+Zack Middleton  
+>Support vm syscalls with up to 15 args using 64 bit compiled vm (like interprated vms).  
+>Use EXEC_NOW instead of hardcoded 0 in cl_ui.c  
+>Allow VM_Restart to load unpure qagame.qvm so that local server won't crash after map_restart if server operator has qagame.qvm residing outside pak file (#5196)Thanks to "rg3" for providing a shell account  
+>Require gamename if not supporting legacy protocol.  
+>Only include libmumblelink.h if USE_MUMBLE is defined, reported by Ensiform.  
+>Bug 5178  - Sound quality menu option has no effect  
+>Use correct variable for getting buffer length, reported by Ensiform.  
+>Added option for selecting sound system (SDL or OpenAL) and option for setting SDL sound quality to q3_ui sound menu.Sound settings must now be applied before they take affect (needed for sound system and SDL sound quality changes).  
+>Throw error when making calls to empty VM  
+>Allow interpreted VM on pure servers  
+>Removed unused kbutton_t declarations in client.h  
+>Use platform's path separator in FS_Path_f (for consistent output on Windows), reported by Ensiform.  
+>Fixed some function name comments in cl_cin.c  
+>Fix a few string literals  
+>Restored loading ".dat" journal files from disk when connect to pure servers. Accidentally broke in r1911, reported by Ensiform.  
+>Fix q3vm execution on x86/x86_64 MacOSX  
+>Use BIGCHAR_WIDTH instead of hardcoded 16 in cl_scrn.c  
+>Center ioq3 credits vertically.  
+>Removed unused IN_ButtonDown and IN_ButtonUp functions.  
+>Add some checks when reloading QVMs via VM_Restart()  
+ 
+
+
+2011-08  
+Contributor(s):  
+Tim Angus  
+Thilo Schulz  
+Zack Middleton  
+>Don't do game_restart if game directory changed from "" to "baseq3" or "baseq3" to ""  
+>Bug 5134 - q3_ui incorrectly tells user to refresh servers while auto-refreshing, patch by Zack Middleton  
+>Add hack to allow server the setting of game cvar values that are important for playerstate prediction for legacy gamecode.  
+>Fix cvar flags to get rid of warnings (#2881)  
+>Fixed viewing sv_master[3-5] in q3_ui server browser (don't give engine fake sources).  
+>- Only need cl_cURLLib cvar if USE_CURL_DLOPEN is defined.- Try to load libcurl-4.dll on win32 (it use to be included in the NSIS installer).  
+>Don't search system directories for renderer lib  
+>Fix auto game-restart when disconnecting from a server that explicitly set fs_game to "baseq3" instead of ""  
+>Simulate line buffering and fix the overflow bug in Com_ReadFromPipe(), patch from DevHC.  
+>Fix warning on MacOSX  
+>Support five master servers in Team Arena server browser.  
+>Fix pak order when reconnecting to a server.When /connect to the same server is issued while already connected, an initial call to CL_Disconnect will remove all pak file referencesand reset the pak order.Reordering only occurs through FS_Restart, which in turn is called when checksum feed changes. Because we reconnect to the same server,checksum feed never changes and pak file order is not restored to server order again. With certain pak file constellations between client/server,this may result in an inability to load files from paks which are not correctly detected as referenced paks.  
+>Batch of bug fixes for gamecode. Patch compiled and log message written by Tobias Kuehnhammer (#5144)################################################################################This Patch fixes:################################################################################- The "fraglimit warning" was not played at all, if on the blue team.- The "where" console command was broken.- Obelisk explosion wasn't drawn if no Rocketlauncher was loaded.- Impact marks sometimes didn't draw at all.- IMPORTANT BUGFIX: No killing for cheaters with Lightning gun and Gauntlet.- If two doors are close to each other a spectator couldn't fly through them.- More robust, efficient and logical respawning routine.  NOTE: The game.qvm will get notable smaller and will use LESS MEMORY!- Drowning sounds are fixed. Now they are played as intended. (as the idcomment  in the source code shows).- Some AI bugs (OVERFLOW!) in the bot movement code.- Several "Team Arena" Overload and Harvester bugs.- Stops bots from attacking a team mate (player) who only changed teams.- Some voice chats and CTF commands fixed.- "Team_ReturnFlag" was called twice, which did wired things sometimes.   NOTE: (G_RunItem checks CONTENTS_NODROP already!)- A bugfix for Gauntlet animation.- Incorrect CTF scoring.- A bunch of corrected comments and print lines ("\n").- Some regularity of expression and some small trivial bugs.################################################################################Details:################################################################################********************************************************************************BUG: in gamemode GT_TEAM the fraglimit warning will not be played if joiningthe     blue team!--------------------------------------------------------------------------------Solution: In "CG_CheckLocalSounds": if cgs.scores2 > highScore, highScoreshould          be cgs.scores2.********************************************************************************BUG: the "where" console command doesn't work as expected (it's always 0 0 0)      but not in id Quake 3 Arena. It seems that now Ioquake3 is affected!--------------------------------------------------------------------------------Solution: In Function "Cmd_Where_f" ent->s.origin should be           ent->r.currentOrigin.********************************************************************************BUG: in gamemode GT_OBELISK obelisk explosion won't be drawn if there is no      Rocketlauncher loaded. (The "maps without Rocketlauncher" bug)--------------------------------------------------------------------------------Solution: in "cg_main.c": cgs.media.rocketExplosionShader should be registered           if gamemode is GT_OBELISK.********************************************************************************BUG: Impact marks sometimes doesn't draw at all. Not easy to reproduce if you      don't play (io)Quake3 every day and know the places where it happens! ;)      But anyway...     Test: start q3dm12 go to "Long Jump Canyon" (where the small platform      teleporter for the BFG is) place yourself at the point where the railgun      spawns, look in the direction where the red suspended armor is. Now shoot     at the sloped wall on the out/leftside of the door you see. (the sloped      wall should be nearly in the center of your screen now). If you choose the      correct brush face and shoot up and down at this brush face, the impact      marks sometimes aren't visible.     There are hundreds of custom maps where this can happen!--------------------------------------------------------------------------------Solution: I replaced the function "SnapVectorTowards" with the one from          "Wolfenstein - Enemy Territory (GPL Source Code)"********************************************************************************BUG: Normally "NOCLIP" cheaters are logically not allowed to fire a gun.     Unfortunatly the Gauntlet (and Lightning gun) was forgotten and not      restricted to that. All weapons except those two were handled correct. --------------------------------------------------------------------------------Solution: Make Gauntlet and Lightning gun not firing for someone who cheats           with "NOCLIP" (like all other weapons).********************************************************************************NOTE: A few bugfixes are not mine and are reported here:       http://www.quake3world.com/forum/viewtopic.php?f=16&t=9179.      Thanks to Quake3world, for all those years and the good guys there!********************************************************************************BUG: During making a mod I found a very strange bug, which mainly occurs if     someone tries to implement a lot of singleplayer monsters which shouldwalk     slowly (like the "Crash" bot). So if someone wants to make slow down bots     or monsters when they are walking towards a goal and alter the function     "BotMoveInGoalArea" then the bots/monsters do stupid things. Otherwise and     this is the default (also buggy) behavior they start running although they     shouldn't (as seen with the "Crash" bot and will not be fixed here).--------------------------------------------------------------------------------Solution: Fix overflow in bot user command. BUGFIX from "Hunt" mod by J.           Hoffman.********************************************************************************BUG: in function "BotMoveToGoal" the special elevator case doesn't make sense.--------------------------------------------------------------------------------Solution: in "be_ai_move.c": ((result->flags & MOVERESULT_ONTOPOF_FUNCBOB) ||                              (result->flags & MOVERESULT_ONTOPOF_FUNCBOB))                    should be ((result->flags & MOVERESULT_ONTOPOF_ELEVATOR) ||                              (result->flags & MOVERESULT_ONTOPOF_FUNCBOB)).********************************************************************************BUG: in function "BotWantsToRetreat" and "BotWantsToChase" this is wrong:     "(bs->enemy != redobelisk.entitynum || bs->enemy !=blueobelisk.entitynum)"--------------------------------------------------------------------------------Solution: "... redobelisk.entitynum) && (bs->enemy != blueobelisk.." iscorrect.********************************************************************************BUG: in gamemode GT_OBELISK there are too many node switches for bots      (test: mpq3tourney6 with many bots). If that happens, game becomes      unplayable. I don't know if this is the best solution but here it is:--------------------------------------------------------------------------------Solution: In function "AINode_Battle_Fight" right after:if (!BotEntityVisible(bs->entitynum, bs->eye, bs->viewangles, 360, bs->enemy)){   I added this: #ifdef MISSIONPACK    if (bs->enemy == redobelisk.entitynum || bs->enemy ==                                                         blueobelisk.entitynum){    AIEnter_Battle_Chase(bs, "battle fight: obelisk out of sight");    return qfalse;    }#endif********************************************************************************BUG: in gamemode >= GT_TEAM, after team change, bots will (sometimes) not stop     shooting at you, although you are on their team now. It seems that the      configstrings are f***** up or not reliable in this case!--------------------------------------------------------------------------------Solution: In function "BotTeam" and "BotSameTeam" get the real team values.********************************************************************************BUG: Some of the bots voice commands are wrong. They are commanded to attackthe     enemy base but they say "Okay, I will defend!"--------------------------------------------------------------------------------Solution: Corrected some voice commands in "BotCTFOrders_FlagNotAtBase" and         "Bot1FCTFOrders_EnemyDroppedFlag"********************************************************************************BUG: Spectators couldn't fly through doors if they are very close to eachother.     You can test it with some regular id maps (q3dm14, q3dm12) but there are     also many custom maps where this can happen! This is annoying because in      the worst case you can't move at all and are caught inside a door.--------------------------------------------------------------------------------Solution: There is a solution in a mod called "Hunt" by J. Hoffman.           Bugfix is included in this patch!********************************************************************************BUG: During making a mod I found it very hard to implement some of my ideas     (something like "Limbo" or "Meeting") because of the way the player spawn     effect, intermission and spawning on victory pads is handled. I reworkedit     a bit and simplified it so that the effect is handled when a client           respawns     (as the name says) and not when a client begins. I think this will help      more     mod makers everytime they want to make changes to spawning of players,bots     on victory pads or monsters... and want to avoid spectators with      Machineguns     which can kill and score... :()     NOTE: I also renamed the poorly named function "respawn"            to "ClientRespawn". If someone searches the code base for "respawn"            it was really hard to find the correct place for what was            meant. "respawn" is used so often, that you really get headache ...            now with "ClientRespawn" it's easier!     IMPORTANT: The whole respawning, moving to intermission point and                 everything related to that is now done in a more reliable way                 without changing the default behavior. (How critical the whole                 spwaning mess was did you see by yourself (ioquake3 rev. 2076).                 With this patch it's safer.                 Trust me, I spent hours of fixing silly problems...-------------------------------------------------------------------------------- Solution: Simplified "ClientBegin" and moved the teleport event            to "ClientSpawn".********************************************************************************BUG: If a player is dying or hurted under water the hurt/dying sounds AND the     drowning sounds are played together. This is silly. Moreover it's no good     idea to let the server play client sounds! There was a solution in a mod      called "Q3A++" by Dan 'Neurobasher' Gomes which fixes the problem.--------------------------------------------------------------------------------Solution: Created a "CG_WaterLevel" function to play the appropriate sounds.********************************************************************************################################################################################  
+>Modular rendering system. Patch by use.less01This might break MSVC builds. I'll take care of it later  
+>Reverted r2145 per Timbo's suggestion.  
+>Some more removal of unused code in addition to r2104, by Zack Middleton  
+>Fix game restart after curl download finished  
+>Removed "Color Depth" from q3_ui system settings, it didn't control anything.  
+>Fix crash bug introduced in r2116. traceEnt does not always have to be a client, so gauntlet attacking something that is not a client will crash the game. Thanks to Ensiform for reporting  
+>- Add x86_64 platform for MacOSX- Fix compilation on MacOSX gcc  
+>- Added r_mode -2 for using display resolution.- Changed q3_ui's very high video settings use display resolution.  
+>- Fix already defined command warnings for minimize- Fix recursive CL_Shutdown warning and "command already defined" warnings when quitting while playing on a server that changed the gamedir.  
+>Disabled getting motd from update server in standalone build.  
+>[16:31:51] <ZTurtleMan> Thilo: two small fixes, one for r2112 and one for r2116. http://pastebin.com/raw.php?i=h19r211Z  
+>* Fix some grammar in DLL loading* s/Sys_LoadQVMDll/Sys_LoadGameDll/  
+ 
+
+
+2011-07  
+Contributor(s):  
+Thilo Schulz  
+>Fix alignment issues in message sending/reading that would crash IRIX, thanks to Canavan for supplying a shell where I could fix this (#5077)  
+>Fix indentation  
+>Have server send protocol version in challengeResponse so protocol negotiation works. (Where did this one get lost?)  
+>Include q_shared.h instead of redefining these  
+>Fix legacy protocol with new packet queueing  
+>Forgot to set default rate back to 100kbyte/s  
+>Bug 5067 - Remove references to unused teamtournament gametype. Toggle areaportal on mover ents where due is needed, patch by Ensiform  
+>- Forgot to mention: last rev (2077) bumped default protocol version to 70- Fix queued packet rate control  
+>- Apply parts of Ben Millwood's target bitfield patch (#3787)- Fix Ryan's FIXME and have voip packet buffer on the server dynamically allocated via Z_Malloc and store pointers in a circular buffer- Improve voip target parsing on top of Ben Millwood's patch- Add new "spatial" target where speaker is spatialized in 3d space and can be heard by all clients in hearing range (s_alMaxDistance)  (#4467)- Decrease voip sound lengths from 240ms to 80ms per voip packet to mitigate udp packet loss and decrease latency- Protocol version incremented to 71  
+>Bug 5094 - Code cleanup, patch by Zack Middleton and DevHC. Fixes unused-but-set gcc warnings  
+>Move rate limiting / queued packet sending logic from Com_Frame() to sv_main.c  
+>- Revert back to Z_Malloc from Hunk_FreeTempMemory introduced in r2077 as Hunk_FreeTempMemory must be freed in LIFO order (#5079)- Introduce SV_ClientFree() to prevent memory leaks r2077 was supposed to fix  
+>Shut up returning functions with noreturn attribute warning  
+>Bug 4812 - GCC __attribute__ annotations for printf, non-returning functions etc., patch by linux@youmustbejoking.demon.co.uk and Zack Middleton  
+>Fix last "noreturn" warnings  
+>Change DLL search path order for external libraries that are linked at runtime, like libcurl or libopenal to:  * system library paths  * executable path  * fs_basepath  
+>- Make sure at least one round of download packets and packet queues gets sent each frame- Fix timeVal select timeout value for case of unlimited data rate and now downloads are active  
+>- Implement dual protocol support (#4962)- Fix several UDP spoofing security issues  
+>- Switch master server protocol to dpmaster for better game separation. Based partly on patch by Zack Middleton- Get rid of ugly cvars sv_heartbeat and cl_gamename and replace with single com_gamename- Remove sv_flatline. Flatlines are ignored by dpmaster and are considered to be insecure because flatlines can be udp-spoofed.  
+>Remove one unnecessary loop in the beginning  
+>- Improve snapshot rate and data rate control- Make server send packet fragments and queued packets when server is idle- Voip protocol detection is tied to com_protocol making past-end-of-message reading unncessary- Use Hunk_AllocateTempMemory() for buffering VOIP packets and fix buffering scheme that ryan hates so much- Disable packet scrambling for new protocol as it is useless now- Get rid of the old packet scrambling functions predating latest point release- Use Hunk_AllocateTempMemory() for netchan packet queue to fix memory leak when client gets disconnected with packets in the queue- Use Hunk_AllocateTempMemory() for download blocks to fix memory leak when client gets disconnected with download blocks in the queue- Fix SV_RateMsec to account for udp/udp6 packet lengths  
+>- Greatly improve UDP downloading speed for clients- Add download rate control cvar sv_dlRate- Don't send snapshots to downloading clients  
+>Fix compile for USE_VOIP=0  
+>Bug 5066 - Plasmagun and BFG don't play the explosion when they hit players, patch by Ensiform  
+>Permit downloading files larger than 65 Megabytes via UDP by working around short int wraparound.  
+>Bug 5069 - Remove unused variable console_color, by uZu  
+>Add fixes to ui menu by Ensiform and DevHC (#5062)  
+>Fix extension name comparison for DLL files  
+>Bug 5075 - Fix comments in quake3 configs, patch by q3urt.undead@gmail.com  
+>- Add dual protocol support to team arena demo selector- Fix demo selection in team arena menu on case sensitive file systems- Some changes in the way how vanilla q3 demo file lists are compiled in the menu  
+>Fix delta compression breaking due to packet queuing  
+>- Add better protection against DoSing connecting users from connecting- Have Com_sprintf return string length- add STR_LEN macro for static strings  
+ 
+
+
+2011-06  
+Contributor(s):  
+Tim Angus  
+Thilo Schulz  
+>Bug 5036 - Grappling hook does not load trail shader, patch by Zack Middleton  
+>Various fixes to vm_interpreted.c:- Add opStack protection- Fix dataMask check for OP_BLOCK_COPY- Add instruction number check for conditional jumps- Make errors in VM_PrepareInterpreter nonfatal  
+>(#5016) - Calls to trap_CM_PointContents don't update their origins based on moving entities (water). Patch by Ensiform  
+>- Add x86_64 support to vm_x86.c- Fix warning on mingw64  
+>Bug 5034  - q3_ui: fill whole screen and allow cursor to move to edge in widescreen, patch by Zack Middleton  
+>Use Q_ftol for vm_interpreted  
+>- Improve game_restart:  * differing screen resolutions and network settings are now honoured when changing fs_game  * Fix hunk memory leak on game_restart  * Move cls.state and cls.servername to clc so connection state is fully preserved over game_restart  * Revert back to previous fs_game after disconnecting from a server that triggered a game_restart  * Fix error dialog popping up after every game_restart if an error happened previously (reported by Ensiform)- Fixed that not all commands added by CL_Init() would be removed by CL_Shutdown()  
+>Patch and description by ensiform (#5043):This patch moves cg_particles.c out of cg_marks.c to the actual file that wasalready there but not used.  By default WOLF_PARTICLES definition is commentedout if someone wants to use the old cg_particles.c changes.  cg_particles.c hasbeen added to the makefile and msvc projects.  
+>Fix grenade rotation ends always the orientation (#5053), patch by Eugene C.  
+>Make g_doWarmup archived cvar  
+>Patch from Tremulous / description from Zack Middleton: (#5041)Clear game logfile handle after closing file.Game does not clear logFile handle when closing file. Might be an issue ifG_LogPrintf is called after this.Patch from tremulous http://svn.icculus.org/tremulous?view=rev&revision=2041  
+>- align sse control word storage space to 16 byte boundary for snapvector- replace some whitespace with tabs in snapvector.c- Give gcc a bit more freedom in choice of registers  
+>Fix to (#5051) - strchr in GraphicsOptions_GetAspectRatios() might return NULL for some strange reason  
+>Bug 5035 - Automatically selecting player model in q3_ui does not work if skin is not specified, patch by Zack Middleton  
+>- Clear ip address listings after a NET_Restart- check for oldGameSet instead of the gamename string  
+>- Fix memory leak in DMA sound after S_Shutdown()- Make codec load use temp hunk memory instead of zone mem- Fix sound issues with direct sound and game_restart (#4526)  
+>Fix wrong macro. MSVC win32 build should work again now.  
+>Add forced VM unloading to Com_Quit_f  
+>Fix ipv6 server query  
+>Fix newlines in Com_Error, patch by Zack Middleton (#5023)  
+>- Add MASM assembler files for MSVC x64 projects to support vm_x86 in x64 mode- Clean up ftol()/snapvector() mess- Make use of SSE instructions for ftol()/snapvector() if available- move ftol/snapvector pure assembler to inline assembler, this will add x86_64 and improve support for different calling conventions- Set FPU control word at program startup to get consistent behaviour on all platforms  
+>More color fixes for railgunShow other players' railgun color and their firetime state.Show snapshot client's color on world item models of railgun.Fix the impact mark using color2 (spiral) rather than color1 (beam).Credits go to Ensiform and Harekiet for the refire portion.  
+>Fixes for bugs introduced in last several revisions  
+>Fix by Laurent Desnogues for my feeble attempt at a fix  
+>Fix #if macros for idx64 and id386  
+>Allow recursive VM entry for VM operations as well  
+>- Bug 5034 - q3_ui: fill whole screen and allow cursor to move to edge in widescreen, by Zack Middleton  Check if uivm is loaded before using it  Patch adds a check for uivm before using it, fixes running dedicated server  using client binary.  Missing uivm check pointed out by Ensiform.- Bug 5049 - TA UI forces overstrike mode on when focusing an edit box, by Ensiform- Bug 5052 - Missing podium timer initialization, by Eugene C.  
+>- Merge http://svn.icculus.org/tremulous?view=rev&revision=2185, patch by Chris Schwarz- Remove Q_snprintf as Com_sprintf exists already  
+>All patches by Zack Middleton:- Bug 5057  - Two weapon number range checks allows invalid number- Bug 5058  - Railgun explosion cannot be colorized- Bug 5059  - Client's railgun does not glow in third person and mirror- Bug 5060  - Warning in RAVENMD4 R_GetAnimTag cross compiling with amd64-mingw32  
+>- Fix opStack size for vm_x86.c- Change opStack alignment to 16 for vm_x86_64.c  
+>Bug 5048 - Entity constant light does not work correctly, bug found by Eraesr (Eraser?)  
+>Fix #lese in last commit  
+>Fix return values for several syscall functions, patch by Zack Middleton (#5018)  
+>Fix wrong usage info message for cmd dumpuser, patch by Zack Middleton (#5024)  
+>- Automatically reset fs_game to "" if it was supplied by the user and is equal to com_basegame- Fix problem where users could change values of CVAR_INIT variables after the call to Cvar_Get() via Com_StartupVariable()- Move sound shutdown after client shutdown so VMs don't hold invalid sound handles in memory  
+>- Small change to search path order - local files not in .pk3s take precedence over files in pk3s. Should make life easier for modders/mappers wanting to override textures that are already contained in some older pk3- Make VM loading more robust, change loading order: when vm_* == 0 first try loading DLL, then QVM in *each* search directory/path- Fix FS_FileForHandle that would return a FILE pointer to invalid file handle 0  
+>* Remove misleading comment  
+>Fix x64 compilation on MSVC  
+>Properly fill in occurances of "foobar" in GPL file headers, patch by Zack Middleton (#5024)  
+>- Use EmitCallDoSyscall() to call the jump violations function which guarantees 16-byte stack alignment- Add x64 code for MSVC _asm() blocks, not tested yet.  
+>Correct fix to (#5051), patch by Roughael  
+>- Don't try to load QVM/DLL files on pure servers- Fallback after failed DLL load will be VMI_COMPILED, not INTERPRETED  
+>Fix unnoticed bug in game_restart  
+ 
+
+
+2011-05  
+Contributor(s):  
+Thilo Schulz  
+>- Use edx for CALLs instead of ecx, as the latter does not require any push to stack- Make Linux AT&T asm code consistent with the MASM codeblock  
+>- Add HOMEPATH default name define to q_shared.c, patch by uZu (#4973)- Reverted change from (#4972) and implemented the other suggestion to be consistent with cl_cgame.c and cl_ui.c  
+>Do use the SV_Game{Error,Print} functions (#4972)  
+>- Set default opStack size to 256- Fix integer wraparound. opStack offset in rbx will always be >= 0  
+>DevHC messed up  
+>Refactoring patch by DevHC  
+>Fix out of bounds array index (#4960) patch by Ben Millwood  
+>- Implement opStack protection: Use register %ebx for scaled indexed addressing mode to access opStack, make opStack push/pop operate on %bl portion only- Add a third pass to VM compilation for computation of jump address offsets, removing the need to dereference into vm->instructionPointers[] for every call/jump- Make use of 0F opcode prefix relative jumps- Call Com_Memcpy for OP_BLOCK_COPY- Fix several missing range checks for vm->dataBase memory access  
+>Fix spawnflag behaviour for trigger_hurt, patch by DevHC  
+>Fix sending reliable commands before being connected, patch by Eugene C. (#4971)  
+>Remove newlines from Com_Error message format strings, patch by DevHC  
+>- Add vm_x86.c optimization patch by Eugene C.- Remove ASM syntax specific code (AT&T vs MASM) for OP_CALL and replace with machine code  
+>Add opStack protection to defend against malicious QVMs  
+>Fix one byte overflow  
+>Use scaled indexing mode n=4 for addressing opStack, this way we can use the 8 bit offset value in %%bl to address an OPSTACK_SIZE of 1024 which was the old value.  
+>Remove sv_strictAuth cvar for STANDALONE games  
+>ensure that ent->classname is always non-null (for entity numbers up to level.num_entities-1, and ENTITYNUM_WORLD and ENTITYNUM_NONE), for player entities and #ENTITYNUM_NONE in particular, patch by DevHC  
+>I don't seem to get these constraints right. This should fix it  
+>Fix VM call for release version, bug introduced by myself in r1994  
+>- Reverting accidentally committed vm_x86.c- Last commit contained some refactoring for vm_x86_64.c  
+>Add error handling to malloc as well  
+>fix overzealous cvar cheat protection, patch by cyrri (#4974)  
+>- Remove Q_strrchr(), replace with standard, portable strrchr()- Add strrchr() to bg_lib.c, patch by DevHC  
+ 
+
+
+2011-04  
+Contributor(s):  
+Thilo Schulz  
+>Fix a few comments (#4591)  
+>- Fix data alignment issue with glReadPixel call, reported by Guillaume Bougard (#4954)- Fix data alignment issue in raw AVI recording for weird resolutions (like 1366x768)  
+>Fix player queueing for tournament play (#4939)  
+>Revert protocol 69 pending further discussion (#4962)  
+>Add better support for analog joysticks, patch by use.less01  
+>Consider key states before startup, patch by Zack Middleton (#4950)  
+>- Harden the client and server protocol against UDP spoofing attacks. This will defend ioquake3 against http://aluigi.altervista.org/papers/q3noclient.txt (#3041)- Retains full compatibility to the old but unsecure protocol between clients and servers- Harden the connection process against DoS attacks, possibly connected to UDP spoofing  
+>Replace a few numeric constants with already defined macros, patch by ZTurtleMan  
+ 
+
+
+2011-03  
+Contributor(s):  
+Tim Angus  
+Thilo Schulz  
+>Patch by Zack Middleton (#4920)  
+>Zack Middleton made me do it  
+>Add g_humansplayers (found by server) and g_needpass (cvar) to serverinfo (#4702)  
+>(#4918) Gametype clamping using constant integer in missionpack ui, by Zack Middleton  
+>(#4925) - com_pipefile to create a named pipe for sending commands from other processes, patch by Chris Schwarz  
+>* Crash recovery for com_pipeFile (Lakitu7)  
+>(#3767) Some protection from malicious qvms - patches and ideas by Amanieu d'Antras and Ben Millwood  
+>Fix bug where Com_StartupVariable would set CVAR_USER_CREATED on already existing cvars  
+>(#4919) Extra variable in missionpack ui's bind_t structure, by Zack Middleton  
+>Fix quirk reported by Zack Middleton  
+>Make Video settings menu revert some settings to default values via Cvar_Reset() instead of hardcoded values (#2589)  
+>Refactoring patch by DevHC  
+>- Fix potential out-of-bounds read in files.c, fix by using new FS_IsExt- Add capability to load demos with com_protocol suffix, partially applied patches from Simon McVittie- Fix demo loading if protocol number has more digits than 2- Minor refactoring, replace all occurances of suffix "dm_" with global macro DEMOEXT  
+>Add cvar "protocol" so user can change protocol version on command line, for standalone games. Most of the patch by Simon McVittie with a few minor modifications by myself  
+>(#4291) Redundant statement in client console, by Zack Middleton  
+>Bug 4936 - Wrong color for non-ascii symbols in console  
+>(#4922) Use screenYScale, not screenXScale, for scaling Y, by Zack Middleton  
+>Fix systeminfo command, fix by DevHC  
+ 
+
+
+2011-02  
+Contributor(s):  
+Tim Angus  
+Zachary Slater  
+Thilo Schulz  
+>Fix STANDALONE in files.c  
+>Make NET_Sleep wait 1ms less than requested, then busy-wait the last ms for better timeout precision.  
+>Fix #4683, thanks Zack Middleton  
+>Ben Millwood fixing his own stuff (#4598)  
+>Patch by Simon McVittie to improve dynamic library loading (#4700)  
+>- Add cvars cl_gamename, sv_heartbeat, sv_flatline so standalone games can customise their messages to the master server  
+>* Fix fp literals  
+>Cleanup STANDALONE  
+>First batch of getting replacing malloc() with Z_Malloc  
+>Code cleanup patch by devhc  
+>fix compiling error when in standalone mode  
+>- Use select() to sleep when idle as opposed to busy waiting.- Introduce com_busyWait cvar to go back to old behaviour  
+>Add minimize command (#4531)  
+>OMGWHATISTHISSHITIDONTEVENKNOW  
+>* Fix Sys_Milliseconds wrapping causing the flood protection code to   malfunction and block all traffic (reported by bubu^)  
+>Fix console tab autocomplete for exec and condump on pure servers, patch by Zack Middleton  
+>whatever devhc you're right  
+>- A few code cleanups in gamecode- Add a bit of stuff from Zakk Middleton  
+>Auto complete demos on not in pk3s while in pure servers. Patch by Zack Middleton (#4794)  
+>Fix tourney score board. Thanks Zack Middleton for the patch and report  
+>mage size_t typedef unsigned int instead of just int, thx devhc for suggesting  
+>Thanks Simon McVittie for fixing the bug regression in https://bugzilla.icculus.org/show_bug.cgi?id=4629  
+>- Change runtime standalone detection:  * com_standalone now read-only  * add new cvars com_basegame, com_homepath  * standalone now automatically detected when com_basegame is set to something different than baseq3 and no id pak pk3s are found  * This fixes https://bugzilla.icculus.org/show_bug.cgi?id=4699- Replace a few hardcoded string literals with macros- Add checks for Team Arena PK3s to FS_CheckPak0()  
+>Fix adding multiple entries for same server when using globalservers several times, patch by Tequila  
+>Fix banfile writing to wrong game directory  
+>Fix https://bugzilla.icculus.org/show_bug.cgi?id=4733  
+>Support non-256x256 videos in shaders, by Zack Middleton (#4745)  
+>- Fix bug #4769 remote server crash- Fix potential 1-byte-buffer overflow in gamecode  
+>Fix flag collision in botlib code, thanks Cyrri for reporting (#4886)  
+>Fix levelshot so that it cannot be executed by remote clients (#4339)  
+>Merge "which" command upstream from Tremulous, patch provided by Chris Schwarz  
+>Fix division by zero, reported by Simon McVittie  
+>r1833 now made some Linux systems spit out warnings. Fix this once and for all  
+>http://www.angryflower.com/aposter.html(minor English issues, most of which are via /dev/humancontroller)  
+>- Use MAP_FAILED error code for check whether mmap() was successful- Replace various malloc() with Z_Malloc- Fix several memory leaks when VM compilation failed and Com_Error is called- Make failed mmap/VirtualAlloc/malloc calls fatal  
+>Fix strcpy copying buffer into itself, thanks to Simon McVittie for reporting and the patch (#4894)  
+>Server crash can cause recursive call to Com_Error, too  
+>Finally fix missionpack compiling for STANDALONE=1, yes, this is tested.  
+>Windows doesn't know z in format string  
+>Brace for incoming grammar fix by DevHC!  
+>By ZTurtleMan: Cleanup; only load harvester data in harvester gametype, removed unused var, and ifdef a missionpack only var.  
+>typos, patch by Ansgar Burchardt <ansgar@43-1.org>  
+>- Make some string functions in g_cmds.c cleaner, by DevHC- embed VM_FREEBUFFERS() macro in do-while-loop  
+>Fix buffer overflow, reported by Mads Lind  
+>Remove guid again because we don't want every play on the server to know all guids, thanks brain for reporting  
+>Still not compiling when STANDALONE is set  
+ 
+
+
+2011-01  
+Contributor(s):  
+Zachary Slater  
+Thilo Schulz  
+>Make sure status reply always has at least one space between address and qport, important for ipv6 addresses.  
+>- Add parameter checking to CL_*Ping* functions.- Remove unused CL_UpdateServerInfo function  
+>Make sure com_developer global var gets written right after developer has been read from cmd line  
+>Fix hanging client when map_restart executed on the server while client is still loading the map  
+>add a missing \n from a cgame print(thanks again /dev/hc)  
+>Make this change so standalone developers will know to change the HEARTBEAT game string for their versions, too.  
+>Fix floating point imprecision causing glitches in snapshot sending  
+>Make it use the correct game name in getserversExt queries  
+>Fix bug reported by cyrri  
+>remove the unused flags_t::field (/dev/hc again for this and previous checkin on Makefile, thanks!!!)  
+>Revert changes because dpmaster doesn't work that way.  
+>Make number of supported master servers tunable via define  
+ 
+
+
+2010-12  
+Contributor(s):  
+Tim Angus  
+>* (bug #4800) Don't prepend a slash to console commands if they're empty* (bug #4800) Limit console input length such that there is always room for a  leading slash  
+ 
+
+
+2010-11  
+Contributor(s):  
+Ludwig Nussel  
+>use mmap on freebsd too  
+ 
+
+
+2010-10  
+Contributor(s):  
+Zachary Slater  
+>Bugzilla #4629commands sent to client when disconnecte  
+>Bugzilla #4749TAHUD: Fix hud fallback  
+>Bugzilla #4753Potential buffer overflow in UpdateTournamentInfo()  
+ 
+
+
+2010-09  
+Contributor(s):  
+Thilo Schulz  
+>Fix flaw in my fix to #4737, thanks Zakk Middleton  
+>Followup to #4733  
+ 
+
+
+2010-08  
+Contributor(s):  
+Thilo Schulz  
+>Second batch of bug fixes reported and patched by Zack "ZTurtleMan" Middleton:#4740#4741#4742#4743#4744  
+>First batch of bug fixes reported and patched by Zack "ZTurtleMan" Middleton:#4736#4730#4731#4732#4733#4735#4736#4737#4738#4739  
+ 
+
+
+2010-07  
+Contributor(s):  
+Thilo Schulz  
+>Fix buffer overflow, report and patch by Eugene C. (#4669)  
+ 
+
+
+2010-06  
+Contributor(s):  
+Ludwig Nussel  
+>fix typo  
+ 
+
+
+2010-02  
+Contributor(s):  
+Ludwig Nussel  
+Tim Angus  
+>need to hardcode "baseq3" to prevent download of id files even if compiled STANDALONE  
+>enable (dummy) cdkey calls in standalone mode to prevents mods from crashing  
+>* Sys_Dialog for more user friendly error reporting* (bug #3932) Recovery from bad video settings  
+ 
+
+
+2010-01  
+Contributor(s):  
+Ludwig Nussel  
+Tim Angus  
+>* Rate limit getstatus and rcon connectionless requests  
+>avoid setting cvars by name each frame  
+>set default rate to broadband  
+>__WORDSIZE is not available on non-GNU systems (Dominic Fandrey)  
+>make reason for voip disable more visible  
+>* That probably deserves a Com_DPrintf as well  
+>* (bug #4357) CVAR_ROM+CVAR_ARCHIVE is not read from q3config  
+>* Fix some compiler warnings  
+ 
+
+
+2009-12  
+Contributor(s):  
+Tim Angus  
+>* (bug #4369)  Cvar modified flags are not updated in Cvar_Get (Lakitu7)  
+>* (bug #4346) Dedicated server uses 100% CPU when stdin is not a TTY* com_speeds reports misleading values on dedicated server (Guillaume Bougard)  
+ 
+
+
+2009-11  
+Contributor(s):  
+Tim Angus  
+Ludwig Nussel  
+Thilo Schulz  
+>This is true always, anyways.  
+>fix wrong strcpy usage (#4331, patch by Andreas Bierfert)  
+>- Add unset command for cvars created by the user- Fix crash bug when maximum number of cvars has been reached- Fix cvar_restart- Add possibility to cleanly switch mods ingame (#2819)  
+>Use new Sys_SetEnv here  
+>* Improve displayed error message when pak?.pk3 is missing  
+>Mute sounds with 0 volume when game is minimized/unfocused instead of Stopping all sounds. Fixes (#4336)  
+>Commit two patches from SmokingGuns's Tequila, fixing problems with very fast movers and a typo in the string drawing function. (#4329) and (#4330)  
+>* Rewrite win32 Sys_Mkdir to use CreateDirectory* Make FS_ReplaceSeparators filter out runs of multiple separators* Make FS_CreatePath skip creation of the root directory  
+>Fix bug where game freezes in infinite loop because it doesn't find a spawn point on maps with many bot/human-only spawnpoints. Thanks Pan for reporting this  
+>Remove leftover stub  
+>Forgot this one  
+>Added TTimo's QuakeLive-style mouse acceleration, thanks Gabriel Schnoering and TTimo for the patch. (#3693)  
+>* Reimplement r1597-1598 in a better way (Oopss)* Fix Sys_SetEnv warning  
+>Define stack sizes at central placealso reverts bug 4282 as stack is included in bss already so nothing that needs fixing  
+>Zakk wisheth - Thilo answereth (#4070)Use cg_drawWeapon 2/3 to make weapon left-handed/centered  
+>more security checks in interpreter (#4249)  
+>- Add stopmusic command - Make cvar s_muted read-only  
+>* Fix demo playback being broken, not entirely sure by what or when  
+ 
+
+
+2009-10  
+Contributor(s):  
+Tim Angus  
+Ludwig Nussel  
+Thilo Schulz  
+>Show color codes in full length, patch by Amanieu (#4318)  
+>fix zlib includes  
+>Whoops.. don't make it overwrite cmds in case of recursive error.  
+>Forgotten else  
+>Fix botlib parser for negative int/float values, thanks to Makro for reporting (#4227).  
+>Make s_volume cvar affect volume of S_Base_RawSamples, thanks to Jay Weisskopf for reporting. https://bugzilla.icculus.org/show_bug.cgi?id=3474  
+>MinGW doesn't have setenv() either, so.....  
+>Just unix2dos, nothing to see here ...  
+>Apply patch from Jay Weisskopf adding an aspect ratio menu entry to resolution selector: https://bugzilla.icculus.org/show_bug.cgi?id=3475  
+>Fix recursive error for disconnect after reliable client command overflow. Thanks to /dev/humancontroller for reporting. https://bugzilla.icculus.org/show_bug.cgi?id=3616  
+>* Actually that can be more precise...  
+>Add guid to userinfo string, thanks Guillaume Bougard. https://bugzilla.icculus.org/show_bug.cgi?id=3570  
+>- Applied patch from /dev/humancontroller to set cvar_modifiedFlags from Cvar_Set_f (#3636)- Exchanged ugly code with Cmd_ArgsFrom()  
+>- Modify color generating codes to only accept numbers and not alphabetical chars anymore- Fix client clean name so that it cannot be tricked anymore, see https://bugzilla.icculus.org/show_bug.cgi?id=3313  
+>Don't need a call to va() for this  
+>* Make [sv|cl]_packetdelay work when timescale is not 1 (arQon)  
+>Fix uninitialized words in VM interpreter, reported by Patrick Baggett (4281)  
+>Fix memory overwrite when client has too many maps. Thanks to beast for the reporting & the patch. http://bugzilla.icculus.org/process_bug.cgi  
+>Don't award assist bonuses to flag capturing player, https://bugzilla.icculus.org/show_bug.cgi?id=3260  
+>* Fix MinGW build (it doesn't have _putenv_s)  
+>- Add Ben Millwood's implementation of strtod/strtol to bg_lib.c- Add %s scanf patch from M. Kristall to scanf in bg_lib.c  
+>Fix fake checksum handling if client is unpure, make sure client does not remain unpure after FS_Restart. Thanks to /dev/humancontroller for reporting. http://bugzilla.icculus.org/show_bug.cgi?id=3605, thanks  
+>* (bug #4232) Avoid "cl.snap.serverTime < cl.oldFrameServerTime" for slow  loading clients combined with short g_warmups  
+>Fix infinite loop in case an invalid pk3 file has been downloaded from the server. Thanks tjw for reporting (#3074)  
+>Rewrite of key event processing, thanks to /dev/humancontroller and Ben Millwood. https://bugzilla.icculus.org/show_bug.cgi?id=3374  
+>Fix circumventing sv_maxping restriction, thanks to Amanieu for reporting. http://bugzilla.icculus.org/show_bug.cgi?id=3423  
+>Revert back color code change  
+>Only create botlib.log if in bot developer mode.  
+>Fix netcode inconsistency, thanks to /dev/humancontroller for the patch, see http://bugzilla.icculus.org/show_bug.cgi?id=4060  
+>* Fix incorrect comment  
+>* (bug #4249) Fix buffer overflow in x86 VM  
+>Fix environment variable handling for Linux, make setenv command added before parsing of configuration files. (https://bugzilla.icculus.org/show_bug.cgi?id=3626)  
+>fs_fakeChkSum is indeed obsolete and unnecessary. Removing it altogether now.  
+>Fix bot loading in case player supplied invalid bot names  
+>Adding missing header includes to botlib files. Thanks to Ben Millwood for patch. (#4237)  
+ 
+
+
+2009-09  
+Contributor(s):  
+Tim Angus  
+Ryan C. Gordon  
+Thilo Schulz  
+>Patched to compile.  
+>* ...and make sure it compiles  
+>Enable -fvisibility=hidden on Linux.This will prevent further symbol clashes, and makes the shared libraries 10 to 20 percent smaller.We should enable this on other platforms, too, if we can guarantee they'll use gcc 4.0 or later and the platform supports it.  
+>Fixed compiler warnings on gcc 4.3.3 (and probably others).  
+>Removed more unused variables. Partially fixes Bugzilla #3782.  
+>Prevent hang in S_UpdateBackgroundTrack() with some sample rates.  Fixes Bugzilla #4022.  
+>Removed broken music fading code from snd_dma. Fixes Bugzilla #3757.  
+>Allow Cvar_Toggle_f() to iterate through a list of values.  Fixes Bugzilla #3591.  
+>Don't send a 0-length command to cgame during map_restart.  Fixes Bugzilla #3965.  
+>Better handling of "voip" console command.Prints usage info and current gain values, and catches a case where we report an error where no error exists.  Fixes Bugzilla #4018.  
+>* Fix warning in cl_main.c* Fix bug #4026 (SDL dx backend doesn't work on some machines)  
+>Fixed triggering Com_Error() when kicking a large number of bots at once.  Fixes Bugzilla #3418.  
+>Add received rcon command string to server log, see https://bugzilla.icculus.org/show_bug.cgi?id=3748  
+>* (bug #4282) Fix potential overlap of VM stack and bss sections (Patrick  Baggett)  
+>Echo console command now colorizes by string, not token.  Fixes Bugzilla #3879.  
+>Minor reworking to check command line cvars before Com_InitZoneMemory().This lets you set com_zoneMegs from the command line (although still not from a config file, but oh well).  Fixes Bugzilla #2571.  
+>When dropping bots, don't move to CS_ZOMBIE. Go straight to CS_FREE.They aren't a real network connection, so you don't want to waste time before opening the slot for humans.  Fixes Bugzilla #4243.  
+>Threw in a hack to fix rendering of credits menu in widescreen.  Fixes Bugzilla #2744.  
+>* ...and actually r1626 this time  
+>Don't allow negative arguments to the "wait" console command.  
+>SetTeam fix from Martin Doucha."Actually, client->ps.clientNum is unsafe. We had a little hunt for this sometime ago in Tremulous last year (it caused kick failures, annoying popupwindows and other nasty bugs). The problem is that a following spectator getsfull copy of client->ps of the followed player including clientNum. If you thentry to use this "shared" clientNum, you might affect someone else than youwanted.r1019 changes are safe as long as bots don't spectate players. However, a briefgrep on current code has revealed unsafe client->ps.clientNum usage inSetTeam(). If a following spectator uses team command when forced balance ison, it'll count teams incorrectly and send the error message to the followedplayer instead. Here's the fix."  Fixes Bugzilla #2986.  
+>Removed unused variables.CM_LeadArea() has no side effects, so those could go, too.   Partially fixes Bugzilla #3782.  
+>Let a separate libdir be specified for loading libraries.   Partially fixes Bugzilla #4271.  
+>Renamed bot_developer to botDeveloper to prevent symbol clash.qagame*.so has a variable named this too, and this confuses the Linux dynamic loader since we're not using -fvisibility=hidden. Fixes Bugzilla #3944.  
+>Added Intel CC compatibility to vm_x86.c's inline asm.  Fixes Bugzilla #3338.  
+>Fixed infinite recursion of writing crashlog because we're out of file handles.  Fixes Bugzilla #3772.  
+ 
+
+
+2009-07  
+Contributor(s):  
+Zachary Slater  
+>Fix for bad ping times, see bug 3966 but note that this patch is different, got a fresh one from Amanieu in irc.  
+>More 3966 business:http://bugzilla.icculus.org/show_bug.cgi?id=3966I'm hopeful that the server browser will surrender.  
+ 
+
+
+2009-06  
+Contributor(s):  
+Thilo Schulz  
+>Replace a few sprintf with Com_sprintf  
+>- Introduce seeding of the random number generator at startup- Replaced all engine-side occurances of rand() with random()  
+>Move these definitions over for other files to use in preparation of the next commit  
+>Make client send a random challenge number in getchallenge requests  
+>Revert changes of rand() to random() as random() was redefined in quake3.  
+>- fix typo in previous commit to net_ip.c- Make servers send heartbeats to master servers in ipv4 as well as ipv6 if master server has both protocols  
+>Fix warning in Sys_RandomBytes() usage  
+>I'll retain the new way seeding the random number generator.. these calls are therefore redundant  
+>Make servers echo challenge codes from client getchallenge commands  
+ 
+
+
+2009-05  
+Contributor(s):  
+Ludwig Nussel  
+Thilo Schulz  
+>whitespace correction  
+>mark functions static (#4010)  
+>- Introduce new NET_CompareBaseAdrMask for easy comparison of ip address ranges- Overhaul of the new banning functions:  * basic check for redundant bans/exceptions  * introduction of sv_banFile to make it possible to configure the file where to read bans and exceptions from  * bans can now be deleted by giving address ranges, too.  
+>This could never have worked in the first place. Duh.  
+>msg->oob is actually qboolean (#4010)  
+>cvarlist: also display systeminfo and user created flags  
+>Make command net_restart work so that port/ip settings can be changed without server restart  
+>SV_ReplacePendingServerCommands is unused  
+>fix name compare in 'follow' command (#4013)  
+>make Cvar_Command use all arguments just like Cvar_Set_f (#4063)  
+>add missing trap_RealTime prototype (#4015)  
+>define STRING and XSTRING in q_shared.h (#4054)  
+>whitespace fixes  
+>Minor fix for server infostring. Thanks to slacker  
+>More commentary to source code  
+>align stack before re-entering engine to make sse work (#4051)  
+ 
+
+
+2009-03  
+Contributor(s):  
+Tim Angus  
+Ludwig Nussel  
+>* Remove superfluous comments committed with fix to bug #3999  
+>qcommon: vm: sparc, like 386, doesn't need var-args conversion.Signed-off-by: David S. Miller <davem@davemloft.net>  
+>initialize qport with random value instead of time (#3999)  
+>fix STANDALONE challengeResponse (#4000)  
+ 
+
+
+2009-02  
+Contributor(s):  
+Tim Angus  
+>* s/FS_FilenameIsExecutable/FS_CheckFilenameIsNotExecutable/g* Fix potential buffer under run in FS_CheckFilenameIsNotExecutable  
+ 
+
+
+2009-01  
+Contributor(s):  
+Ludwig Nussel  
+>gamename is already a cvar with CVAR_SERVERINFOdo not set gamename to different values in getstatus and getinfo responses  
+>security fix: prevent command injection via callvote  
+>fix overflow in CG_ParseTeamInfobased on patch for Tremulous, thanks to Roman Tetelman  
+>fix potential segfault (found by DerSaidin in xreal)  
+ 
+
+
+2008-11  
+Contributor(s):  
+Tim Angus  
+Ludwig Nussel  
+>move location of version string in console a bitpatch by 'devhc97' (#3758)  
+>fix strict aliasing issuesPatch by Przemysław Iskra (#3805)  
+>fix 64bit VM interface to work on ppc64 (#3838)  
+>fix variable declaration (#3849)  
+>* Fix some new GCC 4.3 warnings* Fix many many strict aliasing warnings, now that it's re-enabled  
+ 
+
+
+2008-10  
+Contributor(s):  
+Ludwig Nussel  
+>fix crash with videos on ppc (#2523,3802). Patch by Przemysław Iskra  
+ 
+
+
+2008-09  
+Contributor(s):  
+Tim Angus  
+Thilo Schulz  
+>* Add Com_HexStrToInt* Fixed some whacky indentation in q_shared.c* Allow single character keys e.g. 'c' to be used in cl_consoleKeys in addition  to ASCII characters* Experimental code to ignore dead keys  
+>- Add scope id to ipv6 addresses.- Clean up a few other ipv6 issues like removing the seemingly unnecessary MacOSX workaround.- Bring ipv6 master server up to speed for dpmasterThanks go out to Mathieu Olivier for this work.  
+>* Move command argument completion from being hard coded to being associated  with the individual commands to be completed  
+>* Supply specific identifier to the master server (Mathieu Olivier)  
+ 
+
+
+2008-08  
+Contributor(s):  
+Tim Angus  
+>* Revert 'Handle dead keys more gracefully by taking a "best guess" rather than  ignoring completely' from r1459; it can't ever work acceptably, especially on  azerty/qwertz layouts* Make the ordering of the output from in_keyboardDebug more sensible* Add cl_consoleKeys cvar, a space delimited list of key names or characters  that toggle the console  
+>* Fix unused variable warning* Add USE_LOCAL_HEADERS guards to sys_loadlib.h  
+>* Handle dead keys more gracefully by taking a "best guess" rather than ignoring  completely* When activating or deactivating the mouse flush any pending motion events;  this should stop the view moving unpredictably in these circumstances* Add keyname completion to "unbind"  
+>* Restrict OpenAL capture support test hack to OS X, where it is required; this  fixes a crash on exit with Windows when using OpenAL  
+>* More robust x86 vm entrypoint/callback assembly (Tron)  
+>* (bug #3729) server dependencies on client.h (Ben Millwood)* (bug #3731) BUILD_MISSIONPACK flag in Makefile (Gabriel Schnoering  <gabriel.schnoering@gmail.com>)* (bug #3756) Q3VM crashes on unaligned block copy with SIGBUS (Patrick Baggett  <baggett.patrick@figglesoftware.com>) and...* (bug #3755) IOQuake3 shouldn't use GCC-specific __FUNCTION__  
+>* Tidy up the keyboard code a bit, add in_keyboardDebug  
+>* Fix to console completion bug introduced by the last fix (from the oops  dept.)  
+>* Change win32 client Sys_Sleep so it ONLY sleeps since before it was waking on   more or less any input event; fine for the server, not so much use for the  client* In the main loop, don't bother sleeping if it's going to be less than 10ms as  the methods we're using to sleep at the moment aren't very precise* Add Sys_PlatformInit for platform specific initialisation* In win32 Sys_PlatformInit force selection of the DirectX SDL backend in order  to get better fullscreen mouse input (in conjunction with a patched SDL DLL  http://bugzilla.libsdl.org/show_bug.cgi?id=265)  
+>* Always show the mouse cursor when the mouse is disabled* Rename IN_StartupJoystick to IN_InitJoystick, add IN_ShutdownJoystick* Add IN_Restart, which avoids calling IN_DeactivateMouse at the wrong time* Call IN_Restart when changing r_fullscreen* Add CVAR_ROM r_sdlDriver for easy checking of the SDL driver in use* Random README tweaks  
+>* Collapse common command completion code into one function and fix the  incorrect buffer size parameter to strncpy (from the  how-the-fuck-did-this-ever-work dept.)  
+>* Fix memory leak in win32 VM code (arQon/dmitry)  
+ 
+
+
+2008-07  
+Contributor(s):  
+Tim Angus  
+Ludwig Nussel  
+Ryan C. Gordon  
+>* Remove silly range check on sv_voip during initialisation* Changed dedicated binary dedicated cvar to CVAR_INIT and remove runtime check  
+>* Fix killserver command for client binary based dedicated server  
+>* (bug 3610) Server sending unnecessary newline with SV_ConSay_F (Tyler Schwend   <TylerSchwend@gmail.com>)* (bug 3623) COMMAND is mapped to the ALT key (Matthias <Kapffer@macbay.de>)* (bug 3665) Typo error in FS_FOpenFileByMode function (TsT <tst2006@gmail.com>)* (bug 3669) Some files left out of Solaris Packages (Vincent Cojot  <vincent@cojot.name>)* (bug 3680) server quit messages (Ben Millwood)* (bug 3682) Maps with >1024 models cause a segfault (misantropia  <bnoordhuis@gmail.com>)* (bug 3683) R_FindShader(): negative lightmap indexes cause stray pointers  (misantropia <bnoordhuis@gmail.com>)* (bug 3688) q3asm potential segfault fix and other changes (TsT  <tst2006@gmail.com>)* (bug 3695) Not allowing to write file with lib extention (.dll/.so/...) (TsT  <tst2006@gmail.com>)* (bug 3696) make-macosx-ub.sh outdated by revision 1340; test for Tiger not   working (Matthias <Kapffer@macbay.de>)* (bug 3698) #error reported as warning in q3cpp (and no #warning support)  (Ben Millwood)* (bug 3703) restoring the valued pre-SDL window behaviour (/dev/humancontroller  <devhc97@gmail.com>)  
+>* Change dedicated cvar to CVAR_LATCH on the dedicated server  
+>* Fix server info string voip setting  
+>* In the dedicated binary, prevent setting dedicated cvar to 0  
+>Reverted svn revision #1410 to sv_init.csv_voip is a protocol version number, not a boolean, so this check is reasonable and correct.  
+>* Remove cl_platformSensitivity as it predates the move to SDL everywhere  
+>* Use Sys_Sleep to limit FPS, which will save CPU* Add com_maxfpsUnfocused and com_maxfpsMinimized; self explanatory* Fix reopening of bug 3703, I hope  
+>* Rename voip cvar to cl_voip* s/#if USE_VOIP/#ifdef USE_VOIP/* Add generalised runtime cvar range checking, currently on [sv|cl]_voip,  dedicated and a bunch of r_ variables  
+>VOIP: Added cvar cl_voipCaptureMult to boost gain on recorded bits.  
+>* Fixed client binary dedicated server* Revert 1286 as the checks are no longer redundant following above fix  
+>fix build without VOIP (David Severwright, bug#3720)  
+>* Sign check com_maxfps* variables  
+>* Don't start UI when starting client binary with +set dedicated 1  
+ 
+
+
+2008-06  
+Contributor(s):  
+Ludwig Nussel  
+Ryan C. Gordon  
+Zachary Slater  
+>minor spelling fix.  
+>VoIP: tweaked VAD code.Also added cl_voipVADThreshold cvar...if the power of a set of Speex frames doesn't exceed this value, it isn't transmitted.  
+>Thanks to Lakitu7 for pointing this out.  
+>VoIP: client can now specify targets for voice transmission.  
+>VoIP: allow targetting last attacker, or the one in your crosshairs.  
+>More VoIP work: treat voip/sv_voip cvars as protocol version numbers.  
+>VoIP: Initial work on adding Speex preprocessor.  
+>Whitespace cleanup.  
+>VoIP: initial shot at voice activation.  
+>Treat sv_voip cvar as a version number (0 == off, 1 == version 1 protocol).Don't publish it to server's info string if set to zero.  
+>VoIP: attempt at changing voipPower calc and using it for VAD.The Speex VAD sort of sucks, honestly, or I'm not using it right. Now trying this algorithm, after denoising:    http://lists.xiph.org/pipermail/speex-dev/2006-March/004269.htmlAnd I'll play around to find the threshold for considering a set of frames to be "voice" from there.Also worth noting: we consider the power of the set of frames as a whole, so you need to sustain power for 0.25 seconds at a time, or it's not "voice."  
+>VoIP: Fixed per-user gain output.  
+>Changed the protocol for VoIP packets to support legacy clients.Previously, a legacy client wouldn't get a VoIP packet, but if they did, they'd panic and disconnect. Now they ignore them and continue on. This also gives us the framework to add other features legacy clients can ignore.Oh, this also has the benefit of allowing us to store incoming VoIP for playback in recorded demos. They'll play the chatter on VoIP clients, and be ignored on legacy ones. Huge win.  
+>Initial patch for in-game VoIP support!  
+>VoIP: functionality to adjust incoming audio gain, per-user.  
+>VoIP: voip cvar should be 1 by default.  
+>VoIP: Don't hardcode Speex sample rate.  
+>Client shouldn't try to capture audio data if voip cvar is disabled.  
+>VoIP: Enable Automatic Gain Control.  
+>Forbid setting voip cvar if network data rate is too low.This prevents "Connection Interrupted" packets as VoIP data is incoming.  
+>pass the correct size to Q_vsnprintf (Ian Lindsay)  
+>VoIP: Only update from cl_voipSendTarget if sending data.  
+>Don't allow client to capture audio if playing back a demo.  
+>Removed an obsolete FIXME.  
+>Changed a few VoIP cvars to be latched.It either doesn't make sense to change these mid-game, or doing so won't work.  
+>Added ioq3-specific credits screen.  
+>VoIP: Added cheapie VoIP meter.  
+>VoIP: changed debug output filenames.  
+>Don't show VoIP meter in all the common scenarios.  
+>VoIP: Don't lose gain for good if using VAD on disconnect.This temporarily disables VAD so the system can clean up recording state.  
+>sv_voip cvar should be latched.  
+>VoIP: Save own voice when recording a demo.We fake a server packet and write it directly to the demo file at the point where we'd transmit to the server. This is a little nasty, but it seems to be the most reasonable solution.  
+ 
+
+
+2008-05  
+Contributor(s):  
+Ludwig Nussel  
+Tim Angus  
+Thilo Schulz  
+>* (bug 3641) Server is left running following a local disconnect  
+>Show true framerate with stereo separation enabled  
+>mumble link supportThe coordinate calculation was adopted from Warsow's mumble patch.  
+>- replace a few constant values with GL macros in tr_cmds.c- tidy up top of tr_types.h a bit, change flags to hex representation- make ROM cvar enforcing really work- remove cg_stereoSeparation from cgame as it is obsolete.- Add CG_DrawCrosshair3D so people see crosshair correctly when stereoseparation is enabled  
+>- variables with CVAR_ROM set get now overwritten by Cvar_Get() if the cvar exists already but was created by the user.- Fix null pointer crash in Cvar_Print_f(), thanks to humancontroller for reporting.  
+ 
+
+
+
+
 
 2008-04-04 Various contributors
 	+ Solaris fixes
