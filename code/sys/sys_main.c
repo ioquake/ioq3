@@ -682,6 +682,48 @@ void Sys_SigHandler( int signal )
 }
 
 /*
+ =================
+ Sys_SetFileLimit
+ =================
+ */
+#ifdef _WIN32
+static int Sys_SetMaxFileLimit(void)
+{
+	// A Windows implementation of this function probably is not needed.
+	return 0;
+}
+#else
+#include <sys/resource.h>
+static int Sys_SetMaxFileLimit(void)
+{
+	int result = 0;
+	
+#if defined(RLIMIT_NOFILE)
+	// Get the current open file limit.
+	struct rlimit limit;
+	result = getrlimit(RLIMIT_NOFILE, &limit);
+	if (0 == result)
+	{
+		// Set the file limit to the maximum
+		limit.rlim_cur = limit.rlim_max;
+		result = setrlimit(RLIMIT_NOFILE, &limit);
+#	if defined(__APPLE__) && defined(OPEN_MAX)
+		// On older macOS versions an error can happen trying to set a file limit above
+		// OPEN_MAX. If we see an error, then try again with OPEN_MAX as the limit.
+		if (result)
+		{
+			limit.rlim_cur = OPEN_MAX;
+			result = setrlimit(RLIMIT_NOFILE, &limit);
+		}	// Error on first attempt to set the limit
+#	endif	// Apple
+	}	// No error getting the current file limit
+#endif	// defined(RLIMIT_NOFILE)
+	
+	return result;
+}
+#endif	// !_WIN32
+
+/*
 =================
 main
 =================
@@ -690,6 +732,16 @@ int main( int argc, char **argv )
 {
 	int   i;
 	char  commandLine[ MAX_STRING_CHARS ] = { 0 };
+	
+	// Set the maximum number of files. Unlimited maps! Must be called early on before any
+	// system calls latch the default limit in place.
+	{
+		int result = Sys_SetMaxFileLimit();
+		if (result)
+		{
+			Com_Printf("Error trying to set the maxumim file limit: %d\n", result);
+		}
+	}
 
 	extern void Sys_LaunchAutoupdater(int argc, char **argv);
 	Sys_LaunchAutoupdater(argc, argv);
