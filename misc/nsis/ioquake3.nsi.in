@@ -45,7 +45,7 @@ OutFile "ioquake3-XXXVERSIONXXX-XXXRELEASEXXX.x86.exe"
 
 !insertmacro MULTIUSER_PAGE_INSTALLMODE
 ;!insertmacro MUI_PAGE_LICENSE "../../COPYING.txt"
-!define MUI_COMPONENTSPAGE_NODESC
+!define MUI_COMPONENTSPAGE_SMALLDESC
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -71,7 +71,7 @@ Function un.onInit
 FunctionEnd
 
 ; The stuff to install
-Section "ioquake3 (required)"
+Section "ioquake3 (required)" ioquake3
 
   SectionIn RO
 
@@ -124,7 +124,7 @@ Section "ioquake3 (required)"
 SectionEnd
 
 ; Optional section (can be disabled by the user)
-Section "Start Menu Shortcuts"
+Section "Start Menu Shortcuts" StartMenuShortcuts
 
   CreateDirectory "$SMPROGRAMS\ioquake3"
   CreateShortCut "$SMPROGRAMS\ioquake3\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
@@ -132,7 +132,17 @@ Section "Start Menu Shortcuts"
 
 SectionEnd
 
-Section "SDL2.dll"
+Section "Protocol Handler" ProtocolHandler
+
+  WriteRegStr SHCTX "Software\Classes\quake3" "CustomUrlApplication" "$INSTDIR\ioquake3.x86.exe"
+  WriteRegStr SHCTX "Software\Classes\quake3" "CustomUrlArguments" '"%1"'
+  WriteRegStr SHCTX "Software\Classes\quake3" "URL Protocol" ""
+  WriteRegStr SHCTX "Software\Classes\quake3\DefaultIcon" "" "$INSTDIR\ioquake3.x86.exe,0"
+  WriteRegStr SHCTX "Software\Classes\quake3\shell\open\command" "" '"$INSTDIR\ioquake3.x86.exe" --uri "%1"'
+
+SectionEnd
+
+Section "SDL2.dll" SDL
 
   SetOutPath $INSTDIR
 
@@ -141,7 +151,7 @@ Section "SDL2.dll"
 SectionEnd
 
 !ifdef USE_OPENAL_DLOPEN
-Section "OpenAL-Soft library"
+Section "OpenAL-Soft library" OpenAL
 
   SetOutPath $INSTDIR
 
@@ -151,7 +161,7 @@ SectionEnd
 !endif
 
 !ifdef USE_CURL_DLOPEN
-Section "libcurl"
+Section "libcurl" libcurl
 
   SetOutPath $INSTDIR
 
@@ -169,6 +179,7 @@ Section "Uninstall"
   ; Remove registry keys
   DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3"
   DeleteRegKey SHCTX "Software\ioquake3"
+  DeleteRegKey SHCTX "Software\Classes\quake3"
 
   ; Remove files and uninstaller
   Delete $INSTDIR\baseq3\cgamex86.dll
@@ -220,3 +231,16 @@ Section "Uninstall"
   RMDir "$INSTDIR"
 
 SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${ioquake3} "The game executables."
+  !insertmacro MUI_DESCRIPTION_TEXT ${StartMenuShortcuts} "Create shortcuts in the start menu."
+  !insertmacro MUI_DESCRIPTION_TEXT ${ProtocolHandler} "The protocol handler lets you connect to a game by clicking a link in a web browser."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SDL} "SDL files."
+!ifdef USE_OPENAL_DLOPEN
+  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "OpenAL files."
+!endif
+!ifdef USE_CURL_DLOPEN
+  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "libcurl files."
+!endif
+!insertmacro MUI_FUNCTION_DESCRIPTION_END

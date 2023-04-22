@@ -34,6 +34,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 
+#ifdef PROTOCOL_HANDLER
+char *protocolCommand = NULL;
+#endif
+
 /*
 ==============
 Sys_Dialog
@@ -115,3 +119,42 @@ char *Sys_StripAppBundle( char *dir )
 	Q_strncpyz(cwd, Sys_Dirname(cwd), sizeof(cwd));
 	return cwd;
 }
+
+#ifdef PROTOCOL_HANDLER
+
+@interface AppDelegate : NSObject <NSApplicationDelegate>
+@end
+
+@implementation AppDelegate
+
+- (void)handleAppleEvent:(NSAppleEventDescriptor *)event withReplyEvent: (NSAppleEventDescriptor *)replyEvent
+{
+	NSString *input = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
+	protocolCommand = Sys_ParseProtocolUri( input.UTF8String );
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
+{
+	[NSApp stop:nil];
+}
+
+@end
+
+char *Sys_InitProtocolHandler( void )
+{
+	[NSApplication sharedApplication];
+
+	AppDelegate *appDelegate = [AppDelegate new];
+	NSAppleEventManager *sharedAppleEventManager = [NSAppleEventManager new];
+	[sharedAppleEventManager setEventHandler:appDelegate
+	                             andSelector:@selector(handleAppleEvent:withReplyEvent:)
+	                           forEventClass:kInternetEventClass
+	                              andEventID:kAEGetURL];
+
+	[NSApp setDelegate:appDelegate];
+	[NSApp run];
+
+	return protocolCommand;
+}
+
+#endif

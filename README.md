@@ -150,6 +150,7 @@ Makefile.local:
   USE_INTERNAL_JPEG    - build and link against internal JPEG library
   USE_INTERNAL_OGG     - build and link against internal ogg library
   USE_INTERNAL_OPUS    - build and link against internal opus/opusfile libraries
+  USE_INTERNAL_VORBIS  - build and link against internal Vorbis library
   USE_LOCAL_HEADERS    - use headers local to ioq3 instead of system ones
   DEBUG_CFLAGS         - C compiler flags to use for building debug version
   COPYDIR              - the target installation directory
