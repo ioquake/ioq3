@@ -1,0 +1,28 @@
+{
+	"configurations": [
+		{
+			"name": "Launch",
+			"type": "lldb",
+			"request": "launch",
+			"program": "${workspaceFolder}/app/ioquake3x64.exe",
+			"args": [
+				"+set sv_pure 0 +set r_fullscreen 0 +set vm_game 0 +set vm_cgame 0 +set vm_ui 0"
+			],
+			"cwd": "${fileDirname}",
+			"stopOnEntry": true,
+			"console": "internalConsole",
+			"terminal": "integrated",
+			"presentation": {
+				"hidden": false,
+				"group": "",
+				"order": 1
+			},
+			"internalConsoleOptions": "openOnSessionStart",
+			"initCommands": [],
+			"reverseDebugging": true
+		},
+	],
+	"cmake.debugConfig": {
+		"cwd": "${workspaceFolder}/app"
+	},
+}

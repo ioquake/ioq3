@@ -1,0 +1,43 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.embeddedhtml": "html",
+			"*.vsh": "glsl",
+			"*.fsh": "glsl",
+			"*.psh": "glsl",
+			"*.vp": "glsl",
+			"*.fp": "glsl",
+			"*.inc": "glsl",
+			"*.vfp": "cg",
+			"*.gui": "objective-c",
+			"sdl_opengl.h": "c",
+			"sdl_version.h": "c",
+			"common.h": "c",
+			"shared.h": "c",
+			"windows.h": "c",
+			"io.h": "c",
+			"unzip.h": "c",
+			"zlib.h": "c",
+			"sys_local.h": "c",
+			"pch.h": "c"
+		},
+		"terminal.integrated.profiles.windows": {
+			"MSYS2": {
+				"path": "D:\\msys64\\usr\\bin\\bash.exe",
+				"args": [
+					"--login",
+					"-i"
+				],
+				"env": {
+					"MSYSTEM": "CLANG64",
+					"CHERE_INVOKING": "1"
+				}
+			}
+		}
+	}
+}

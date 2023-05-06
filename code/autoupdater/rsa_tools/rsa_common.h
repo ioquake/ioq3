@@ -12,8 +12,8 @@
 #define SALT_LEN 8
 
 #if defined(__GNUC__) || defined(__clang__)
-#define NEVER_RETURNS __attribute__((noreturn))
-#define PRINTF_FUNC(fmtargnum, dotargnum) __attribute__ (( format( __printf__, fmtargnum, dotargnum )))
+#define NEVER_RETURNS					  __attribute__((noreturn))
+#define PRINTF_FUNC(fmtargnum, dotargnum) __attribute__((format(__printf__, fmtargnum, dotargnum)))
 #else
 #define NEVER_RETURNS
 #define PRINTF_FUNC(fmtargnum, dotargnum)
@@ -27,4 +27,3 @@ void read_rsakey(rsa_key *key, const char *fname);
 #endif
 
 /* end of rsa_common.h ... */
-

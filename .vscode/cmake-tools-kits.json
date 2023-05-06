@@ -1,0 +1,7 @@
+{
+	"name": "My Compiler Kit",
+	"compilers": {
+		"C": "D:/MSYS64/clang64/bin/clang.exe",
+		"CXX": "D:/MSYS64/clang64/bin/clang++.exe"
+	}
+}

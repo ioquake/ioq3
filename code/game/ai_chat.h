@@ -58,4 +58,3 @@ float BotChatTime(bot_state_t *bs);
 int BotValidChatPosition(bot_state_t *bs);
 // test the initial bot chats
 void BotChatTest(bot_state_t *bs);
-

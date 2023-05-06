@@ -17,11 +17,11 @@
   freely, subject to the following restrictions:
 
   1. The origin of this software must not be misrepresented; you must not
-     claim that you wrote the original software. If you use this software
-     in a product, an acknowledgment in the product documentation would be
-     appreciated but is not required.
+	 claim that you wrote the original software. If you use this software
+	 in a product, an acknowledgment in the product documentation would be
+	 appreciated but is not required.
   2. Altered source versions must be plainly marked as such, and must not be
-     misrepresented as being the original software.
+	 misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 
   Mark Adler    madler@alumni.caltech.edu
@@ -30,14 +30,14 @@
 #ifndef __PUFF_H
 #define __PUFF_H
 
-#include "q_shared.h"			/* for definitions of the <stdint.h> types */
+#include "q_shared.h" /* for definitions of the <stdint.h> types */
 
 /*
  * See puff.c for purpose and usage.
  */
-int32_t puff(uint8_t  *dest,		/* pointer to destination pointer */
-             uint32_t *destlen,		/* amount of output space */
-             uint8_t  *source,		/* pointer to source data pointer */
-             uint32_t *sourcelen);	/* amount of input available */
+int32_t puff(uint8_t  *dest,	   /* pointer to destination pointer */
+			 uint32_t *destlen,	   /* amount of output space */
+			 uint8_t  *source,	   /* pointer to source data pointer */
+			 uint32_t *sourcelen); /* amount of input available */
 
 #endif // __PUFF_H

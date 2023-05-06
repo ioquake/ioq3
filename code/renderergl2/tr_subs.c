@@ -23,10 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_local.h"
 
-void QDECL Com_Printf( const char *msg, ... )
-{
-	va_list         argptr;
-	char            text[1024];
+void QDECL Com_Printf(const char *msg, ...) {
+	va_list argptr;
+	char	text[1024];
 
 	va_start(argptr, msg);
 	Q_vsnprintf(text, sizeof(text), msg, argptr);
@@ -35,10 +34,9 @@ void QDECL Com_Printf( const char *msg, ... )
 	ri.Printf(PRINT_ALL, "%s", text);
 }
 
-void QDECL Com_Error( int level, const char *error, ... )
-{
-	va_list         argptr;
-	char            text[1024];
+void QDECL Com_Error(int level, const char *error, ...) {
+	va_list argptr;
+	char	text[1024];
 
 	va_start(argptr, error);
 	Q_vsnprintf(text, sizeof(text), error, argptr);

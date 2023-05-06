@@ -25,15 +25,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_platform.h"
 
 #if idx64
-  #define EAX "%%rax"
-  #define EBX "%%rbx"
-  #define ESP "%%rsp"
-  #define EDI "%%rdi"
+#define EAX "%%rax"
+#define EBX "%%rbx"
+#define ESP "%%rsp"
+#define EDI "%%rdi"
 #else
-  #define EAX "%%eax"
-  #define EBX "%%ebx"
-  #define ESP "%%esp"
-  #define EDI "%%edi"
+#define EAX "%%eax"
+#define EBX "%%ebx"
+#define ESP "%%esp"
+#define EDI "%%edi"
 #endif
 
 #endif

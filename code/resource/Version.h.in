@@ -1,0 +1,8 @@
+// Generated through CMake, do not modify!
+
+#ifndef VERSION_H
+#define VERSION_H
+
+#define BUILD_VERSION "@BUILD_VERSION@"
+
+#endif /* VERSION_H */

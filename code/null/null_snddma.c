@@ -26,59 +26,30 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
-qboolean SNDDMA_Init(void)
-{
-	return qfalse;
-}
+qboolean SNDDMA_Init(void) { return qfalse; }
 
-int	SNDDMA_GetDMAPos(void)
-{
-	return 0;
-}
+int SNDDMA_GetDMAPos(void) { return 0; }
 
-void SNDDMA_Shutdown(void)
-{
-}
+void SNDDMA_Shutdown(void) {}
 
-void SNDDMA_BeginPainting (void)
-{
-}
+void SNDDMA_BeginPainting(void) {}
 
-void SNDDMA_Submit(void)
-{
-}
+void SNDDMA_Submit(void) {}
 
 #ifdef USE_VOIP
-void SNDDMA_StartCapture(void)
-{
-}
+void SNDDMA_StartCapture(void) {}
 
-int SNDDMA_AvailableCaptureSamples(void)
-{
-	return 0;
-}
+int SNDDMA_AvailableCaptureSamples(void) { return 0; }
 
-void SNDDMA_Capture(int samples, byte *data)
-{
-}
+void SNDDMA_Capture(int samples, byte *data) {}
 
-void SNDDMA_StopCapture(void)
-{
-}
+void SNDDMA_StopCapture(void) {}
 
-void SNDDMA_MasterGain( float val )
-{
-}
+void SNDDMA_MasterGain(float val) {}
 #endif
 
+sfxHandle_t S_RegisterSound(const char *name, qboolean compressed) { return 0; }
 
-sfxHandle_t S_RegisterSound( const char *name, qboolean compressed ) 
-{
-	return 0;
-}
+void S_StartLocalSound(sfxHandle_t sfxHandle, int channelNum) {}
 
-void S_StartLocalSound( sfxHandle_t sfxHandle, int channelNum ) {
-}
-
-void S_ClearSoundBuffer( void ) {
-}
+void S_ClearSoundBuffer(void) {}

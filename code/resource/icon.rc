@@ -1,0 +1,25 @@
+#include <windows.h> // include for version info constants
+
+107 ICON "icon.ico"
+
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILETYPE VFT_APP
+{
+  BLOCK "StringFileInfo"
+	 {
+		 BLOCK "040904E4"
+		 {
+			 VALUE "CompanyName", "SpaceShifter"
+			 VALUE "FileVersion", "1.0"
+			 VALUE "FileDescription", "Cosm Game"
+			 VALUE "InternalName", "Cosm.exe"
+			 VALUE "LegalCopyright", "SpaceShifter, Tiaan Basson"
+			 VALUE "LegalTrademarks", ""
+			 VALUE "OriginalFilename", "Cosm.exe"
+			 VALUE "ProductName", "Cosm"
+			 VALUE "ProductVersion", "1.0"
+		 }
+	 }
+}

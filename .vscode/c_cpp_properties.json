@@ -1,0 +1,72 @@
+{
+	"configurations": [
+		{
+			"name": "MSYS2 clang",
+			"compilerPath": "D:/msys64/clang64/bin/clang.exe",
+			"cStandard": "c17",
+			"cppStandard": "c++17",
+			"intelliSenseMode": "clang-x64",
+			"compileCommands": "${config:cmake.buildDirectory}/compile_commands.json",
+			"configurationProvider": "ms-vscode.cmake-tools",
+			"includePath": [
+				"${workspaceFolder}",
+				"${workspaceFolder}/source/**",
+				"${workspaceFolder}/source/asm/**",
+				"${workspaceFolder}/source/autoupdater/**",
+				"${workspaceFolder}/source/botlib/**",
+				"${workspaceFolder}/source/cgame/**",
+				"${workspaceFolder}/source/null/**",
+				"${workspaceFolder}/source/q3_ui/**",
+				"${workspaceFolder}/source/qcommon/**",
+				"${workspaceFolder}/source/renderercommon/**",
+				"${workspaceFolder}/source/renderergl1/**",
+				"${workspaceFolder}/source/renderergl2/**",
+				"${workspaceFolder}/source/sdl/**",
+				"${workspaceFolder}/source/server/**",
+				"${workspaceFolder}/source/sys/**",
+				"${workspaceFolder}/source/tools/**",
+				"${workspaceFolder}/source/ui/**",
+				"D:/msys64/clang64",
+				"D:/msys64/clang64/include",
+				"D:/msys64/clang64/include/**",
+				"D:/msys64/clang64/include/c++/v1/**",
+				"D:/msys64/clang64/lib/clang/15.0.7/include"
+			],
+			"defines": [
+				"_DEBUG",
+				"UNICODE",
+				"_UNICODE"
+			],
+			"browse": {
+				"path": [
+					"${workspaceFolder}",
+					"${workspaceFolder}/source/**",
+					"${workspaceFolder}/source/asm/**",
+					"${workspaceFolder}/source/autoupdater/**",
+					"${workspaceFolder}/source/botlib/**",
+					"${workspaceFolder}/source/cgame/**",
+					"${workspaceFolder}/source/null/**",
+					"${workspaceFolder}/source/q3_ui/**",
+					"${workspaceFolder}/source/qcommon/**",
+					"${workspaceFolder}/source/renderercommon/**",
+					"${workspaceFolder}/source/renderergl1/**",
+					"${workspaceFolder}/source/renderergl2/**",
+					"${workspaceFolder}/source/sdl/**",
+					"${workspaceFolder}/source/server/**",
+					"${workspaceFolder}/source/sys/**",
+					"${workspaceFolder}/source/tools/**",
+					"${workspaceFolder}/source/ui/**",
+					"D:/msys64/clang64",
+					"D:/msys64/clang64/include",
+					"D:/msys64/clang64/include/**",
+					"D:/msys64/clang64/include/c++/v1/**",
+					"D:/msys64/clang64/lib/clang/15.0.7/include"
+				],
+				"limitSymbolsToIncludedHeaders": true,
+				"databaseFilename": ""
+			},
+			"windowsSdkVersion": "10.0.19041.0"
+		}
+	],
+	"version": 4
+}

@@ -32,6 +32,5 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 extern int notleader[MAX_CLIENTS];
 
-int BotMatchMessage(bot_state_t *bs, char *message);
+int	 BotMatchMessage(bot_state_t *bs, char *message);
 void BotPrintTeamGoal(bot_state_t *bs);
-

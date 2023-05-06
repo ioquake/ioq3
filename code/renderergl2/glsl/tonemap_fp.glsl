@@ -3,7 +3,6 @@ uniform sampler2D u_LevelsMap;
 
 uniform vec4      u_Color;
 
-
 uniform vec2      u_AutoExposureMinMax;
 uniform vec3      u_ToneMinAvgMaxLinear;
 

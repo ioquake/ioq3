@@ -58,4 +58,3 @@ void read_rsakey(rsa_key *key, const char *fname)
         fail("rsa_import for '%s' failed: %s", fname, error_to_string(rc));
     }
 }
-

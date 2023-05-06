@@ -1,4 +1,5 @@
 build
+app
 Makefile.local
 *.swp
 *tags

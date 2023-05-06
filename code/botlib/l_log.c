@@ -36,17 +36,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "botlib.h"
-#include "be_interface.h"			//for botimport.Print
+#include "be_interface.h" //for botimport.Print
 #include "l_libvar.h"
 #include "l_log.h"
 
-#define MAX_LOGFILENAMESIZE		1024
+#define MAX_LOGFILENAMESIZE 1024
 
-typedef struct logfile_s
-{
-	char filename[MAX_LOGFILENAMESIZE];
+typedef struct logfile_s {
+	char  filename[MAX_LOGFILENAMESIZE];
 	FILE *fp;
-	int numwrites;
+	int	  numwrites;
 } logfile_t;
 
 static logfile_t logfile;
@@ -57,117 +56,99 @@ static logfile_t logfile;
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void Log_Open(char *filename)
-{
+void Log_Open(char *filename) {
 	char *ospath;
 	if (!LibVarValue("log", "0")) return;
-	if (!filename || !strlen(filename))
-	{
+	if (!filename || !strlen(filename)) {
 		botimport.Print(PRT_MESSAGE, "openlog <filename>\n");
 		return;
-	} //end if
-	if (logfile.fp)
-	{
+	} // end if
+	if (logfile.fp) {
 		botimport.Print(PRT_ERROR, "log file %s is already opened\n", logfile.filename);
 		return;
-	} //end if
-	ospath = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), Cvar_VariableString("fs_game"), filename);
+	} // end if
+	ospath	   = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), Cvar_VariableString("fs_game"), filename);
 	logfile.fp = fopen(ospath, "wb");
-	if (!logfile.fp)
-	{
+	if (!logfile.fp) {
 		botimport.Print(PRT_ERROR, "can't open the log file %s\n", filename);
 		return;
-	} //end if
+	} // end if
 	Q_strncpyz(logfile.filename, filename, MAX_LOGFILENAMESIZE);
 	botimport.Print(PRT_MESSAGE, "Opened log %s\n", logfile.filename);
-} //end of the function Log_Create
+} // end of the function Log_Create
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void Log_Close(void)
-{
+void Log_Close(void) {
 	if (!logfile.fp) return;
-	if (fclose(logfile.fp))
-	{
+	if (fclose(logfile.fp)) {
 		botimport.Print(PRT_ERROR, "can't close log file %s\n", logfile.filename);
 		return;
-	} //end if
+	} // end if
 	logfile.fp = NULL;
 	botimport.Print(PRT_MESSAGE, "Closed log %s\n", logfile.filename);
-} //end of the function Log_Close
+} // end of the function Log_Close
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void Log_Shutdown(void)
-{
+void Log_Shutdown(void) {
 	if (logfile.fp) Log_Close();
-} //end of the function Log_Shutdown
+} // end of the function Log_Shutdown
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void QDECL Log_Write(char *fmt, ...)
-{
+void QDECL Log_Write(char *fmt, ...) {
 	va_list ap;
 
 	if (!logfile.fp) return;
 	va_start(ap, fmt);
 	vfprintf(logfile.fp, fmt, ap);
 	va_end(ap);
-	//fprintf(logfile.fp, "\r\n");
+	// fprintf(logfile.fp, "\r\n");
 	fflush(logfile.fp);
-} //end of the function Log_Write
+} // end of the function Log_Write
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void QDECL Log_WriteTimeStamped(char *fmt, ...)
-{
+void QDECL Log_WriteTimeStamped(char *fmt, ...) {
 	va_list ap;
 
 	if (!logfile.fp) return;
-	fprintf(logfile.fp, "%d   %02d:%02d:%02d:%02d   ",
-					logfile.numwrites,
-					(int) (botlibglobals.time / 60 / 60),
-					(int) (botlibglobals.time / 60),
-					(int) (botlibglobals.time),
-					(int) ((int) (botlibglobals.time * 100)) -
-							((int) botlibglobals.time) * 100);
+	fprintf(logfile.fp, "%d   %02d:%02d:%02d:%02d   ", logfile.numwrites, (int)(botlibglobals.time / 60 / 60),
+			(int)(botlibglobals.time / 60), (int)(botlibglobals.time),
+			(int)((int)(botlibglobals.time * 100)) - ((int)botlibglobals.time) * 100);
 	va_start(ap, fmt);
 	vfprintf(logfile.fp, fmt, ap);
 	va_end(ap);
 	fprintf(logfile.fp, "\r\n");
 	logfile.numwrites++;
 	fflush(logfile.fp);
-} //end of the function Log_Write
+} // end of the function Log_Write
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-FILE *Log_FilePointer(void)
-{
-	return logfile.fp;
-} //end of the function Log_FilePointer
+FILE *Log_FilePointer(void) { return logfile.fp; } // end of the function Log_FilePointer
 //===========================================================================
 //
 // Parameter:				-
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void Log_Flush(void)
-{
+void Log_Flush(void) {
 	if (logfile.fp) fflush(logfile.fp);
-} //end of the function Log_Flush
-
+} // end of the function Log_Flush

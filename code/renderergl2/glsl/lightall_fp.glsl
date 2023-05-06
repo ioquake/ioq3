@@ -83,7 +83,7 @@ float SampleDepth(sampler2D normalMap, vec2 t)
 
 float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 {
-	const int linearSearchSteps = 16;
+	const int linearSearchSteps = 32;
 	const int binarySearchSteps = 6;
 
 	// current size of search window
@@ -149,7 +149,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 
 float LightRay(vec2 dp, vec2 ds, sampler2D normalMap)
 {
-	const int linearSearchSteps = 16;
+	const int linearSearchSteps = 32;
 
 	// current size of search window
 	float size = 1.0 / float(linearSearchSteps);
