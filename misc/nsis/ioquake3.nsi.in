@@ -227,9 +227,9 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${StartMenuShortcuts} "Create shortcuts in the start menu."
   !insertmacro MUI_DESCRIPTION_TEXT ${ProtocolHandler} "The protocol handler lets you connect to a game by clicking a link in a web browser."
 !ifdef USE_OPENAL_DLOPEN
-  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "OpenAL files."
+  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "Advanced audio mixer that supports surround sound."
 !endif
 !ifdef USE_CURL_DLOPEN
-  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "libcurl files."
+  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "Used for HTTP file downloads."
 !endif
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
