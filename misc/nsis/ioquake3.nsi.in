@@ -7,6 +7,8 @@
 ;
 ; you have to copy OpenAL32.dll here manually
 
+!define VERSION "XXXVERSIONXXX"
+
 !define MULTIUSER_MUI
 !define MULTIUSER_EXECUTIONLEVEL Highest
 !define MULTIUSER_INSTALLMODE_COMMANDLINE
@@ -24,7 +26,7 @@
 Name "ioquake3"
 
 ; The file to write
-OutFile "ioquake3-XXXVERSIONXXX-XXXRELEASEXXX.x86.exe"
+OutFile "ioquake3-${VERSION}-XXXRELEASEXXX.x86.exe"
 
 ; The default installation directory
 ; set by Multiuser.nsh
@@ -71,7 +73,7 @@ Function un.onInit
 FunctionEnd
 
 ; The stuff to install
-Section "ioquake3 (required)" ioquake3
+Section "ioquake3 ${VERSION} (required)" ioquake3
 
   SectionIn RO
 
@@ -114,6 +116,7 @@ Section "ioquake3 (required)" ioquake3
 
   ; Write the uninstall keys for Windows
   WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "DisplayName" "ioquake3"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "DisplayVersion" "${VERSION}"
   WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "NoModify" 1
   WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "NoRepair" 1
