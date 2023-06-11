@@ -78,6 +78,7 @@ Section "ioquake3 (required)" ioquake3
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
 
+  File "../../build/release-mingw32-x86/SDL2.dll"
 !ifndef USE_INTERNAL_ZLIB
   File "zlib1.dll"
 !endif
@@ -139,14 +140,6 @@ Section "Protocol Handler" ProtocolHandler
 
 SectionEnd
 
-Section "SDL2.dll" SDL
-
-  SetOutPath $INSTDIR
-
-  File "../../build/release-mingw32-x86/SDL2.dll"
-
-SectionEnd
-
 !ifdef USE_OPENAL_DLOPEN
 Section "OpenAL-Soft library" OpenAL
 
@@ -197,6 +190,7 @@ Section "Uninstall"
   Delete $INSTDIR\id-readme.txt
   Delete $INSTDIR\voip-readme.txt
 
+  Delete $INSTDIR\SDL2.dll
 !ifndef USE_INTERNAL_ZLIB
   Delete $INSTDIR\zlib1.dll
 !endif
@@ -204,7 +198,6 @@ Section "Uninstall"
   Delete $INSTDIR\jpeg8c.dll
 !endif
 
-  Delete $INSTDIR\SDL2.dll
 !ifdef USE_OPENAL_DLOPEN
   Delete $INSTDIR\OpenAL32.dll
 !endif
@@ -230,7 +223,6 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${ioquake3} "The game executables."
   !insertmacro MUI_DESCRIPTION_TEXT ${StartMenuShortcuts} "Create shortcuts in the start menu."
   !insertmacro MUI_DESCRIPTION_TEXT ${ProtocolHandler} "The protocol handler lets you connect to a game by clicking a link in a web browser."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SDL} "SDL files."
 !ifdef USE_OPENAL_DLOPEN
   !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "OpenAL files."
 !endif
