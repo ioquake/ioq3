@@ -22,6 +22,8 @@
 !include "MUI2.nsh"
 !define MUI_ICON "../quake3.ico"
 
+!include LogicLib.nsh
+
 ; The name of the installer
 Name "ioquake3"
 
@@ -172,7 +174,11 @@ Section "Uninstall"
   ; Remove registry keys
   DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3"
   DeleteRegKey SHCTX "Software\ioquake3"
-  DeleteRegKey SHCTX "Software\Classes\quake3"
+
+  ReadRegStr $0 SHCTX "Software\Classes\quake3\shell\open\command" ""
+  ${If} $0 == '"$INSTDIR\ioquake3.x86.exe" --uri "%1"'
+    DeleteRegKey SHCTX "Software\Classes\quake3"
+  ${EndIf}
 
   ; Remove files and uninstaller
   Delete $INSTDIR\baseq3\cgamex86.dll
