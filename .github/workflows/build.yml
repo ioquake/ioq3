@@ -6,7 +6,7 @@ jobs:
     name: Linux
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install Dependencies
       run: |
         sudo apt-get update
@@ -15,7 +15,7 @@ jobs:
       run: make release
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: Linux
         path: build/*.zip
@@ -23,27 +23,27 @@ jobs:
     name: Windows
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Compile
       run: |
         choco install zip
         make release
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: Windows
         path: build/*.zip
   macos:
     name: macOS
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Compile
       run: make release
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: macOS
         path: build/*.zip
