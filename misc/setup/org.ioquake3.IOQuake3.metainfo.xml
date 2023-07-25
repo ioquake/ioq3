@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop-application">
+  <id>org.ioquake3.IOQuake3</id>
+  <launchable type="desktop-id">ioquake3.desktop</launchable>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0</project_license>
+  <name>ioquake3</name>
+  <summary>Free and open-source Quake 3 based engine</summary>
+  <description>
+    <p>
+      ioquake3 is a free and open-source software first person shooter engine based on the Quake 3: Arena and Quake 3: Team Arena source code.
+    </p>
+    <p>
+      The source code is licensed under the GPL version 2, and was first released under that license by id software on August 20th, 2005. Since then,
+      our dedicated team has been working hard to improve it, fixing bugs, and adding just the right new features to make the engine even better than before.
+    </p>
+  </description>
+  <url type="homepage">https://ioquake3.org</url>
+  <url type="bugtracker">https://github.com/ioquake/ioq3/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://media.indiedb.com/images/engines/1/1/91/6l2hb3o.jpg</image>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://media.indiedb.com/images/engines/1/1/91/ioquake3.jpg</image>
+    </screenshot>
+  </screenshots>
+  <developer_name>The ioquake Group</developer_name>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-fantasy">intense</content_attribute>
+    <content_attribute id="violence-bloodshed">intense</content_attribute>
+    <content_attribute id="social-chat">intense</content_attribute>
+  </content_rating>
+</component>
