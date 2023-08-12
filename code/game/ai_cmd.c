@@ -208,7 +208,7 @@ float BotGetTime(bot_match_t *match) {
 		//match it to find out if the time is in seconds or minutes
 		if (trap_BotFindMatch(timestring, &timematch, MTCONTEXT_TIME)) {
 			if (timematch.type == MSG_FOREVER) {
-				t = FLT_MAX; // 3.402823466e+38 minutes
+				t = FLT_MAX; // 3.402823466e+38 seconds
 			}
 			else if (timematch.type == MSG_FORAWHILE) {
 				t = 10 * 60; // 10 minutes
