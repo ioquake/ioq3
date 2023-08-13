@@ -2306,7 +2306,7 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 					} //end while
 					//step over the trailing escape char
 					if (*msgptr) msgptr++;
-					if (num > MAX_MATCHVARIABLES)
+					if (num >= MAX_MATCHVARIABLES)
 					{
 						botimport.Print(PRT_ERROR, "BotConstructChat: message %s variable %d out of range\n", message, num);
 						return qfalse;
