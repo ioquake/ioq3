@@ -375,13 +375,14 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     OPTIMIZE = $(OPTIMIZEVM) -ffast-math
     HAVE_VM_COMPILED=true
   else
-  ifeq ($(ARCH),ppc)
-    ALTIVEC_CFLAGS = -maltivec
+  ifneq ($(findstring $(ARCH),ppc ppc64 ppc64le),)
     HAVE_VM_COMPILED=true
   endif
-  ifneq ($(findstring $(ARCH),ppc64 ppc64le),)
-    ALTIVEC_CFLAGS = -maltivec
-    HAVE_VM_COMPILED=true
+  ifeq ($(ARCH),ppc)
+    OPTIMIZE += -mcpu=powerpc
+  endif
+  ifeq ($(ARCH),ppc64)
+    OPTIMIZE += -mcpu=power7
   endif
   ifeq ($(ARCH),ppc64le)
     OPTIMIZE += -mcpu=power8
@@ -433,10 +434,6 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   ifeq ($(ARCH),x86)
     # linux32 make ...
     BASE_CFLAGS += -m32
-  else
-  ifneq ($(findstring $(ARCH),ppc64 ppc64le),)
-    BASE_CFLAGS += -m64
-  endif
   endif
 else # ifeq Linux
 
