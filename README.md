@@ -82,7 +82,7 @@ For Windows,
   1. Please refer to the excellent instructions here:
      https://ioquake3.org/help/building-ioquake3/
 
-For macOS, building a Universal Binary (x86_64, x86, ppc)
+For macOS, building a Universal Binary (macOS 10.5 to 10.8, x86_64, x86, ppc)
   1. Install MacOSX SDK packages from XCode.  For maximum compatibility,
      install MacOSX10.5.sdk and MacOSX10.6.sdk.
   2. Change to the directory containing this README file.
@@ -90,7 +90,7 @@ For macOS, building a Universal Binary (x86_64, x86, ppc)
   4. Copy the resulting ioquake3.app in /build/release-darwin-universal
      to your /Applications/ioquake3 folder.
 
-For Mac OS X, building a Universal Binary 2 (arm64, x86_64)
+For macOS, building a Universal Binary 2 (macOS 10.9+, arm64, x86_64)
   1. Install MacOSX SDK packages from XCode.  Building for arm64 requires
      MacOSX11.sdk or later.
   2. Change to the directory containing this README file.
@@ -150,6 +150,7 @@ Makefile.local:
   USE_INTERNAL_JPEG    - build and link against internal JPEG library
   USE_INTERNAL_OGG     - build and link against internal ogg library
   USE_INTERNAL_OPUS    - build and link against internal opus/opusfile libraries
+  USE_INTERNAL_VORBIS  - build and link against internal Vorbis library
   USE_LOCAL_HEADERS    - use headers local to ioq3 instead of system ones
   DEBUG_CFLAGS         - C compiler flags to use for building debug version
   COPYDIR              - the target installation directory

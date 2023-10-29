@@ -444,9 +444,30 @@ ifeq ($(PLATFORM),darwin)
 
   # Default minimum Mac OS X version
   ifeq ($(MACOSX_VERSION_MIN),)
-    MACOSX_VERSION_MIN=10.7
+    MACOSX_VERSION_MIN=10.9
     ifneq ($(findstring $(ARCH),ppc ppc64),)
       MACOSX_VERSION_MIN=10.5
+    endif
+    ifeq ($(ARCH),x86)
+      MACOSX_VERSION_MIN=10.6
+    endif
+    ifeq ($(ARCH),x86_64)
+      # trying to find default SDK version is hard
+      # macOS 10.15 requires -sdk macosx but 10.11 doesn't support it
+      # macOS 10.6 doesn't have -show-sdk-version
+      DEFAULT_SDK=$(shell xcrun -sdk macosx -show-sdk-version 2> /dev/null)
+      ifeq ($(DEFAULT_SDK),)
+        DEFAULT_SDK=$(shell xcrun -show-sdk-version 2> /dev/null)
+      endif
+      ifeq ($(DEFAULT_SDK),)
+        $(error Error: Unable to determine macOS SDK version.  On macOS 10.6 to 10.8 run: make MACOSX_VERSION_MIN=10.6  On macOS 10.9 or later run: make MACOSX_VERSION_MIN=10.9 );
+      endif
+
+      ifneq ($(findstring $(DEFAULT_SDK),10.6 10.7 10.8),)
+        MACOSX_VERSION_MIN=10.6
+      else
+        MACOSX_VERSION_MIN=10.9
+      endif
     endif
     ifeq ($(ARCH),arm64)
       MACOSX_VERSION_MIN=11.0
@@ -561,20 +582,39 @@ ifeq ($(PLATFORM),darwin)
   RENDERER_LIBS += -framework OpenGL
 
   ifeq ($(USE_LOCAL_HEADERS),1)
-    # libSDL2-2.0.0.dylib for PPC is SDL 2.0.1 + changes to compile
-    ifneq ($(findstring $(ARCH),ppc ppc64),)
-      BASE_CFLAGS += -I$(SDLHDIR)/include-macppc
-    else
+    ifeq ($(shell test $(MAC_OS_X_VERSION_MIN_REQUIRED) -ge 1090; echo $$?),0)
+      # Universal Binary 2 - for running on macOS 10.9 or later
+      # x86_64 (10.9 or later), arm64 (11.0 or later)
+      MACLIBSDIR=$(LIBSDIR)/macosx-ub2
       BASE_CFLAGS += -I$(SDLHDIR)/include
+    else
+      # Universal Binary - for running on Mac OS X 10.5 or later
+      # ppc (10.5/10.6), x86 (10.6 or later), x86_64 (10.6 or later)
+      #
+      # x86/x86_64 on 10.5 will run the ppc build.
+      #
+      # SDL 2.0.1,  last with Mac OS X PowerPC
+      # SDL 2.0.4,  last with Mac OS X 10.5 (x86/x86_64)
+      # SDL 2.0.22, last with Mac OS X 10.6 (x86/x86_64)
+      #
+      # code/libs/macosx-ub/libSDL2-2.0.0.dylib contents
+      # - ppc build is SDL 2.0.1 with a header change so it compiles
+      # - x86/x86_64 build are SDL 2.0.22
+      MACLIBSDIR=$(LIBSDIR)/macosx-ub
+      ifneq ($(findstring $(ARCH),ppc ppc64),)
+        BASE_CFLAGS += -I$(SDLHDIR)/include-macppc
+      else
+        BASE_CFLAGS += -I$(SDLHDIR)/include-2.0.22
+      endif
     endif
 
     # We copy sdlmain before ranlib'ing it so that subversion doesn't think
     #  the file has been modified by each build.
     LIBSDLMAIN=$(B)/libSDL2main.a
-    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
-    CLIENT_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-    RENDERER_LIBS += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+    LIBSDLMAINSRC=$(MACLIBSDIR)/libSDL2main.a
+    CLIENT_LIBS += $(MACLIBSDIR)/libSDL2-2.0.0.dylib
+    RENDERER_LIBS += $(MACLIBSDIR)/libSDL2-2.0.0.dylib
+    CLIENT_EXTRA_FILES += $(MACLIBSDIR)/libSDL2-2.0.0.dylib
   else
     BASE_CFLAGS += -I/Library/Frameworks/SDL2.framework/Headers
     CLIENT_LIBS += -framework SDL2
@@ -1029,7 +1069,6 @@ endif
 
 ifneq ($(HAVE_VM_COMPILED),true)
   BASE_CFLAGS += -DNO_VM_COMPILED
-  BUILD_GAME_QVM=0
 endif
 
 TARGETS =

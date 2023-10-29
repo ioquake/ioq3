@@ -383,7 +383,7 @@ void S_PaintChannelFromWavelet( channel_t *ch, sfx_t *sc, int count, int sampleO
 	}
 
 	if (i!=sfxScratchIndex || sfxScratchPointer != sc) {
-		S_AdpcmGetSamples( chunk, sfxScratchBuffer );
+		decodeWavelet(chunk, sfxScratchBuffer);
 		sfxScratchIndex = i;
 		sfxScratchPointer = sc;
 	}

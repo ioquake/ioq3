@@ -16,7 +16,7 @@ unset ARM64_SDK
 unset ARM64_CFLAGS
 unset ARM64_MACOSX_VERSION_MIN
 
-X86_64_MACOSX_VERSION_MIN="10.7"
+X86_64_MACOSX_VERSION_MIN="10.9"
 ARM64_MACOSX_VERSION_MIN="11.0"
 
 echo "Building X86_64 Client/Dedicated Server"
@@ -28,13 +28,19 @@ if [ "$1" == "" ]; then
 fi
 
 # For parallel make on multicore boxes...
-NCPU=`sysctl -n hw.ncpu`
+SYSCTL_PATH=`command -v sysctl 2> /dev/null`
+if [ -n "$SYSCTL_PATH" ]; then
+	NCPU=`sysctl -n hw.ncpu`
+else
+	# osxcross on linux
+	NCPU=`nproc`
+fi
 
 # x86_64 client and server
 #if [ -d build/release-release-x86_64 ]; then
 #	rm -r build/release-darwin-x86_64
 #fi
-(ARCH=x86_64 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=x86_64 CFLAGS=$X86_64_CFLAGS MACOSX_VERSION_MIN=$X86_64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo;echo
 
@@ -42,12 +48,12 @@ echo;echo
 #if [ -d build/release-release-arm64 ]; then
 #	rm -r build/release-darwin-arm64
 #fi
-(ARCH=arm64 CFLAGS=$ARM64_CFLAGS MACOSX_VERSION_MIN=$ARM64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
+(PLATFORM=darwin ARCH=arm64 CFLAGS=$ARM64_CFLAGS MACOSX_VERSION_MIN=$ARM64_MACOSX_VERSION_MIN make -j$NCPU) || exit 1;
 
 echo
 
 # use the following shell script to build a universal 2 application bundle
-export MACOSX_DEPLOYMENT_TARGET="10.7"
+export MACOSX_DEPLOYMENT_TARGET="10.9"
 export MACOSX_DEPLOYMENT_TARGET_X86_64="$X86_64_MACOSX_VERSION_MIN"
 export MACOSX_DEPLOYMENT_TARGET_ARM64="$ARM64_MACOSX_VERSION_MIN"
 

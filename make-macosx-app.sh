@@ -141,6 +141,16 @@ if [ "${CURRENT_ARCH}" != "" ]; then
 	SEARCH_ARCHS="${CURRENT_ARCH}"
 fi
 
+# select SDL run-time dylib
+if [ "${MACOSX_DEPLOYMENT_TARGET}" = "10.5" ] \
+  || [ "${MACOSX_DEPLOYMENT_TARGET}" = "10.6" ] \
+  || [ "${MACOSX_DEPLOYMENT_TARGET}" = "10.7" ] \
+  || [ "${MACOSX_DEPLOYMENT_TARGET}" = "10.8" ]; then
+  UNIVERSAL_BINARY=1
+else
+  UNIVERSAL_BINARY=2
+fi
+
 AVAILABLE_ARCHS=""
 
 IOQ3_VERSION=`grep '^VERSION=' Makefile | sed -e 's/.*=\(.*\)/\1/'`
@@ -186,6 +196,7 @@ CONTENTS_FOLDER_PATH="${WRAPPER_NAME}/Contents"
 UNLOCALIZED_RESOURCES_FOLDER_PATH="${CONTENTS_FOLDER_PATH}/Resources"
 EXECUTABLE_FOLDER_PATH="${CONTENTS_FOLDER_PATH}/MacOS"
 EXECUTABLE_NAME="${PRODUCT_NAME}"
+PROTOCOL_HANDLER="quake3"
 
 # loop through the architectures to build string lists for each universal binary
 for ARCH in $SEARCH_ARCHS; do
@@ -298,7 +309,11 @@ if [ ! -d "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}" ]; then
 fi
 
 # copy and generate some application bundle resources
-cp code/libs/macosx/*.dylib "${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}"
+if [ $UNIVERSAL_BINARY -eq 2 ]; then
+	cp code/libs/macosx-ub2/*.dylib "${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}"
+else
+	cp code/libs/macosx-ub/*.dylib "${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}"
+fi
 cp ${ICNSDIR}/${ICNS} "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/$ICNS" || exit 1;
 echo -n ${PKGINFO} > "${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/PkgInfo" || exit 1;
 
@@ -364,6 +379,21 @@ if [ -n "${MACOSX_DEPLOYMENT_TARGET_PPC}" ] || [ -n "${MACOSX_DEPLOYMENT_TARGET_
 	PLIST="${PLIST}
     </dict>"
 fi
+
+	if [ -n "${PROTOCOL_HANDLER}" ]; then
+	PLIST="${PLIST}
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>${PRODUCT_NAME}</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>${PROTOCOL_HANDLER}</string>
+        </array>
+      </dict>
+    </array>"
+	fi
 
 PLIST="${PLIST}
     <key>NSHumanReadableCopyright</key>
