@@ -41,6 +41,10 @@ void G_BounceMissile( gentity_t *ent, trace_t *trace ) {
 	dot = DotProduct( velocity, trace->plane.normal );
 	VectorMA( velocity, -2*dot, trace->plane.normal, ent->s.pos.trDelta );
 
+	// grenades explode 0.5 seconds after hitting a wall
+	if ( !strcmp( ent->classname, "grenade" ) && ent->nextthink > level.time + 500 )
+		ent->nextthink = level.time + 500;
+
 	if ( ent->s.eFlags & EF_BOUNCE_HALF ) {
 		VectorScale( ent->s.pos.trDelta, 0.65, ent->s.pos.trDelta );
 		// check for stop
