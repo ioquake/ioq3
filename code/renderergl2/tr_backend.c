@@ -1197,6 +1197,13 @@ const void	*RB_DrawBuffer( const void *data ) {
 	if ( r_clear->integer ) {
 		qglClearColor( 1, 0, 0.5, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+		if (glRefConfig.framebufferObject && tr.renderFbo) {
+			FBO_Bind(tr.renderFbo);
+
+			qglClearColor( 1, 0, 0.5, 1 );
+			qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+		}
 	}
 
 	return (const void *)(cmd + 1);
