@@ -104,6 +104,7 @@ typedef struct bot_movestate_s
 libvar_t *sv_maxstep;
 libvar_t *sv_maxbarrier;
 libvar_t *sv_gravity;
+// TODO: refactor rocket launcher into siege cannon
 libvar_t *weapindex_rocketlauncher;
 libvar_t *weapindex_bfg10k;
 libvar_t *weapindex_grapple;
@@ -2746,6 +2747,7 @@ bot_moveresult_t BotTravel_RocketJump(bot_movestate_t *ms, aas_reachability_t *r
 	EA_View(ms->client, result.ideal_viewangles);
 	//view is important for the movement
 	result.flags |= MOVERESULT_MOVEMENTVIEWSET;
+	// TODO: refactor rocket launcher into siege cannon
 	//select the rocket launcher
 	EA_SelectWeapon(ms->client, (int) weapindex_rocketlauncher->value);
 	//weapon is used for movement
@@ -3528,6 +3530,7 @@ int BotSetupMoveAI(void)
 	sv_maxstep = LibVar("sv_step", "18");
 	sv_maxbarrier = LibVar("sv_maxbarrier", "32");
 	sv_gravity = LibVar("sv_gravity", "800");
+	// TODO: refactor rocket launcher into siege cannon
 	weapindex_rocketlauncher = LibVar("weapindex_rocketlauncher", "5");
 	weapindex_bfg10k = LibVar("weapindex_bfg10k", "9");
 	weapindex_grapple = LibVar("weapindex_grapple", "10");

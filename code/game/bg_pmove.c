@@ -1606,7 +1606,7 @@ static void PM_Weapon( void ) {
 	}
 
 	// check for fire
-	if ( ! (pm->cmd.buttons & BUTTON_ATTACK) ) {
+	if ( ! (pm->cmd.buttons & ( BUTTON_ATTACK | BUTTON_ALT_ATTACK ) ) ) {
 		pm->ps->weaponTime = 0;
 		pm->ps->weaponstate = WEAPON_READY;
 		return;
@@ -1640,7 +1640,10 @@ static void PM_Weapon( void ) {
 	}
 
 	// fire weapon
-	PM_AddEvent( EV_FIRE_WEAPON );
+	if ( pm->cmd.buttons & BUTTON_ATTACK )
+		PM_AddEvent( EV_FIRE_WEAPON );
+	else
+		PM_AddEvent( EV_ALT_FIRE_WEAPON );
 
 	switch( pm->ps->weapon ) {
 	default:
@@ -1659,7 +1662,7 @@ static void PM_Weapon( void ) {
 	case WP_GRENADE_LAUNCHER:
 		addTime = 800;
 		break;
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		addTime = 800;
 		break;
 	case WP_PLASMAGUN:

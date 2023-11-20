@@ -960,6 +960,12 @@ void CL_InitInput( void ) {
 	Cmd_AddCommand ("-speed", IN_SpeedUp);
 	Cmd_AddCommand ("+attack", IN_Button0Down);
 	Cmd_AddCommand ("-attack", IN_Button0Up);
+	Cmd_AddCommand ("+fire", IN_Button0Down);
+	Cmd_AddCommand ("-fire", IN_Button0Up);
+	Cmd_AddCommand ("+altattack", IN_Button1Down);
+	Cmd_AddCommand ("-altattack", IN_Button1Up);
+	Cmd_AddCommand ("+altfire", IN_Button1Down);
+	Cmd_AddCommand ("-altfire", IN_Button1Up);
 	Cmd_AddCommand ("+button0", IN_Button0Down);
 	Cmd_AddCommand ("-button0", IN_Button0Up);
 	Cmd_AddCommand ("+button1", IN_Button1Down);

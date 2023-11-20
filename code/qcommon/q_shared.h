@@ -1228,23 +1228,25 @@ typedef struct playerState_s {
 // so they aren't game/cgame only definitions
 //
 #define	BUTTON_ATTACK		1
-#define	BUTTON_TALK			2			// displays talk balloon and disables actions
-#define	BUTTON_USE_HOLDABLE	4
-#define	BUTTON_GESTURE		8
-#define	BUTTON_WALKING		16			// walking can't just be inferred from MOVE_RUN
+#define BUTTON_ALT_ATTACK	2			// displays talk balloon and disables actions
+#define	BUTTON_TALK			4
+#define	BUTTON_USE_HOLDABLE	8
+#define	BUTTON_GESTURE		16
+#define	BUTTON_WALKING		32			// walking can't just be inferred from MOVE_RUN
 										// because a key pressed late in the frame will
 										// only generate a small move value for that frame
 										// walking will use different animations and
 										// won't generate footsteps
-#define BUTTON_AFFIRMATIVE	32
-#define	BUTTON_NEGATIVE		64
 
-#define BUTTON_GETFLAG		128
-#define BUTTON_GUARDBASE	256
-#define BUTTON_PATROL		512
-#define BUTTON_FOLLOWME		1024
+#define BUTTON_AFFIRMATIVE	64
+#define	BUTTON_NEGATIVE		128
 
-#define	BUTTON_ANY			2048			// any key whatsoever
+#define BUTTON_GETFLAG		256
+#define BUTTON_GUARDBASE	512
+#define BUTTON_PATROL		1024
+#define BUTTON_FOLLOWME		2048
+
+#define	BUTTON_ANY			4096			// any key whatsoever
 
 #define	MOVE_RUN			120			// if forwardmove or rightmove are >= MOVE_RUN,
 										// then BUTTON_WALKING should be set

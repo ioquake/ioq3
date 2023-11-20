@@ -178,6 +178,7 @@ typedef struct
 	menuaction_s		chainsaw;
 	menuaction_s		shotgun;
 	menuaction_s		grenadelauncher;
+	// TODO: refactor rocket launcher into siege cannon
 	menuaction_s		rocketlauncher;
 	menuaction_s		lightning;
 	menuaction_s		railgun;
@@ -227,6 +228,8 @@ static controls_t s_controls;
 
 static vec4_t controls_binding_color  = {1.00f, 0.43f, 0.00f, 1.00f};
 
+// TODO: +button2 to alt fire
+// TODO: refactor rocket launcher into siege cannon
 static bind_t g_bindings[] = 
 {
 	{"+scores",			"show scores",		ID_SHOWSCORES,	ANIM_IDLE,		K_TAB,			-1,		-1, -1},
@@ -305,6 +308,7 @@ static menucommon_s *g_weapons_controls[] = {
 	(menucommon_s *)&s_controls.machinegun,
 	(menucommon_s *)&s_controls.shotgun,          
 	(menucommon_s *)&s_controls.grenadelauncher,
+	// TODO: refactor rocket launcher into siege cannon
 	(menucommon_s *)&s_controls.rocketlauncher,   
 	(menucommon_s *)&s_controls.lightning,   
 	(menucommon_s *)&s_controls.railgun,          
@@ -501,7 +505,7 @@ static void Controls_UpdateModel( int anim ) {
 		break;
 
 	case ANIM_WEAPON5:
-		s_controls.playerWeapon = WP_ROCKET_LAUNCHER;
+		s_controls.playerWeapon = WP_SIEGE_CANNON;
 		break;
 
 	case ANIM_WEAPON6:
@@ -1366,6 +1370,7 @@ static void Controls_MenuInit( void )
 	s_controls.grenadelauncher.generic.ownerdraw = Controls_DrawKeyBinding;
 	s_controls.grenadelauncher.generic.id        = ID_WEAPON4;
 
+	// TODO: refactor rocket launcher into siege cannon
 	s_controls.rocketlauncher.generic.type	    = MTYPE_ACTION;
 	s_controls.rocketlauncher.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
 	s_controls.rocketlauncher.generic.callback  = Controls_ActionEvent;
@@ -1611,6 +1616,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.machinegun );
 	Menu_AddItem( &s_controls.menu, &s_controls.shotgun );
 	Menu_AddItem( &s_controls.menu, &s_controls.grenadelauncher );
+	// TODO: refactor rocket launcher into siege cannon
 	Menu_AddItem( &s_controls.menu, &s_controls.rocketlauncher );
 	Menu_AddItem( &s_controls.menu, &s_controls.lightning );
 	Menu_AddItem( &s_controls.menu, &s_controls.railgun );

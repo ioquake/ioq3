@@ -732,7 +732,7 @@ void CG_RegisterWeapon( int weaponNum ) {
 		weaponInfo->ejectBrassFunc = CG_ShotgunEjectBrass;
 		break;
 
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		weaponInfo->missileModel = trap_R_RegisterModel( "models/ammo/rocket/rocket.md3" );
 		weaponInfo->missileSound = trap_S_RegisterSound( "sound/weapons/rocket/rockfly.wav", qfalse );
 		weaponInfo->missileTrailFunc = CG_RocketTrail;
@@ -1813,7 +1813,7 @@ void CG_MissileHitWall( int weapon, int clientNum, vec3_t origin, vec3_t dir, im
 		light = 300;
 		isSprite = qtrue;
 		break;
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		mod = cgs.media.dishFlashModel;
 		shader = cgs.media.rocketExplosionShader;
 		sfx = cgs.media.sfx_rockexp;
@@ -1949,7 +1949,7 @@ void CG_MissileHitPlayer( int weapon, vec3_t origin, vec3_t dir, int entityNum )
 	// others will just make the blood
 	switch ( weapon ) {
 	case WP_GRENADE_LAUNCHER:
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 	case WP_PLASMAGUN:
 	case WP_BFG:
 #ifdef MISSIONPACK

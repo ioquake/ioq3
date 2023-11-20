@@ -271,10 +271,11 @@ void Use_Shooter( gentity_t *ent, gentity_t *other, gentity_t *activator ) {
 	VectorNormalize( dir );
 
 	switch ( ent->s.weapon ) {
+		// TODO
 	case WP_GRENADE_LAUNCHER:
 		fire_grenade( ent, ent->s.origin, dir );
 		break;
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		fire_rocket( ent, ent->s.origin, dir );
 		break;
 	case WP_PLASMAGUN:
@@ -316,8 +317,10 @@ void InitShooter( gentity_t *ent, int weapon ) {
 Fires at either the target or the current direction.
 "random" the number of degrees of deviance from the taget. (1.0 default)
 */
+
+// TODO
 void SP_shooter_rocket( gentity_t *ent ) {
-	InitShooter( ent, WP_ROCKET_LAUNCHER );
+	InitShooter( ent, WP_SIEGE_CANNON );
 }
 
 /*QUAKED shooter_plasma (1 0 0) (-16 -16 -16) (16 16 16)
@@ -332,6 +335,8 @@ void SP_shooter_plasma( gentity_t *ent ) {
 Fires at either the target or the current direction.
 "random" is the number of degrees of deviance from the taget. (1.0 default)
 */
+
+// TODO
 void SP_shooter_grenade( gentity_t *ent ) {
 	InitShooter( ent, WP_GRENADE_LAUNCHER);
 }

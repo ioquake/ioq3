@@ -46,6 +46,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //weapon specific aim accuracy
 #define CHARACTERISTIC_AIM_ACCURACY_MACHINEGUN		8	//float [0, 1]
 #define CHARACTERISTIC_AIM_ACCURACY_SHOTGUN			9	//float [0, 1]
+// TODO: refactor into siege cannon
 #define CHARACTERISTIC_AIM_ACCURACY_ROCKETLAUNCHER	10	//float [0, 1]
 #define CHARACTERISTIC_AIM_ACCURACY_GRENADELAUNCHER	11	//float [0, 1]
 #define CHARACTERISTIC_AIM_ACCURACY_LIGHTNING		12

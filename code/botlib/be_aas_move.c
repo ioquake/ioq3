@@ -338,6 +338,7 @@ float AAS_WeaponJumpZVelocity(vec3_t origin, float radiusdamage)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
+// TODO: refactor rocket launcher into siege cannon
 float AAS_RocketJumpZVelocity(vec3_t origin)
 {
 	//rocket radius damage is 120 (p_weapon.c: Weapon_RocketLauncher_Fire)

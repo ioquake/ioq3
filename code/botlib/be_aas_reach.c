@@ -3937,6 +3937,7 @@ void AAS_SetWeaponJumpAreaFlags(void)
 			!strcmp(classname, "item_armor_combat") ||
 			!strcmp(classname, "item_health_mega") ||
 			!strcmp(classname, "weapon_grenadelauncher") ||
+			// TODO: refactor rocket launcher into siege cannon
 			!strcmp(classname, "weapon_rocketlauncher") ||
 			!strcmp(classname, "weapon_lightning") ||
 			!strcmp(classname, "weapon_plasmagun") ||

@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define INVENTORY_SHOTGUN			5
 #define INVENTORY_MACHINEGUN		6
 #define INVENTORY_GRENADELAUNCHER	7
+// TODO: refactor rocket launcher into siege cannon
 #define INVENTORY_ROCKETLAUNCHER	8
 #define INVENTORY_LIGHTNING			9
 #define INVENTORY_RAILGUN			10
@@ -98,6 +99,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MODELINDEX_SHOTGUN			9
 #define MODELINDEX_MACHINEGUN		10
 #define MODELINDEX_GRENADELAUNCHER	11
+// TODO: refactor rocket launcher into siege cannon
 #define MODELINDEX_ROCKETLAUNCHER	12
 #define MODELINDEX_LIGHTNING		13
 #define MODELINDEX_RAILGUN			14
@@ -155,6 +157,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define WEAPONINDEX_MACHINEGUN			2
 #define WEAPONINDEX_SHOTGUN				3
 #define WEAPONINDEX_GRENADE_LAUNCHER	4
+// TODO: refactor rocket launcher into siege cannon
 #define WEAPONINDEX_ROCKET_LAUNCHER		5
 #define WEAPONINDEX_LIGHTNING			6
 #define WEAPONINDEX_RAILGUN				7
