@@ -3251,7 +3251,7 @@ static bind_t g_bindings[] =
 	{"weapon 11",		 -1,					-1,		-1, -1},
 	{"weapon 12",		 -1,					-1,		-1, -1},
 	{"weapon 13",		 -1,					-1,		-1, -1},
-	{"+attack", 		 K_CTRL,				-1,		-1, -1},
+	{"+attack", 		 K_MOUSE1,				-1,		-1, -1},
 	{"weapprev",		 '[',					-1,		-1, -1},
 	{"weapnext", 		 ']',					-1,		-1, -1},
 	{"+button3", 		 K_MOUSE3,			-1,		-1, -1},

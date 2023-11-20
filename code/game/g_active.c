@@ -571,6 +571,7 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			break;
 
 		case EV_FIRE_WEAPON:
+		case EV_ALT_FIRE_WEAPON:
 			FireWeapon( ent );
 			break;
 
