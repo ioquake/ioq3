@@ -385,17 +385,32 @@ void weapon_grenadelauncher_fire (gentity_t *ent) {
 /*
 ======================================================================
 
-ROCKET
+SIEGE CANNON
+
+primary fire: rockets
+
+secondary fire: grenades
 
 ======================================================================
 */
 
-void Weapon_RocketLauncher_Fire (gentity_t *ent) {
+void Weapon_SiegeCannon_Fire (gentity_t *ent, qboolean alt) {
 	gentity_t	*m;
 
-	m = fire_rocket (ent, muzzle, forward);
-	m->damage *= s_quadFactor;
-	m->splashDamage *= s_quadFactor;
+	if ( !alt ) {
+		m = fire_rocket(ent, muzzle, forward);
+		m->damage *= s_quadFactor;
+		m->splashDamage *= s_quadFactor;
+	}
+	else {
+		// extra vertical velocity
+		forward[2] += 0.2f;
+		VectorNormalize(forward);
+
+		m = fire_grenade(ent, muzzle, forward);
+		m->damage *= s_quadFactor;
+		m->splashDamage *= s_quadFactor;
+	}
 
 //	VectorAdd( m->s.pos.trDelta, ent->client->ps.velocity, m->s.pos.trDelta );	// "real" physics
 }
@@ -799,7 +814,7 @@ void CalcMuzzlePointOrigin ( gentity_t *ent, vec3_t origin, vec3_t forward, vec3
 FireWeapon
 ===============
 */
-void FireWeapon( gentity_t *ent ) {
+void FireWeapon( gentity_t *ent, qboolean alt ) {
 	if (ent->client->ps.powerups[PW_QUAD] ) {
 		s_quadFactor = g_quadfactor.value;
 	} else {
@@ -850,8 +865,8 @@ void FireWeapon( gentity_t *ent ) {
 	case WP_GRENADE_LAUNCHER:
 		weapon_grenadelauncher_fire( ent );
 		break;
-	case WP_ROCKET_LAUNCHER:
-		Weapon_RocketLauncher_Fire( ent );
+	case WP_SIEGE_CANNON:
+		Weapon_SiegeCannon_Fire( ent, alt );
 		break;
 	case WP_PLASMAGUN:
 		Weapon_Plasmagun_Fire( ent );

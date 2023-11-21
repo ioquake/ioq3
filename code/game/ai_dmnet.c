@@ -1313,6 +1313,7 @@ int BotSelectActivateWeapon(bot_state_t *bs) {
 		return WEAPONINDEX_GRENADE_LAUNCHER;
 	else if (bs->inventory[INVENTORY_RAILGUN] > 0 && bs->inventory[INVENTORY_SLUGS] > 0)
 		return WEAPONINDEX_RAILGUN;
+	// TODO: refactor rocket launcher into siege cannon
 	else if (bs->inventory[INVENTORY_ROCKETLAUNCHER] > 0 && bs->inventory[INVENTORY_ROCKETS] > 0)
 		return WEAPONINDEX_ROCKET_LAUNCHER;
 	else if (bs->inventory[INVENTORY_BFG10K] > 0 && bs->inventory[INVENTORY_BFGAMMO] > 0)
@@ -1402,6 +1403,7 @@ void BotClearPath(bot_state_t *bs, bot_moveresult_t *moveresult) {
 			// if the bot has a weapon that does splash damage
 			if (bs->inventory[INVENTORY_PLASMAGUN] > 0 && bs->inventory[INVENTORY_CELLS] > 0)
 				moveresult->weapon = WEAPONINDEX_PLASMAGUN;
+			// TODO: refactor rocket launcher into siege cannon
 			else if (bs->inventory[INVENTORY_ROCKETLAUNCHER] > 0 && bs->inventory[INVENTORY_ROCKETS] > 0)
 				moveresult->weapon = WEAPONINDEX_ROCKET_LAUNCHER;
 			else if (bs->inventory[INVENTORY_BFG10K] > 0 && bs->inventory[INVENTORY_BFGAMMO] > 0)

@@ -1662,7 +1662,7 @@ static void PM_Weapon( void ) {
 	case WP_GRENADE_LAUNCHER:
 		addTime = 800;
 		break;
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		addTime = 800;
 		break;
 	case WP_PLASMAGUN:

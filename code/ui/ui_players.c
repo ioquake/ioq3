@@ -115,7 +115,7 @@ tryagain:
 		MAKERGB( pi->flashDlightColor, 1, 0.7f, 0.5f );
 		break;
 
-	case WP_ROCKET_LAUNCHER:
+	case WP_SIEGE_CANNON:
 		MAKERGB( pi->flashDlightColor, 1, 0.75f, 0 );
 		break;
 

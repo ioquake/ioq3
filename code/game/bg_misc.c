@@ -251,6 +251,7 @@ gitem_t	bg_itemlist[] =
 /* sounds */ "sound/weapons/grenade/hgrenb1a.wav sound/weapons/grenade/hgrenb2a.wav"
 	},
 
+// TODO: refactor rocket launcher into siege cannon
 /*QUAKED weapon_rocketlauncher (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
@@ -262,7 +263,7 @@ gitem_t	bg_itemlist[] =
 /* pickup */	"Rocket Launcher",
 		10,
 		IT_WEAPON,
-		WP_ROCKET_LAUNCHER,
+		WP_SIEGE_CANNON,
 /* precache */ "",
 /* sounds */ ""
 	},
@@ -442,7 +443,7 @@ gitem_t	bg_itemlist[] =
 /* pickup */	"Rockets",
 		5,
 		IT_AMMO,
-		WP_ROCKET_LAUNCHER,
+		WP_SIEGE_CANNON,
 /* precache */ "",
 /* sounds */ ""
 	},
