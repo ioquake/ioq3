@@ -344,7 +344,7 @@ int BotReachabilityArea(vec3_t origin, int client)
 		//trace down till the ground is hit because the bot is standing on some other entity
 		VectorCopy(origin, org);
 		VectorCopy(org, end);
-		end[2] -= 800;
+		end[2] -= 750;
 		trace = AAS_TraceClientBBox(org, end, PRESENCE_CROUCH, -1);
 		if (!trace.startsolid)
 		{
@@ -380,7 +380,7 @@ int BotReachabilityArea(vec3_t origin, int testground)
 		if (i > 0)
 		{
 			VectorCopy(origin, end);
-			end[2] -= 800;
+			end[2] -= 750;
 			trace = AAS_TraceClientBBox(origin, end, PRESENCE_CROUCH, -1);
 			if (!trace.startsolid)
 			{
@@ -1944,7 +1944,7 @@ bot_moveresult_t BotFinishTravel_Jump(bot_movestate_t *ms, aas_reachability_t *r
 	//
 	if (DotProduct(hordir, hordir2) < -0.5 && dist < 24) return result;
 	//always use max speed when traveling through the air
-	speed = 800;
+	speed = 750;
 	//
 	EA_Move(ms->client, hordir, speed);
 	VectorCopy(hordir, result.movedir);
@@ -2729,7 +2729,7 @@ bot_moveresult_t BotTravel_RocketJump(bot_movestate_t *ms, aas_reachability_t *r
 		//elemantary action jump
 		EA_Jump(ms->client);
 		EA_Attack(ms->client);
-		EA_Move(ms->client, hordir, 800);
+		EA_Move(ms->client, hordir, 750);
 		//
 		ms->jumpreach = ms->lastreachnum;
 	} //end if
@@ -2790,7 +2790,7 @@ bot_moveresult_t BotTravel_BFGJump(bot_movestate_t *ms, aas_reachability_t *reac
 		//elemantary action jump
 		EA_Jump(ms->client);
 		EA_Attack(ms->client);
-		EA_Move(ms->client, hordir, 800);
+		EA_Move(ms->client, hordir, 750);
 		//
 		ms->jumpreach = ms->lastreachnum;
 	} //end if
@@ -2839,7 +2839,7 @@ bot_moveresult_t BotFinishTravel_WeaponJump(bot_movestate_t *ms, aas_reachabilit
 	hordir[2] = 0;
 	VectorNormalize(hordir);
 	//always use max speed when traveling through the air
-	EA_Move(ms->client, hordir, 800);
+	EA_Move(ms->client, hordir, 750);
 	VectorCopy(hordir, result.movedir);
 	*/
 	//
@@ -3529,7 +3529,7 @@ int BotSetupMoveAI(void)
 	BotSetBrushModelTypes();
 	sv_maxstep = LibVar("sv_step", "18");
 	sv_maxbarrier = LibVar("sv_maxbarrier", "32");
-	sv_gravity = LibVar("sv_gravity", "800");
+	sv_gravity = LibVar("sv_gravity", "750");
 	// TODO: refactor rocket launcher into siege cannon
 	weapindex_rocketlauncher = LibVar("weapindex_rocketlauncher", "5");
 	weapindex_bfg10k = LibVar("weapindex_bfg10k", "9");

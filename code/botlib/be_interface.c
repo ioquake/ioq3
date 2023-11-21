@@ -570,7 +570,7 @@ int BotExportTest(int parm0, char *parm1, vec3_t parm2, vec3_t parm3)
 	//get the eye 24 units up
 	eye[2] += 24;
 	//get the end point for the line to be traced
-	VectorMA(eye, 800, forward, end);
+	VectorMA(eye, 750, forward, end);
 
 //	AAS_TestMovementPrediction(1, parm2, forward);
 /*

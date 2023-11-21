@@ -885,7 +885,7 @@ int AAS_Reachability_Swim(int area1num, int area2num)
 					lreach->traveltype = TRAVEL_SWIM;
 					lreach->traveltime = 1;
 					//if the volume of the area is rather small
-					if (AAS_AreaVolume(area2num) < 800)
+					if (AAS_AreaVolume(area2num) < 750)
 						lreach->traveltime += 200;
 					//if (!(AAS_PointContents(start) & MASK_WATER)) lreach->traveltime += 500;
 					//link the reachability

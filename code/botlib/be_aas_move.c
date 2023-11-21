@@ -78,7 +78,7 @@ void AAS_InitSettings(void)
 	aassettings.phys_gravitydirection[2]	= -1;
 	aassettings.phys_friction				= LibVarValue("phys_friction", "6");
 	aassettings.phys_stopspeed				= LibVarValue("phys_stopspeed", "100");
-	aassettings.phys_gravity				= LibVarValue("phys_gravity", "800");
+	aassettings.phys_gravity				= LibVarValue("phys_gravity", "750");
 	aassettings.phys_waterfriction			= LibVarValue("phys_waterfriction", "1");
 	aassettings.phys_watergravity			= LibVarValue("phys_watergravity", "400");
 	aassettings.phys_maxvelocity			= LibVarValue("phys_maxvelocity", "320");
