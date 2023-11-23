@@ -1169,6 +1169,13 @@ const void	*RB_DrawSurfs( const void *data ) {
 			qglGenerateTextureMipmapEXT(cubemap->image->texnum, GL_TEXTURE_CUBE_MAP);
 	}
 
+	// FIXME? backEnd.viewParms doesn't get properly initialized for 2D drawing.
+	// r_cubeMapping 1 generates cubemaps with R_RenderCubemapSide()
+	// and sets isMirror = qtrue. Clear it here to prevent it from leaking
+	// to 2D drawing and causing the loading screen to be culled.
+	backEnd.viewParms.isMirror = qfalse;
+	backEnd.viewParms.flags = 0;
+
 	return (const void *)(cmd + 1);
 }
 
