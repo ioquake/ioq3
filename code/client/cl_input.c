@@ -198,6 +198,9 @@ void IN_UpDown(void) {IN_KeyDown(&in_up);}
 void IN_UpUp(void) {IN_KeyUp(&in_up);}
 void IN_DownDown(void) {IN_KeyDown(&in_down);}
 void IN_DownUp(void) {IN_KeyUp(&in_down);}
+// TODO: implement dash
+//void IN_DashDown(void) {IN_KeyDown(&in_dash);}
+//void IN_DashUp(void) {IN_KeyUp(&in_dash);}
 void IN_LeftDown(void) {IN_KeyDown(&in_left);}
 void IN_LeftUp(void) {IN_KeyUp(&in_left);}
 void IN_RightDown(void) {IN_KeyDown(&in_right);}
@@ -317,6 +320,7 @@ Sets the usercmd_t based on key states
 void CL_KeyMove( usercmd_t *cmd ) {
 	int		movespeed;
 	int		forward, side, up;
+	float	upheld, downheld;
 
 	//
 	// adjust for speed key / running
@@ -342,9 +346,14 @@ void CL_KeyMove( usercmd_t *cmd ) {
 	side += movespeed * CL_KeyState (&in_moveright);
 	side -= movespeed * CL_KeyState (&in_moveleft);
 
+	upheld = CL_KeyState (&in_up);
+	downheld = CL_KeyState (&in_down);
 
-	up += movespeed * CL_KeyState (&in_up);
-	up -= movespeed * CL_KeyState (&in_down);
+	if ( upheld > 0 && downheld > 0 )
+		cmd->buttons |= BUTTON_OVERBOUNCE;
+
+	up += movespeed * upheld;
+	up -= movespeed * downheld;
 
 	forward += movespeed * CL_KeyState (&in_forward);
 	forward -= movespeed * CL_KeyState (&in_back);
@@ -936,8 +945,20 @@ void CL_InitInput( void ) {
 
 	Cmd_AddCommand ("+moveup",IN_UpDown);
 	Cmd_AddCommand ("-moveup",IN_UpUp);
+	Cmd_AddCommand ("+jump",IN_UpDown);
+	Cmd_AddCommand ("-jump",IN_UpUp);
 	Cmd_AddCommand ("+movedown",IN_DownDown);
 	Cmd_AddCommand ("-movedown",IN_DownUp);
+	Cmd_AddCommand ("+crouch",IN_DownDown);
+	Cmd_AddCommand ("-crouch",IN_DownUp);
+	Cmd_AddCommand ("+duck",IN_DownDown);
+	Cmd_AddCommand ("-duck",IN_DownUp);
+	// TODO: refactor to button 3 & 4 on release --
+	Cmd_AddCommand ("+overbounce",IN_Button13Down);
+	Cmd_AddCommand ("-overbounce",IN_Button13Up);
+	Cmd_AddCommand ("+dash",IN_Button14Down);
+	Cmd_AddCommand ("-dash",IN_Button14Up);
+	// --------------------------------------------
 	Cmd_AddCommand ("+left",IN_LeftDown);
 	Cmd_AddCommand ("-left",IN_LeftUp);
 	Cmd_AddCommand ("+right",IN_RightDown);
@@ -962,10 +983,12 @@ void CL_InitInput( void ) {
 	Cmd_AddCommand ("-attack", IN_Button0Up);
 	Cmd_AddCommand ("+fire", IN_Button0Down);
 	Cmd_AddCommand ("-fire", IN_Button0Up);
-	Cmd_AddCommand ("+altattack", IN_Button1Down);
-	Cmd_AddCommand ("-altattack", IN_Button1Up);
-	Cmd_AddCommand ("+altfire", IN_Button1Down);
-	Cmd_AddCommand ("-altfire", IN_Button1Up);
+	// TODO: refactor to button 2 on release ------
+	Cmd_AddCommand ("+altattack", IN_Button12Down);
+	Cmd_AddCommand ("-altattack", IN_Button12Up);
+	Cmd_AddCommand ("+altfire", IN_Button12Down);
+	Cmd_AddCommand ("-altfire", IN_Button12Up);
+	// --------------------------------------------
 	Cmd_AddCommand ("+button0", IN_Button0Down);
 	Cmd_AddCommand ("-button0", IN_Button0Up);
 	Cmd_AddCommand ("+button1", IN_Button1Down);
@@ -1019,8 +1042,18 @@ void CL_ShutdownInput(void)
 
 	Cmd_RemoveCommand("+moveup");
 	Cmd_RemoveCommand("-moveup");
+	Cmd_RemoveCommand("+jump");
+	Cmd_RemoveCommand("-jump");
 	Cmd_RemoveCommand("+movedown");
 	Cmd_RemoveCommand("-movedown");
+	Cmd_RemoveCommand("+crouch");
+	Cmd_RemoveCommand("-crouch");
+	Cmd_RemoveCommand("+duck");
+	Cmd_RemoveCommand("-duck");
+	Cmd_RemoveCommand("+overbounce");
+	Cmd_RemoveCommand("-overbounce");
+	Cmd_RemoveCommand("+dash");
+	Cmd_RemoveCommand("-dash");
 	Cmd_RemoveCommand("+left");
 	Cmd_RemoveCommand("-left");
 	Cmd_RemoveCommand("+right");
@@ -1043,6 +1076,12 @@ void CL_ShutdownInput(void)
 	Cmd_RemoveCommand("-speed");
 	Cmd_RemoveCommand("+attack");
 	Cmd_RemoveCommand("-attack");
+	Cmd_RemoveCommand("+fire");
+	Cmd_RemoveCommand("-fire");
+	Cmd_RemoveCommand("+altattack");
+	Cmd_RemoveCommand("-altattack");
+	Cmd_RemoveCommand("+altfire");
+	Cmd_RemoveCommand("-altfire");
 	Cmd_RemoveCommand("+button0");
 	Cmd_RemoveCommand("-button0");
 	Cmd_RemoveCommand("+button1");

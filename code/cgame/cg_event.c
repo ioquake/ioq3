@@ -673,8 +673,14 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		trap_S_StartSound (NULL, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*jump1.wav" ) );
 		break;
 
+	case EV_OVERBOUNCE:
 	case EV_JUMP:
-		DEBUGNAME("EV_JUMP");
+		if ( EV_OVERBOUNCE )
+		{
+			DEBUGNAME("EV_OVERBOUNCE");
+		} else {
+			DEBUGNAME("EV_JUMP");
+		}
 		trap_S_StartSound (NULL, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*jump1.wav" ) );
 		break;
 	case EV_TAUNT:

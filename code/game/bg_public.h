@@ -142,6 +142,9 @@ typedef enum {
 // pmove->pm_flags
 #define	PMF_DUCKED			1
 #define	PMF_JUMP_HELD		2
+#define PMF_OVERBOUNCE		( PMF_DUCKED | PMF_JUMP_HELD )
+// TODO: implement dash
+#define PMF_DASH			4
 #define	PMF_BACKWARDS_JUMP	8		// go into backwards land
 #define	PMF_BACKWARDS_RUN	16		// coast down to backwards run
 #define	PMF_TIME_LAND		32		// pm_time is time before rejump
@@ -365,6 +368,7 @@ typedef enum {
 	EV_JUMP_PAD,			// boing sound at origin, jump sound on player
 
 	EV_JUMP,
+	EV_OVERBOUNCE,
 	EV_WATER_TOUCH,	// foot touches
 	EV_WATER_LEAVE,	// foot leaves
 	EV_WATER_UNDER,	// head touches
