@@ -917,6 +917,16 @@ PM_Overbounce
 static void PM_Overbounce( void ) {
 	float		vel;
 
+	if (pm->ps->pm_flags & PMF_RESPAWNED) {
+		return;		// don't allow overbounce until all buttons are up
+	}
+
+	// must wait for overbounce to be released
+	if (pm->ps->pm_flags & PMF_OVERBOUNCE) {
+		pm->cmd.buttons &= ~BUTTON_OVERBOUNCE;
+		return;
+	}
+
 	pm->ps->pm_flags |= PMF_OVERBOUNCE;
 
 	// test to see if needed
@@ -928,7 +938,6 @@ static void PM_Overbounce( void ) {
 	// recursive clip until velocity is pointing in intended direction
 	PM_ClipVelocity(pm->ps->velocity, pml.groundTrace.plane.normal,
 		pm->ps->velocity, OVERCLIP );
-	Com_Printf("FORWARDMOVE: %d\nRIGHTMOVE: %d\n", pm->cmd.forwardmove, pm->cmd.rightmove);
 
 	// set vector to be vertical if not holding movement
 	if ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 ) {
