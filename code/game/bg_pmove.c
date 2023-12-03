@@ -921,16 +921,14 @@ static void PM_Overbounce( void ) {
 		return;		// don't allow overbounce until all buttons are up
 	}
 
-	// must wait for overbounce to be released
-	if (pm->ps->pm_flags & PMF_OVERBOUNCE) {
-		pm->cmd.buttons &= ~BUTTON_OVERBOUNCE;
+	// do not overbounce if already overbouncing
+	if ( pml.previous_velocity[2] > -JUMP_VELOCITY * 1.001 ) {
 		return;
 	}
 
 	pm->ps->pm_flags |= PMF_OVERBOUNCE;
 
-	// test to see if needed
-	PM_Friction ();
+	
 
 	// record speed before clipping
 	vel = VectorLength(pml.previous_velocity);
@@ -939,19 +937,14 @@ static void PM_Overbounce( void ) {
 	PM_ClipVelocity(pm->ps->velocity, pml.groundTrace.plane.normal,
 		pm->ps->velocity, OVERCLIP );
 
-	// set vector to be vertical if not holding movement
-	if ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 ) {
-		pm->ps->velocity[0] = 0;
-		pm->ps->velocity[1] = 0;
-	}
-
 	// return velocity scale to before landing, now pointing in intended direction
 	VectorNormalize(pm->ps->velocity);
+
 	VectorScale(pm->ps->velocity, vel, pm->ps->velocity);
 
 	// add small jump if moving horizontally
 	if ( abs( pm->ps->velocity[0] ) > 0 || abs( pm->ps->velocity[1] ) > 0 ) {
-		pm->ps->velocity[2] = JUMP_VELOCITY / 2;
+		pm->ps->velocity[2] = JUMP_VELOCITY * 0.75;
 	}
 
 	PM_AddEvent( EV_OVERBOUNCE );
