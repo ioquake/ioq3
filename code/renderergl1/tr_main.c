@@ -1299,29 +1299,36 @@ R_DebugPolygon
 ================
 */
 void R_DebugPolygon( int color, int numPoints, float *points ) {
-	int		i;
+	if ( numPoints < 3 ) {
+		ri.Printf( PRINT_WARNING, "Debug polygon with color 0x%08X only has %d points (must have at least 3)\n", color, numPoints );
+		return;
+	}
 
 	GL_State( GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+	qglDisableClientState( GL_COLOR_ARRAY );
+	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+
+	qglVertexPointer( 3, GL_FLOAT, 0, points );
+
+	if (qglLockArraysEXT) {
+		qglLockArraysEXT(0, numPoints);
+		GLimp_LogComment( "glLockArraysEXT\n" );
+	}
 
 	// draw solid shade
-
 	qglColor3f( color&1, (color>>1)&1, (color>>2)&1 );
-	qglBegin( GL_POLYGON );
-	for ( i = 0 ; i < numPoints ; i++ ) {
-		qglVertex3fv( points + i * 3 );
-	}
-	qglEnd();
+	qglDrawArrays( GL_TRIANGLE_FAN, 0, numPoints );
 
 	// draw wireframe outline
-	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
 	qglDepthRange( 0, 0 );
 	qglColor3f( 1, 1, 1 );
-	qglBegin( GL_POLYGON );
-	for ( i = 0 ; i < numPoints ; i++ ) {
-		qglVertex3fv( points + i * 3 );
-	}
-	qglEnd();
+	qglDrawArrays( GL_LINE_LOOP, 0, numPoints );
 	qglDepthRange( 0, 1 );
+
+	if (qglUnlockArraysEXT) {
+		qglUnlockArraysEXT();
+		GLimp_LogComment( "glUnlockArraysEXT\n" );
+	}
 }
 
 /*

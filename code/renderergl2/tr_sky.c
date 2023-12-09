@@ -361,57 +361,57 @@ static int	sky_texorder[6] = {0,2,1,3,4,5};
 static vec3_t	s_skyPoints[SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1];
 static float	s_skyTexCoords[SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1][2];
 
+// NOTE: This reuses the tess structure out of convience but it doesn't use the shader system.
 static void DrawSkySide( struct image_s *image, const int mins[2], const int maxs[2] )
 {
 	int s, t;
 	int firstVertex = tess.numVertexes;
 	//int firstIndex = tess.numIndexes;
-	vec4_t color;
+	int tHeight, sWidth;
+
+	tHeight = maxs[1] - mins[1] + 1;
+	sWidth = maxs[0] - mins[0] + 1;
 
 	//tess.numVertexes = 0;
 	//tess.numIndexes = 0;
 	tess.firstIndex = tess.numIndexes;
 	
 	GL_BindToTMU( image, TB_COLORMAP );
-	GL_Cull( CT_TWO_SIDED );
 
 	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t <= maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
 	{
 		for ( s = mins[0]+HALF_SKY_SUBDIVISIONS; s <= maxs[0]+HALF_SKY_SUBDIVISIONS; s++ )
 		{
-			tess.xyz[tess.numVertexes][0] = s_skyPoints[t][s][0];
-			tess.xyz[tess.numVertexes][1] = s_skyPoints[t][s][1];
-			tess.xyz[tess.numVertexes][2] = s_skyPoints[t][s][2];
-			tess.xyz[tess.numVertexes][3] = 1.0;
+			VectorCopy( s_skyPoints[t][s], tess.xyz[tess.numVertexes] );
 
 			tess.texCoords[tess.numVertexes][0] = s_skyTexCoords[t][s][0];
 			tess.texCoords[tess.numVertexes][1] = s_skyTexCoords[t][s][1];
 
 			tess.numVertexes++;
 
-			if(tess.numVertexes >= SHADER_MAX_VERTEXES)
+			if ( tess.numVertexes >= SHADER_MAX_VERTEXES )
 			{
-				ri.Error(ERR_DROP, "SHADER_MAX_VERTEXES hit in DrawSkySideVBO()");
+				ri.Error( ERR_DROP, "SHADER_MAX_VERTEXES hit in DrawSkySide()" );
 			}
 		}
 	}
 
-	for ( t = 0; t < maxs[1] - mins[1]; t++ )
+	for ( t = 0; t < tHeight-1; t++ )
 	{
-		for ( s = 0; s < maxs[0] - mins[0]; s++ )
+		for ( s = 0; s < sWidth-1; s++ )
 		{
-			if (tess.numIndexes + 6 >= SHADER_MAX_INDEXES)
+			if ( tess.numIndexes + 6 >= SHADER_MAX_INDEXES )
 			{
-				ri.Error(ERR_DROP, "SHADER_MAX_INDEXES hit in DrawSkySideVBO()");
+				ri.Error( ERR_DROP, "SHADER_MAX_INDEXES hit in DrawSkySide()" );
 			}
 
-			tess.indexes[tess.numIndexes++] =  s +       t      * (maxs[0] - mins[0] + 1) + firstVertex;
-			tess.indexes[tess.numIndexes++] =  s +      (t + 1) * (maxs[0] - mins[0] + 1) + firstVertex;
-			tess.indexes[tess.numIndexes++] = (s + 1) +  t      * (maxs[0] - mins[0] + 1) + firstVertex;
+			tess.indexes[tess.numIndexes++] =  s +       t      * sWidth + firstVertex;
+			tess.indexes[tess.numIndexes++] =  s +      (t + 1) * sWidth + firstVertex;
+			tess.indexes[tess.numIndexes++] = (s + 1) +  t      * sWidth + firstVertex;
 
-			tess.indexes[tess.numIndexes++] = (s + 1) +  t      * (maxs[0] - mins[0] + 1) + firstVertex;
-			tess.indexes[tess.numIndexes++] =  s +      (t + 1) * (maxs[0] - mins[0] + 1) + firstVertex;
-			tess.indexes[tess.numIndexes++] = (s + 1) + (t + 1) * (maxs[0] - mins[0] + 1) + firstVertex;
+			tess.indexes[tess.numIndexes++] = (s + 1) +  t      * sWidth + firstVertex;
+			tess.indexes[tess.numIndexes++] =  s +      (t + 1) * sWidth + firstVertex;
+			tess.indexes[tess.numIndexes++] = (s + 1) + (t + 1) * sWidth + firstVertex;
 		}
 	}
 
@@ -420,6 +420,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 /*
 	{
 		shaderProgram_t *sp = &tr.textureColorShader;
+		vec4_t color;
 
 		GLSL_VertexAttribsState(ATTR_POSITION | ATTR_TEXCOORD);
 		GLSL_BindProgram(sp);
@@ -435,7 +436,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 */
 	{
 		shaderProgram_t *sp = &tr.lightallShader[0];
-		vec4_t vector;
+		vec4_t color, vector;
 
 		GLSL_BindProgram(sp);
 		

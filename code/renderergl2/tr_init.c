@@ -31,6 +31,7 @@ qboolean    textureFilterAnisotropic = qfalse;
 int         maxAnisotropy = 0;
 float       displayAspect = 0.0f;
 qboolean    haveClampToEdge = qfalse;
+qboolean    readFormatAvailable = qfalse;
 
 glstate_t	glState;
 
@@ -1557,6 +1558,7 @@ void RE_Shutdown( qboolean destroyWindow ) {
 		maxAnisotropy = 0;
 		displayAspect = 0.0f;
 		haveClampToEdge = qfalse;
+		readFormatAvailable = qfalse;
 
 		Com_Memset( &glState, 0, sizeof( glState ) );
 	}

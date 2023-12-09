@@ -361,27 +361,82 @@ static int	sky_texorder[6] = {0,2,1,3,4,5};
 static vec3_t	s_skyPoints[SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1];
 static float	s_skyTexCoords[SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1][2];
 
+// NOTE: This reuses the tess structure out of convience but it doesn't use the shader system.
 static void DrawSkySide( struct image_s *image, const int mins[2], const int maxs[2] )
 {
 	int s, t;
+	int vertexStart = tess.numVertexes;
+	int indexStart = tess.numIndexes;
+	int tHeight, sWidth;
+
+	tHeight = maxs[1] - mins[1] + 1;
+	sWidth = maxs[0] - mins[0] + 1;
 
 	GL_Bind( image );
 
-	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t < maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
+	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t <= maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
 	{
-		qglBegin( GL_TRIANGLE_STRIP );
-
 		for ( s = mins[0]+HALF_SKY_SUBDIVISIONS; s <= maxs[0]+HALF_SKY_SUBDIVISIONS; s++ )
 		{
-			qglTexCoord2fv( s_skyTexCoords[t][s] );
-			qglVertex3fv( s_skyPoints[t][s] );
+			VectorCopy( s_skyPoints[t][s], tess.xyz[tess.numVertexes] );
 
-			qglTexCoord2fv( s_skyTexCoords[t+1][s] );
-			qglVertex3fv( s_skyPoints[t+1][s] );
+			tess.texCoords[tess.numVertexes][0][0] = s_skyTexCoords[t][s][0];
+			tess.texCoords[tess.numVertexes][0][1] = s_skyTexCoords[t][s][1];
+
+			tess.numVertexes++;
+
+			if ( tess.numVertexes >= SHADER_MAX_VERTEXES )
+			{
+				ri.Error( ERR_DROP, "SHADER_MAX_VERTEXES hit in DrawSkySide()" );
+			}
 		}
-
-		qglEnd();
 	}
+
+	for ( t = 0; t < tHeight-1; t++ )
+	{
+		for ( s = 0; s < sWidth-1; s++ )
+		{
+			if ( tess.numIndexes + 6 >= SHADER_MAX_INDEXES )
+			{
+				ri.Error( ERR_DROP, "SHADER_MAX_INDEXES hit in DrawSkySide()" );
+			}
+
+			tess.indexes[tess.numIndexes] = vertexStart + s + t * ( sWidth );
+			tess.numIndexes++;
+			tess.indexes[tess.numIndexes] = vertexStart + s + ( t + 1 ) * ( sWidth );
+			tess.numIndexes++;
+			tess.indexes[tess.numIndexes] = vertexStart + s + 1 + t * ( sWidth );
+			tess.numIndexes++;
+
+			tess.indexes[tess.numIndexes] = vertexStart + s + ( t + 1 ) * ( sWidth );
+			tess.numIndexes++;
+			tess.indexes[tess.numIndexes] = vertexStart + s + 1 + ( t + 1 ) * ( sWidth );
+			tess.numIndexes++;
+			tess.indexes[tess.numIndexes] = vertexStart + s + 1 + t * ( sWidth );
+			tess.numIndexes++;
+		}
+	}
+
+	qglDisableClientState( GL_COLOR_ARRAY );
+	qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+
+	qglTexCoordPointer( 2, GL_FLOAT, 16, tess.texCoords[0][0] );
+	qglVertexPointer( 3, GL_FLOAT, 16, tess.xyz );
+
+	if (qglLockArraysEXT) {
+		qglLockArraysEXT(0, tess.numIndexes);
+		GLimp_LogComment( "glLockArraysEXT\n" );
+	}
+
+	R_DrawElements( tess.numIndexes - indexStart, tess.indexes + indexStart );
+
+	if (qglUnlockArraysEXT) {
+		qglUnlockArraysEXT();
+		GLimp_LogComment( "glUnlockArraysEXT\n" );
+	}
+
+	tess.numVertexes = vertexStart;
+	tess.numIndexes = indexStart;
 }
 
 static void DrawSkyBox( shader_t *shader )

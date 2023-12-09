@@ -81,6 +81,7 @@ extern qboolean  textureFilterAnisotropic;
 extern int       maxAnisotropy;
 extern float     displayAspect;
 extern qboolean  haveClampToEdge;
+extern qboolean  readFormatAvailable;
 
 //
 // cvars

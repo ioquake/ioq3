@@ -2020,10 +2020,12 @@ typedef struct stageVars
 	vec2_t		texcoords[NUM_TEXTURE_BUNDLES][SHADER_MAX_VERTEXES];
 } stageVars_t;
 
+// xyz index SHADER_MAX_VERTEXES-1 is used to check for overflow
+// xyz index >= SHADER_MAX_VERTEXES are used for DrawNormals() and RB_ShadowTessEnd()
 typedef struct shaderCommands_s 
 {
 	glIndex_t	indexes[SHADER_MAX_INDEXES] QALIGN(16);
-	vec4_t		xyz[SHADER_MAX_VERTEXES] QALIGN(16);
+	vec4_t		xyz[SHADER_MAX_VERTEXES*2] QALIGN(16);
 	int16_t		normal[SHADER_MAX_VERTEXES][4] QALIGN(16);
 	int16_t		tangent[SHADER_MAX_VERTEXES][4] QALIGN(16);
 	vec2_t		texCoords[SHADER_MAX_VERTEXES] QALIGN(16);

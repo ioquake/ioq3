@@ -543,6 +543,105 @@ byte	mipBlendColors[16][4] = {
 	{0,0,255,128},
 };
 
+/*
+==================
+R_ConvertTextureFormat
+
+Convert RGBA unsigned byte to specified format and type
+==================
+*/
+#define ROW_PADDING( width, bpp, alignment ) PAD( (width) * (bpp), (alignment) ) - (width) * (bpp)
+void R_ConvertTextureFormat( const byte *in, int width, int height, GLenum format, GLenum type, byte *out )
+{
+	int x, y, rowPadding;
+	int unpackAlign = 4; // matches GL_UNPACK_ALIGNMENT default
+
+	if ( format == GL_RGB && type == GL_UNSIGNED_BYTE )
+	{
+		rowPadding = ROW_PADDING( width, 3, unpackAlign );
+
+		for ( y = 0; y < height; y++ )
+		{
+			for ( x = 0; x < width; x++ )
+			{
+				*out++ = *in++;
+				*out++ = *in++;
+				*out++ = *in++;
+				in++;
+			}
+
+			out += rowPadding;
+		}
+	}
+	else if ( format == GL_LUMINANCE && type == GL_UNSIGNED_BYTE )
+	{
+		rowPadding = ROW_PADDING( width, 1, unpackAlign );
+
+		for ( y = 0; y < height; y++ )
+		{
+			for ( x = 0; x < width; x++ )
+			{
+				*out++ = *in++; // red
+				in += 3;
+			}
+
+			out += rowPadding;
+		}
+	}
+	else if ( format == GL_LUMINANCE_ALPHA && type == GL_UNSIGNED_BYTE )
+	{
+		rowPadding = ROW_PADDING( width, 2, unpackAlign );
+
+		for ( y = 0; y < height; y++ )
+		{
+			for ( x = 0; x < width; x++ )
+			{
+				*out++ = *in++; // red
+				in += 2;
+				*out++ = *in++; // alpha
+			}
+
+			out += rowPadding;
+		}
+	}
+	else if ( format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5 )
+	{
+		rowPadding = ROW_PADDING( width, 2, unpackAlign );
+
+		for ( y = 0; y < height; y++ )
+		{
+			for ( x = 0; x < width; x++, in += 4, out += 2 )
+			{
+				*((unsigned short*)out) = ( (unsigned short)( in[0] >> 3 ) << 11 )
+					    | ( (unsigned short)( in[1] >> 2 ) << 5 )
+					    | ( (unsigned short)( in[2] >> 3 ) << 0 );
+			}
+
+			out += rowPadding;
+		}
+	}
+	else if ( format == GL_RGBA && type == GL_UNSIGNED_SHORT_4_4_4_4 )
+	{
+		rowPadding = ROW_PADDING( width, 2, unpackAlign );
+
+		for ( y = 0; y < height; y++ )
+		{
+			for ( x = 0; x < width; x++, in += 4, out += 2 )
+			{
+				*((unsigned short*)out) = ( (unsigned short)( in[0] >> 4 ) << 12 )
+					    | ( (unsigned short)( in[1] >> 4 ) << 8 )
+					    | ( (unsigned short)( in[2] >> 4 ) << 4 )
+					    | ( (unsigned short)( in[3] >> 4 ) << 0 );
+			}
+
+			out += rowPadding;
+		}
+	}
+	else
+	{
+		ri.Error( ERR_DROP, "Unable to convert RGBA image to OpenGL format 0x%X and type 0x%X", format, type );
+	}
+}
 
 /*
 ===============
@@ -556,16 +655,19 @@ static void Upload32( unsigned *data,
 						  qboolean picmip, 
 							qboolean lightMap,
 						  qboolean allowCompression,
-						  int *format, 
+						  int *pInternalFormat,
 						  int *pUploadWidth, int *pUploadHeight )
 {
 	int			samples;
 	unsigned	*scaledBuffer = NULL;
 	unsigned	*resampledBuffer = NULL;
+	unsigned	*formatBuffer = NULL;
 	int			scaled_width, scaled_height;
 	int			i, c;
 	byte		*scan;
 	GLenum		internalFormat = GL_RGB;
+	GLenum		format = GL_RGBA;
+	GLenum		type = GL_UNSIGNED_BYTE;
 	float		rMax = 0, gMax = 0, bMax = 0;
 
 	//
@@ -689,11 +791,11 @@ static void Upload32( unsigned *data,
 			}
 			else
 			{
-				if ( allowCompression && glConfig.textureCompression == TC_S3TC_ARB )
+				if ( !qglesMajorVersion && allowCompression && glConfig.textureCompression == TC_S3TC_ARB )
 				{
 					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
 				}
-				else if ( allowCompression && glConfig.textureCompression == TC_S3TC )
+				else if ( !qglesMajorVersion && allowCompression && glConfig.textureCompression == TC_S3TC )
 				{
 					internalFormat = GL_RGB4_S3TC;
 				}
@@ -738,15 +840,75 @@ static void Upload32( unsigned *data,
 		}
 	}
 
+	// Convert image data format for OpenGL ES
+	if ( qglesMajorVersion >= 1 )
+	{
+		switch ( internalFormat )
+		{
+			case GL_LUMINANCE:
+			case GL_LUMINANCE8:
+				internalFormat = GL_LUMINANCE;
+				format = GL_LUMINANCE;
+				type = GL_UNSIGNED_BYTE;
+				break;
+			case GL_LUMINANCE_ALPHA:
+			case GL_LUMINANCE8_ALPHA8:
+				internalFormat = GL_LUMINANCE_ALPHA;
+				format = GL_LUMINANCE_ALPHA;
+				type = GL_UNSIGNED_BYTE;
+				break;
+			case GL_RGB:
+			case GL_RGB8:
+				internalFormat = GL_RGB;
+				format = GL_RGB;
+				type = GL_UNSIGNED_BYTE;
+				break;
+			case GL_RGB5:
+				internalFormat = GL_RGB;
+				format = GL_RGB;
+				type = GL_UNSIGNED_SHORT_5_6_5;
+				break;
+			case GL_RGBA:
+			case GL_RGBA8:
+				internalFormat = GL_RGBA;
+				format = GL_RGBA;
+				type = GL_UNSIGNED_BYTE;
+				break;
+			case GL_RGBA4:
+				internalFormat = GL_RGBA;
+				format = GL_RGBA;
+				type = GL_UNSIGNED_SHORT_4_4_4_4;
+				break;
+			default:
+				internalFormat = GL_RGBA;
+				format = GL_RGBA;
+				type = GL_UNSIGNED_BYTE;
+				break;
+		}
+	}
+
+	if ( format != GL_RGBA || type != GL_UNSIGNED_BYTE )
+	{
+		formatBuffer = ri.Hunk_AllocateTempMemory( sizeof( unsigned ) * scaled_width * scaled_height );
+	}
+
 	// copy or resample data as appropriate for first MIP level
 	if ( ( scaled_width == width ) && 
 		( scaled_height == height ) ) {
 		if (!mipmap)
 		{
-			qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			if ( formatBuffer )
+			{
+				R_ConvertTextureFormat( (byte *)data, scaled_width, scaled_height, format, type, (byte *)formatBuffer );
+				qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, format, type, formatBuffer);
+			}
+			else
+			{
+				qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			}
 			*pUploadWidth = scaled_width;
 			*pUploadHeight = scaled_height;
-			*format = internalFormat;
+			*pInternalFormat = internalFormat;
 
 			goto done;
 		}
@@ -773,9 +935,17 @@ static void Upload32( unsigned *data,
 
 	*pUploadWidth = scaled_width;
 	*pUploadHeight = scaled_height;
-	*format = internalFormat;
+	*pInternalFormat = internalFormat;
 
-	qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
+	if ( formatBuffer )
+	{
+		R_ConvertTextureFormat( (byte *)scaledBuffer, scaled_width, scaled_height, format, type, (byte *)formatBuffer );
+		qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, format, type, formatBuffer );
+	}
+	else
+	{
+		qglTexImage2D (GL_TEXTURE_2D, 0, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
+	}
 
 	if (mipmap)
 	{
@@ -797,7 +967,15 @@ static void Upload32( unsigned *data,
 				R_BlendOverTexture( (byte *)scaledBuffer, scaled_width * scaled_height, mipBlendColors[miplevel] );
 			}
 
-			qglTexImage2D (GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
+			if ( formatBuffer )
+			{
+				R_ConvertTextureFormat( (byte *)scaledBuffer, scaled_width, scaled_height, format, type, (byte *)formatBuffer );
+				qglTexImage2D (GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 0, format, type, formatBuffer );
+			}
+			else
+			{
+				qglTexImage2D (GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
+			}
 		}
 	}
 done:
@@ -822,6 +1000,8 @@ done:
 
 	GL_CheckErrors();
 
+	if ( formatBuffer != 0 )
+		ri.Hunk_FreeTempMemory( formatBuffer );
 	if ( scaledBuffer != 0 )
 		ri.Hunk_FreeTempMemory( scaledBuffer );
 	if ( resampledBuffer != 0 )
