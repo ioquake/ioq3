@@ -1841,12 +1841,17 @@ static qboolean ParseShader( char **text )
 				tr.sunShadowScale = atof(token);
 
 				// parse twice, since older shaders may include mapLightScale before sunShadowScale
-				token = COM_ParseExt( text, qfalse );
-				if (token[0])
-					tr.sunShadowScale = atof(token);
+				if (token[0]) {
+					token = COM_ParseExt( text, qfalse );
+					if (token[0]) {
+						tr.sunShadowScale = atof(token);
+					}
+				}
 			}
 
-			SkipRestOfLine( text );
+			if (token[0]) {
+				SkipRestOfLine( text );
+			}
 			continue;
 		}
 		// tonemap parms
