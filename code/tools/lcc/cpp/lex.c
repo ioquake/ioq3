@@ -511,6 +511,25 @@ foldline(Source *s)
 	return 0;
 }
 
+// This doesn't have proper tracking across read() to only remove \r from \r\n sequence.
+// The lexer doesn't correctly handle standalone \r anyway though.
+int
+crlf_to_lf(unsigned char *buf, int n) {
+	int i, count;
+
+	count = 0;
+
+	for (i = 0; i < n; i++) {
+		if (buf[i] == '\r') {
+			continue;
+		}
+
+		buf[count++] = buf[i];
+	}
+
+	return count;
+}
+
 int
 fillbuf(Source *s)
 {
@@ -521,6 +540,7 @@ fillbuf(Source *s)
 		error(FATAL, "Input buffer overflow");
 	if (s->fd<0 || (n=read(s->fd, (char *)s->inl, INS/8)) <= 0)
 		n = 0;
+	n = crlf_to_lf(s->inl, n);
 	if ((*s->inp&0xff) == EOB) /* sentinel character appears in input */
 		*s->inp = EOFC;
 	s->inl += n;
