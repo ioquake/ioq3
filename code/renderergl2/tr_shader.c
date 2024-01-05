@@ -1841,12 +1841,17 @@ static qboolean ParseShader( char **text )
 				tr.sunShadowScale = atof(token);
 
 				// parse twice, since older shaders may include mapLightScale before sunShadowScale
-				token = COM_ParseExt( text, qfalse );
-				if (token[0])
-					tr.sunShadowScale = atof(token);
+				if (token[0]) {
+					token = COM_ParseExt( text, qfalse );
+					if (token[0]) {
+						tr.sunShadowScale = atof(token);
+					}
+				}
 			}
 
-			SkipRestOfLine( text );
+			if (token[0]) {
+				SkipRestOfLine( text );
+			}
 			continue;
 		}
 		// tonemap parms
@@ -2580,13 +2585,15 @@ static int CollapseStagesToGLSL(void)
 		numStages++;
 	}
 
-	// convert any remaining lightmap stages to a lighting pass with a white texture
+	// convert any remaining lightmap stages with no blending or blendfunc filter
+	// to a lighting pass with a white texture
 	// only do this with r_sunlightMode non-zero, as it's only for correct shadows.
 	if (r_sunlightMode->integer && shader.numDeforms == 0)
 	{
 		for (i = 0; i < MAX_SHADER_STAGES; i++)
 		{
 			shaderStage_t *pStage = &stages[i];
+			int blendBits;
 
 			if (!pStage->active)
 				continue;
@@ -2594,15 +2601,23 @@ static int CollapseStagesToGLSL(void)
 			if (pStage->adjustColorsForFog)
 				continue;
 
-			if (pStage->bundle[TB_DIFFUSEMAP].tcGen == TCGEN_LIGHTMAP)
-			{
-				pStage->glslShaderGroup = tr.lightallShader;
-				pStage->glslShaderIndex = LIGHTDEF_USE_LIGHTMAP;
-				pStage->bundle[TB_LIGHTMAP] = pStage->bundle[TB_DIFFUSEMAP];
-				pStage->bundle[TB_DIFFUSEMAP].image[0] = tr.whiteImage;
-				pStage->bundle[TB_DIFFUSEMAP].isLightmap = qfalse;
-				pStage->bundle[TB_DIFFUSEMAP].tcGen = TCGEN_TEXTURE;
+			if (pStage->bundle[TB_DIFFUSEMAP].tcGen != TCGEN_LIGHTMAP)
+				continue;
+
+			blendBits = pStage->stateBits & (GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS);
+
+			if (blendBits != 0 &&
+				blendBits != (GLS_DSTBLEND_SRC_COLOR | GLS_SRCBLEND_ZERO) &&
+				blendBits != (GLS_DSTBLEND_ZERO | GLS_SRCBLEND_DST_COLOR)) {
+				continue;
 			}
+
+			pStage->glslShaderGroup = tr.lightallShader;
+			pStage->glslShaderIndex = LIGHTDEF_USE_LIGHTMAP;
+			pStage->bundle[TB_LIGHTMAP] = pStage->bundle[TB_DIFFUSEMAP];
+			pStage->bundle[TB_DIFFUSEMAP].image[0] = tr.whiteImage;
+			pStage->bundle[TB_DIFFUSEMAP].isLightmap = qfalse;
+			pStage->bundle[TB_DIFFUSEMAP].tcGen = TCGEN_TEXTURE;
 		}
 	}
 
@@ -2891,6 +2906,83 @@ static void VertexLightingCollapse( void ) {
 }
 
 /*
+=================
+FixFatLightmapTexCoords
+
+Handle edge cases of altering lightmap texcoords for fat lightmap atlas
+=================
+*/
+static void FixFatLightmapTexCoords(void)
+{
+	texModInfo_t *tmi;
+	int lightmapnum;
+	int stage;
+	int size;
+	int i;
+
+	if ( !r_mergeLightmaps->integer || tr.fatLightmapCols <= 0) {
+		return;
+	}
+
+	if ( shader.lightmapIndex < 0 ) {
+		// no internal lightmap, texcoords were not modified
+		return;
+	}
+
+	lightmapnum = shader.lightmapIndex;
+
+	if (tr.worldDeluxeMapping)
+		lightmapnum >>= 1;
+
+	lightmapnum %= (tr.fatLightmapCols * tr.fatLightmapRows);
+
+	for ( stage = 0; stage < MAX_SHADER_STAGES; stage++ ) {
+		shaderStage_t *pStage = &stages[stage];
+
+		if ( !pStage->active ) {
+			break;
+		}
+
+		// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
+		if ( pStage->bundle[0].isLightmap ) {
+			for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
+				tmi = &pStage->bundle[0].texMods[i];
+
+				if ( tmi->type == TMOD_TRANSFORM ) {
+					tmi->translate[0] /= (float)tr.fatLightmapCols;
+					tmi->translate[1] /= (float)tr.fatLightmapRows;
+				}
+			}
+		}
+		// add a tcMod transform for external lightmaps to convert back to the original texcoords
+		else if ( pStage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
+			if ( pStage->bundle[0].numTexMods == TR_MAX_TEXMODS ) {
+				ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix external lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
+			} else {
+				size = pStage->bundle[0].numTexMods * sizeof( texModInfo_t );
+
+				if ( size ) {
+					memmove( &pStage->bundle[0].texMods[1], &pStage->bundle[0].texMods[0], size );
+				}
+
+				tmi = &pStage->bundle[0].texMods[0];
+				pStage->bundle[0].numTexMods++;
+
+				tmi->matrix[0][0] = tr.fatLightmapCols;
+				tmi->matrix[0][1] = 0;
+				tmi->matrix[1][0] = 0;
+				tmi->matrix[1][1] = tr.fatLightmapRows;
+
+				tmi->translate[0] = -(lightmapnum % tr.fatLightmapCols);
+				tmi->translate[1] = -(lightmapnum / tr.fatLightmapCols);
+
+				tmi->type = TMOD_TRANSFORM;
+			}
+		}
+	}
+}
+
+/*
 ===============
 InitShader
 ===============
@@ -3080,6 +3172,8 @@ static shader_t *FinishShader( void ) {
 		VertexLightingCollapse();
 		hasLightmapStage = qfalse;
 	}
+
+	FixFatLightmapTexCoords();
 
 	//
 	// look for multitexture potential
