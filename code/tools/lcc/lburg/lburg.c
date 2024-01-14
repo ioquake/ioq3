@@ -56,14 +56,14 @@ int main(int argc, char *argv[]) {
 		} else if (infp == NULL) {
 			if (strcmp(argv[i], "-") == 0)
 				infp = stdin;
-			else if ((infp = fopen(argv[i], "r")) == NULL) {
+			else if ((infp = fopen(argv[i], "rb")) == NULL) {
 				yyerror("%s: can't read `%s'\n", argv[0], argv[i]);
 				exit(1);
 			}
 		} else if (outfp == NULL) {
 			if (strcmp(argv[i], "-") == 0)
 				outfp = stdout;
-			if ((outfp = fopen(argv[i], "w")) == NULL) {
+			if ((outfp = fopen(argv[i], "wb")) == NULL) {
 				yyerror("%s: can't write `%s'\n", argv[0], argv[i]);
 				exit(1);
 			}

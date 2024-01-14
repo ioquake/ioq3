@@ -7,6 +7,8 @@
 ;
 ; you have to copy OpenAL32.dll here manually
 
+!define VERSION "XXXVERSIONXXX"
+
 !define MULTIUSER_MUI
 !define MULTIUSER_EXECUTIONLEVEL Highest
 !define MULTIUSER_INSTALLMODE_COMMANDLINE
@@ -20,11 +22,13 @@
 !include "MUI2.nsh"
 !define MUI_ICON "../quake3.ico"
 
+!include LogicLib.nsh
+
 ; The name of the installer
 Name "ioquake3"
 
 ; The file to write
-OutFile "ioquake3-XXXVERSIONXXX-XXXRELEASEXXX.x86.exe"
+OutFile "ioquake3-${VERSION}-XXXRELEASEXXX.x86.exe"
 
 ; The default installation directory
 ; set by Multiuser.nsh
@@ -71,16 +75,14 @@ Function un.onInit
 FunctionEnd
 
 ; The stuff to install
-Section "ioquake3 (required)" ioquake3
+Section "ioquake3 ${VERSION} (required)" ioquake3
 
   SectionIn RO
 
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
 
-!ifndef USE_INTERNAL_SPEEX
-  File "libspeex.dll"
-!endif
+  File "../../build/release-mingw32-x86/SDL2.dll"
 !ifndef USE_INTERNAL_ZLIB
   File "zlib1.dll"
 !endif
@@ -116,6 +118,7 @@ Section "ioquake3 (required)" ioquake3
 
   ; Write the uninstall keys for Windows
   WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "DisplayName" "ioquake3"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "DisplayVersion" "${VERSION}"
   WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "NoModify" 1
   WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3" "NoRepair" 1
@@ -135,18 +138,10 @@ SectionEnd
 Section "Protocol Handler" ProtocolHandler
 
   WriteRegStr SHCTX "Software\Classes\quake3" "CustomUrlApplication" "$INSTDIR\ioquake3.x86.exe"
-  WriteRegStr SHCTX "Software\Classes\quake3" "CustomUrlArguments" '"%1"'
+  WriteRegStr SHCTX "Software\Classes\quake3" "CustomUrlArguments" '--uri "%1"'
   WriteRegStr SHCTX "Software\Classes\quake3" "URL Protocol" ""
   WriteRegStr SHCTX "Software\Classes\quake3\DefaultIcon" "" "$INSTDIR\ioquake3.x86.exe,0"
   WriteRegStr SHCTX "Software\Classes\quake3\shell\open\command" "" '"$INSTDIR\ioquake3.x86.exe" --uri "%1"'
-
-SectionEnd
-
-Section "SDL2.dll" SDL
-
-  SetOutPath $INSTDIR
-
-  File "../../build/release-mingw32-x86/SDL2.dll"
 
 SectionEnd
 
@@ -179,7 +174,11 @@ Section "Uninstall"
   ; Remove registry keys
   DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\ioquake3"
   DeleteRegKey SHCTX "Software\ioquake3"
-  DeleteRegKey SHCTX "Software\Classes\quake3"
+
+  ReadRegStr $0 SHCTX "Software\Classes\quake3\shell\open\command" ""
+  ${If} $0 == '"$INSTDIR\ioquake3.x86.exe" --uri "%1"'
+    DeleteRegKey SHCTX "Software\Classes\quake3"
+  ${EndIf}
 
   ; Remove files and uninstaller
   Delete $INSTDIR\baseq3\cgamex86.dll
@@ -200,9 +199,7 @@ Section "Uninstall"
   Delete $INSTDIR\id-readme.txt
   Delete $INSTDIR\voip-readme.txt
 
-!ifndef USE_INTERNAL_SPEEX
-  Delete $INSTDIR\libspeex.dll
-!endif
+  Delete $INSTDIR\SDL2.dll
 !ifndef USE_INTERNAL_ZLIB
   Delete $INSTDIR\zlib1.dll
 !endif
@@ -210,7 +207,6 @@ Section "Uninstall"
   Delete $INSTDIR\jpeg8c.dll
 !endif
 
-  Delete $INSTDIR\SDL2.dll
 !ifdef USE_OPENAL_DLOPEN
   Delete $INSTDIR\OpenAL32.dll
 !endif
@@ -236,11 +232,10 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${ioquake3} "The game executables."
   !insertmacro MUI_DESCRIPTION_TEXT ${StartMenuShortcuts} "Create shortcuts in the start menu."
   !insertmacro MUI_DESCRIPTION_TEXT ${ProtocolHandler} "The protocol handler lets you connect to a game by clicking a link in a web browser."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SDL} "SDL files."
 !ifdef USE_OPENAL_DLOPEN
-  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "OpenAL files."
+  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "Advanced audio mixer that supports surround sound."
 !endif
 !ifdef USE_CURL_DLOPEN
-  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "libcurl files."
+  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "Used for HTTP file downloads."
 !endif
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
