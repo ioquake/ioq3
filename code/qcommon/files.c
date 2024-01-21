@@ -3685,7 +3685,8 @@ static void FS_CheckPak0( void )
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
 
-	if(!com_standalone->integer && foundTA && (foundTA & ((1<<NUM_TA_PAKS)-1)) != ((1<<NUM_TA_PAKS)-1))
+	if(!com_standalone->integer && (foundTA & ((1<<NUM_TA_PAKS)-1)) != ((1<<NUM_TA_PAKS)-1)
+			&& (!Q_stricmp(fs_gamedirvar->string, BASETA) || !Q_stricmp(fs_basegame->string, BASETA)))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
 
