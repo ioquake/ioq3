@@ -3529,6 +3529,8 @@ static void FS_CheckPak0( void )
 	const char	*pakBasename;
 	qboolean founddemo = qfalse;
 	unsigned int foundPak = 0, foundTA = 0;
+	qboolean installHome = qfalse;
+	char *installPath;
 
 	for( path = fs_searchpaths; path; path = path->next )
 	{
@@ -3658,6 +3660,21 @@ static void FS_CheckPak0( void )
 		}
 	}
 
+#ifdef __linux__
+	{
+		const char *p;
+
+		// Users can't write to the default Flatpak fs_basepath
+		if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
+			installHome = qtrue;
+	}
+#endif
+
+	if(installHome)
+		installPath = fs_homepath->string;
+	else
+		installPath = fs_basepath->string;
+
 	if(!com_standalone->integer && (foundPak & ((1<<NUM_ID_PAKS)-1)) != ((1<<NUM_ID_PAKS)-1))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
@@ -3669,7 +3686,7 @@ static void FS_CheckPak0( void )
 
 		Q_strcat(errorText, sizeof(errorText),
 				va(" from the \"%s\" directory in your Quake 3 install or CD-ROM to:\n\n"
-				"%s%c%s%c\n\n", BASEGAME, fs_basepath->string, PATH_SEP, BASEGAME, PATH_SEP));
+				"%s%c%s%c\n\n", BASEGAME, installPath, PATH_SEP, BASEGAME, PATH_SEP));
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 must be purchased to legitimately obtain pak0. "
@@ -3677,10 +3694,19 @@ static void FS_CheckPak0( void )
 				"are freely available at:\n\n"
 				"https://ioquake3.org/extras/patch-data/\n\n");
 
-		Q_strcat(errorText, sizeof(errorText),
-				va("Also check that your ioq3 executable is in "
-					"the correct place and that every file "
-					"in the \"%s\" directory is present and readable", BASEGAME));
+		if(installHome)
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that every file "
+						"in the \"%s\" directory is present and readable", BASEGAME));
+		}
+		else
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that your ioq3 executable is in "
+						"the correct place and that every file "
+						"in the \"%s\" directory is present and readable", BASEGAME));
+		}
 
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
@@ -3697,7 +3723,7 @@ static void FS_CheckPak0( void )
 
 		Q_strcat(errorText, sizeof(errorText),
 				va(" from the \"%s\" directory in your Quake 3 Team Arena install or CD-ROM to:\n\n"
-				"%s%c%s%c\n\n", BASETA, fs_basepath->string, PATH_SEP, BASETA, PATH_SEP));
+				"%s%c%s%c\n\n", BASETA, installPath, PATH_SEP, BASETA, PATH_SEP));
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 Team Arena must be purchased to legitimately obtain pak0. "
@@ -3705,10 +3731,19 @@ static void FS_CheckPak0( void )
 				"are freely available at:\n\n"
 				"https://ioquake3.org/extras/patch-data/\n\n");
 
-		Q_strcat(errorText, sizeof(errorText),
-				va("Also check that your ioq3 executable is in "
-					"the correct place and that every file "
-					"in the \"%s\" directory is present and readable", BASETA));
+		if(installHome)
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that every file "
+						"in the \"%s\" directory is present and readable", BASETA));
+		}
+		else
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that your ioq3 executable is in "
+						"the correct place and that every file "
+						"in the \"%s\" directory is present and readable", BASETA));
+		}
 
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
