@@ -2944,8 +2944,8 @@ static void FixFatLightmapTexCoords(void)
 			break;
 		}
 
-		// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
 		if ( pStage->bundle[0].isLightmap ) {
+			// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
 			for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
 				tmi = &pStage->bundle[0].texMods[i];
 
@@ -2954,11 +2954,32 @@ static void FixFatLightmapTexCoords(void)
 					tmi->translate[1] /= (float)tr.fatLightmapRows;
 				}
 			}
+
+			// fix tcGen environment for internal lightmaps to be limited to the sub-image of the atlas
+			// this is done last so other tcMods are applied first in the 0.0 to 1.0 space
+			if ( pStage->bundle[0].tcGen == TCGEN_ENVIRONMENT_MAPPED ) {
+				if ( pStage->bundle[0].numTexMods == TR_MAX_TEXMODS ) {
+					ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
+				} else {
+					tmi = &pStage->bundle[0].texMods[pStage->bundle[0].numTexMods];
+					pStage->bundle[0].numTexMods++;
+
+					tmi->matrix[0][0] = 1.0f / tr.fatLightmapCols;
+					tmi->matrix[0][1] = 0;
+					tmi->matrix[1][0] = 0;
+					tmi->matrix[1][1] = 1.0f / tr.fatLightmapRows;
+
+					tmi->translate[0] = ( lightmapnum % tr.fatLightmapCols ) / (float)tr.fatLightmapCols;
+					tmi->translate[1] = ( lightmapnum / tr.fatLightmapCols ) / (float)tr.fatLightmapRows;
+
+					tmi->type = TMOD_TRANSFORM;
+				}
+			}
 		}
 		// add a tcMod transform for external lightmaps to convert back to the original texcoords
 		else if ( pStage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
 			if ( pStage->bundle[0].numTexMods == TR_MAX_TEXMODS ) {
-				ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix external lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
+				ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
 			} else {
 				size = pStage->bundle[0].numTexMods * sizeof( texModInfo_t );
 
@@ -2974,8 +2995,8 @@ static void FixFatLightmapTexCoords(void)
 				tmi->matrix[1][0] = 0;
 				tmi->matrix[1][1] = tr.fatLightmapRows;
 
-				tmi->translate[0] = -(lightmapnum % tr.fatLightmapCols);
-				tmi->translate[1] = -(lightmapnum / tr.fatLightmapCols);
+				tmi->translate[0] = -( lightmapnum % tr.fatLightmapCols );
+				tmi->translate[1] = -( lightmapnum / tr.fatLightmapCols );
 
 				tmi->type = TMOD_TRANSFORM;
 			}
