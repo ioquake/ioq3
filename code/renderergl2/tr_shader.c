@@ -2946,12 +2946,14 @@ static void FixFatLightmapTexCoords(void)
 
 		if ( pStage->bundle[0].isLightmap ) {
 			// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
-			for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
-				tmi = &pStage->bundle[0].texMods[i];
+			if ( pStage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
+				for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
+					tmi = &pStage->bundle[0].texMods[i];
 
-				if ( tmi->type == TMOD_TRANSFORM ) {
-					tmi->translate[0] /= (float)tr.fatLightmapCols;
-					tmi->translate[1] /= (float)tr.fatLightmapRows;
+					if ( tmi->type == TMOD_TRANSFORM ) {
+						tmi->translate[0] /= (float)tr.fatLightmapCols;
+						tmi->translate[1] /= (float)tr.fatLightmapRows;
+					}
 				}
 			}
 
