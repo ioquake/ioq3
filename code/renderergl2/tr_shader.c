@@ -30,6 +30,7 @@ static char *s_shaderText;
 static	shaderStage_t	stages[MAX_SHADER_STAGES];		
 static	shader_t		shader;
 static	texModInfo_t	texMods[MAX_SHADER_STAGES][TR_MAX_TEXMODS];
+static	int				shader_realLightmapIndex;
 
 #define FILE_HASH_SIZE		1024
 static	shader_t*		hashTable[FILE_HASH_SIZE];
@@ -2929,7 +2930,7 @@ static void FixFatLightmapTexCoords(void)
 		return;
 	}
 
-	lightmapnum = shader.lightmapIndex;
+	lightmapnum = shader_realLightmapIndex;
 
 	if (tr.worldDeluxeMapping)
 		lightmapnum >>= 1;
@@ -2943,21 +2944,44 @@ static void FixFatLightmapTexCoords(void)
 			break;
 		}
 
-		// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
 		if ( pStage->bundle[0].isLightmap ) {
-			for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
-				tmi = &pStage->bundle[0].texMods[i];
+			// fix tcMod transform for internal lightmaps, it may be used by q3map2 lightstyles
+			if ( pStage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
+				for ( i = 0; i < pStage->bundle[0].numTexMods; i++ ) {
+					tmi = &pStage->bundle[0].texMods[i];
 
-				if ( tmi->type == TMOD_TRANSFORM ) {
-					tmi->translate[0] /= (float)tr.fatLightmapCols;
-					tmi->translate[1] /= (float)tr.fatLightmapRows;
+					if ( tmi->type == TMOD_TRANSFORM ) {
+						tmi->translate[0] /= (float)tr.fatLightmapCols;
+						tmi->translate[1] /= (float)tr.fatLightmapRows;
+					}
+				}
+			}
+
+			// fix tcGen environment for internal lightmaps to be limited to the sub-image of the atlas
+			// this is done last so other tcMods are applied first in the 0.0 to 1.0 space
+			if ( pStage->bundle[0].tcGen == TCGEN_ENVIRONMENT_MAPPED ) {
+				if ( pStage->bundle[0].numTexMods == TR_MAX_TEXMODS ) {
+					ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
+				} else {
+					tmi = &pStage->bundle[0].texMods[pStage->bundle[0].numTexMods];
+					pStage->bundle[0].numTexMods++;
+
+					tmi->matrix[0][0] = 1.0f / tr.fatLightmapCols;
+					tmi->matrix[0][1] = 0;
+					tmi->matrix[1][0] = 0;
+					tmi->matrix[1][1] = 1.0f / tr.fatLightmapRows;
+
+					tmi->translate[0] = ( lightmapnum % tr.fatLightmapCols ) / (float)tr.fatLightmapCols;
+					tmi->translate[1] = ( lightmapnum / tr.fatLightmapCols ) / (float)tr.fatLightmapRows;
+
+					tmi->type = TMOD_TRANSFORM;
 				}
 			}
 		}
 		// add a tcMod transform for external lightmaps to convert back to the original texcoords
 		else if ( pStage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
 			if ( pStage->bundle[0].numTexMods == TR_MAX_TEXMODS ) {
-				ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix external lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
+				ri.Printf( PRINT_DEVELOPER, "WARNING: too many tcmods to fix lightmap texcoords for r_mergeLightmaps in shader '%s'", shader.name );
 			} else {
 				size = pStage->bundle[0].numTexMods * sizeof( texModInfo_t );
 
@@ -2973,8 +2997,8 @@ static void FixFatLightmapTexCoords(void)
 				tmi->matrix[1][0] = 0;
 				tmi->matrix[1][1] = tr.fatLightmapRows;
 
-				tmi->translate[0] = -(lightmapnum % tr.fatLightmapCols);
-				tmi->translate[1] = -(lightmapnum / tr.fatLightmapCols);
+				tmi->translate[0] = -( lightmapnum % tr.fatLightmapCols );
+				tmi->translate[1] = -( lightmapnum / tr.fatLightmapCols );
 
 				tmi->type = TMOD_TRANSFORM;
 			}
@@ -2987,7 +3011,7 @@ static void FixFatLightmapTexCoords(void)
 InitShader
 ===============
 */
-static void InitShader( const char *name, int lightmapIndex ) {
+static void InitShaderEx( const char *name, int lightmapIndex, int realLightmapIndex ) {
 	int i;
 
 	// clear the global shader
@@ -2996,6 +3020,7 @@ static void InitShader( const char *name, int lightmapIndex ) {
 
 	Q_strncpyz( shader.name, name, sizeof( shader.name ) );
 	shader.lightmapIndex = lightmapIndex;
+	shader_realLightmapIndex = realLightmapIndex;
 
 	for ( i = 0 ; i < MAX_SHADER_STAGES ; i++ ) {
 		stages[i].bundle[0].texMods = texMods[i];
@@ -3014,6 +3039,10 @@ static void InitShader( const char *name, int lightmapIndex ) {
 			stages[i].specularScale[3] = r_baseGloss->value;
 		}
 	}
+}
+
+static void InitShader( const char *name, int lightmapIndex ) {
+	InitShaderEx( name, lightmapIndex, lightmapIndex );
 }
 
 /*
@@ -3337,6 +3366,10 @@ most world construction surfaces.
 ===============
 */
 shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage ) {
+	return R_FindShaderEx( name, lightmapIndex, mipRawImage, lightmapIndex );
+}
+
+shader_t *R_FindShaderEx( const char *name, int lightmapIndex, qboolean mipRawImage, int realLightmapIndex ) {
 	char		strippedName[MAX_QPATH];
 	int			hash;
 	char		*shaderText;
@@ -3376,7 +3409,7 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 		}
 	}
 
-	InitShader( strippedName, lightmapIndex );
+	InitShaderEx( strippedName, lightmapIndex, realLightmapIndex );
 
 	//
 	// attempt to define shader from an explicit parameter file
