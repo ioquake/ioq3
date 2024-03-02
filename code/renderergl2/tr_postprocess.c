@@ -447,7 +447,7 @@ static void RB_VBlur(FBO_t *srcFbo, FBO_t *dstFbo, float strength)
 	RB_BlurAxis(srcFbo, dstFbo, strength, qfalse);
 }
 
-void RB_GaussianBlur(float blur)
+void RB_GaussianBlur(FBO_t *srcFbo, FBO_t *dstFbo, float blur)
 {
 	//float mul = 1.f;
 	float factor = Com_Clamp(0.f, 1.f, blur);
@@ -462,7 +462,7 @@ void RB_GaussianBlur(float blur)
 		VectorSet4(color, 1, 1, 1, 1);
 
 		// first, downsample the framebuffer
-		FBO_FastBlit(NULL, NULL, tr.quarterFbo[0], NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		FBO_FastBlit(srcFbo, NULL, tr.quarterFbo[0], NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 		FBO_FastBlit(tr.quarterFbo[0], NULL, tr.textureScratchFbo[0], NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		// set the alpha channel
@@ -478,6 +478,6 @@ void RB_GaussianBlur(float blur)
 		VectorSet4(srcBox, 0, 0, tr.textureScratchFbo[0]->width, tr.textureScratchFbo[0]->height);
 		VectorSet4(dstBox, 0, 0, glConfig.vidWidth,              glConfig.vidHeight);
 		color[3] = factor;
-		FBO_Blit(tr.textureScratchFbo[0], srcBox, NULL, NULL, dstBox, NULL, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
+		FBO_Blit(tr.textureScratchFbo[0], srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
 	}
 }
