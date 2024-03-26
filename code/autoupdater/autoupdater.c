@@ -939,7 +939,7 @@ static void waitToApplyUpdates(void)
             read(3, &x, sizeof (x));
             info("Pipe has closed, waiting for process to fully go away now.");
             while (kill(options.waitforprocess, 0) == 0) {
-                nanosleep(&req);
+                nanosleep(&req, NULL);
             }
             #endif
         }
