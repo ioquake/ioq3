@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <fcntl.h>
 #include <fenv.h>
 #include <sys/wait.h>
+#include <time.h>
 
 qboolean stdinIsATTY;
 
@@ -552,7 +553,10 @@ void Sys_Sleep( int msec )
 		if( msec < 0 )
 			msec = 10;
 
-		usleep( msec * 1000 );
+		struct timespec req;
+		req.tv_sec = msec/1000;
+		req.tv_nsec = (msec%1000)*1000000;
+		nanosleep(&req, NULL);
 	}
 }
 
