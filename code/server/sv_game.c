@@ -867,6 +867,37 @@ void SV_ShutdownGameProgs( void ) {
 
 /*
 ==================
+SV_GetCustomEntityString
+Read custom entity string from entity file for current map if it exists
+Author: Wiz
+==================
+*/
+static char *SV_GetCustomEntityString(void)
+{
+    char filename[MAX_QPATH];
+    union {
+        char *c;
+        void *v;
+    } f;
+
+	if ( sv_entityPath->string[0] != '\0' )
+        Com_sprintf(filename, sizeof(filename), "%s%c%s.ent", sv_entityPath->string, PATH_SEP, sv_mapname->string);
+    else
+        Com_sprintf(filename, sizeof(filename), "%s.ent", sv_mapname->string);
+
+    FS_ReadFile(filename, &f.v);
+
+    if (!f.v)
+        return NULL;
+
+    FS_FreeFile(f.v);
+
+    return f.c;
+}
+
+
+/*
+==================
 SV_InitGameVM
 
 Called for both a full init and a restart
@@ -876,7 +907,11 @@ static void SV_InitGameVM( qboolean restart ) {
 	int		i;
 
 	// start the entity parsing at the beginning
-	sv.entityParsePoint = CM_EntityString();
+	//sv.entityParsePoint = CM_EntityString();
+
+	// now we can replace all entities on the map with out own
+	if ( !( sv.entityParsePoint = SV_GetCustomEntityString() ) )
+		sv.entityParsePoint = CM_EntityString();
 
 	// clear all gentity pointers that might still be set from
 	// a previous level
