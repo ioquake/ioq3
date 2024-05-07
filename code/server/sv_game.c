@@ -909,7 +909,7 @@ static void SV_InitGameVM( qboolean restart ) {
 	// start the entity parsing at the beginning
 	//sv.entityParsePoint = CM_EntityString();
 
-	// now we can replace all entities on the map with out own
+	// now we can replace all entities on the map with our own
 	if ( !( sv.entityParsePoint = SV_GetCustomEntityString() ) )
 		sv.entityParsePoint = CM_EntityString();
 
