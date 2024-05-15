@@ -549,11 +549,12 @@ void Sys_Sleep( int msec )
 	}
 	else
 	{
+		struct timespec req;
+
 		// With nothing to select() on, we can't wait indefinitely
 		if( msec < 0 )
 			msec = 10;
 
-		struct timespec req;
 		req.tv_sec = msec/1000;
 		req.tv_nsec = (msec%1000)*1000000;
 		nanosleep(&req, NULL);
