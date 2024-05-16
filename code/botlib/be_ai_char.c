@@ -758,8 +758,7 @@ void Characteristic_String(int character, int index, char *buf, int size)
 	//an integer will be converted to a float
 	if (ch->c[index].type == CT_STRING)
 	{
-		strncpy(buf, ch->c[index].value.string, size-1);
-		buf[size-1] = '\0';
+		Q_strncpyz(buf, ch->c[index].value.string, size);
 	} //end if
 	else
 	{

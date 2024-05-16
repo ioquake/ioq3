@@ -138,8 +138,7 @@ void SV_RankBegin( char *gamekey )
 
 	// initialize rankings
 	GRankLogLevel( GRLOG_OFF );
-	memset(SV_RankGameKey,0,sizeof(SV_RankGameKey));
-	strncpy(SV_RankGameKey,gamekey,sizeof(SV_RankGameKey)-1);
+	Q_strncpyz(SV_RankGameKey,gamekey,sizeof(SV_RankGameKey));
 	init = GRankInit( 1, SV_RankGameKey, GR_OPT_POLL, GR_OPT_END );
 	s_server_context = init.context;
 	s_rankings_contexts++;
