@@ -827,6 +827,11 @@ char	*Q_strlwr( char *s1 );
 char	*Q_strupr( char *s1 );
 const char	*Q_stristr( const char *s, const char *find);
 
+#ifndef Q3_VM
+// allows overlapping dest and src
+char	*Q_strncpy( char *dest, const char *src, int destsize );
+#endif
+
 // buffer size safe library replacements
 void	Q_strncpyz( char *dest, const char *src, int destsize );
 void	Q_strcat( char *dest, int size, const char *src );
