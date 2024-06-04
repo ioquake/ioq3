@@ -940,20 +940,77 @@ else # ifeq openbsd
 #############################################################################
 
 ifeq ($(PLATFORM),netbsd)
+  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
+    -pipe -DUSE_ICON -DMAP_ANONYMOUS=MAP_ANON
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
 
-  LIBS=-lm
+  ALTIVEC_CFLAGS =
+  OPTIMIZEVM = -O3
+  OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+
+  ifeq ($(ARCH),x86_64)
+    HAVE_VM_COMPILED = true
+  else
+  ifeq ($(ARCH),x86)
+    OPTIMIZE += -march=i586
+    HAVE_VM_COMPILED=true
+  else
+  ifeq ($(ARCH),ppc)
+    ALTIVEC_CFLAGS = -maltivec
+    HAVE_VM_COMPILED=true
+  endif
+  ifeq ($(ARCH),ppc64)
+    ALTIVEC_CFLAGS = -maltivec
+    HAVE_VM_COMPILED=true
+  endif
+  ifeq ($(ARCH),sparc64)
+    OPTIMIZE += -mtune=ultrasparc3 -mv8plus
+    OPTIMIZEVM += -mtune=ultrasparc3 -mv8plus
+    HAVE_VM_COMPILED=true
+  endif
+  ifeq ($(ARCH),alpha)
+    # According to http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=410555
+    # -ffast-math will cause the client to die with SIGFPE on Alpha
+    OPTIMIZE = $(OPTIMIZEVM)
+  endif
+  endif
+  endif
+
+  BASE_CFLAGS += $(OPTIMIZE) $(ALTIVEC_CFLAGS)
+
+  ifeq ($(USE_CURL),1)
+    CLIENT_CFLAGS += $(CURL_CFLAGS)
+    USE_CURL_DLOPEN=0
+  endif
+
+  # We can't pass it to the CLIENT_LIBS but after the all
+  # other arguments. Tested with GCC 10.5 on NetBSD 10.
+  USE_MUMBLE=0
+
   SHLIBEXT=so
   SHLIBCFLAGS=-fPIC
   SHLIBLDFLAGS=-shared $(LDFLAGS)
+
   THREAD_LIBS=-lpthread
+  # Needs to link after the all other arguments
+  LIBS=-lm -lrt
 
-  BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes
+  CLIENT_LIBS =
 
-  ifeq ($(ARCH),x86)
-    HAVE_VM_COMPILED=true
+  CLIENT_LIBS += $(SDL_LIBS)
+  RENDERER_LIBS = $(SDL_LIBS)
+
+  ifeq ($(USE_OPENAL),1)
+    ifneq ($(USE_OPENAL_DLOPEN),1)
+      CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
+    endif
   endif
 
-  BUILD_CLIENT = 0
+  ifeq ($(USE_CURL),1)
+    ifneq ($(USE_CURL_DLOPEN),1)
+      CLIENT_LIBS += $(CURL_LIBS)
+    endif
+  endif
 else # ifeq netbsd
 
 #############################################################################
