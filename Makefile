@@ -1043,6 +1043,38 @@ ifeq ($(PLATFORM),sunos)
 else # ifeq sunos
 
 #############################################################################
+# SETUP AND BUILD -- emscripten
+#############################################################################
+
+ifeq ($(PLATFORM),emscripten)
+
+  # 1. Create "baseq3" directory in the same directory as this Makefile.
+  # 2. Copy pak[0-8].pk3 into the created "baseq3" directory.
+  # 3. Run `/path/to/emsdk.sh`
+  # 4. Run `make PLATFORM=emscripten`
+  # 5. Serve the build/release-emscripten-wasm32/ioquake3_opengl2.{html,js,wasm,data} from a web server.
+  # 6. Load ioquake3_opengl2.html in a web browser.
+
+  CC=emcc
+  ARCH=wasm32
+
+  # LDFLAGS+=-s MAIN_MODULE is needed for dlopen() in client/server but it causes compile errors
+  USE_RENDERER_DLOPEN=0
+
+  BASE_CFLAGS=-fPIC -s USE_SDL=2
+  LDFLAGS=-s TOTAL_MEMORY=256mb -s MAX_WEBGL_VERSION=2 --preload-file baseq3
+  OPTIMIZEVM = -O3
+  OPTIMIZE = $(OPTIMIZEVM)
+
+  FULLBINEXT=.html
+
+  SHLIBEXT=wasm
+  SHLIBCFLAGS=-fPIC
+  SHLIBLDFLAGS=-s SIDE_MODULE
+
+else # ifeq emscripten
+
+#############################################################################
 # SETUP AND BUILD -- GENERIC
 #############################################################################
   BASE_CFLAGS=
@@ -1060,6 +1092,7 @@ endif #OpenBSD
 endif #NetBSD
 endif #IRIX
 endif #SunOS
+endif #emscripten
 
 ifndef CC
   CC=gcc
@@ -1085,18 +1118,37 @@ endif
 
 ifneq ($(BUILD_SERVER),0)
   TARGETS += $(B)/$(SERVERBIN)$(FULLBINEXT)
+
+  ifeq ($(PLATFORM),emscripten)
+    EMSCRIPTENOBJ += $(B)/$(SERVERBIN).js \
+                     $(B)/$(SERVERBIN).wasm \
+                     $(B)/$(SERVERBIN).data
+  endif
 endif
 
 ifneq ($(BUILD_CLIENT),0)
+  TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+
+  ifeq ($(PLATFORM),emscripten)
+    EMSCRIPTENOBJ += $(B)/$(CLIENTBIN).js \
+                     $(B)/$(CLIENTBIN).wasm \
+                     $(B)/$(CLIENTBIN).data
+  endif
+
   ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/renderer_opengl1_$(SHLIBNAME)
+    TARGETS += $(B)/renderer_opengl1_$(SHLIBNAME)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/renderer_opengl2_$(SHLIBNAME)
     endif
   else
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
+
+      ifeq ($(PLATFORM),emscripten)
+        EMSCRIPTENOBJ += $(B)/$(CLIENTBIN)_opengl2.js \
+                         $(B)/$(CLIENTBIN)_opengl2.wasm \
+                         $(B)/$(CLIENTBIN)_opengl2.data
+      endif
     endif
   endif
 endif
@@ -1871,8 +1923,13 @@ ifdef MINGW
   Q3OBJ += \
     $(B)/client/con_passive.o
 else
+ifeq ($(PLATFORM),emscripten)
+  Q3OBJ += \
+    $(B)/client/con_passive.o
+else
   Q3OBJ += \
     $(B)/client/con_tty.o
+endif
 endif
 
 Q3R2OBJ = \
@@ -3044,6 +3101,7 @@ clean2:
 	@rm -f $(OBJ)
 	@rm -f $(OBJ_D_FILES)
 	@rm -f $(STRINGOBJ)
+	@rm -f $(EMSCRIPTENOBJ)
 	@rm -f $(TARGETS)
 
 toolsclean: toolsclean-debug toolsclean-release

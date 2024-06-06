@@ -398,7 +398,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		int profileMask;
 		int majorVersion;
 		int minorVersion;
-	} contexts[3];
+	} contexts[4];
 	int numContexts, type;
 	const char *glstring;
 	int perChannelColorBits;
@@ -543,6 +543,14 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		                 ( r_preferOpenGLES->integer == -1 && profileMask == SDL_GL_CONTEXT_PROFILE_ES ) );
 
 		if ( preferOpenGLES ) {
+#ifdef __EMSCRIPTEN__
+			// WebGL 2.0 isn't fully backward compatible so you have to ask for it specifically
+			contexts[numContexts].profileMask = SDL_GL_CONTEXT_PROFILE_ES;
+			contexts[numContexts].majorVersion = 3;
+			contexts[numContexts].minorVersion = 0;
+			numContexts++;
+#endif
+
 			contexts[numContexts].profileMask = SDL_GL_CONTEXT_PROFILE_ES;
 			contexts[numContexts].majorVersion = 2;
 			contexts[numContexts].minorVersion = 0;
@@ -560,6 +568,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		numContexts++;
 
 		if ( !preferOpenGLES ) {
+#ifdef __EMSCRIPTEN__
+			contexts[numContexts].profileMask = SDL_GL_CONTEXT_PROFILE_ES;
+			contexts[numContexts].majorVersion = 3;
+			contexts[numContexts].minorVersion = 0;
+			numContexts++;
+#endif
+
 			contexts[numContexts].profileMask = SDL_GL_CONTEXT_PROFILE_ES;
 			contexts[numContexts].majorVersion = 2;
 			contexts[numContexts].minorVersion = 0;
