@@ -1118,6 +1118,10 @@ ifeq ($(PLATFORM),emscripten)
   # Some of these warnings may actually be legit problems and should be fixed at some point.
   BASE_CFLAGS+=-Wno-deprecated-non-prototype -Wno-dangling-else -Wno-implicit-const-int-float-conversion -Wno-misleading-indentation -Wno-format-overflow -Wno-logical-not-parentheses -Wno-absolute-value
 
+  DEBUG_CFLAGS=-g3 -O0 # -fsanitize=address -fsanitize=undefined
+  # Emscripten needs debug compiler flags to be passed to the linker as well
+  DEBUG_LDFLAGS=$(DEBUG_CFLAGS)
+
   SHLIBEXT=wasm
   SHLIBCFLAGS=-fPIC
   SHLIBLDFLAGS=-s SIDE_MODULE
@@ -1506,7 +1510,8 @@ all: debug release
 debug:
 	@$(MAKE) targets B=$(BD) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
 	  OPTIMIZE="$(DEBUG_CFLAGS)" OPTIMIZEVM="$(DEBUG_CFLAGS)" \
-	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V)
+	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V) \
+	  LDFLAGS="$(LDFLAGS) $(DEBUG_LDFLAGS)"
 
 release:
 	@$(MAKE) targets B=$(BR) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
