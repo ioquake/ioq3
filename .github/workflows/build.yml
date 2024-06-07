@@ -12,7 +12,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libsdl2-dev
     - name: Compile
-      run: make release
+      run: make release -j$(nproc)
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
@@ -27,7 +27,7 @@ jobs:
     - name: Compile
       run: |
         choco install zip
-        make release
+        make release -j $env:NUMBER_OF_PROCESSORS
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
@@ -40,7 +40,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Compile
-      run: make release
+      run: make release -j$(sysctl -n hw.logicalcpu)
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
