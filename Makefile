@@ -1050,7 +1050,7 @@ ifeq ($(PLATFORM),emscripten)
 
   # 1. Create "baseq3" directory in the same directory as this Makefile.
   # 2. Copy pak[0-8].pk3 into the created "baseq3" directory.
-  # 3. Run `/path/to/emsdk.sh`
+  # 3. Run `source "/path/to/emsdk_env.sh"` to add emcc to PATH.
   # 4. Run `make PLATFORM=emscripten`
   # 5. Serve the build/release-emscripten-wasm32/ioquake3_opengl2.{html,js,wasm,data} from a web server.
   # 6. Load ioquake3_opengl2.html in a web browser.
