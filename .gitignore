@@ -3,6 +3,8 @@ Makefile.local
 *.swp
 *tags
 *~
+/.vscode/
+/baseq3
 
 # OS X
 ####################
