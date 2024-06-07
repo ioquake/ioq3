@@ -47,3 +47,26 @@ jobs:
       with:
         name: macOS
         path: build/*.zip
+  web:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        repository: emscripten-core/emsdk
+        path: emsdk
+    - name: Install Dependencies
+      run: |
+        cd emsdk
+        ./emsdk install 3.1.58
+        ./emsdk activate 3.1.58
+    - name: Compile
+      env:
+        ARCHIVE: 1
+      run: |
+        source emsdk/emsdk_env.sh
+        emmake make release -j$(nproc)
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Web
+        path: build/*.zip
