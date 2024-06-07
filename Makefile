@@ -1064,7 +1064,9 @@ ifeq ($(PLATFORM),emscripten)
   # 5. Serve the build/release-emscripten-wasm32/ioquake3_opengl2.{html,js,wasm,data} from a web server.
   # 6. Load ioquake3_opengl2.html in a web browser.
 
-  CC=emcc
+  ifneq ($(findstring /emcc,$(CC)),/emcc)
+    CC=emcc
+  endif
   ARCH=wasm32
   BINEXT=.js
   
