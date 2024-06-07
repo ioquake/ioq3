@@ -1066,16 +1066,51 @@ ifeq ($(PLATFORM),emscripten)
 
   CC=emcc
   ARCH=wasm32
-
+  BINEXT=.js
+  
   # LDFLAGS+=-s MAIN_MODULE is needed for dlopen() in client/server but it causes compile errors
   USE_RENDERER_DLOPEN=0
+  USE_OPENAL_DLOPEN=0
+  USE_CURL=0
+  HAVE_VM_COMPILED=false
+  BUILD_GAME_SO=0
+  BUILD_GAME_QVM=0
+  # Would be interesting to try to get the server working via WebRTC DataChannel.
+  # This would enable P2P play, hosting a server in the browser. Also,
+  # DataChannel is the only way to use UDP in the browser.
+  BUILD_SERVER=0
 
-  BASE_CFLAGS=-fPIC -s USE_SDL=2
-  LDFLAGS=-s STACK_SIZE=5MB -s TOTAL_MEMORY=256MB -s MAX_WEBGL_VERSION=2 --preload-file $(BASEGAME)
+  CLIENT_EXTRA_FILES+=code/web/ioquake3.html
+
+  CLIENT_CFLAGS+=-s USE_SDL=2
+
+  CLIENT_LDFLAGS+=-s TOTAL_MEMORY=256mb
+  CLIENT_LDFLAGS+=-s STACK_SIZE=5MB
+  # Informing Emscripten which WebGL versions we support makes the JS bundle smaller and faster to load.
+  CLIENT_LDFLAGS+=-s MIN_WEBGL_VERSION=2
+  CLIENT_LDFLAGS+=-s MAX_WEBGL_VERSION=2
+  CLIENT_LDFLAGS+=-s FULL_ES2=1
+  # The HTML file can use these functions to load extra files before the game starts.
+  CLIENT_LDFLAGS+=-s EXPORTED_RUNTIME_METHODS=FS,addRunDependency,removeRunDependency
+  CLIENT_LDFLAGS+=-s EXIT_RUNTIME=1
+  CLIENT_LDFLAGS+=-s EXPORT_ES6
+  CLIENT_LDFLAGS+=-s EXPORT_NAME=ioquake3
+  # Game data files can be packaged by emcc into a .data file that lives next to the wasm bundle
+  # and added to the virtual filesystem before the game starts. This requires the game data to be
+  # present at build time and it can't be changed afterward.
+  # For more flexibility, game data files can be loaded from a web server at runtime by listing
+  # them in ioq3-config.json. This way they don't have to be present at build time and can be
+  # changed later.
+  ifneq ($(wildcard $(BASEGAME)/*),)
+    CLIENT_LDFLAGS+=--preload-file $(BASEGAME)
+    EMSCRIPTEN_PRELOAD_FILE=1
+    CLIENT_EXTRA_FILES+=code/web/empty/ioq3-config.json
+  else
+    CLIENT_EXTRA_FILES+=code/web/$(BASEGAME)/ioq3-config.json
+  endif
+
   OPTIMIZEVM = -O3
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
-
-  FULLBINEXT=.html
 
   SHLIBEXT=wasm
   SHLIBCFLAGS=-fPIC
@@ -1129,19 +1164,16 @@ ifneq ($(BUILD_SERVER),0)
   TARGETS += $(B)/$(SERVERBIN)$(FULLBINEXT)
 
   ifeq ($(PLATFORM),emscripten)
-    EMSCRIPTENOBJ += $(B)/$(SERVERBIN).js \
-                     $(B)/$(SERVERBIN).wasm \
-                     $(B)/$(SERVERBIN).data
+    EMSCRIPTENOBJ+=$(B)/$(SERVERBIN).wasm
+    ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+      EMSCRIPTENOBJ+=$(B)/$(SERVERBIN).data
+    endif
   endif
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-  TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
-
-  ifeq ($(PLATFORM),emscripten)
-    EMSCRIPTENOBJ += $(B)/$(CLIENTBIN).js \
-                     $(B)/$(CLIENTBIN).wasm \
-                     $(B)/$(CLIENTBIN).data
+  ifneq ($(PLATFORM),emscripten)
+    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
   endif
 
   ifneq ($(USE_RENDERER_DLOPEN),0)
@@ -1154,9 +1186,10 @@ ifneq ($(BUILD_CLIENT),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
 
       ifeq ($(PLATFORM),emscripten)
-        EMSCRIPTENOBJ += $(B)/$(CLIENTBIN)_opengl2.js \
-                         $(B)/$(CLIENTBIN)_opengl2.wasm \
-                         $(B)/$(CLIENTBIN)_opengl2.data
+        EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN)_opengl2.wasm32.wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN)_opengl2.wasm32.data
+        endif
       endif
     endif
   endif
@@ -1504,6 +1537,7 @@ ifneq ($(BUILD_CLIENT),0)
 endif
 
 NAKED_TARGETS=$(shell echo $(TARGETS) | sed -e "s!$(B)/!!g")
+NAKED_EMSCRIPTENOBJ=$(shell echo $(EMSCRIPTENOBJ) | sed -e "s!$(B)/!!g")
 
 print_list=-@for i in $(1); \
      do \
@@ -1559,7 +1593,20 @@ endif
 	@echo ""
 	@echo "  Output:"
 	$(call print_list, $(NAKED_TARGETS))
+	$(call print_list, $(NAKED_EMSCRIPTENOBJ))
 	@echo ""
+ifeq ($(PLATFORM),emscripten)
+ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+	@echo "  Warning: Game files not found in '$(BASEGAME)'."
+	@echo "  They will not be packaged by Emscripten or preloaded."
+	@echo "  To run this build you must serve the game files from a web server"
+	@echo "  and list their paths in ioq3-config.json."
+	@echo "  To make a build that automatically loads the game files, create a"
+	@echo "  directory called '$(BASEGAME)' and copy your game files into it, then"
+	@echo "  'emmake make clean' and rebuild."
+	@echo ""
+endif
+endif
 ifneq ($(TARGETS),)
   ifndef DEBUG_MAKEFILE
 	@$(MAKE) $(TARGETS) $(B).zip V=$(V)
@@ -1575,7 +1622,7 @@ endif
 ifneq ($(PLATFORM),darwin)
   ifdef ARCHIVE
 	@rm -f $@
-	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS))
+	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_EMSCRIPTENOBJ))
   endif
 endif
 

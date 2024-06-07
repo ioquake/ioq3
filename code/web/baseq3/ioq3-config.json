@@ -1,0 +1,13 @@
+{
+    "files": [
+        {"src": "baseq3/pak0.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak1.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak2.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak3.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak4.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak5.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak6.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak7.pk3", "dst": "/baseq3"},
+        {"src": "baseq3/pak8.pk3", "dst": "/baseq3"}
+    ]
+}

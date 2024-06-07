@@ -1,0 +1,70 @@
+<!DOCTYPE html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ioquake3 Emscripten demo</title>
+<style>
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: rgb(0, 0, 0); display:flex; align-items: center; justify-content: center; }
+canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; object-fit: contain; }
+</style>
+
+<canvas id=canvas></canvas>
+
+<script type=module>
+if (window.location.protocol === 'file:') throw new Error('Unfortunately browser security restrictions prevent loading wasm from a file: URL. This file must be loaded from a web server. The easiest way to do this is probably to use Python\'s built-in web server by running `python3 -m http.server` in the top level ioq3 directory and then navigating to http://localhost:8000/code/web/ioquake3.html');
+
+// First set up the command line arguments and the Emscripten filesystem.
+const urlParams = new URLSearchParams(window.location.search);
+const basegame = urlParams.get('basegame') || 'baseq3';
+let generatedArguments = `
+    +set net_enabled 0
+    +set r_mode -2
+    +set fs_game ${basegame}
+`;
+// Note that unfortunately "+" needs to be encoded as "%2b" in URL query strings or it will be stripped by the browser.
+const queryArgs = urlParams.get('args');
+if (queryArgs) generatedArguments += ` ${queryArgs} `;
+
+// If buildPath is not specified, try to find a build in one of a few default paths.
+let buildPath = urlParams.get('buildPath');
+if (buildPath && !buildPath.endsWith('/')) buildPath += '/';
+const buildPaths = buildPath ? [buildPath] : ['../../build/debug-emscripten-wasm32/', '../../build/release-emscripten-wasm32/', './'];
+const scriptPaths = buildPaths.map(buildPath => buildPath + 'ioquake3_opengl2.wasm32.js');
+const scriptResponses = await Promise.all(scriptPaths.map(p => fetch(p, {method: 'HEAD'})));
+const validBuilds = scriptResponses.filter(r => r.ok).length;
+const goodURL = (newPath) => {
+    const url = new URL(window.location);
+    url.searchParams.set('buildPath', newPath);
+    return url.toString().replace(/%2f/gi, '/');
+};
+if (validBuilds === 0) throw new Error(`Didn't find any wasm builds. Run \`emmake make debug\` to build one, or use the buildPath query parameter to specify a directory containing ioquake3_opengl2.wasm32.[js,wasm,data], e.g. ${goodURL('../../build/debug-emscripten-wasm32/')}`);
+if (validBuilds > 1) throw new Error(`Found multiple valid builds at the following paths: [${buildPaths.filter((path, i)=>scriptResponses[i].ok)}]. Please specify which one to run by adding a buildPath query parameter to the URL, e.g. ${goodURL(buildPaths.filter((path, i)=>scriptResponses[i].ok)[0])}`);
+const buildIndex = scriptResponses.findIndex(r => r.ok);
+const selectedScript = scriptPaths[buildIndex];
+buildPath = buildPaths[buildIndex];
+const buildURL = new URL(buildPath, location.origin + location.pathname);
+
+const configPromise = fetch(buildPath + 'ioq3-config.json').then(r => r.ok ? r.json() : {files: []});
+
+const ioquake3 = (await import(selectedScript)).default;
+ioquake3({
+    canvas: canvas,
+    arguments: generatedArguments.trim().split(/\s+/),
+    locateFile: (file) => buildPath + file,
+    preRun: [async (module) => {
+        module.addRunDependency('setup-ioq3-filesystem');
+        try {
+            const config = await configPromise;
+            const fetches = config.files.map(file => fetch(new URL(file.src, buildURL)));
+            for (let i = 0; i < config.files.length; i++) {
+                const response = await fetches[i];
+                if (!response.ok) continue;
+                const data = await response.arrayBuffer();
+                let name = config.files[i].src.match(/[^/]+$/)[0];
+                let dir = config.files[i].dst;
+                module.FS.mkdirTree(dir);
+                module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
+            }
+        } finally {
+            module.removeRunDependency('setup-ioq3-filesystem');
+        }
+    }],
+});
+</script>
