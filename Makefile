@@ -1625,6 +1625,7 @@ ifneq ($(PLATFORM),darwin)
 	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_EMSCRIPTENOBJ))
   endif
 endif
+	@:
 
 makedirs:
 	@$(MKDIR) $(B)/autoupdater
