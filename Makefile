@@ -61,6 +61,11 @@ ifeq ($(COMPILE_PLATFORM),cygwin)
   PLATFORM=mingw32
 endif
 
+# detect "emmake make"
+ifeq ($(findstring /emcc,$(CC)),/emcc)
+  PLATFORM=emscripten
+endif
+
 ifndef PLATFORM
 PLATFORM=$(COMPILE_PLATFORM)
 endif
