@@ -47,3 +47,39 @@ jobs:
       with:
         name: macOS
         path: build/*.zip
+
+  build-cmake:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-18.04
+          - windows-2019
+          - macos-10.15
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+
+      - name: "Install Dependencies (Linux)"
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install libsdl2-dev
+
+      - name: "Install Dependencies (OSX)"
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew install sdl2
+
+      - name: "Install Dependencies (Windows)"
+        if: ${{ runner.os == 'Windows' }}
+        run: choco install zip
+
+      - name: "Compile"
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install
+          cmake --build .
+          cmake --install .
