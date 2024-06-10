@@ -291,6 +291,7 @@ LIBTOMCRYPTSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/libtomcrypt-1.17
 TOMSFASTMATHSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/tomsfastmath-0.13.1
 LOKISETUPDIR=misc/setup
 NSISDIR=misc/nsis
+WEBDIR=$(MOUNT_DIR)/web
 SDLHDIR=$(MOUNT_DIR)/SDL2
 LIBSDIR=$(MOUNT_DIR)/libs
 
@@ -1069,8 +1070,6 @@ ifeq ($(PLATFORM),emscripten)
   BUILD_RENDERER_OPENGL1=0
   BUILD_SERVER=0
 
-  CLIENT_EXTRA_FILES+=code/web/ioquake3.html
-
   CLIENT_CFLAGS+=-s USE_SDL=2
 
   CLIENT_LDFLAGS+=-s TOTAL_MEMORY=256MB
@@ -1231,6 +1230,8 @@ ifeq ($(PLATFORM),emscripten)
   endif
 
   ifneq ($(BUILD_CLIENT),0)
+    TARGETS += $(B)/$(CLIENTBIN).html
+
     ifneq ($(USE_RENDERER_DLOPEN),0)
       GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
       ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
@@ -3084,6 +3085,15 @@ $(B)/$(MISSIONPACK)/qcommon/%.o: $(CMDIR)/%.c
 
 $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 	$(DO_Q3LCC_MISSIONPACK)
+
+
+#############################################################################
+# EMSCRIPTEN
+#############################################################################
+
+$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
+	$(echo_cmd) "SED $@"
+	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g' < $< > $@
 
 
 #############################################################################
