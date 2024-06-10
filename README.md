@@ -148,6 +148,8 @@ Makefile.local:
   SERVERBIN            - rename 'ioq3ded' server binary
   CLIENTBIN            - rename 'ioquake3' client binary
   USE_RENDERER_DLOPEN  - build and use the renderer in a library
+  BUILD_RENDERER_OPENGL1 build the opengl1 client / renderer library
+  BUILD_RENDERER_OPENGL2 build the opengl2 client / renderer library
   USE_YACC             - use yacc to update code/tools/lcc/lburg/gram.c
   BASEGAME             - rename 'baseq3'
   BASEGAME_CFLAGS      - custom CFLAGS for basegame

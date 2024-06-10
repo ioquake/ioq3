@@ -40,6 +40,9 @@ endif
 ifndef BUILD_MISSIONPACK
   BUILD_MISSIONPACK=
 endif
+ifndef BUILD_RENDERER_OPENGL1
+  BUILD_RENDERER_OPENGL1=
+endif
 ifndef BUILD_RENDERER_OPENGL2
   BUILD_RENDERER_OPENGL2=
 endif
@@ -1073,6 +1076,7 @@ ifeq ($(PLATFORM),emscripten)
   HAVE_VM_COMPILED=false
   BUILD_GAME_SO=0
   BUILD_GAME_QVM=0
+  BUILD_RENDERER_OPENGL1=0
   # Would be interesting to try to get the server working via WebRTC DataChannel.
   # This would enable P2P play, hosting a server in the browser. Also,
   # DataChannel is the only way to use UDP in the browser.
@@ -1178,16 +1182,26 @@ ifneq ($(BUILD_SERVER),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-  ifneq ($(PLATFORM),emscripten)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
-  endif
-
   ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/renderer_opengl1_$(SHLIBNAME)
+    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+      TARGETS += $(B)/renderer_opengl1_$(SHLIBNAME)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/renderer_opengl2_$(SHLIBNAME)
     endif
   else
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+      TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+
+      ifeq ($(PLATFORM),emscripten)
+        EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN).wasm32.wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN).wasm32.data
+        endif
+      endif
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
 
@@ -3109,13 +3123,18 @@ ifneq ($(BUILD_GAME_SO),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
   ifneq ($(USE_RENDERER_DLOPEN),0)
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/renderer_opengl1_$(SHLIBNAME) $(COPYBINDIR)/renderer_opengl1_$(SHLIBNAME)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/renderer_opengl2_$(SHLIBNAME)
     endif
   else
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)_opengl2$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
