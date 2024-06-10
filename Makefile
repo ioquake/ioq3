@@ -1056,47 +1056,34 @@ else # ifeq sunos
 
 ifeq ($(PLATFORM),emscripten)
 
-  # 1. Create "baseq3" directory in the same directory as this Makefile.
-  # 2. Copy pak[0-8].pk3 into the created "baseq3" directory.
-  # 3. Run `source "/path/to/emsdk_env.sh"` to add emcc to PATH.
-  # 4. Run `make PLATFORM=emscripten`
-  # 5. Serve the build/release-emscripten-wasm32/ioquake3_opengl2.{html,js,wasm,data} from a web server.
-  # 6. Load ioquake3_opengl2.html in a web browser.
-
   ifneq ($(findstring /emcc,$(CC)),/emcc)
     CC=emcc
   endif
   ARCH=wasm32
   BINEXT=.js
-  
-  # LDFLAGS+=-s MAIN_MODULE is needed for dlopen() in client/server but it causes compile errors
+
+  # dlopen(), opengl1, and networking are not functional
   USE_RENDERER_DLOPEN=0
   USE_OPENAL_DLOPEN=0
-  USE_CURL=0
-  HAVE_VM_COMPILED=false
   BUILD_GAME_SO=0
   BUILD_GAME_QVM=0
   BUILD_RENDERER_OPENGL1=0
-  # Would be interesting to try to get the server working via WebRTC DataChannel.
-  # This would enable P2P play, hosting a server in the browser. Also,
-  # DataChannel is the only way to use UDP in the browser.
   BUILD_SERVER=0
 
   CLIENT_EXTRA_FILES+=code/web/ioquake3.html
 
   CLIENT_CFLAGS+=-s USE_SDL=2
 
-  CLIENT_LDFLAGS+=-s TOTAL_MEMORY=256mb
+  CLIENT_LDFLAGS+=-s TOTAL_MEMORY=256MB
   CLIENT_LDFLAGS+=-s STACK_SIZE=5MB
-  # Informing Emscripten which WebGL versions we support makes the JS bundle smaller and faster to load.
-  CLIENT_LDFLAGS+=-s MIN_WEBGL_VERSION=2
-  CLIENT_LDFLAGS+=-s MAX_WEBGL_VERSION=2
-  CLIENT_LDFLAGS+=-s FULL_ES2=1
+  CLIENT_LDFLAGS+=-s MIN_WEBGL_VERSION=1 -s MAX_WEBGL_VERSION=2
+
   # The HTML file can use these functions to load extra files before the game starts.
   CLIENT_LDFLAGS+=-s EXPORTED_RUNTIME_METHODS=FS,addRunDependency,removeRunDependency
   CLIENT_LDFLAGS+=-s EXIT_RUNTIME=1
   CLIENT_LDFLAGS+=-s EXPORT_ES6
   CLIENT_LDFLAGS+=-s EXPORT_NAME=ioquake3
+
   # Game data files can be packaged by emcc into a .data file that lives next to the wasm bundle
   # and added to the virtual filesystem before the game starts. This requires the game data to be
   # present at build time and it can't be changed afterward.
@@ -1172,13 +1159,6 @@ endif
 
 ifneq ($(BUILD_SERVER),0)
   TARGETS += $(B)/$(SERVERBIN)$(FULLBINEXT)
-
-  ifeq ($(PLATFORM),emscripten)
-    EMSCRIPTENOBJ+=$(B)/$(SERVERBIN).wasm
-    ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
-      EMSCRIPTENOBJ+=$(B)/$(SERVERBIN).data
-    endif
-  endif
 endif
 
 ifneq ($(BUILD_CLIENT),0)
@@ -1194,23 +1174,9 @@ ifneq ($(BUILD_CLIENT),0)
   else
     ifneq ($(BUILD_RENDERER_OPENGL1),0)
       TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
-
-      ifeq ($(PLATFORM),emscripten)
-        EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN).wasm32.wasm
-        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
-          EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN).wasm32.data
-        endif
-      endif
     endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
-
-      ifeq ($(PLATFORM),emscripten)
-        EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN)_opengl2.wasm32.wasm
-        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
-          EMSCRIPTENOBJ+=$(B)/$(CLIENTBIN)_opengl2.wasm32.data
-        endif
-      endif
     endif
   endif
 endif
@@ -1253,6 +1219,37 @@ ifneq ($(BUILD_AUTOUPDATER),0)
   #  So don't call this thing "autoupdater" here!
   AUTOUPDATER_BIN := autosyncerator$(FULLBINEXT)
   TARGETS += $(B)/$(AUTOUPDATER_BIN)
+endif
+
+ifeq ($(PLATFORM),emscripten)
+  ifneq ($(BUILD_SERVER),0)
+    GENERATEDTARGETS += $(B)/$(SERVERBIN).$(ARCH).wasm
+    ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+      GENERATEDTARGETS += $(B)/$(SERVERBIN).$(ARCH).data
+    endif
+  endif
+
+  ifneq ($(BUILD_CLIENT),0)
+    ifneq ($(USE_RENDERER_DLOPEN),0)
+      GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
+      ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).data
+      endif
+    else
+      ifneq ($(BUILD_RENDERER_OPENGL1),0)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).data
+        endif
+      endif
+      ifneq ($(BUILD_RENDERER_OPENGL2),0)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN)_opengl2.$(ARCH).wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          GENERATEDTARGETS += $(B)/$(CLIENTBIN)_opengl2.$(ARCH).data
+        endif
+      endif
+    endif
+  endif
 endif
 
 ifeq ($(USE_OPENAL),1)
@@ -1558,7 +1555,7 @@ ifneq ($(BUILD_CLIENT),0)
 endif
 
 NAKED_TARGETS=$(shell echo $(TARGETS) | sed -e "s!$(B)/!!g")
-NAKED_EMSCRIPTENOBJ=$(shell echo $(EMSCRIPTENOBJ) | sed -e "s!$(B)/!!g")
+NAKED_GENERATEDTARGETS=$(shell echo $(GENERATEDTARGETS) | sed -e "s!$(B)/!!g")
 
 print_list=-@for i in $(1); \
      do \
@@ -1614,7 +1611,7 @@ endif
 	@echo ""
 	@echo "  Output:"
 	$(call print_list, $(NAKED_TARGETS))
-	$(call print_list, $(NAKED_EMSCRIPTENOBJ))
+	$(call print_list, $(NAKED_GENERATEDTARGETS))
 	@echo ""
 ifeq ($(PLATFORM),emscripten)
 ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
@@ -1643,7 +1640,7 @@ endif
 ifneq ($(PLATFORM),darwin)
   ifdef ARCHIVE
 	@rm -f $@
-	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_EMSCRIPTENOBJ))
+	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
   endif
 endif
 	@:
@@ -3184,8 +3181,8 @@ clean2:
 	@rm -f $(OBJ)
 	@rm -f $(OBJ_D_FILES)
 	@rm -f $(STRINGOBJ)
-	@rm -f $(EMSCRIPTENOBJ)
 	@rm -f $(TARGETS)
+	@rm -f $(GENERATEDTARGETS)
 
 toolsclean: toolsclean-debug toolsclean-release
 
