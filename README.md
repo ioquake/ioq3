@@ -133,6 +133,8 @@ The following variables may be set, either on the command line or in
 Makefile.local:
 
 ```
+  DEPEND_MAKEFILE      - set to 0 to disable rebuilding all targets when
+                         the Makefile or Makefile.local is changed
   CFLAGS               - use this for custom CFLAGS
   V                    - set to show cc command line when building
   DEFAULT_BASEDIR      - extra path to search for baseq3 and such

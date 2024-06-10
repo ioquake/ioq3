@@ -3,10 +3,6 @@
 #
 # GNU Make required
 #
-
-# Rebuild every target if Makefile changes
-.EXTRA_PREREQS:= $(abspath $(lastword $(MAKEFILE_LIST)))
-
 COMPILE_PLATFORM=$(shell uname | sed -e 's/_.*//' | tr '[:upper:]' '[:lower:]' | sed -e 's/\//_/g')
 COMPILE_ARCH=$(shell uname -m | sed -e 's/i.86/x86/' | sed -e 's/^arm.*/arm/')
 
@@ -3209,6 +3205,11 @@ dist:
 #############################################################################
 # DEPENDENCIES
 #############################################################################
+
+# Rebuild every target if Makefile or Makefile.local changes
+ifneq ($(DEPEND_MAKEFILE),0)
+.EXTRA_PREREQS:= $(MAKEFILE_LIST)
+endif
 
 ifneq ($(B),)
   OBJ_D_FILES=$(filter %.d,$(OBJ:%.o=%.d))
