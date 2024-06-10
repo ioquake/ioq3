@@ -14,6 +14,7 @@ if (window.location.protocol === 'file:') throw new Error('Unfortunately browser
 const urlParams = new URLSearchParams(window.location.search);
 const basegame = urlParams.get('basegame') || 'baseq3';
 let generatedArguments = `
+    +set sv_pure 0
     +set net_enabled 0
     +set r_mode -2
     +set fs_game ${basegame}
