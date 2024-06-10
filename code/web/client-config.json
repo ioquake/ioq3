@@ -15,6 +15,17 @@
             {"src": "baseq3/vm/ui.qvm", "dst": "/baseq3/vm"}
         ]
     },
+    "missionpack": {
+        "files": [
+            {"src": "missionpack/pak0.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak1.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak2.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak3.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/vm/cgame.qvm", "dst": "/missionpack/vm"},
+            {"src": "missionpack/vm/qagame.qvm", "dst": "/missionpack/vm"},
+            {"src": "missionpack/vm/ui.qvm", "dst": "/missionpack/vm"}
+        ]
+    },
     "demoq3": {
         "_comment": "Copy baseq3/vm/*.qvm to demoq3/vm/ as the Quake 3 demo QVMs are not compatible. However the botfiles are not fully compatible with newer QVMs.",
         "files": [

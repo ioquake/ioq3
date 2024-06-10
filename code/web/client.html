@@ -34,11 +34,15 @@ if (window.location.protocol === 'file:') throw new Error(`Unfortunately browser
 // First set up the command line arguments and the Emscripten filesystem.
 const urlParams = new URLSearchParams(window.location.search);
 const com_basegame = urlParams.get('com_basegame') || BASEGAME;
+const fs_basegame = urlParams.get('fs_basegame') || '';
+const fs_game = urlParams.get('fs_game') || '';
 let generatedArguments = `
     +set sv_pure 0
     +set net_enabled 0
     +set r_mode -2
     +set com_basegame "${com_basegame}"
+    +set fs_basegame "${fs_basegame}"
+    +set fs_game "${fs_game}"
 `;
 // Note that unfortunately "+" needs to be encoded as "%2b" in URL query strings or it will be stripped by the browser.
 const queryArgs = urlParams.get('args');
@@ -81,21 +85,28 @@ ioquake3({
         module.addRunDependency('setup-ioq3-filesystem');
         try {
             const config = await configPromise;
-            const gamedir = com_basegame;
-            if (config[gamedir] === null
-             || config[gamedir].files === null) {
-                console.warn(`Game directory '${gamedir}' cannot be used. It must have files listed in ${configFilename}.`);
-            }
-            const files = config[gamedir].files;
-            const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
-            for (let i = 0; i < files.length; i++) {
-                const response = await fetches[i];
-                if (!response.ok) continue;
-                const data = await response.arrayBuffer();
-                let name = files[i].src.match(/[^/]+$/)[0];
-                let dir = files[i].dst;
-                module.FS.mkdirTree(dir);
-                module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
+            const gamedirs = [com_basegame,fs_basegame,fs_game];
+            for (let g = 0; g < gamedirs.length; g++) {
+                const gamedir = gamedirs[g];
+                if (gamedir === '') {
+                    continue;
+                }
+                if (config[gamedir] === null
+                 || config[gamedir].files === null) {
+                    console.warn(`Game directory '${gamedir}' cannot be used. It must have files listed in ${configFilename}.`);
+                    continue;
+                }
+                const files = config[gamedir].files;
+                const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
+                for (let i = 0; i < files.length; i++) {
+                    const response = await fetches[i];
+                    if (!response.ok) continue;
+                    const data = await response.arrayBuffer();
+                    let name = files[i].src.match(/[^/]+$/)[0];
+                    let dir = files[i].dst;
+                    module.FS.mkdirTree(dir);
+                    module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
+                }
             }
         } finally {
             module.removeRunDependency('setup-ioq3-filesystem');
