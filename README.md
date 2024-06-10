@@ -105,7 +105,7 @@ For Web, building with Emscripten
   2. Run `emmake make debug` (or release).
   3. Copy or symlink your baseq3 pk3 files into the `build/debug-emscripten-wasm32/baseq3`
      directory so they can be loaded at run-time. Only game files listed in
-     `ioq3-config.json` will be loaded.
+     `client-config.json` will be loaded.
   4. Start a web server serving this directory. `python3 -m http.server`
      is an easy default that you may already have installed.
   5. Open `http://localhost:8000/build/debug-emscripten-wasm32/ioquake3.html`
@@ -177,7 +177,7 @@ Makefile.local:
   EMSCRIPTEN_PRELOAD_FILE - set to 1 to package 'baseq3' (BASEGAME) directory
                             containing pk3s and loose files as a single
                             .data file that is loaded instead of listing
-                            individual files in ioq3-config.json
+                            individual files in client-config.json
 ```
 
 The defaults for these variables differ depending on the target platform.

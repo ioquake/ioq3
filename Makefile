@@ -1086,16 +1086,15 @@ ifeq ($(PLATFORM),emscripten)
   # and added to the virtual filesystem before the game starts. This requires the game data to be
   # present at build time and it can't be changed afterward.
   # For more flexibility, game data files can be loaded from a web server at runtime by listing
-  # them in ioq3-config.json. This way they don't have to be present at build time and can be
+  # them in client-config.json. This way they don't have to be present at build time and can be
   # changed later.
   ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
     ifeq ($(wildcard $(BASEGAME)/*),)
       $(error "No files in '$(BASEGAME)' directory for emscripten to preload.")
     endif
     CLIENT_LDFLAGS+=--preload-file $(BASEGAME)
-    CLIENT_EXTRA_FILES+=code/web/empty/ioq3-config.json
   else
-    CLIENT_EXTRA_FILES+=code/web/$(BASEGAME)/ioq3-config.json
+    CLIENT_EXTRA_FILES+=code/web/client-config.json
   endif
 
   OPTIMIZEVM = -O3
@@ -3093,7 +3092,7 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 
 $(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
 	$(echo_cmd) "SED $@"
-	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g' < $< > $@
+	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
 
 
 #############################################################################

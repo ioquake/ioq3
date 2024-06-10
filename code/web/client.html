@@ -11,6 +11,7 @@ canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; o
 // These strings are set in the generated HTML file in the build directory.
 let CLIENTBIN = '__CLIENTBIN__';
 let BASEGAME = '__BASEGAME__';
+let EMSCRIPTEN_PRELOAD_FILE = Number('__EMSCRIPTEN_PRELOAD_FILE__');
 // Detect if it's not the generated HTML file.
 let clientHtmlFallback = (CLIENTBIN === '\_\_CLIENTBIN\_\_');
 
@@ -19,24 +20,25 @@ let enginePath = './';
 // Path or URL containing fs_game directories.
 let dataPath = './';
 // Path or URL for config file that specifies the files to load for each fs_game.
-let configFilename = './ioq3-config.json';
+let configFilename = './client-config.json';
 
 // If displaying the unmodified HTML file, fallback to defaults.
 if (clientHtmlFallback) {
     CLIENTBIN='ioquake3';
     BASEGAME='baseq3';
+    EMSCRIPTEN_PRELOAD_FILE=0;
 }
 
 if (window.location.protocol === 'file:') throw new Error(`Unfortunately browser security restrictions prevent loading wasm from a file: URL. This file must be loaded from a web server. The easiest way to do this is probably to use Python\'s built-in web server by running \`python3 -m http.server\` in the top level source directory and then navigate to http://localhost:8000/build/debug-emscripten-wasm32/${CLIENTBIN}.html`);
 
 // First set up the command line arguments and the Emscripten filesystem.
 const urlParams = new URLSearchParams(window.location.search);
-const basegame = urlParams.get('basegame') || BASEGAME;
+const com_basegame = urlParams.get('com_basegame') || BASEGAME;
 let generatedArguments = `
     +set sv_pure 0
     +set net_enabled 0
     +set r_mode -2
-    +set fs_game ${basegame}
+    +set com_basegame "${com_basegame}"
 `;
 // Note that unfortunately "+" needs to be encoded as "%2b" in URL query strings or it will be stripped by the browser.
 const queryArgs = urlParams.get('args');
@@ -62,12 +64,13 @@ if (clientHtmlFallback) {
 
     enginePath = buildPaths[buildIndex];
     dataPath = buildPaths[buildIndex];
-    configFilename = dataPath + 'ioq3-config.json';
+    configFilename = dataPath + 'client-config.json';
 }
 
 const dataURL = new URL(dataPath, location.origin + location.pathname);
 
-const configPromise = fetch(configFilename).then(r => r.ok ? r.json() : {files: []});
+const configPromise = ( EMSCRIPTEN_PRELOAD_FILE === 1 ) ? Promise.resolve({[BASEGAME]: {files: []}})
+  : fetch(configFilename).then(r => r.ok ? r.json() : { /* empty config */ });
 
 const ioquake3 = (await import(enginePath + `${CLIENTBIN}_opengl2.wasm32.js`)).default;
 ioquake3({
@@ -78,13 +81,19 @@ ioquake3({
         module.addRunDependency('setup-ioq3-filesystem');
         try {
             const config = await configPromise;
-            const fetches = config.files.map(file => fetch(new URL(file.src, dataURL)));
-            for (let i = 0; i < config.files.length; i++) {
+            const gamedir = com_basegame;
+            if (config[gamedir] === null
+             || config[gamedir].files === null) {
+                console.warn(`Game directory '${gamedir}' cannot be used. It must have files listed in ${configFilename}.`);
+            }
+            const files = config[gamedir].files;
+            const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
+            for (let i = 0; i < files.length; i++) {
                 const response = await fetches[i];
                 if (!response.ok) continue;
                 const data = await response.arrayBuffer();
-                let name = config.files[i].src.match(/[^/]+$/)[0];
-                let dir = config.files[i].dst;
+                let name = files[i].src.match(/[^/]+$/)[0];
+                let dir = files[i].dst;
                 module.FS.mkdirTree(dir);
                 module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
             }
