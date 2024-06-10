@@ -1093,8 +1093,6 @@ ifeq ($(PLATFORM),emscripten)
       $(error "No files in '$(BASEGAME)' directory for emscripten to preload.")
     endif
     CLIENT_LDFLAGS+=--preload-file $(BASEGAME)
-  else
-    CLIENT_EXTRA_FILES+=code/web/client-config.json
   endif
 
   OPTIMIZEVM = -O3
@@ -1230,6 +1228,9 @@ ifeq ($(PLATFORM),emscripten)
 
   ifneq ($(BUILD_CLIENT),0)
     TARGETS += $(B)/$(CLIENTBIN).html
+    ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+      TARGETS += $(B)/$(CLIENTBIN)-config.json
+    endif
 
     ifneq ($(USE_RENDERER_DLOPEN),0)
       GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
@@ -3093,6 +3094,10 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 $(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
 	$(echo_cmd) "SED $@"
 	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
+
+$(B)/$(CLIENTBIN)-config.json: $(WEBDIR)/client-config.json
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
 
 
 #############################################################################

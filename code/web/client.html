@@ -20,13 +20,14 @@ let enginePath = './';
 // Path or URL containing fs_game directories.
 let dataPath = './';
 // Path or URL for config file that specifies the files to load for each fs_game.
-let configFilename = './client-config.json';
+let configFilename = `./${CLIENTBIN}-config.json`;
 
 // If displaying the unmodified HTML file, fallback to defaults.
 if (clientHtmlFallback) {
     CLIENTBIN='ioquake3';
     BASEGAME='baseq3';
     EMSCRIPTEN_PRELOAD_FILE=0;
+    configFilename='./client-config.json';
 }
 
 if (window.location.protocol === 'file:') throw new Error(`Unfortunately browser security restrictions prevent loading wasm from a file: URL. This file must be loaded from a web server. The easiest way to do this is probably to use Python\'s built-in web server by running \`python3 -m http.server\` in the top level source directory and then navigate to http://localhost:8000/build/debug-emscripten-wasm32/${CLIENTBIN}.html`);
@@ -68,7 +69,6 @@ if (clientHtmlFallback) {
 
     enginePath = buildPaths[buildIndex];
     dataPath = buildPaths[buildIndex];
-    configFilename = dataPath + 'client-config.json';
 }
 
 const dataURL = new URL(dataPath, location.origin + location.pathname);
