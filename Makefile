@@ -1090,9 +1090,11 @@ ifeq ($(PLATFORM),emscripten)
   # For more flexibility, game data files can be loaded from a web server at runtime by listing
   # them in ioq3-config.json. This way they don't have to be present at build time and can be
   # changed later.
-  ifneq ($(wildcard $(BASEGAME)/*),)
+  ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+    ifeq ($(wildcard $(BASEGAME)/*),)
+      $(error "No files in '$(BASEGAME)' directory for emscripten to preload.")
+    endif
     CLIENT_LDFLAGS+=--preload-file $(BASEGAME)
-    EMSCRIPTEN_PRELOAD_FILE=1
     CLIENT_EXTRA_FILES+=code/web/empty/ioq3-config.json
   else
     CLIENT_EXTRA_FILES+=code/web/$(BASEGAME)/ioq3-config.json
@@ -1613,18 +1615,6 @@ endif
 	$(call print_list, $(NAKED_TARGETS))
 	$(call print_list, $(NAKED_GENERATEDTARGETS))
 	@echo ""
-ifeq ($(PLATFORM),emscripten)
-ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
-	@echo "  Warning: Game files not found in '$(BASEGAME)'."
-	@echo "  They will not be packaged by Emscripten or preloaded."
-	@echo "  To run this build you must serve the game files from a web server"
-	@echo "  and list their paths in ioq3-config.json."
-	@echo "  To make a build that automatically loads the game files, create a"
-	@echo "  directory called '$(BASEGAME)' and copy your game files into it, then"
-	@echo "  'emmake make clean' and rebuild."
-	@echo ""
-endif
-endif
 ifneq ($(TARGETS),)
   ifndef DEBUG_MAKEFILE
 	@$(MAKE) $(TARGETS) $(B).zip V=$(V)
