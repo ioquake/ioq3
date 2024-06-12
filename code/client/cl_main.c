@@ -359,12 +359,12 @@ void CL_VoipParseTargets(void)
 			{
 				if(!Q_stricmpn(target, "attacker", 8))
 				{
-					val = VM_Call(cgvm, CG_LAST_ATTACKER);
+					val = VM_Call(cgvm, CG_LAST_ATTACKER, 0);
 					target += 8;
 				}
 				else if(!Q_stricmpn(target, "crosshair", 9))
 				{
-					val = VM_Call(cgvm, CG_CROSSHAIR_PLAYER);
+					val = VM_Call(cgvm, CG_CROSSHAIR_PLAYER, 0);
 					target += 9;
 				}
 				else
@@ -1429,7 +1429,7 @@ void CL_Disconnect( qboolean showMainMenu ) {
 	}
 
 	if ( uivm && showMainMenu ) {
-		VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_NONE );
+		VM_Call( uivm, UI_SET_ACTIVE_MENU, 1, UIMENU_NONE );
 	}
 
 	SCR_StopCinematic ();
@@ -2956,12 +2956,12 @@ void CL_Frame ( int msec ) {
 	if ( cls.cddialog ) {
 		// bring up the cd error dialog if needed
 		cls.cddialog = qfalse;
-		VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_NEED_CD );
+		VM_Call( uivm, UI_SET_ACTIVE_MENU, 1, UIMENU_NEED_CD );
 	} else	if ( clc.state == CA_DISCONNECTED && !( Key_GetCatcher( ) & KEYCATCH_UI )
 		&& !com_sv_running->integer && uivm ) {
 		// if disconnected, bring up the menu
 		S_StopAllSounds();
-		VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
+		VM_Call( uivm, UI_SET_ACTIVE_MENU, 1, UIMENU_MAIN );
 	}
 
 	// if recording an avi, lock to a fixed fps
