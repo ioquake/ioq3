@@ -112,6 +112,14 @@ For Web, building with Emscripten
      in a web browser. Open the developer console to see errors and warnings.
   6. Debugging the C code is possible using a Chrome extension. For details
      see https://developer.chrome.com/blog/wasm-debugging-2020
+  7. Multiplayer is supported over WebRTC DataChannel UDP. WebRTC requires
+     a separate signaling server to establish connections. This server is
+     provided by [HumbleNet](https://github.com/jdarpinian/HumbleNet) and
+     must be built separately. The default signaling server address is
+     `ws://localhost:8080`. You can change this using the `net_peer_server`
+     cvar. The signaling server assigns peers virtual hostnames of the form
+     `peer_1.humblenet` and these hostnames can be used to connect peers to
+     each other.
 
 Installation, for *nix
   1. Set the COPYDIR variable in the shell to be where you installed Quake 3

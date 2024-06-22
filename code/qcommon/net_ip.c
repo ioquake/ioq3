@@ -91,6 +91,12 @@ typedef int	ioctlarg_t;
 
 #endif
 
+#ifdef USE_HUMBLENET
+#   define HUMBLENET_SOCKET_IMPL
+#   include "../humblenet/humblenet_socket.h"
+#   include "net_humblenet.c"
+#endif
+
 static qboolean usingSocks = qfalse;
 static int networkingEnabled = 0;
 
@@ -1584,6 +1590,11 @@ void NET_Init( void ) {
 	Com_Printf( "Winsock Initialized\n" );
 #endif
 
+#ifdef USE_HUMBLENET
+	HUMBLENET_Init();
+#endif
+
+
 	NET_Config( qtrue );
 	
 	Cmd_AddCommand ("net_restart", NET_Restart_f);
@@ -1658,6 +1669,10 @@ void NET_Sleep(int msec)
 	fd_set fdr;
 	int retval;
 	SOCKET highestfd = INVALID_SOCKET;
+
+#ifdef USE_HUMBLENET
+    HUMBLENET_Update();
+#endif
 
 	if(msec < 0)
 		msec = 0;
