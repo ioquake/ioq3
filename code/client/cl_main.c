@@ -2220,6 +2220,7 @@ void CL_NextDownload(void)
 		remoteName = s;
 		
 		if ( (s = strchr(s, '@')) == NULL ) {
+            Com_GameRestart(clc.checksumFeed, qfalse);
 			CL_DownloadsComplete();
 			return;
 		}
@@ -2269,6 +2270,7 @@ void CL_NextDownload(void)
 				return;	
 			}
 			else {
+                Com_GameRestart(clc.checksumFeed, qfalse);
 				CL_BeginDownload( localName, remoteName );
 			}
 		}
@@ -2280,6 +2282,7 @@ void CL_NextDownload(void)
 		return;
 	}
 
+    Com_GameRestart(clc.checksumFeed, qfalse);
 	CL_DownloadsComplete();
 }
 
