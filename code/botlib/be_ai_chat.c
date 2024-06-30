@@ -1499,8 +1499,7 @@ void BotMatchVariable(bot_match_t *match, int variable, char *buf, int size)
 		if (match->variables[variable].length < size)
 			size = match->variables[variable].length+1;
 		assert( match->variables[variable].offset >= 0 );
-		strncpy(buf, &match->string[ (int) match->variables[variable].offset], size-1);
-		buf[size-1] = '\0';
+		Q_strncpyz(buf, &match->string[ (int) match->variables[variable].offset], size);
 	} //end if
 	else
 	{
@@ -2846,8 +2845,7 @@ void BotGetChatMessage(int chatstate, char *buf, int size)
 	if (!cs) return;
 
 	BotRemoveTildes(cs->chatmessage);
-	strncpy(buf, cs->chatmessage, size-1);
-	buf[size-1] = '\0';
+	Q_strncpyz(buf, cs->chatmessage, size);
 	//clear the chat message from the state
 	strcpy(cs->chatmessage, "");
 } //end of the function BotGetChatMessage
@@ -2883,9 +2881,7 @@ void BotSetChatName(int chatstate, char *name, int client)
 	cs = BotChatStateFromHandle(chatstate);
 	if (!cs) return;
 	cs->client = client;
-	Com_Memset(cs->name, 0, sizeof(cs->name));
-	strncpy(cs->name, name, sizeof(cs->name)-1);
-	cs->name[sizeof(cs->name)-1] = '\0';
+	Q_strncpyz(cs->name, name, sizeof(cs->name));
 } //end of the function BotSetChatName
 //===========================================================================
 //
