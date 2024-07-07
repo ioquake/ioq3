@@ -409,6 +409,9 @@ static qboolean RB_SurfaceVaoCached(int numVerts, srfVert_t *verts, int numIndex
 	qboolean recycleIndexBuffer = qfalse;
 	qboolean endSurface = qfalse;
 
+	if (!r_vaoCache->integer)
+		return qfalse;
+
 	if (!(!ShaderRequiresCPUDeforms(tess.shader) && !tess.shader->isSky && !tess.shader->isPortal))
 		return qfalse;
 
