@@ -276,7 +276,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 		tr.deluxemaps = ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 
 	textureInternalFormat = GL_RGBA8;
-	if (r_hdr->integer)
+	if (r_hdr->integer && !qglesMajorVersion)
 	{
 		// Check for the first hdr lightmap, if it exists, use GL_RGBA16 for textures.
 		char filename[MAX_QPATH];
@@ -617,7 +617,7 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 		lightmapNum = LIGHTMAP_WHITEIMAGE;
 	}
 
-	shader = R_FindShader( dsh->shader, lightmapNum, qtrue );
+	shader = R_FindShaderEx( dsh->shader, FatLightmap( lightmapNum ), qtrue, lightmapNum );
 
 	// if the shader had errors, just use default shader
 	if ( shader->defaultShader ) {
@@ -706,7 +706,7 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 	surf->fogIndex = LittleLong( ds->fogNum ) + 1;
 
 	// get shader value
-	surf->shader = ShaderForShaderNum( ds->shaderNum, FatLightmap(realLightmapNum) );
+	surf->shader = ShaderForShaderNum( ds->shaderNum, realLightmapNum );
 	if ( r_singleShader->integer && !surf->shader->isSky ) {
 		surf->shader = tr.defaultShader;
 	}
@@ -813,7 +813,7 @@ static void ParseMesh ( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors,
 	surf->fogIndex = LittleLong( ds->fogNum ) + 1;
 
 	// get shader value
-	surf->shader = ShaderForShaderNum( ds->shaderNum, FatLightmap(realLightmapNum) );
+	surf->shader = ShaderForShaderNum( ds->shaderNum, realLightmapNum );
 	if ( r_singleShader->integer && !surf->shader->isSky ) {
 		surf->shader = tr.defaultShader;
 	}

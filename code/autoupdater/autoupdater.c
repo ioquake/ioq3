@@ -933,10 +933,13 @@ static void waitToApplyUpdates(void)
                OS forcibly closes the pipe), we will unblock. Then we can loop on
                kill() until the process is truly gone. */
             int x = 0;
+            struct timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 100000000;
             read(3, &x, sizeof (x));
             info("Pipe has closed, waiting for process to fully go away now.");
             while (kill(options.waitforprocess, 0) == 0) {
-                usleep(100000);
+                nanosleep(&req, NULL);
             }
             #endif
         }

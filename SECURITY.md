@@ -4,7 +4,7 @@ We take security very seriously at ioquake3. We welcome any peer review of our 1
 ### Where should I report security issues?
 
 In order to give the community time to respond and upgrade we strongly urge you report all security issues privately.
-Please e-mail zachary@ioquake.org directly to provide details and repro steps and we will respond as soon as possible, but please note:
+Please e-mail jack@ioquake.org directly to provide details and repro steps and we will respond as soon as possible, but please note:
 
 ### This is an entirely free software project without much in the way of external funding or sponsorships.
 ### We cannot guarantee quick responses but we very much appreciate your discretion when reporting security vulnerabilities.

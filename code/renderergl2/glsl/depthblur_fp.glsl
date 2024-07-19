@@ -52,10 +52,9 @@ vec4 depthGaussian1D(sampler2D imageMap, sampler2D depthMap, vec2 tex, float zFa
 #endif
 
 	float zLimit = 5.0 / zFar;
-	int i, j;
-	for (i = 0; i < 2; i++)
+	for (int i = 0; i < 2; i++)
 	{
-		for (j = 1; j < BLUR_SIZE; j++)
+		for (int j = 1; j < BLUR_SIZE; j++)
 		{
 			vec2 offset = direction * (float(j) - 0.25) + nudge;
 #if defined(USE_DEPTH)

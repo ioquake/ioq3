@@ -49,8 +49,10 @@ QGL_ARB_vertex_array_object_PROCS;
 QGL_EXT_direct_state_access_PROCS;
 #undef GLE
 
-#define GL_INDEX_TYPE		GL_UNSIGNED_INT
-typedef unsigned int glIndex_t;
+#define GL_INDEX_TYPE		GL_UNSIGNED_SHORT
+typedef unsigned short glIndex_t;
+
+typedef unsigned int vaoCacheGlIndex_t;
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
@@ -637,8 +639,14 @@ typedef enum
 
 	UNIFORM_ENABLETEXTURES,
 
-	UNIFORM_DIFFUSETEXMATRIX,
-	UNIFORM_DIFFUSETEXOFFTURB,
+	UNIFORM_DIFFUSETEXMATRIX0,
+	UNIFORM_DIFFUSETEXMATRIX1,
+	UNIFORM_DIFFUSETEXMATRIX2,
+	UNIFORM_DIFFUSETEXMATRIX3,
+	UNIFORM_DIFFUSETEXMATRIX4,
+	UNIFORM_DIFFUSETEXMATRIX5,
+	UNIFORM_DIFFUSETEXMATRIX6,
+	UNIFORM_DIFFUSETEXMATRIX7,
 
 	UNIFORM_TCGEN0,
 	UNIFORM_TCGEN0VECTOR0,
@@ -1400,6 +1408,7 @@ typedef struct {
 	qboolean    intelGraphics;
 
 	qboolean	occlusionQuery;
+	GLenum		occlusionQueryTarget;
 
 	int glslMajorVersion;
 	int glslMinorVersion;
@@ -1423,6 +1432,18 @@ typedef struct {
 
 	qboolean vertexArrayObject;
 	qboolean directStateAccess;
+
+	int maxVertexAttribs;
+	qboolean gpuVertexAnimation;
+
+	GLenum vaoCacheGlIndexType; // GL_UNSIGNED_INT or GL_UNSIGNED_SHORT
+	size_t vaoCacheGlIndexSize; // must be <= sizeof( vaoCacheGlIndex_t )
+
+	// OpenGL ES extensions
+	qboolean readDepth;
+	qboolean readStencil;
+	qboolean shadowSamplers;
+	qboolean standardDerivatives;
 } glRefConfig_t;
 
 
@@ -1989,6 +2010,7 @@ const void *RB_TakeVideoFrameCmd( const void *data );
 // tr_shader.c
 //
 shader_t	*R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage );
+shader_t	*R_FindShaderEx( const char *name, int lightmapIndex, qboolean mipRawImage, int realLightmapIndex );
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t	*R_GetShaderByState( int index, long *cycleTime );
 shader_t *R_FindShaderByName( const char *name );
@@ -2206,6 +2228,7 @@ void            R_VaoList_f(void);
 void            RB_UpdateTessVao(unsigned int attribBits);
 
 void VaoCache_Commit(void);
+void VaoCache_DrawElements(int numIndexes, int firstIndex);
 void VaoCache_Init(void);
 void VaoCache_BindVao(void);
 void VaoCache_CheckAdd(qboolean *endSurface, qboolean *recycleVertexBuffer, qboolean *recycleIndexBuffer, int numVerts, int numIndexes);
@@ -2494,6 +2517,8 @@ size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
 		          int image_width, int image_height, byte *image_buffer, int padding);
 void RE_TakeVideoFrame( int width, int height,
 		byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
+
+void R_ConvertTextureFormat( const byte *in, int width, int height, GLenum format, GLenum type, byte *out );
 
 
 #endif //TR_LOCAL_H

@@ -387,11 +387,16 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 static void DrawSkyBox( shader_t *shader )
 {
 	int		i;
+	float	w_offset, w_scale;
+	float	h_offset, h_scale;
 
 	sky_min = 0;
 	sky_max = 1;
 
 	Com_Memset( s_skyTexCoords, 0, sizeof( s_skyTexCoords ) );
+
+	w_offset = h_offset = 0;
+	w_scale = h_scale = 1;
 
 	for (i=0 ; i<6 ; i++)
 	{
@@ -432,6 +437,15 @@ static void DrawSkyBox( shader_t *shader )
 		else if ( sky_maxs_subd[1] > HALF_SKY_SUBDIVISIONS ) 
 			sky_maxs_subd[1] = HALF_SKY_SUBDIVISIONS;
 
+		if ( !haveClampToEdge )
+		{
+			w_offset = 0.5f / shader->sky.outerbox[sky_texorder[i]]->width;
+			h_offset = 0.5f / shader->sky.outerbox[sky_texorder[i]]->height;
+
+			w_scale = 1.0f - w_offset * 2;
+			h_scale = 1.0f - h_offset * 2;
+		}
+
 		//
 		// iterate through the subdivisions
 		//
@@ -444,6 +458,12 @@ static void DrawSkyBox( shader_t *shader )
 							i, 
 							s_skyTexCoords[t][s], 
 							s_skyPoints[t][s] );
+
+				s_skyTexCoords[t][s][0] *= w_scale;
+				s_skyTexCoords[t][s][0] += w_offset;
+
+				s_skyTexCoords[t][s][1] *= h_scale;
+				s_skyTexCoords[t][s][1] += h_offset;
 			}
 		}
 

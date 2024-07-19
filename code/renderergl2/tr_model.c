@@ -664,6 +664,12 @@ static qboolean R_LoadMD3(model_t * mod, int lod, void *buffer, int bufferSize, 
 		surf++;
 	}
 
+	if (mdvModel->numFrames > 1 && !glRefConfig.gpuVertexAnimation)
+	{
+		mdvModel->numVaoSurfaces = 0;
+		mdvModel->vaoSurfaces = NULL;
+	}
+	else
 	{
 		srfVaoMdvMesh_t *vaoSurf;
 

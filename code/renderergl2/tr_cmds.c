@@ -348,7 +348,13 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	//
 	if ( r_measureOverdraw->integer )
 	{
-		if ( glConfig.stencilBits < 4 )
+		if ( qglesMajorVersion >= 1 && !glRefConfig.readStencil )
+		{
+			ri.Printf( PRINT_WARNING, "OpenGL ES needs GL_NV_read_stencil to read stencil bits to measure overdraw\n" );
+			ri.Cvar_Set( "r_measureOverdraw", "0" );
+			r_measureOverdraw->modified = qfalse;
+		}
+		else if ( glConfig.stencilBits < 4 )
 		{
 			ri.Printf( PRINT_ALL, "Warning: not enough stencil bits to measure overdraw: %d\n", glConfig.stencilBits );
 			ri.Cvar_Set( "r_measureOverdraw", "0" );
@@ -426,6 +432,13 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	}
 	else
 	{
+		if (qglesMajorVersion >= 1 && r_anaglyphMode->integer)
+		{
+			ri.Printf( PRINT_WARNING, "OpenGL ES does not support drawing to separate buffer for anaglyph mode\n" );
+			ri.Cvar_Set( "r_anaglyphMode", "0" );
+			r_anaglyphMode->modified = qfalse;
+		}
+
 		if(r_anaglyphMode->integer)
 		{
 			if(r_anaglyphMode->modified)

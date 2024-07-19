@@ -77,8 +77,7 @@ float ambientOcclusion(sampler2D depthMap, const vec2 tex, const float zFarDivZN
 
 	float invZFar = 1.0 / zFar;
 	float zLimit = 20.0 * invZFar;
-	int i;
-	for (i = 0; i < NUM_SAMPLES; i++)
+	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
 		vec2 offset = rmat * poissonDisc[i] * offsetScale;
 		float sampleDiff = getLinearDepth(depthMap, tex + offset, zFarDivZNear) - sampleZ;

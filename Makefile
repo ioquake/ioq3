@@ -40,6 +40,9 @@ endif
 ifndef BUILD_MISSIONPACK
   BUILD_MISSIONPACK=
 endif
+ifndef BUILD_RENDERER_OPENGL1
+  BUILD_RENDERER_OPENGL1=
+endif
 ifndef BUILD_RENDERER_OPENGL2
   BUILD_RENDERER_OPENGL2=
 endif
@@ -59,6 +62,11 @@ endif
 
 ifeq ($(COMPILE_PLATFORM),cygwin)
   PLATFORM=mingw32
+endif
+
+# detect "emmake make"
+ifeq ($(findstring /emcc,$(CC)),/emcc)
+  PLATFORM=emscripten
 endif
 
 ifndef PLATFORM
@@ -283,6 +291,7 @@ LIBTOMCRYPTSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/libtomcrypt-1.17
 TOMSFASTMATHSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/tomsfastmath-0.13.1
 LOKISETUPDIR=misc/setup
 NSISDIR=misc/nsis
+WEBDIR=$(MOUNT_DIR)/web
 SDLHDIR=$(MOUNT_DIR)/SDL2
 LIBSDIR=$(MOUNT_DIR)/libs
 
@@ -805,6 +814,8 @@ else # ifdef MINGW
 #############################################################################
 
 ifeq ($(PLATFORM),freebsd)
+  # Use the default C compiler
+  TOOLS_CC=cc
 
   # flags
   BASE_CFLAGS = \
@@ -1041,6 +1052,67 @@ ifeq ($(PLATFORM),sunos)
 else # ifeq sunos
 
 #############################################################################
+# SETUP AND BUILD -- emscripten
+#############################################################################
+
+ifeq ($(PLATFORM),emscripten)
+
+  ifneq ($(findstring /emcc,$(CC)),/emcc)
+    CC=emcc
+  endif
+  ARCH=wasm32
+  BINEXT=.js
+
+  # dlopen(), opengl1, and networking are not functional
+  USE_RENDERER_DLOPEN=0
+  USE_OPENAL_DLOPEN=0
+  BUILD_GAME_SO=0
+  BUILD_RENDERER_OPENGL1=0
+  BUILD_SERVER=0
+
+  CLIENT_CFLAGS+=-s USE_SDL=2
+
+  CLIENT_LDFLAGS+=-s TOTAL_MEMORY=256MB
+  CLIENT_LDFLAGS+=-s STACK_SIZE=5MB
+  CLIENT_LDFLAGS+=-s MIN_WEBGL_VERSION=1 -s MAX_WEBGL_VERSION=2
+
+  # The HTML file can use these functions to load extra files before the game starts.
+  CLIENT_LDFLAGS+=-s EXPORTED_RUNTIME_METHODS=FS,addRunDependency,removeRunDependency
+  CLIENT_LDFLAGS+=-s EXIT_RUNTIME=1
+  CLIENT_LDFLAGS+=-s EXPORT_ES6
+  CLIENT_LDFLAGS+=-s EXPORT_NAME=ioquake3
+
+  # Game data files can be packaged by emcc into a .data file that lives next to the wasm bundle
+  # and added to the virtual filesystem before the game starts. This requires the game data to be
+  # present at build time and it can't be changed afterward.
+  # For more flexibility, game data files can be loaded from a web server at runtime by listing
+  # them in client-config.json. This way they don't have to be present at build time and can be
+  # changed later.
+  ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+    ifeq ($(wildcard $(BASEGAME)/*),)
+      $(error "No files in '$(BASEGAME)' directory for emscripten to preload.")
+    endif
+    CLIENT_LDFLAGS+=--preload-file $(BASEGAME)
+  endif
+
+  OPTIMIZEVM = -O3
+  OPTIMIZE = $(OPTIMIZEVM) -ffast-math
+
+  # These allow a warning-free build.
+  # Some of these warnings may actually be legit problems and should be fixed at some point.
+  BASE_CFLAGS+=-Wno-deprecated-non-prototype -Wno-dangling-else -Wno-implicit-const-int-float-conversion -Wno-misleading-indentation -Wno-format-overflow -Wno-logical-not-parentheses -Wno-absolute-value
+
+  DEBUG_CFLAGS=-g3 -O0 # -fsanitize=address -fsanitize=undefined
+  # Emscripten needs debug compiler flags to be passed to the linker as well
+  DEBUG_LDFLAGS=$(DEBUG_CFLAGS)
+
+  SHLIBEXT=wasm
+  SHLIBCFLAGS=-fPIC
+  SHLIBLDFLAGS=-s SIDE_MODULE
+
+else # ifeq emscripten
+
+#############################################################################
 # SETUP AND BUILD -- GENERIC
 #############################################################################
   BASE_CFLAGS=
@@ -1058,6 +1130,7 @@ endif #OpenBSD
 endif #NetBSD
 endif #IRIX
 endif #SunOS
+endif #emscripten
 
 ifndef CC
   CC=gcc
@@ -1087,12 +1160,18 @@ endif
 
 ifneq ($(BUILD_CLIENT),0)
   ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/renderer_opengl1_$(SHLIBNAME)
+    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+      TARGETS += $(B)/renderer_opengl1_$(SHLIBNAME)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/renderer_opengl2_$(SHLIBNAME)
     endif
   else
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+      TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
@@ -1137,6 +1216,42 @@ ifneq ($(BUILD_AUTOUPDATER),0)
   #  So don't call this thing "autoupdater" here!
   AUTOUPDATER_BIN := autosyncerator$(FULLBINEXT)
   TARGETS += $(B)/$(AUTOUPDATER_BIN)
+endif
+
+ifeq ($(PLATFORM),emscripten)
+  ifneq ($(BUILD_SERVER),0)
+    GENERATEDTARGETS += $(B)/$(SERVERBIN).$(ARCH).wasm
+    ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+      GENERATEDTARGETS += $(B)/$(SERVERBIN).$(ARCH).data
+    endif
+  endif
+
+  ifneq ($(BUILD_CLIENT),0)
+    TARGETS += $(B)/$(CLIENTBIN).html
+    ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+      TARGETS += $(B)/$(CLIENTBIN)-config.json
+    endif
+
+    ifneq ($(USE_RENDERER_DLOPEN),0)
+      GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
+      ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).data
+      endif
+    else
+      ifneq ($(BUILD_RENDERER_OPENGL1),0)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          GENERATEDTARGETS += $(B)/$(CLIENTBIN).$(ARCH).data
+        endif
+      endif
+      ifneq ($(BUILD_RENDERER_OPENGL2),0)
+        GENERATEDTARGETS += $(B)/$(CLIENTBIN)_opengl2.$(ARCH).wasm
+        ifeq ($(EMSCRIPTEN_PRELOAD_FILE),1)
+          GENERATEDTARGETS += $(B)/$(CLIENTBIN)_opengl2.$(ARCH).data
+        endif
+      endif
+    endif
+  endif
 endif
 
 ifeq ($(USE_OPENAL),1)
@@ -1404,7 +1519,8 @@ all: debug release
 debug:
 	@$(MAKE) targets B=$(BD) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
 	  OPTIMIZE="$(DEBUG_CFLAGS)" OPTIMIZEVM="$(DEBUG_CFLAGS)" \
-	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V)
+	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V) \
+	  LDFLAGS="$(LDFLAGS) $(DEBUG_LDFLAGS)"
 
 release:
 	@$(MAKE) targets B=$(BR) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
@@ -1441,6 +1557,7 @@ ifneq ($(BUILD_CLIENT),0)
 endif
 
 NAKED_TARGETS=$(shell echo $(TARGETS) | sed -e "s!$(B)/!!g")
+NAKED_GENERATEDTARGETS=$(shell echo $(GENERATEDTARGETS) | sed -e "s!$(B)/!!g")
 
 print_list=-@for i in $(1); \
      do \
@@ -1496,6 +1613,7 @@ endif
 	@echo ""
 	@echo "  Output:"
 	$(call print_list, $(NAKED_TARGETS))
+	$(call print_list, $(NAKED_GENERATEDTARGETS))
 	@echo ""
 ifneq ($(TARGETS),)
   ifndef DEBUG_MAKEFILE
@@ -1512,9 +1630,10 @@ endif
 ifneq ($(PLATFORM),darwin)
   ifdef ARCHIVE
 	@rm -f $@
-	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS))
+	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
   endif
 endif
+	@:
 
 makedirs:
 	@$(MKDIR) $(B)/autoupdater
@@ -1869,8 +1988,13 @@ ifdef MINGW
   Q3OBJ += \
     $(B)/client/con_passive.o
 else
+ifeq ($(PLATFORM),emscripten)
+  Q3OBJ += \
+    $(B)/client/con_passive.o
+else
   Q3OBJ += \
     $(B)/client/con_tty.o
+endif
 endif
 
 Q3R2OBJ = \
@@ -2964,6 +3088,19 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 
 
 #############################################################################
+# EMSCRIPTEN
+#############################################################################
+
+$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
+	$(echo_cmd) "SED $@"
+	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
+
+$(B)/$(CLIENTBIN)-config.json: $(WEBDIR)/client-config.json
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
+
+
+#############################################################################
 # MISC
 #############################################################################
 
@@ -2986,13 +3123,18 @@ ifneq ($(BUILD_GAME_SO),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
   ifneq ($(USE_RENDERER_DLOPEN),0)
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/renderer_opengl1_$(SHLIBNAME) $(COPYBINDIR)/renderer_opengl1_$(SHLIBNAME)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/renderer_opengl2_$(SHLIBNAME)
     endif
   else
+    ifneq ($(BUILD_RENDERER_OPENGL1),0)
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
+    endif
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)_opengl2$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
@@ -3043,6 +3185,7 @@ clean2:
 	@rm -f $(OBJ_D_FILES)
 	@rm -f $(STRINGOBJ)
 	@rm -f $(TARGETS)
+	@rm -f $(GENERATEDTARGETS)
 
 toolsclean: toolsclean-debug toolsclean-release
 
@@ -3081,6 +3224,11 @@ dist:
 #############################################################################
 # DEPENDENCIES
 #############################################################################
+
+# Rebuild every target if Makefile or Makefile.local changes
+ifneq ($(DEPEND_MAKEFILE),0)
+.EXTRA_PREREQS:= $(MAKEFILE_LIST)
+endif
 
 ifneq ($(B),)
   OBJ_D_FILES=$(filter %.d,$(OBJ:%.o=%.d))

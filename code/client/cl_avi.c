@@ -357,11 +357,12 @@ qboolean CL_OpenAVIForWriting( const char *fileName )
   else
     afd.motionJpeg = qfalse;
 
-  // Buffers only need to store RGB pixels.
+  // Capture buffer stores RGB pixels but OpenGL ES reads RGBA and converts to RGB in-place.
+  // Encode buffer only needs to store RGB pixels.
   // Allocate a bit more space for the capture buffer to account for possible
   // padding at the end of pixel lines, and padding for alignment
   #define MAX_PACK_LEN 16
-  afd.cBuffer = Z_Malloc((afd.width * 3 + MAX_PACK_LEN - 1) * afd.height + MAX_PACK_LEN - 1);
+  afd.cBuffer = Z_Malloc((afd.width * 4 + MAX_PACK_LEN - 1) * afd.height + MAX_PACK_LEN - 1);
   // raw avi files have pixel lines start on 4-byte boundaries
   afd.eBuffer = Z_Malloc(PAD(afd.width * 3, AVI_LINE_PADDING) * afd.height);
 

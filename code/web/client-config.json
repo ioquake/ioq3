@@ -1,0 +1,47 @@
+{
+    "baseq3": {
+        "files": [
+            {"src": "baseq3/pak0.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak1.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak2.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak3.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak4.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak5.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak6.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak7.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/pak8.pk3", "dst": "/baseq3"},
+            {"src": "baseq3/vm/cgame.qvm", "dst": "/baseq3/vm"},
+            {"src": "baseq3/vm/qagame.qvm", "dst": "/baseq3/vm"},
+            {"src": "baseq3/vm/ui.qvm", "dst": "/baseq3/vm"}
+        ]
+    },
+    "missionpack": {
+        "files": [
+            {"src": "missionpack/pak0.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak1.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak2.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/pak3.pk3", "dst": "/missionpack"},
+            {"src": "missionpack/vm/cgame.qvm", "dst": "/missionpack/vm"},
+            {"src": "missionpack/vm/qagame.qvm", "dst": "/missionpack/vm"},
+            {"src": "missionpack/vm/ui.qvm", "dst": "/missionpack/vm"}
+        ]
+    },
+    "demoq3": {
+        "_comment": "Copy baseq3/vm/*.qvm to demoq3/vm/ as the Quake 3 demo QVMs are not compatible. However the botfiles are not fully compatible with newer QVMs.",
+        "files": [
+            {"src": "demoq3/pak0.pk3", "dst": "/demoq3"},
+            {"src": "demoq3/vm/cgame.qvm", "dst": "/demoq3/vm"},
+            {"src": "demoq3/vm/qagame.qvm", "dst": "/demoq3/vm"},
+            {"src": "demoq3/vm/ui.qvm", "dst": "/demoq3/vm"}
+        ]
+    },
+    "tademo": {
+        "_comment": "Copy missionpack/vm/*.qvm to tademo/vm/ as the Team Arena demo QVMs are not compatible.",
+        "files": [
+            {"src": "tademo/pak0.pk3", "dst": "/tademo"},
+            {"src": "tademo/vm/cgame.qvm", "dst": "/tademo/vm"},
+            {"src": "tademo/vm/qagame.qvm", "dst": "/tademo/vm"},
+            {"src": "tademo/vm/ui.qvm", "dst": "/tademo/vm"}
+        ]
+    }
+}

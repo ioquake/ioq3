@@ -388,10 +388,10 @@ void R_CreateSurfaceGridMesh(srfBspSurface_t *grid, int width, int height,
 	grid->numVerts = (width * height);
 	grid->verts = ri.Malloc(grid->numVerts * sizeof(srfVert_t));
 #else
-	grid->widthLodError = ri.Hunk_Alloc( width * 4 );
+	grid->widthLodError = ri.Hunk_Alloc( width * 4, h_low );
 	Com_Memcpy( grid->widthLodError, errorTable[0], width * 4 );
 
-	grid->heightLodError = ri.Hunk_Alloc( height * 4 );
+	grid->heightLodError = ri.Hunk_Alloc( height * 4, h_low );
 	Com_Memcpy( grid->heightLodError, errorTable[1], height * 4 );
 
 	grid->numIndexes = numIndexes;

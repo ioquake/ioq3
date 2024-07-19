@@ -63,6 +63,14 @@ For Win32:
   CVARS
 -------------------------------------------------------------------------------
 
+Cvars for API:
+
+* `r_preferOpenGLES`                - This sets the preference for using OpenGL or OpenGL ES 2.
+                                   Many features are not supported when using OpenGL ES such as sun shadows and HDR.
+                                     1 - Prefer OpenGL ES 2+.
+                                     0 - Prefer desktop OpenGL.
+                                     -1 - Automatically pick (default).
+
 Cvars for simple rendering features:
 
 * `r_ext_compressed_textures`       - Automatically compress textures.
