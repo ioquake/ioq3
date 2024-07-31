@@ -103,14 +103,19 @@ void main()
 
 	vec4 shadowpos = u_ShadowMvp * biasPos;
 
+	if ( depth >= 1.0 - DEPTH_MAX_ERROR )
+	{
+		result = 1.0;
+	}
+	else
 #if defined(USE_SHADOW_CASCADE)
 	if (all(lessThan(abs(shadowpos.xyz), vec3(abs(shadowpos.w)))))
-	{
 #endif
+	{
 		shadowpos.xyz = shadowpos.xyz * (0.5 / shadowpos.w) + vec3(0.5);
 		result = PCF(u_ShadowMap, shadowpos.xy, shadowpos.z);
-#if defined(USE_SHADOW_CASCADE)
 	}
+#if defined(USE_SHADOW_CASCADE)
 	else
 	{
 		shadowpos = u_ShadowMvp2 * biasPos;
