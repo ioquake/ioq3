@@ -323,7 +323,7 @@ void BotRemoveConsoleMessage(int chatstate, int handle)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotQueueConsoleMessage(int chatstate, int type, char *message)
+void BotQueueConsoleMessage(int chatstate, int type, const char *message)
 {
 	bot_consolemessage_t *m;
 	bot_chatstate_t *cs;
@@ -474,7 +474,7 @@ void UnifyWhiteSpaces(char *string)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-int StringContains(char *str1, char *str2, int casesensitive)
+int StringContains(const char *str1, const char *str2, int casesensitive)
 {
 	int len, i, j, index;
 
@@ -505,7 +505,7 @@ int StringContains(char *str1, char *str2, int casesensitive)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-char *StringContainsWord(char *str1, char *str2, int casesensitive)
+const char *StringContainsWord(const char *str1, const char *str2, int casesensitive)
 {
 	int len, i, j;
 
@@ -547,22 +547,27 @@ char *StringContainsWord(char *str1, char *str2, int casesensitive)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void StringReplaceWords(char *string, char *synonym, char *replacement)
+void StringReplaceWords(char *string, int stringSize, const char *synonym, const char *replacement)
 {
 	char *str, *str2;
 
+	int stringCurrentSize = strlen(string);
+	int stringMaxSize = stringSize - 1;
+	int extraLength = (int)strlen(replacement) - (int)strlen(synonym);
+	string[stringMaxSize] = '\0';
+
 	//find the synonym in the string
-	str = StringContainsWord(string, synonym, qfalse);
+	str = (char *)StringContainsWord(string, synonym, qfalse);
 	//if the synonym occurred in the string
-	while(str)
+	while(str && (stringMaxSize - stringCurrentSize >= extraLength))
 	{
 		//if the synonym isn't part of the replacement which is already in the string
 		//useful for abbreviations
-		str2 = StringContainsWord(string, replacement, qfalse);
+		str2 = (char *)StringContainsWord(string, replacement, qfalse);
 		while(str2)
 		{
 			if (str2 <= str && str < str2 + strlen(replacement)) break;
-			str2 = StringContainsWord(str2+1, replacement, qfalse);
+			str2 = (char *)StringContainsWord(str2+1, replacement, qfalse);
 		} //end while
 		if (!str2)
 		{
@@ -571,7 +576,7 @@ void StringReplaceWords(char *string, char *synonym, char *replacement)
 			Com_Memcpy(str, replacement, strlen(replacement));
 		} //end if
 		//find the next synonym in the string
-		str = StringContainsWord(str+strlen(replacement), synonym, qfalse);
+		str = (char *)StringContainsWord(str+strlen(replacement), synonym, qfalse);
 	} //end if
 } //end of the function StringReplaceWords
 //===========================================================================
@@ -774,7 +779,7 @@ bot_synonymlist_t *BotLoadSynonyms(char *filename)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotReplaceSynonyms(char *string, unsigned long int context)
+void BotReplaceSynonyms(char *string, int stringSize, unsigned long int context)
 {
 	bot_synonymlist_t *syn;
 	bot_synonym_t *synonym;
@@ -784,7 +789,7 @@ void BotReplaceSynonyms(char *string, unsigned long int context)
 		if (!(syn->context & context)) continue;
 		for (synonym = syn->firstsynonym->next; synonym; synonym = synonym->next)
 		{
-			StringReplaceWords(string, synonym->string, syn->firstsynonym->string);
+			StringReplaceWords(string, stringSize, synonym->string, syn->firstsynonym->string);
 		} //end for
 	} //end for
 } //end of the function BotReplaceSynonyms
@@ -794,7 +799,7 @@ void BotReplaceSynonyms(char *string, unsigned long int context)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotReplaceWeightedSynonyms(char *string, unsigned long int context)
+void BotReplaceWeightedSynonyms(char *string, int stringSize, unsigned long int context)
 {
 	bot_synonymlist_t *syn;
 	bot_synonym_t *synonym, *replacement;
@@ -817,7 +822,7 @@ void BotReplaceWeightedSynonyms(char *string, unsigned long int context)
 		for (synonym = syn->firstsynonym; synonym; synonym = synonym->next)
 		{
 			if (synonym == replacement) continue;
-			StringReplaceWords(string, synonym->string, replacement->string);
+			StringReplaceWords(string, stringSize, synonym->string, replacement->string);
 		} //end for
 	} //end for
 } //end of the function BotReplaceWeightedSynonyms
@@ -827,11 +832,14 @@ void BotReplaceWeightedSynonyms(char *string, unsigned long int context)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotReplaceReplySynonyms(char *string, unsigned long int context)
+void BotReplaceReplySynonyms(char *string, int stringSize, unsigned long int context)
 {
 	char *str1, *str2, *replacement;
 	bot_synonymlist_t *syn;
 	bot_synonym_t *synonym;
+
+	int stringMaxSize = stringSize - 1;
+	string[stringMaxSize] = '\0';
 
 	for (str1 = string; *str1; )
 	{
@@ -845,12 +853,12 @@ void BotReplaceReplySynonyms(char *string, unsigned long int context)
 			for (synonym = syn->firstsynonym->next; synonym; synonym = synonym->next)
 			{
 				//if the synonym is not at the front of the string continue
-				str2 = StringContainsWord(str1, synonym->string, qfalse);
+				str2 = (char *)StringContainsWord(str1, synonym->string, qfalse);
 				if (!str2 || str2 != str1) continue;
 				//
 				replacement = syn->firstsynonym->string;
 				//if the replacement IS in front of the string continue
-				str2 = StringContainsWord(str1, replacement, qfalse);
+				str2 = (char *)StringContainsWord(str1, replacement, qfalse);
 				if (str2 && str2 == str1) continue;
 				//
 				memmove(str1 + strlen(replacement), str1+strlen(synonym->string),
@@ -1451,7 +1459,7 @@ int StringsMatch(bot_matchpiece_t *pieces, bot_match_t *match)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-int BotFindMatch(char *str, bot_match_t *match, unsigned long int context)
+int BotFindMatch(const char *str, bot_match_t *match, unsigned long int context)
 {
 	int i;
 	bot_matchtemplate_t *ms;
@@ -2029,7 +2037,7 @@ void BotDumpInitialChat(bot_chat_t *chat)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-bot_chat_t *BotLoadInitialChat(char *chatfile, char *chatname)
+bot_chat_t *BotLoadInitialChat(const char *chatfile, const char *chatname)
 {
 	int pass, foundchat, indent, size;
 	char *ptr = NULL;
@@ -2219,7 +2227,7 @@ void BotFreeChatFile(int chatstate)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-int BotLoadChatFile(int chatstate, char *chatfile, char *chatname)
+int BotLoadChatFile(int chatstate, const char *chatfile, const char *chatname)
 {
 	bot_chatstate_t *cs;
 	int n, avail = 0;
@@ -2277,11 +2285,12 @@ int BotLoadChatFile(int chatstate, char *chatfile, char *chatname)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext,
+int BotExpandChatMessage(char *outmessage, const char *message, unsigned long mcontext,
 							 bot_match_t *match, unsigned long vcontext, int reply)
 {
 	int num, len, i, expansion;
-	char *outputbuf, *ptr, *msgptr;
+	char *outputbuf, *ptr;
+	const char *msgptr;
 	char temp[MAX_MESSAGE_SIZE];
 
 	expansion = qfalse;
@@ -2324,12 +2333,12 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 						if (reply)
 						{
 							//replace the reply synonyms in the variables
-							BotReplaceReplySynonyms(temp, vcontext);
+							BotReplaceReplySynonyms(temp, sizeof(temp) - 1, vcontext);
 						} //end if
 						else 
 						{
 							//replace synonyms in the variable context
-							BotReplaceSynonyms(temp, vcontext);
+							BotReplaceSynonyms(temp, MAX_MESSAGE_SIZE, vcontext);
 						} //end else
 						//
 						if (len + strlen(temp) >= MAX_MESSAGE_SIZE)
@@ -2388,7 +2397,7 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 	} //end while
 	outputbuf[len] = '\0';
 	//replace synonyms weighted in the message context
-	BotReplaceWeightedSynonyms(outputbuf, mcontext);
+	BotReplaceWeightedSynonyms(outputbuf, MAX_MESSAGE_SIZE, mcontext);
 	//return true if a random was expanded
 	return expansion;
 } //end of the function BotExpandChatMessage
@@ -2398,13 +2407,13 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-void BotConstructChatMessage(bot_chatstate_t *chatstate, char *message, unsigned long mcontext,
+void BotConstructChatMessage(bot_chatstate_t *chatstate, const char *message, unsigned long mcontext,
 							 bot_match_t *match, unsigned long vcontext, int reply)
 {
 	int i;
 	char srcmessage[MAX_MESSAGE_SIZE];
 
-	strcpy(srcmessage, message);
+	Q_strncpyz(srcmessage, message, MAX_MESSAGE_SIZE);
 	for (i = 0; i < 10; i++)
 	{
 		if (!BotExpandChatMessage(chatstate->chatmessage, srcmessage, mcontext, match, vcontext, reply))
@@ -2426,7 +2435,7 @@ void BotConstructChatMessage(bot_chatstate_t *chatstate, char *message, unsigned
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-char *BotChooseInitialChatMessage(bot_chatstate_t *cs, char *type)
+char *BotChooseInitialChatMessage(bot_chatstate_t *cs, const char *type)
 {
 	int n, numchatmessages;
 	float besttime;
@@ -2484,7 +2493,7 @@ char *BotChooseInitialChatMessage(bot_chatstate_t *cs, char *type)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-int BotNumInitialChats(int chatstate, char *type)
+int BotNumInitialChats(int chatstate, const char *type)
 {
 	bot_chatstate_t *cs;
 	bot_chattype_t *t;
@@ -2511,7 +2520,7 @@ int BotNumInitialChats(int chatstate, char *type)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotInitialChat(int chatstate, char *type, int mcontext, char *var0, char *var1, char *var2, char *var3, char *var4, char *var5, char *var6, char *var7)
+void BotInitialChat(int chatstate, const char *type, int mcontext, const char *var0, const char *var1, const char *var2, const char *var3, const char *var4, const char *var5, const char *var6, const char *var7)
 {
 	char *message;
 	int index;
@@ -2632,7 +2641,7 @@ void BotPrintReplyChatKeys(bot_replychat_t *replychat)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-int BotReplyChat(int chatstate, char *message, int mcontext, int vcontext, char *var0, char *var1, char *var2, char *var3, char *var4, char *var5, char *var6, char *var7)
+int BotReplyChat(int chatstate, const char *message, int mcontext, int vcontext, const char *var0, const char *var1, const char *var2, const char *var3, const char *var4, const char *var5, const char *var6, const char *var7)
 {
 	bot_replychat_t *rchat, *bestrchat;
 	bot_replychatkey_t *key;
@@ -2876,7 +2885,7 @@ void BotSetChatGender(int chatstate, int gender)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-void BotSetChatName(int chatstate, char *name, int client)
+void BotSetChatName(int chatstate, const char *name, int client)
 {
 	bot_chatstate_t *cs;
 
