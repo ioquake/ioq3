@@ -378,13 +378,17 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     OPTIMIZE = $(OPTIMIZEVM) -ffast-math
     HAVE_VM_COMPILED=true
   else
-  ifeq ($(ARCH),ppc)
-    ALTIVEC_CFLAGS = -maltivec
+  ifneq ($(findstring $(ARCH),ppc ppc64 ppc64le),)
     HAVE_VM_COMPILED=true
   endif
+  ifeq ($(ARCH),ppc)
+    OPTIMIZE += -mcpu=powerpc
+  endif
   ifeq ($(ARCH),ppc64)
-    ALTIVEC_CFLAGS = -maltivec
-    HAVE_VM_COMPILED=true
+    OPTIMIZE += -mcpu=power7
+  endif
+  ifeq ($(ARCH),ppc64le)
+    OPTIMIZE += -mcpu=power8
   endif
   ifeq ($(ARCH),sparc)
     OPTIMIZE += -mtune=ultrasparc3 -mv8plus
@@ -433,10 +437,6 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   ifeq ($(ARCH),x86)
     # linux32 make ...
     BASE_CFLAGS += -m32
-  else
-  ifeq ($(ARCH),ppc64)
-    BASE_CFLAGS += -m64
-  endif
   endif
 else # ifeq Linux
 
@@ -2380,7 +2380,7 @@ ifeq ($(HAVE_VM_COMPILED),true)
     Q3OBJ += \
       $(B)/client/vm_x86.o
   endif
-  ifneq ($(findstring $(ARCH),ppc ppc64),)
+  ifneq ($(findstring $(ARCH),ppc ppc64 ppc64le),)
     Q3OBJ += $(B)/client/vm_powerpc.o $(B)/client/vm_powerpc_asm.o
   endif
   ifeq ($(ARCH),sparc)
@@ -2556,7 +2556,7 @@ ifeq ($(HAVE_VM_COMPILED),true)
     Q3DOBJ += \
       $(B)/ded/vm_x86.o
   endif
-  ifneq ($(findstring $(ARCH),ppc ppc64),)
+  ifneq ($(findstring $(ARCH),ppc ppc64 ppc64le),)
     Q3DOBJ += $(B)/ded/vm_powerpc.o $(B)/ded/vm_powerpc_asm.o
   endif
   ifeq ($(ARCH),sparc)
