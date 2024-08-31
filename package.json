@@ -1,0 +1,8 @@
+{
+  "name": "ioq3",
+  "packageManager": "yarn@4.2.2",
+  "scripts": {
+    "build": "emmake make",
+    "commit": "gitmoji -c"
+  }
+}
