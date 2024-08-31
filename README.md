@@ -1,5 +1,7 @@
 ![Build](https://github.com/ioquake/ioq3/workflows/Build/badge.svg)
 
+Quake 3 license key: 2dlj7wr3aphgsctb
+
                    ,---------------------------------------.
                    |   _                     _       ____  |
                    |  (_)___  __ _ _  _ __ _| |_____|__ /  |
