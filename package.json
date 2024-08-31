@@ -2,6 +2,7 @@
   "name": "ioq3",
   "packageManager": "yarn@4.2.2",
   "scripts": {
+    "setup": "echo \"cd ../../emsdk/ && source emsdk_env.sh && cd -\"",
     "build": "emmake make",
     "commit": "gitmoji -c"
   }
