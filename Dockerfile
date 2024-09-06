@@ -6,7 +6,8 @@ ENV ioquake_data linuxq3apoint-1.32b-3.x86.run
 RUN echo "deb http://httpredir.debian.org/debian jessie contrib" >> /etc/apt/sources.list && \
         apt-get update && \
         apt-get install -y quake3-server \
-        wget && \
+        wget \
+        curl && \
             apt-get clean
 
 RUN rm -rf \
@@ -25,7 +26,7 @@ RUN wget "http://youfailit.net/pub/idgames/idstuff/quake3/linux/${ioquake_data}"
         ./${ioquake_data} --tar xvf && \
         rm -rf ./${ioquake_data}
 
-COPY pak0.pk3 /usr/share/games/quake3/baseq3/pak0.pk3
+RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak0.pk3 -o /usr/share/games/quake3/baseq3/pak0.pk3
 
 COPY server.cfg /usr/share/games/quake3/baseq3/server.cfg
 
