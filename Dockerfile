@@ -34,6 +34,16 @@ COPY server.cfg baseq3/server.cfg
 
 EXPOSE 27960/udp
 
-# Use shell form to allow for variable expansion
-ENTRYPOINT ioq3ded.$(uname -m)
+# Create a wrapper script to determine the correct binary
+RUN echo '#!/bin/sh' > /quake3/start.sh && \
+    echo 'ARCH=$(uname -m)' >> /quake3/start.sh && \
+    echo 'case $ARCH in' >> /quake3/start.sh && \
+    echo '  x86_64) BINARY="ioq3ded.x86_64" ;;' >> /quake3/start.sh && \
+    echo '  aarch64) BINARY="ioq3ded.arm64" ;;' >> /quake3/start.sh && \
+    echo '  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;' >> /quake3/start.sh && \
+    echo 'esac' >> /quake3/start.sh && \
+    echo 'exec /quake3/$BINARY "$@"' >> /quake3/start.sh && \
+    chmod +x /quake3/start.sh
+
+ENTRYPOINT ["/quake3/start.sh"]
 CMD ["+map", "q3dm17", "+exec", "server.cfg"]
