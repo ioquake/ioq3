@@ -1,38 +1,38 @@
-FROM ubuntu:latest
+# Build stage
+FROM ubuntu:latest AS builder
 
-ENV ioquake_data linuxq3apoint-1.32b-3.x86.run
 RUN apt-get update && \
-apt-get install -y make bash curl git gcc libsdl2-dev && \
-apt-get clean && \
+    apt-get install -y make bash curl git gcc libsdl2-dev && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/locale/* /var/cache/debconf/*-old /usr/share/doc/*
 
-RUN mkdir /quake3-source && cd /quake3-source
 WORKDIR /quake3-source
 COPY . .
 RUN make -j 8
-RUN mkdir /quake3
-RUN ls build
-RUN cp -r build/release-linux-arm64/* /quake3
 
-RUN cd /quake3
+# Download pak files correctly
+RUN mkdir -p /quake3/baseq3 && \
+    for i in $(seq 0 8); do \
+        curl -L "https://github.com/nrempel/q3-server/raw/master/baseq3/pak${i}.pk3" -o "/quake3/baseq3/pak${i}.pk3"; \
+    done && \
+    curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/q3config.cfg -o /quake3/baseq3/q3config.cfg
+
+# Final stage
+FROM ubuntu:latest
+
+RUN apt-get update && \
+    apt-get install -y libsdl2-2.0-0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/locale/* /var/cache/debconf/*-old /usr/share/doc/*
+
 WORKDIR /quake3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak0.pk3 -o /quake3/baseq3/pak0.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak1.pk3 -o /quake3/baseq3/pak1.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak2.pk3 -o /quake3/baseq3/pak2.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak3.pk3 -o /quake3/baseq3/pak3.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak4.pk3 -o /quake3/baseq3/pak4.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak5.pk3 -o /quake3/baseq3/pak5.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak6.pk3 -o /quake3/baseq3/pak6.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak7.pk3 -o /quake3/baseq3/pak7.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/pak8.pk3 -o /quake3/baseq3/pak8.pk3
-RUN curl -L https://github.com/nrempel/q3-server/raw/master/baseq3/q3config.cfg -o /quake3/baseq3/q3config.cfg
 
+# Copy all necessary files from the builder stage
+COPY --from=builder /quake3-source/build/release-linux-arm64/* ./
+COPY --from=builder /quake3/baseq3 ./baseq3
 COPY server.cfg baseq3/server.cfg
-
-# USER Debian-quake3
 
 EXPOSE 27960/udp
 
 ENTRYPOINT ["/quake3/ioq3ded.arm64"]
-
 CMD ["+map", "q3dm17", "+exec", "server.cfg"]
