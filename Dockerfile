@@ -27,12 +27,13 @@ RUN apt-get update && \
 
 WORKDIR /quake3
 
-# Copy all necessary files from the builder stage
-COPY --from=builder /quake3-source/build/release-linux-arm64/* ./
+# Copy all necessary files from the builder stage, accounting for different architectures
+COPY --from=builder /quake3-source/build/release-linux-* ./
 COPY --from=builder /quake3/baseq3 ./baseq3
 COPY server.cfg baseq3/server.cfg
 
 EXPOSE 27960/udp
 
-ENTRYPOINT ["/quake3/ioq3ded.arm64"]
+# Use shell form to allow for variable expansion
+ENTRYPOINT ioq3ded.$(uname -m)
 CMD ["+map", "q3dm17", "+exec", "server.cfg"]
