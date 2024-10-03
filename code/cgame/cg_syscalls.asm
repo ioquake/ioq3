@@ -94,6 +94,7 @@ equ trap_FS_Seek			-90
 equ	memset						-101
 equ	memcpy						-102
 equ	strncpy						-103
+equ	Q_strncpy					-103 ; alternate name
 equ	sin							-104
 equ	cos							-105
 equ	atan2						-106
