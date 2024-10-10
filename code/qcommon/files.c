@@ -3691,8 +3691,8 @@ static void FS_CheckPak0( void )
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 must be purchased to legitimately obtain pak0. "
 				"Quake 3 1.32 point release files (pak1 through pak8) "
-				"are freely available at:\n\n"
-				"https://ioquake3.org/extras/patch-data/\n\n");
+				"are freely available. For details see:\n\n"
+				"https://buy.ioquake3.org\n\n");
 
 		if(installHome)
 		{
@@ -3728,8 +3728,8 @@ static void FS_CheckPak0( void )
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 Team Arena must be purchased to legitimately obtain pak0. "
 				"Quake 3 Team Arena point release files (pak1 through pak3) "
-				"are freely available at:\n\n"
-				"https://ioquake3.org/extras/patch-data/\n\n");
+				"are freely available. For details see:\n\n"
+				"https://buy.ioquake3.org\n\n");
 
 		if(installHome)
 		{
