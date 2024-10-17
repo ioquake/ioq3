@@ -1310,7 +1310,7 @@ int PC_Directive_define(source_t *source)
 // Returns:					-
 // Changes Globals:		-
 //============================================================================
-define_t *PC_DefineFromString(char *string)
+define_t *PC_DefineFromString(const char *string)
 {
 	script_t *script;
 	source_t src;
@@ -1389,7 +1389,7 @@ int PC_AddDefine(source_t *source, char *string)
 // Returns:					-
 // Changes Globals:		-
 //============================================================================
-int PC_AddGlobalDefine(char *string)
+int PC_AddGlobalDefine(const char *string)
 {
 	define_t *define;
 
@@ -3188,14 +3188,14 @@ int PC_ReadTokenHandle(int handle, pc_token_t *pc_token)
 // Returns:				-
 // Changes Globals:		-
 //============================================================================
-int PC_SourceFileAndLine(int handle, char *filename, int *line)
+int PC_SourceFileAndLine(int handle, char *filename, size_t filenameCapacity, int *line)
 {
 	if (handle < 1 || handle >= MAX_SOURCEFILES)
 		return qfalse;
 	if (!sourceFiles[handle])
 		return qfalse;
 
-	strcpy(filename, sourceFiles[handle]->filename);
+	strncpy(filename, sourceFiles[handle]->filename, filenameCapacity);
 	if (sourceFiles[handle]->scriptstack)
 		*line = sourceFiles[handle]->scriptstack->line;
 	else
