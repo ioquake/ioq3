@@ -618,6 +618,7 @@ SERVER OPTIONS MENU *****
 #define ID_DEDICATED			22
 #define ID_GO					23
 #define ID_BACK					24
+#define ID_SKILL				25
 
 #define PLAYER_SLOTS			12
 
@@ -933,6 +934,19 @@ static void ServerOptions_SetPlayerItems( void ) {
 
 /*
 =================
+ServerOptions_SaveSkill
+=================
+*/
+static void ServerOptions_SaveSkill() {
+	int skill;
+	
+	skill = s_serveroptions.botSkill.curvalue + 1;
+	trap_Cvar_SetValue("g_spSkill", skill);
+}
+
+
+/*
+=================
 ServerOptions_Event
 =================
 */
@@ -970,6 +984,12 @@ static void ServerOptions_Event( void* ptr, int event ) {
 			break;
 		}
 		UI_PopMenu();
+		break;
+	case ID_SKILL:
+		if( event != QM_ACTIVATED ) {
+			break;
+		}
+		ServerOptions_SaveSkill();
 		break;
 	}
 }
@@ -1243,12 +1263,17 @@ ServerOptions_MenuInit
 static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	int		y;
 	int		n;
+	int		skill;
 
 	memset( &s_serveroptions, 0 ,sizeof(serveroptions_t) );
 	s_serveroptions.multiplayer = multiplayer;
 	s_serveroptions.gametype = (int) Com_Clamp(0, ARRAY_LEN(gametype_remap2) - 1,
 						trap_Cvar_VariableValue("g_gametype"));
 	s_serveroptions.punkbuster.curvalue = Com_Clamp( 0, 1, trap_Cvar_VariableValue( "sv_punkbuster" ) );
+	skill = (int)trap_Cvar_VariableValue("g_spSkill");
+	if (skill < 1 || skill > 5) {
+		skill = 2;
+	}
 
 	ServerOptions_Cache();
 
@@ -1363,10 +1388,12 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	s_serveroptions.botSkill.generic.type			= MTYPE_SPINCONTROL;
 	s_serveroptions.botSkill.generic.flags			= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_serveroptions.botSkill.generic.name			= "Bot Skill:";
+	s_serveroptions.botSkill.generic.id				= ID_SKILL;
+	s_serveroptions.botSkill.generic.callback		= ServerOptions_Event;
 	s_serveroptions.botSkill.generic.x				= 32 + (strlen(s_serveroptions.botSkill.generic.name) + 2 ) * SMALLCHAR_WIDTH;
 	s_serveroptions.botSkill.generic.y				= y;
 	s_serveroptions.botSkill.itemnames				= botSkill_list;
-	s_serveroptions.botSkill.curvalue				= 1;
+	s_serveroptions.botSkill.curvalue				= skill-1;
 
 	y += ( 2 * SMALLCHAR_HEIGHT );
 	s_serveroptions.player0.generic.type			= MTYPE_TEXT;
