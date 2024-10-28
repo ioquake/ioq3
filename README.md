@@ -18,7 +18,7 @@ If you aren't there, then this isn't ioquake3, it's someone else's project.
 Some of the major features currently implemented are:
 
   * CMake meta-build system
-  * SDL 2 backend
+  * SDL 3 backend
   * OpenAL sound API support (multiple speaker support and better sound
     quality)
   * Full x86_64 support on Linux
@@ -109,7 +109,7 @@ For *nix,
   1. `git clone git://github.com/ioquake/ioq3.git`
   2. `cd ioq3`
   3. Install dependencies according to your operating system's instructions.  
-     for apt-based systems, `sudo apt install cmake libsdl2-dev`
+     for apt-based systems, `sudo apt install cmake libsdl3-dev`
   4. `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
   5. `cmake --build build`
   6. The resulting files will be in the `build` directory.
