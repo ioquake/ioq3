@@ -374,7 +374,7 @@ void SNDDMA_StopCapture(void)
 void SNDDMA_MasterGain( float val )
 {
 #ifdef USE_SDL_AUDIO_CAPTURE
-	SDL_SetAudioStreamGain( sdlCaptureStream, val );
+	SDL_SetAudioStreamGain( sdlPlaybackStream, val );
 #endif
 }
 #endif
