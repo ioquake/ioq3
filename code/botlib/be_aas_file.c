@@ -300,7 +300,7 @@ char *AAS_LoadAASLump(fileHandle_t fp, int offset, int length, int *lastoffset, 
 	if (offset != *lastoffset)
 	{
 		botimport.Print(PRT_WARNING, "AAS file not sequentially read\n");
-		if (botimport.FS_Seek(fp, offset, FS_SEEK_SET))
+		if (botimport.FS_Seek(fp, offset, FS_SEEK_SET) < 0)
 		{
 			AAS_Error("can't seek to aas lump\n");
 			AAS_DumpAASData();
