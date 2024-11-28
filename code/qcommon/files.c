@@ -3454,6 +3454,64 @@ static void FS_Startup( const char *gameName )
 #ifndef STANDALONE
 /*
 ===================
+FS_AppendUserFriendlyPakList
+===================
+*/
+static void FS_AppendUserFriendlyPakList( char *buf, size_t bufsize, int foundPakFiles, int numPakFiles )
+{
+	int missingCount = 0;
+	int missingIndex = 0;
+	int missingMin = numPakFiles;
+	int missingMax = 0;
+	qboolean missingConsecutive = qtrue;
+	int i;
+
+	for ( i = 0; i < numPakFiles; i++ ) {
+		if ( foundPakFiles & ( 1 << i ) ) {
+			continue;
+		}
+
+		missingCount++;
+
+		if ( missingMin > i ) {
+			missingMin = i;
+		}
+		if ( missingMax < i ) {
+			missingMax = i;
+		}
+
+		if ( i > missingMin && ( foundPakFiles & ( 1<< ( i - 1 ) ) ) ) {
+			missingConsecutive = qfalse;
+		}
+	}
+
+	if ( missingConsecutive && missingMax >= missingMin + 2 ) {
+		Q_strcat( buf, bufsize,
+				va( " \"pak%d.pk3\" through \"pak%d.pk3\"",
+					missingMin, missingMax ) );
+	} else {
+		for ( i = 0; i < numPakFiles; i++ ) {
+			if ( foundPakFiles & (1<<i) ) {
+				continue;
+			}
+
+			if ( missingIndex > 0 && missingCount > 2 ) {
+				Q_strcat( buf, bufsize, "," );
+			}
+
+			if ( missingIndex == missingCount - 1 && missingCount > 1 ) {
+				Q_strcat( buf, bufsize, " and" );
+			}
+
+			Q_strcat( buf, bufsize, va( " \"pak%d.pk3\"", i ) );
+
+			missingIndex++;
+		}
+	}
+}
+
+/*
+===================
 FS_CheckPak0
 
 Check whether any of the original id pak files is present,
@@ -3471,6 +3529,8 @@ static void FS_CheckPak0( void )
 	const char	*pakBasename;
 	qboolean founddemo = qfalse;
 	unsigned int foundPak = 0, foundTA = 0;
+	qboolean installHome = qfalse;
+	char *installPath;
 
 	for( path = fs_searchpaths; path; path = path->next )
 	{
@@ -3600,49 +3660,89 @@ static void FS_CheckPak0( void )
 		}
 	}
 
+#ifdef __linux__
+	{
+		const char *p;
 
-	if(!com_standalone->integer && (foundPak & 0x1ff) != 0x1ff)
+		// Users can't write to the default Flatpak fs_basepath
+		if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
+			installHome = qtrue;
+	}
+#endif
+
+	if(installHome)
+		installPath = fs_homepath->string;
+	else
+		installPath = fs_basepath->string;
+
+	if(!com_standalone->integer && (foundPak & ((1<<NUM_ID_PAKS)-1)) != ((1<<NUM_ID_PAKS)-1))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
 
-		if((foundPak & 0x01) != 0x01)
-		{
-			Q_strcat(errorText, sizeof(errorText),
-					"\"pak0.pk3\" is missing. Please copy it "
-					"from your legitimate Q3 CDROM. ");
-		}
+		Q_strcat(errorText, sizeof(errorText),
+				"Quake 3 data files are missing. Please copy");
 
-		if((foundPak & 0x1fe) != 0x1fe)
-		{
-			Q_strcat(errorText, sizeof(errorText),
-					"Point Release files are missing. Please "
-					"re-install the 1.32 point release. ");
-		}
+		FS_AppendUserFriendlyPakList(errorText, sizeof(errorText), foundPak, NUM_ID_PAKS);
 
 		Q_strcat(errorText, sizeof(errorText),
-				va("Also check that your ioq3 executable is in "
-					"the correct place and that every file "
-					"in the \"%s\" directory is present and readable", BASEGAME));
+				va(" from the \"%s\" directory in your Quake 3 install or CD-ROM to:\n\n"
+				"%s%c%s%c\n\n", BASEGAME, installPath, PATH_SEP, BASEGAME, PATH_SEP));
+
+		Q_strcat(errorText, sizeof(errorText),
+				"Quake 3 must be purchased to legitimately obtain pak0. "
+				"Quake 3 1.32 point release files (pak1 through pak8) "
+				"are freely available. For details see:\n\n"
+				"https://buy.ioquake3.org\n\n");
+
+		if(installHome)
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that every file "
+						"in the \"%s\" directory is present and readable", BASEGAME));
+		}
+		else
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that your ioq3 executable is in "
+						"the correct place and that every file "
+						"in the \"%s\" directory is present and readable", BASEGAME));
+		}
 
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
 
-	if(!com_standalone->integer && foundTA && (foundTA & 0x0f) != 0x0f)
+	if(!com_standalone->integer && (foundTA & ((1<<NUM_TA_PAKS)-1)) != ((1<<NUM_TA_PAKS)-1)
+			&& (!Q_stricmp(fs_gamedirvar->string, BASETA) || !Q_stricmp(fs_basegame->string, BASETA)))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
 
-		if((foundTA & 0x01) != 0x01)
-		{
-			Com_sprintf(errorText, sizeof(errorText),
-					"\"" BASETA "%cpak0.pk3\" is missing. Please copy it "
-					"from your legitimate Quake 3 Team Arena CDROM. ", PATH_SEP);
-		}
+		Q_strcat(errorText, sizeof(errorText),
+				"Quake 3 Team Arena data files are missing. Please copy");
 
-		if((foundTA & 0x0e) != 0x0e)
+		FS_AppendUserFriendlyPakList(errorText, sizeof(errorText), foundTA, NUM_TA_PAKS);
+
+		Q_strcat(errorText, sizeof(errorText),
+				va(" from the \"%s\" directory in your Quake 3 Team Arena install or CD-ROM to:\n\n"
+				"%s%c%s%c\n\n", BASETA, installPath, PATH_SEP, BASETA, PATH_SEP));
+
+		Q_strcat(errorText, sizeof(errorText),
+				"Quake 3 Team Arena must be purchased to legitimately obtain pak0. "
+				"Quake 3 Team Arena point release files (pak1 through pak3) "
+				"are freely available. For details see:\n\n"
+				"https://buy.ioquake3.org\n\n");
+
+		if(installHome)
 		{
 			Q_strcat(errorText, sizeof(errorText),
-					"Team Arena Point Release files are missing. Please "
-					"re-install the latest Team Arena point release.");
+					va("Also check that every file "
+						"in the \"%s\" directory is present and readable", BASETA));
+		}
+		else
+		{
+			Q_strcat(errorText, sizeof(errorText),
+					va("Also check that your ioq3 executable is in "
+						"the correct place and that every file "
+						"in the \"%s\" directory is present and readable", BASETA));
 		}
 
 		Com_Error(ERR_FATAL, "%s", errorText);

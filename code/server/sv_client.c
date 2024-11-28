@@ -659,6 +659,16 @@ void SV_DropClient( client_t *drop, const char *reason ) {
 	// Free all allocated data on the client structure
 	SV_FreeClient(drop);
 
+	// Reset the reliable sequence to the currently acknowledged command
+	// This prevents SV_AddServerCommand() from making another recursive call to SV_DropClient()
+	// if the client lacks sufficient space for another reliable command
+	// it also guarantees that the client receives both the print and disconnect commands
+	drop->reliableSequence = drop->reliableAcknowledge;
+	// Setting the gamestate message number to -1 ensures that SV_AddServerCommand()
+	// will not call SV_DropClient() again, even though it is unlikely the client
+	// will receive many server commands during the drop
+	drop->gamestateMessageNum = -1;
+
 	// tell everyone why they got dropped
 	SV_SendServerCommand( NULL, "print \"%s" S_COLOR_WHITE " %s\n\"", drop->name, reason );
 
