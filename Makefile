@@ -252,7 +252,7 @@ USE_AUTOUPDATER=0
 endif
 
 ifndef DEBUG_CFLAGS
-DEBUG_CFLAGS=-ggdb -O0
+DEBUG_CFLAGS=-ggdb -O0 -DDEBUG
 endif
 
 #############################################################################
