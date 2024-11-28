@@ -103,7 +103,7 @@ void main()
 
 	vec4 shadowpos = u_ShadowMvp * biasPos;
 
-	if ( depth >= 1.0 - DEPTH_MAX_ERROR )
+	if ( depth >= 0.999 )
 	{
 		result = 1.0;
 	}

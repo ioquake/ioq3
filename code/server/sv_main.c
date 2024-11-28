@@ -159,6 +159,12 @@ void SV_AddServerCommand( client_t *client, const char *cmd ) {
 	// we check == instead of >= so a broadcast print added by SV_DropClient()
 	// doesn't cause a recursive drop client
 	if ( client->reliableSequence - client->reliableAcknowledge == MAX_RELIABLE_COMMANDS + 1 ) {
+		if ( client->gamestateMessageNum == -1 )  {
+			// invalid game state message 
+			// this can occur in SV_DropClient() to avoid calling it more than once
+			return;
+		}
+
 		Com_Printf( "===== pending server commands =====\n" );
 		for ( i = client->reliableAcknowledge + 1 ; i <= client->reliableSequence ; i++ ) {
 			Com_Printf( "cmd %5d: %s\n", i, client->reliableCommands[ i & (MAX_RELIABLE_COMMANDS-1) ] );
