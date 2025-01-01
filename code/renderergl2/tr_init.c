@@ -228,6 +228,8 @@ cvar_t	*r_saveFontData;
 
 cvar_t	*r_marksOnTriangleMeshes;
 
+cvar_t	*r_disableStaticSurfaceVaoCache;
+
 cvar_t	*r_aviMotionJpegQuality;
 cvar_t	*r_screenshotJpegQuality;
 
@@ -1432,6 +1434,15 @@ void R_Register( void )
 	r_shadows = ri.Cvar_Get( "cg_shadows", "1", 0 );
 
 	r_marksOnTriangleMeshes = ri.Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE);
+
+#ifdef __EMSCRIPTEN__
+	// The vao cache's use of bufferSubData hits pathological slow paths (10x
+	// slower) in some GLES drivers. Two known examples are ANGLE/Metal on
+	// macOS and Mali on Android.
+	r_disableStaticSurfaceVaoCache = ri.Cvar_Get("r_disableStaticSurfaceVaoCache", "1", CVAR_ARCHIVE);
+#else
+	r_disableStaticSurfaceVaoCache = ri.Cvar_Get("r_disableStaticSurfaceVaoCache", "0", CVAR_ARCHIVE);
+#endif
 
 	r_aviMotionJpegQuality = ri.Cvar_Get("r_aviMotionJpegQuality", "90", CVAR_ARCHIVE);
 	r_screenshotJpegQuality = ri.Cvar_Get("r_screenshotJpegQuality", "90", CVAR_ARCHIVE);
