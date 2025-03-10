@@ -61,7 +61,7 @@ typedef struct weightconfig_s
 } weightconfig_t;
 
 //reads a weight configuration
-weightconfig_t *ReadWeightConfig(char *filename);
+weightconfig_t *ReadWeightConfig(const char *filename);
 //free a weight configuration
 void FreeWeightConfig(weightconfig_t *config);
 //writes a weight configuration, returns true if successful
