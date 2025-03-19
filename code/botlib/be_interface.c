@@ -235,8 +235,7 @@ int Export_BotLibVarGet(const char *var_name, char *value, int size)
 	char *varvalue;
 
 	varvalue = LibVarGetString(var_name);
-	strncpy(value, varvalue, size-1);
-	value[size-1] = '\0';
+	Q_strncpyz(value, varvalue, size);
 	return BLERR_NOERROR;
 } //end of the function Export_BotLibVarGet
 //===========================================================================

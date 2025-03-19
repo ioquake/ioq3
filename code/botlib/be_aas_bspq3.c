@@ -286,8 +286,7 @@ int AAS_ValueForBSPEpairKey(int ent, char *key, char *value, int size)
 	{
 		if (!strcmp(epair->key, key))
 		{
-			strncpy(value, epair->value, size-1);
-			value[size-1] = '\0';
+			Q_strncpyz(value, epair->value, size);
 			return qtrue;
 		} //end if
 	} //end for
