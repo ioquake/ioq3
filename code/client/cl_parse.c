@@ -542,11 +542,11 @@ void CL_ParseGamestate( msg_t *msg ) {
 		Q_strncpyz(cl_oldGame, oldGame, sizeof(cl_oldGame));
 	}
 
-	FS_ConditionalRestart(clc.checksumFeed, qfalse);
-
 	// This used to call CL_StartHunkUsers, but now we enter the download state before loading the
 	// cgame
 	CL_InitDownloads();
+
+	//FS_ConditionalRestart(clc.checksumFeed, qfalse);
 
 	// make sure the game starts
 	Cvar_Set( "cl_paused", "0" );
