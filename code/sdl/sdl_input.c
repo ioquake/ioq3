@@ -1285,7 +1285,10 @@ void IN_Init( void *windowData )
 	Cvar_SetValue( "com_unfocused",	!( appState & SDL_WINDOW_INPUT_FOCUS ) );
 	Cvar_SetValue( "com_minimized", appState & SDL_WINDOW_MINIMIZED );
 
-	IN_InitJoystick( );
+	if (in_joystick->integer) { // only initialise joysticks if enabled
+		IN_InitJoystick();
+	}
+
 	Com_DPrintf( "------------------------------------\n" );
 }
 
