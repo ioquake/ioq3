@@ -4708,3 +4708,21 @@ qboolean CL_CDKeyValidate( const char *key, const char *checksum ) {
 	return qfalse;
 #endif
 }
+
+/*
+=================
+CL_Strncpy
+=================
+Safe reimplementation of strncpy against overlapping src & dest
+*/
+
+char *CL_Strncpy(char *dest, const char *src, unsigned long n){
+    unsigned long length = strlen(src);
+    if(n > length){
+        memmove(dest, src, length);
+        memset(dest+length,0,n-length);
+    }else{
+        memmove(dest, src, n);
+    }
+    return dest;
+}
