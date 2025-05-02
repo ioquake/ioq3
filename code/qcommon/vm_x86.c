@@ -1649,7 +1649,11 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 	// copy to an exact sized buffer with the appropriate permission bits
 	vm->codeLength = compiledOfs;
 #ifdef VM_X86_MMAP
-	vm->codeBase = mmap(NULL, compiledOfs, PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	int prot_flags = PROT_WRITE;
+#ifdef __NetBSD__
+	prot_flags |= PROT_MPROTECT(PROT_READ|PROT_EXEC);
+#endif
+	vm->codeBase = mmap(NULL, compiledOfs, prot_flags, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	if(vm->codeBase == MAP_FAILED)
 		Com_Error(ERR_FATAL, "VM_CompileX86: can't mmap memory");
 #elif _WIN32
