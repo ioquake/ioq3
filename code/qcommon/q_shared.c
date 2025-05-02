@@ -802,6 +802,31 @@ int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap)
 }
 #endif
 
+#ifndef Q3_VM
+/*
+=============
+Q_strncpy
+
+strncpy that allows overlapping dest and src
+
+QVMs uses the strncpy syscall to call this
+=============
+*/
+char *Q_strncpy( char *dest, const char *src, int destsize ) {
+	char *start = dest;
+
+	while ( destsize > 0 && (*dest++ = *src++) != '\0' ) {
+		--destsize;
+	}
+
+	while ( --destsize > 0 ) {
+		*dest++ = '\0';
+	}
+
+	return start;
+}
+#endif
+
 /*
 =============
 Q_strncpyz
@@ -820,7 +845,7 @@ void Q_strncpyz( char *dest, const char *src, int destsize ) {
 		Com_Error(ERR_FATAL,"Q_strncpyz: destsize < 1" ); 
 	}
 
-	strncpy( dest, src, destsize-1 );
+	Q_strncpy( dest, src, destsize-1 );
   dest[destsize-1] = 0;
 }
                  
