@@ -8,6 +8,18 @@ canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; o
 <canvas id=canvas></canvas>
 
 <script type=module>
+
+const defaultKeyBindingKeyCodes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyC", "KeyT", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Tab", "Space", "Enter", "NumpadEnter", "Delete", "Slash", "Backslash", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageDown", "End", "Escape", "ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight",];
+const defaultKeyBindingKeyCodesMap = defaultKeyBindingKeyCodes.reduce((acc, code) => { acc[code] = true; return acc; }, {});
+window.addEventListener("keydown", (e) => {
+        // Emscripten SDL2 will preventDefault all keyboard events which prevents browser keyboard shortcuts from working.
+        // This was supposed to be fixed in https://github.com/emscripten-core/emscripten/issues/16462 however the fix regressed.
+        // This hack lets the browser handle everything, except for the default Quake III keybindings. When the above mentioned
+        // regression is fixed, this can be replaced with a call to SDL_SetEventFilter in sdl_input.c respecting the actual
+        // active keybindings instead of hardcoding them here.
+        if (!defaultKeyBindingKeyCodesMap[e.code]) e.preventDefault = () => false;
+    }, { capture: true });
+
 // These strings are set in the generated HTML file in the build directory.
 let CLIENTBIN = '__CLIENTBIN__';
 let BASEGAME = '__BASEGAME__';
