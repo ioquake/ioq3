@@ -629,7 +629,7 @@ bot_synonymlist_t *BotLoadSynonyms(char *filename)
 		source = LoadSourceFile(filename);
 		if (!source)
 		{
-			botimport.Print(PRT_ERROR, "counldn't load %s\n", filename);
+			botimport.Print(PRT_ERROR, "couldn't load %s\n", filename);
 			return NULL;
 		} //end if
 		//
@@ -984,7 +984,7 @@ bot_randomlist_t *BotLoadRandomStrings(char *filename)
 		source = LoadSourceFile(filename);
 		if (!source)
 		{
-			botimport.Print(PRT_ERROR, "counldn't load %s\n", filename);
+			botimport.Print(PRT_ERROR, "couldn't load %s\n", filename);
 			return NULL;
 		} //end if
 		//
@@ -1286,7 +1286,7 @@ bot_matchtemplate_t *BotLoadMatchTemplates(char *matchfile)
 	source = LoadSourceFile(matchfile);
 	if (!source)
 	{
-		botimport.Print(PRT_ERROR, "counldn't load %s\n", matchfile);
+		botimport.Print(PRT_ERROR, "couldn't load %s\n", matchfile);
 		return NULL;
 	} //end if
 	//
@@ -1858,7 +1858,7 @@ bot_replychat_t *BotLoadReplyChat(char *filename)
 	source = LoadSourceFile(filename);
 	if (!source)
 	{
-		botimport.Print(PRT_ERROR, "counldn't load %s\n", filename);
+		botimport.Print(PRT_ERROR, "couldn't load %s\n", filename);
 		return NULL;
 	} //end if
 	//
@@ -2057,7 +2057,7 @@ bot_chat_t *BotLoadInitialChat(char *chatfile, char *chatname)
 		source = LoadSourceFile(chatfile);
 		if (!source)
 		{
-			botimport.Print(PRT_ERROR, "counldn't load %s\n", chatfile);
+			botimport.Print(PRT_ERROR, "couldn't load %s\n", chatfile);
 			return NULL;
 		} //end if
 		//chat structure
