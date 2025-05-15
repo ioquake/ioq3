@@ -327,7 +327,7 @@ weightconfig_t *ReadWeightConfig(char *filename)
 	source = LoadSourceFile(filename);
 	if (!source)
 	{
-		botimport.Print(PRT_ERROR, "counldn't load %s\n", filename);
+		botimport.Print(PRT_ERROR, "couldn't load %s\n", filename);
 		return NULL;
 	} //end if
 	//
