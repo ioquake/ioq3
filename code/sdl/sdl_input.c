@@ -39,6 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static cvar_t *in_keyboardDebug     = NULL;
 
+// TODO: fix
 static SDL_GameController *gamepad = NULL;
 static SDL_Joystick *stick = NULL;
 
@@ -641,145 +642,12 @@ static qboolean KeyToAxisAndSign(int keynum, int *outAxis, int *outSign)
 	return *outSign != 0;
 }
 
-/*
-===============
-IN_GamepadMove
-===============
-*/
-static void IN_GamepadMove( void )
-{
-	int i;
-	int translatedAxes[MAX_JOYSTICK_AXIS];
-	qboolean translatedAxesSet[MAX_JOYSTICK_AXIS];
-
-	SDL_GameControllerUpdate();
-
-	// check buttons
-	for (i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++)
-	{
-		qboolean pressed = SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A + i);
-		if (pressed != stick_state.buttons[i])
-		{
-#if SDL_VERSION_ATLEAST( 2, 0, 14 )
-			if ( i >= SDL_CONTROLLER_BUTTON_MISC1 ) {
-				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_MISC1 + i - SDL_CONTROLLER_BUTTON_MISC1, pressed, 0, NULL);
-			} else
-#endif
-			{
-				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + i, pressed, 0, NULL);
-			}
-			stick_state.buttons[i] = pressed;
-		}
-	}
-
-	// must defer translated axes until all real axes are processed
-	// must be done this way to prevent a later mapped axis from zeroing out a previous one
-	if (in_joystickUseAnalog->integer)
-	{
-		for (i = 0; i < MAX_JOYSTICK_AXIS; i++)
-		{
-			translatedAxes[i] = 0;
-			translatedAxesSet[i] = qfalse;
-		}
-	}
-
-	// check axes
-	for (i = 0; i < SDL_CONTROLLER_AXIS_MAX; i++)
-	{
-		int axis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX + i);
-		int oldAxis = stick_state.oldaaxes[i];
-
-		// Smoothly ramp from dead zone to maximum value
-		float f = ((float)abs(axis) / 32767.0f - in_joystickThreshold->value) / (1.0f - in_joystickThreshold->value);
-
-		if (f < 0.0f)
-			f = 0.0f;
-
-		axis = (int)(32767 * ((axis < 0) ? -f : f));
-
-		if (axis != oldAxis)
-		{
-			const int negMap[SDL_CONTROLLER_AXIS_MAX] = { K_PAD0_LEFTSTICK_LEFT,  K_PAD0_LEFTSTICK_UP,   K_PAD0_RIGHTSTICK_LEFT,  K_PAD0_RIGHTSTICK_UP, 0, 0 };
-			const int posMap[SDL_CONTROLLER_AXIS_MAX] = { K_PAD0_LEFTSTICK_RIGHT, K_PAD0_LEFTSTICK_DOWN, K_PAD0_RIGHTSTICK_RIGHT, K_PAD0_RIGHTSTICK_DOWN, K_PAD0_LEFTTRIGGER, K_PAD0_RIGHTTRIGGER };
-
-			qboolean posAnalog = qfalse, negAnalog = qfalse;
-			int negKey = negMap[i];
-			int posKey = posMap[i];
-
-			if (in_joystickUseAnalog->integer)
-			{
-				int posAxis = 0, posSign = 0, negAxis = 0, negSign = 0;
-
-				// get axes and axes signs for keys if available
-				posAnalog = KeyToAxisAndSign(posKey, &posAxis, &posSign);
-				negAnalog = KeyToAxisAndSign(negKey, &negAxis, &negSign);
-
-				// positive to negative/neutral -> keyup if axis hasn't yet been set
-				if (posAnalog && !translatedAxesSet[posAxis] && oldAxis > 0 && axis <= 0)
-				{
-					translatedAxes[posAxis] = 0;
-					translatedAxesSet[posAxis] = qtrue;
-				}
-
-				// negative to positive/neutral -> keyup if axis hasn't yet been set
-				if (negAnalog && !translatedAxesSet[negAxis] && oldAxis < 0 && axis >= 0)
-				{
-					translatedAxes[negAxis] = 0;
-					translatedAxesSet[negAxis] = qtrue;
-				}
-
-				// negative/neutral to positive -> keydown
-				if (posAnalog && axis > 0)
-				{
-					translatedAxes[posAxis] = axis * posSign;
-					translatedAxesSet[posAxis] = qtrue;
-				}
-
-				// positive/neutral to negative -> keydown
-				if (negAnalog && axis < 0)
-				{
-					translatedAxes[negAxis] = -axis * negSign;
-					translatedAxesSet[negAxis] = qtrue;
-				}
-			}
-
-			// keyups first so they get overridden by keydowns later
-
-			// positive to negative/neutral -> keyup
-			if (!posAnalog && posKey && oldAxis > 0 && axis <= 0)
-				Com_QueueEvent(in_eventTime, SE_KEY, posKey, qfalse, 0, NULL);
-
-			// negative to positive/neutral -> keyup
-			if (!negAnalog && negKey && oldAxis < 0 && axis >= 0)
-				Com_QueueEvent(in_eventTime, SE_KEY, negKey, qfalse, 0, NULL);
-
-			// negative/neutral to positive -> keydown
-			if (!posAnalog && posKey && oldAxis <= 0 && axis > 0)
-				Com_QueueEvent(in_eventTime, SE_KEY, posKey, qtrue, 0, NULL);
-
-			// positive/neutral to negative -> keydown
-			if (!negAnalog && negKey && oldAxis >= 0 && axis < 0)
-				Com_QueueEvent(in_eventTime, SE_KEY, negKey, qtrue, 0, NULL);
-
-			stick_state.oldaaxes[i] = axis;
-		}
-	}
-
-	// set translated axes
-	if (in_joystickUseAnalog->integer)
-	{
-		for (i = 0; i < MAX_JOYSTICK_AXIS; i++)
-		{
-			if (translatedAxesSet[i])
-				Com_QueueEvent(in_eventTime, SE_JOYSTICK_AXIS, i, translatedAxes[i], 0, NULL);
-		}
-	}
-}
-
 
 /*
 ===============
 IN_JoyMove
+
+TODO: refactor and remove
 ===============
 */
 static void IN_JoyMove( void )
@@ -789,13 +657,7 @@ static void IN_JoyMove( void )
 	int total = 0;
 	int i = 0;
 
-	if (gamepad)
-	{
-		IN_GamepadMove();
-		return;
-	}
-
-	if (!stick)
+	if (gamepad || !stick)
 		return;
 
 	SDL_JoystickUpdate();
@@ -1073,8 +935,8 @@ static void IN_ProcessEvents( void )
 							else
 								Com_QueueEvent( in_eventTime, SE_CHAR, utf32, 0, 0, NULL );
 						}
-          }
-        }
+					}
+				}
 				break;
 
 			case SDL_MOUSEMOTION:
@@ -1121,6 +983,105 @@ static void IN_ProcessEvents( void )
 			case SDL_CONTROLLERDEVICEREMOVED:
 				if (in_joystick->integer)
 					IN_InitJoystick();
+				break;
+
+			case SDL_CONTROLLERAXISMOTION:
+				int translatedAxes[MAX_JOYSTICK_AXIS];
+				qboolean translatedAxesSet[MAX_JOYSTICK_AXIS];
+				int axis = e.caxis.value;
+				int oldAxis = stick_state.oldaaxes[e.caxis.axis];
+
+				// must defer translated axes until all real axes are processed
+				// must be done this way to prevent a later mapped axis from zeroing out a previous one
+				if (in_joystickUseAnalog->integer) {
+					translatedAxes[e.caxis.axis] = 0;
+					translatedAxesSet[e.caxis.axis] = qfalse;
+				}
+
+				// Smoothly ramp from dead zone to maximum value
+				float f = ((float)abs(axis) / 32767.0f - in_joystickThreshold->value) / (1.0f - in_joystickThreshold->value);
+
+				if (f < 0.0f)
+					f = 0.0f;
+
+				axis = (int)(32767 * ((axis < 0) ? -f : f));
+
+				if (axis != oldAxis) {
+					const int negMap[SDL_CONTROLLER_AXIS_MAX] = { K_PAD0_LEFTSTICK_LEFT,  K_PAD0_LEFTSTICK_UP,   K_PAD0_RIGHTSTICK_LEFT,  K_PAD0_RIGHTSTICK_UP, 0, 0 };
+					const int posMap[SDL_CONTROLLER_AXIS_MAX] = { K_PAD0_LEFTSTICK_RIGHT, K_PAD0_LEFTSTICK_DOWN, K_PAD0_RIGHTSTICK_RIGHT, K_PAD0_RIGHTSTICK_DOWN, K_PAD0_LEFTTRIGGER, K_PAD0_RIGHTTRIGGER };
+
+					qboolean posAnalog = qfalse, negAnalog = qfalse;
+					int negKey = negMap[e.caxis.axis];
+					int posKey = posMap[e.caxis.axis];
+
+					if (in_joystickUseAnalog->integer) {
+						int posAxis = 0, posSign = 0, negAxis = 0, negSign = 0;
+
+						// get axes and axes signs for keys if available
+						posAnalog = KeyToAxisAndSign(posKey, &posAxis, &posSign);
+						negAnalog = KeyToAxisAndSign(negKey, &negAxis, &negSign);
+
+						// positive to negative/neutral -> keyup if axis hasn't yet been set
+						if (posAnalog && !translatedAxesSet[posAxis] && oldAxis > 0 && axis <= 0) {
+							translatedAxes[posAxis] = 0;
+							translatedAxesSet[posAxis] = qtrue;
+						}
+
+						// negative to positive/neutral -> keyup if axis hasn't yet been set
+						if (negAnalog && !translatedAxesSet[negAxis] && oldAxis < 0 && axis >= 0) {
+							translatedAxes[negAxis] = 0;
+							translatedAxesSet[negAxis] = qtrue;
+						}
+
+						// negative/neutral to positive -> keydown
+						if (posAnalog && axis > 0) {
+							translatedAxes[posAxis] = axis * posSign;
+							translatedAxesSet[posAxis] = qtrue;
+						}
+
+						// positive/neutral to negative -> keydown
+						if (negAnalog && axis < 0) {
+							translatedAxes[negAxis] = -axis * negSign;
+							translatedAxesSet[negAxis] = qtrue;
+						}
+					}
+
+					// keyups first so they get overridden by keydowns later
+
+					// positive to negative/neutral -> keyup
+					if (!posAnalog && posKey && oldAxis > 0 && axis <= 0)
+						Com_QueueEvent(in_eventTime, SE_KEY, posKey, qfalse, 0, NULL);
+
+					// negative to positive/neutral -> keyup
+					if (!negAnalog && negKey && oldAxis < 0 && axis >= 0)
+						Com_QueueEvent(in_eventTime, SE_KEY, negKey, qfalse, 0, NULL);
+
+					// negative/neutral to positive -> keydown
+					if (!posAnalog && posKey && oldAxis <= 0 && axis > 0)
+						Com_QueueEvent(in_eventTime, SE_KEY, posKey, qtrue, 0, NULL);
+
+					// positive/neutral to negative -> keydown
+					if (!negAnalog && negKey && oldAxis >= 0 && axis < 0)
+						Com_QueueEvent(in_eventTime, SE_KEY, negKey, qtrue, 0, NULL);
+
+					stick_state.oldaaxes[e.caxis.axis] = axis;
+				}
+
+				// set translated axes
+				if (in_joystickUseAnalog->integer)
+					if (translatedAxesSet[e.caxis.axis])
+						Com_QueueEvent(in_eventTime, SE_JOYSTICK_AXIS, e.caxis.axis, translatedAxes[e.caxis.axis], 0, NULL);
+
+				break;
+
+			case SDL_CONTROLLERBUTTONDOWN:
+			case SDL_CONTROLLERBUTTONUP:
+				qboolean pressed = (e.type == SDL_CONTROLLERBUTTONDOWN);
+				if (pressed != stick_state.buttons[e.button.button])
+				{
+					Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + e.button.button, pressed, 0, NULL);
+					stick_state.buttons[e.button.button] = pressed;
+				}
 				break;
 
 			case SDL_QUIT:
