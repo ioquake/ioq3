@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/qcommon.h"
 #include "sys_local.h"
 
+#include <shlobj.h>
 #include <windows.h>
 #include <lmerr.h>
 #include <lmcons.h>
@@ -122,8 +123,8 @@ char *Sys_DefaultHomePath( void )
 			return NULL;
 		}
 
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_APPDATA,
-						NULL, 0, szPath ) ) )
+		if( !SUCCEEDED( ((HRESULT (WINAPI *)(HWND, int, HANDLE, DWORD, LPTSTR))qSHGetFolderPath)(
+                NULL, CSIDL_APPDATA, NULL, 0, szPath ) ) )
 		{
 			Com_Printf("Unable to detect CSIDL_APPDATA\n");
 			FreeLibrary(shfolder);
@@ -239,25 +240,26 @@ char* Sys_MicrosoftStorePath(void)
 	if (!microsoftStorePath[0]) 
 	{
 		TCHAR szPath[MAX_PATH];
-		FARPROC qSHGetFolderPath;
 		HMODULE shfolder = LoadLibrary("shfolder.dll");
+		HRESULT (WINAPI *pSHGetFolderPath)(HWND, int, HANDLE, DWORD, LPTSTR);
 
-		if(shfolder == NULL)
+		if (shfolder == NULL)
 		{
 			Com_Printf("Unable to load SHFolder.dll\n");
 			return microsoftStorePath;
 		}
 
-		qSHGetFolderPath = GetProcAddress(shfolder, "SHGetFolderPathA");
-		if(qSHGetFolderPath == NULL)
+		pSHGetFolderPath = (HRESULT (WINAPI *)(HWND, int, HANDLE, DWORD, LPTSTR))
+			GetProcAddress(shfolder, "SHGetFolderPathA");
+		
+		if (pSHGetFolderPath == NULL)
 		{
 			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
 			FreeLibrary(shfolder);
 			return microsoftStorePath;
 		}
 
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_PROGRAM_FILES,
-						NULL, 0, szPath ) ) )
+		if (!SUCCEEDED(pSHGetFolderPath(NULL, CSIDL_PROGRAM_FILES, NULL, 0, szPath)))
 		{
 			Com_Printf("Unable to detect CSIDL_PROGRAM_FILES\n");
 			FreeLibrary(shfolder);
@@ -266,8 +268,8 @@ char* Sys_MicrosoftStorePath(void)
 
 		FreeLibrary(shfolder);
 
-		// default: C:\Program Files\ModifiableWindowsApps\Quake 3\EN
-		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN", szPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
+		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN",
+			szPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
 	}
 #endif
 	return microsoftStorePath;
