@@ -104,16 +104,17 @@ ioquake3({
                     continue;
                 }
                 const files = config[gamedir].files;
-                const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
-                for (let i = 0; i < files.length; i++) {
-                    const response = await fetches[i];
-                    if (!response.ok) continue;
+                const fetches = files.map(file => [file, fetch(new URL(file.src, dataURL))]);
+                const writeFilePromises = fetches.map(async ([file, resP]) => {
+                    const response = await resP;
+                    if (!response.ok) return;
                     const data = await response.arrayBuffer();
-                    let name = files[i].src.match(/[^/]+$/)[0];
-                    let dir = files[i].dst;
+                    let name = file.src.match(/[^/]+$/)[0];
+                    let dir = file.dst;
                     module.FS.mkdirTree(dir);
                     module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
-                }
+                });
+                await Promise.all(writeFilePromises);
             }
         } finally {
             module.removeRunDependency('setup-ioq3-filesystem');
