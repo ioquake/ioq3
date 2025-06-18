@@ -73,6 +73,13 @@ if (clientHtmlFallback) {
 
 const dataURL = new URL(dataPath, location.origin + location.pathname);
 
+/**
+ * @typedef {{ src: string, dst: string }} FileConfig
+ */
+/**
+ * @typedef {Record<string, { files: Array<FileConfig> }>} Config
+ */
+/** @type {Promise<Config>} */
 const configPromise = ( EMSCRIPTEN_PRELOAD_FILE === 1 ) ? Promise.resolve({[BASEGAME]: {files: []}})
   : fetch(configFilename).then(r => r.ok ? r.json() : { /* empty config */ });
 
