@@ -1631,7 +1631,14 @@ endif
 ifneq ($(PLATFORM),darwin)
   ifdef ARCHIVE
 	@rm -f $@
+  ifndef ARCHIVE_NOZIP
 	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
+  else
+    # Instead of making a .zip file, make it a directory
+    # and simply copy the files there.
+    # This is a little ugly, but works for GitHub pages deployment.
+	@(cd $(B) && mkdir --parents ../../$@ && cp -t ../../$@ --parents $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
+  endif
   endif
 endif
 	@:
