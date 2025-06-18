@@ -103,10 +103,34 @@ ioquake3({
                     console.warn(`Game directory '${gamedir}' cannot be used. It must have files listed in ${configFilename}.`);
                     continue;
                 }
+                const cache = await caches.open('quake-game-files');
                 const files = config[gamedir].files;
-                const fetches = files.map(file => [file, fetch(new URL(file.src, dataURL))]);
-                const writeFilePromises = fetches.map(async ([file, resP]) => {
-                    const response = await resP;
+                /** @type {Array<Promise<[FileConfig, Response]>>} */
+                const fetches = files.map(async file => [
+                    file,
+                    (await cache.match(file.src)) ??
+                        (await fetch(new URL(file.src, dataURL))),
+                ]);
+
+                Promise.all(fetches).then(fetches => {
+                    const missingFiles = fetches
+                        .filter(([file, response]) => !response.ok)
+                        .map(([file]) => file.src)
+                    if (missingFiles.length !== 0) {
+                        // Preserve query parameters,
+                        // so that that page knows where to return to.
+                        const nextPathname = new URL(
+                            './upload-game-files-to-cache.html',
+                            location.href
+                        ).pathname;
+                        const nextUrl = new URL(location.href);
+                        nextUrl.pathname = nextPathname;
+                        location.assign(nextUrl);
+                    }
+                });
+
+                const writeFilePromises = fetches.map(async (p) => {
+                    const [file, response] = await p;
                     if (!response.ok) return;
                     const data = await response.arrayBuffer();
                     let name = file.src.match(/[^/]+$/)[0];

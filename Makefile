@@ -1228,6 +1228,7 @@ ifeq ($(PLATFORM),emscripten)
 
   ifneq ($(BUILD_CLIENT),0)
     TARGETS += $(B)/$(CLIENTBIN).html
+    TARGETS += $(B)/upload-game-files-to-cache.html
     ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
       TARGETS += $(B)/$(CLIENTBIN)-config.json
     endif
@@ -3094,6 +3095,10 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 $(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
 	$(echo_cmd) "SED $@"
 	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
+
+$(B)/upload-game-files-to-cache.html: $(WEBDIR)/upload-game-files-to-cache.html
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
 
 $(B)/$(CLIENTBIN)-config.json: $(WEBDIR)/client-config.json
 	$(echo_cmd) "CP $@"
