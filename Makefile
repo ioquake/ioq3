@@ -1227,7 +1227,7 @@ ifeq ($(PLATFORM),emscripten)
   endif
 
   ifneq ($(BUILD_CLIENT),0)
-    TARGETS += $(B)/$(CLIENTBIN).html
+    TARGETS += $(B)/index.html
     TARGETS += $(B)/upload-game-files-to-cache.html
     ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
       TARGETS += $(B)/$(CLIENTBIN)-config.json
@@ -3099,7 +3099,7 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # EMSCRIPTEN
 #############################################################################
 
-$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
+$(B)/index.html: $(WEBDIR)/index.html
 	$(echo_cmd) "SED $@"
 	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
 
