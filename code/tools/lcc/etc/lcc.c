@@ -437,7 +437,7 @@ static char *exists(char *name) {
 			b = b->link;
 			if (b->str[0]) {
 				char buf[1024];
-				sprintf(buf, "%s/%s", b->str, name);
+				snprintf(buf, sizeof(buf), "%s/%s", b->str, name);
 				if (access(buf, 4) == 0)
 					return strsave(buf);
 			} else if (access(name, 4) == 0)
