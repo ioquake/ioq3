@@ -58,8 +58,8 @@ jobs:
     - name: Install Dependencies
       run: |
         cd emsdk
-        ./emsdk install 3.1.58
-        ./emsdk activate 3.1.58
+        ./emsdk install 4.0.10
+        ./emsdk activate 4.0.10
     - name: Compile
       env:
         ARCHIVE: 1
