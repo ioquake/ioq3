@@ -179,16 +179,8 @@ ifndef USE_OPENAL_DLOPEN
 USE_OPENAL_DLOPEN=1
 endif
 
-ifndef USE_CURL
-USE_CURL=1
-endif
-
-ifndef USE_CURL_DLOPEN
-  ifdef MINGW
-    USE_CURL_DLOPEN=0
-  else
-    USE_CURL_DLOPEN=1
-  endif
+ifndef USE_MONGOOSE
+USE_MONGOOSE=1
 endif
 
 ifndef USE_CODEC_VORBIS
@@ -280,6 +272,7 @@ VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.7
 OPUSDIR=$(MOUNT_DIR)/opus-1.5.2
 OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.12
 ZDIR=$(MOUNT_DIR)/zlib
+MONGOOSEDIR=$(MOUNT_DIR)/mongoose-7.18
 TOOLSDIR=$(MOUNT_DIR)/tools
 Q3ASMDIR=$(MOUNT_DIR)/tools/asm
 LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
@@ -416,13 +409,6 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
       CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
-    endif
-  endif
-
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -575,13 +561,6 @@ ifeq ($(PLATFORM),darwin)
     endif
     ifneq ($(USE_OPENAL_DLOPEN),1)
       CLIENT_LIBS += -framework OpenAL
-    endif
-  endif
-
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -756,22 +735,6 @@ ifdef MINGW
     FREETYPE_CFLAGS = -Ifreetype2
   endif
 
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      ifeq ($(USE_LOCAL_HEADERS),1)
-        CLIENT_CFLAGS += -DCURL_STATICLIB
-        ifeq ($(ARCH),x86_64)
-          CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
-        else
-          CLIENT_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
-        endif
-      else
-        CLIENT_LIBS += $(CURL_LIBS)
-      endif
-    endif
-  endif
-
   ifeq ($(ARCH),x86)
     # build 32bit
     BASE_CFLAGS += -m32
@@ -847,13 +810,6 @@ ifeq ($(PLATFORM),freebsd)
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifeq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
-  endif
-
   # cross-compiling tweaks
   ifeq ($(ARCH),x86)
     ifeq ($(CROSS_COMPILING),1)
@@ -911,11 +867,6 @@ ifeq ($(PLATFORM),openbsd)
   endif
   endif
 
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    USE_CURL_DLOPEN=0
-  endif
-
   # no shm_open on OpenBSD
   USE_MUMBLE=0
 
@@ -934,12 +885,6 @@ ifeq ($(PLATFORM),openbsd)
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
       CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
-    endif
-  endif
-
-  ifeq ($(USE_CURL),1)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
     endif
   endif
 else # ifeq openbsd
@@ -1261,11 +1206,8 @@ ifeq ($(USE_OPENAL),1)
   endif
 endif
 
-ifeq ($(USE_CURL),1)
-  CLIENT_CFLAGS += -DUSE_CURL
-  ifeq ($(USE_CURL_DLOPEN),1)
-    CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
-  endif
+ifeq ($(USE_MONGOOSE),1)
+  CLIENT_CFLAGS += -DUSE_MONGOOSE -DMG_TLS=MG_TLS_BUILTIN -DMG_ENABLE_IPV6=1 -I$(MONGOOSEDIR)
 endif
 
 ifeq ($(USE_VOIP),1)
@@ -1927,7 +1869,7 @@ Q3OBJ = \
   $(B)/client/qal.o \
   $(B)/client/snd_openal.o \
   \
-  $(B)/client/cl_curl.o \
+  $(B)/client/cl_mongoose.o \
   \
   $(B)/client/sv_bot.o \
   $(B)/client/sv_ccmds.o \
@@ -2374,6 +2316,11 @@ Q3OBJ += \
   $(B)/client/inflate.o \
   $(B)/client/inftrees.o \
   $(B)/client/zutil.o
+endif
+
+ifeq ($(USE_MONGOOSE),1)
+Q3OBJ += \
+  $(B)/client/mongoose.o
 endif
 
 ifeq ($(HAVE_VM_COMPILED),true)
@@ -2925,6 +2872,9 @@ $(B)/client/%.o: $(OPUSFILEDIR)/src/%.c
 $(B)/client/%.o: $(ZDIR)/%.c
 	$(DO_CC)
 
+$(B)/client/%.o: $(MONGOOSEDIR)/%.c
+	$(DO_CC)
+
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
 
@@ -3211,7 +3161,6 @@ ifdef MINGW
 		SDLDLL=$(SDLDLL) \
 		USE_RENDERER_DLOPEN=$(USE_RENDERER_DLOPEN) \
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
-		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \
 		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB) \
 		USE_INTERNAL_JPEG=$(USE_INTERNAL_JPEG)

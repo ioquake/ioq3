@@ -4,7 +4,7 @@ set -e
 
 export BUILD_CLIENT="${BUILD_CLIENT:-0}"
 export BUILD_SERVER="${BUILD_SERVER:-1}"
-export USE_CURL="${USE_CURL:-1}"
+export USE_MONGOOSE="${USE_MONGOOSE:-1}"
 export USE_CODEC_OPUS="${USE_CODEC_OPUS:-1}"
 export USE_VOIP="${USE_VOIP:-1}"
 export COPYDIR="${COPYDIR:-~/ioquake3}"
