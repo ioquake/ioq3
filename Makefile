@@ -275,6 +275,7 @@ NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
 Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-9f
+CURLDIR=$(MOUNT_DIR)/curl-8.15.0
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.6
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.7
 OPUSDIR=$(MOUNT_DIR)/opus-1.5.2
@@ -326,6 +327,10 @@ else
   # assume they're in the system default paths (no -I or -L needed)
   CURL_LIBS ?= -lcurl
   OPENAL_LIBS ?= -lopenal
+endif
+
+ifeq ($(USE_LOCAL_HEADERS),1)
+  CURL_CFLAGS+=-I$(CURLDIR)/include
 endif
 
 # Use sdl2-config if all else fails
