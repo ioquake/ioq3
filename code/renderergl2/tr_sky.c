@@ -49,6 +49,14 @@ static vec3_t sky_clip[6] =
 static float	sky_mins[2][6], sky_maxs[2][6];
 static float	sky_min, sky_max;
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+// AddSkyPolygon and ClipSkyPolygon both technically do
+// unbounded access of their vecs parameter, though in
+// practice the size of what they're passed makes it safe
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
 /*
 ================
 AddSkyPolygon
@@ -237,6 +245,10 @@ static void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 	ClipSkyPolygon (newc[0], newv[0][0], stage+1);
 	ClipSkyPolygon (newc[1], newv[1][0], stage+1);
 }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 /*
 ==============

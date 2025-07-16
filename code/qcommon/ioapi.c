@@ -11,7 +11,7 @@
 #include <string.h>
 
 #ifdef USE_LOCAL_HEADERS
-#include "../zlib/zlib.h"
+#include "zlib.h"
 #else
 #include <zlib.h>
 #endif

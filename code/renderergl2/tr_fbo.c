@@ -661,13 +661,13 @@ void FBO_FastBlit(FBO_t *src, ivec4_t srcBox, FBO_t *dst, ivec4_t dstBox, int bu
 		if (scissorBox[2] < 0)
 		{
 			scissorBox[0] += scissorBox[2];
-			scissorBox[2] = fabsf(scissorBox[2]);
+			scissorBox[2] = abs(scissorBox[2]);
 		}
 
 		if (scissorBox[3] < 0)
 		{
 			scissorBox[1] += scissorBox[3];
-			scissorBox[3] = fabsf(scissorBox[3]);
+			scissorBox[3] = abs(scissorBox[3]);
 		}
 
 		qglScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);

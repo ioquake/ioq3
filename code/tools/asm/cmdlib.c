@@ -65,7 +65,7 @@ void ExpandWildcards( int *argc, char ***argv )
 	struct _finddata_t fileinfo;
 	intptr_t	handle;
 	int		i;
-	char	filename[1024];
+	char	filename[2048];
 	char	filebase[1024];
 	char	*path;
 
@@ -88,7 +88,7 @@ void ExpandWildcards( int *argc, char ***argv )
 
 		do
 		{
-			sprintf (filename, "%s%s", filebase, fileinfo.name);
+			snprintf (filename, sizeof(filename), "%s%s", filebase, fileinfo.name);
 			ex_argv[ex_argc++] = copystring (filename);
 		} while (_findnext( handle, &fileinfo ) != -1);
 
@@ -126,7 +126,7 @@ void Error( const char *error, ... )
 	vsprintf (text, error,argptr);
 	va_end (argptr);
 
-	sprintf (text2, "%s\nGetLastError() = %i", text, err);
+	snprintf (text2, sizeof(text2), "%s\nGetLastError() = %i", text, err);
     MessageBox(NULL, text2, "Error", 0 /* MB_OK */ );
 
 	exit (1);
@@ -318,7 +318,7 @@ char *ExpandPath (const char *path)
 		strcpy( full, path );
 		return full;
 	}
-	sprintf (full, "%s%s", qdir, path);
+	snprintf (full, sizeof(full), "%s%s", qdir, path);
 	return full;
 }
 
@@ -331,20 +331,20 @@ char *ExpandGamePath (const char *path)
 		strcpy( full, path );
 		return full;
 	}
-	sprintf (full, "%s%s", gamedir, path);
+	snprintf (full, sizeof(full), "%s%s", gamedir, path);
 	return full;
 }
 
 char *ExpandPathAndArchive (const char *path)
 {
 	char	*expanded;
-	char	archivename[1024];
+	char	archivename[2048];
 
 	expanded = ExpandPath (path);
 
 	if (archive)
 	{
-		sprintf (archivename, "%s/%s", archivedir, path);
+		snprintf (archivename, sizeof(archivename), "%s/%s", archivedir, path);
 		QCopyFile (expanded, archivename);
 	}
 	return expanded;

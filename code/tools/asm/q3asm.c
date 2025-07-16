@@ -546,7 +546,7 @@ static void DefineSymbol( char *sym, int value ) {
 
 	// add the file prefix to local symbols to guarantee unique
 	if ( sym[0] == '$' ) {
-		sprintf( expanded, "%s_%i", sym, currentFileIndex );
+		snprintf( expanded, sizeof(expanded), "%s_%i", sym, currentFileIndex );
 		sym = expanded;
 	}
 
@@ -602,7 +602,7 @@ static int LookupSymbol( char *sym ) {
 
 	// add the file prefix to local symbols to guarantee unique
 	if ( sym[0] == '$' ) {
-		sprintf( expanded, "%s_%i", sym, currentFileIndex );
+		snprintf( expanded, sizeof(expanded), "%s_%i", sym, currentFileIndex );
 		sym = expanded;
 	}
 

@@ -80,7 +80,7 @@ void vfprint(FILE *f, char *bp, const char *fmt, va_list ap) {
 				  	static char format[] = "%f";
 				  	char buf[128];
 				  	format[1] = *fmt;
-				  	sprintf(buf, format, va_arg(ap, double));
+					snprintf(buf, sizeof(buf), format, va_arg(ap, double));
 				  	bp = outs(buf, f, bp);
 				  }
 ; break;

@@ -159,7 +159,8 @@ static Tree unary(void) {
 						  if (isarith(p->type))
 						  	p = cast(p, promote(p->type));
 						  else
-						  	typeerror(ADD, p, NULL);  break;
+							typeerror(ADD, p, NULL);
+						  break;
 	case '-':    t = gettok(); p = unary(); p = pointer(p);
 						  if (isarith(p->type)) {
 						  	Type ty = promote(p->type);
@@ -170,18 +171,21 @@ static Tree unary(void) {
 						  	} else
 						  		p = simplify(NEG, ty, p, NULL);
 						  } else
-						  	typeerror(SUB, p, NULL); break;
+							typeerror(SUB, p, NULL);
+						  break;
 	case '~':    t = gettok(); p = unary(); p = pointer(p);
 						  if (isint(p->type)) {
 						  	Type ty = promote(p->type);
 						  	p = simplify(BCOM, ty, cast(p, ty), NULL);
 						  } else
-						  	typeerror(BCOM, p, NULL);  break;
+							typeerror(BCOM, p, NULL);
+						  break;
 	case '!':    t = gettok(); p = unary(); p = pointer(p);
 						  if (isscalar(p->type))
 						  	p = simplify(NOT, inttype, cond(p), NULL);
 						  else
-						  	typeerror(NOT, p, NULL); break;
+							typeerror(NOT, p, NULL);
+						  break;
 	case INCR:   t = gettok(); p = unary(); p = incr(INCR, pointer(p), consttree(1, inttype)); break;
 	case DECR:   t = gettok(); p = unary(); p = incr(DECR, pointer(p), consttree(1, inttype)); break;
 	case TYPECODE: case SIZEOF: { int op = t;
@@ -318,7 +322,8 @@ static Tree postfix(Tree p) {
 			    			p->type);
 			    	t = gettok();
 			    } else
-			    	error("field name expected\n"); break;
+					error("field name expected\n");
+				break;
 		case DEREF: t = gettok();
 			    p = pointer(p);
 			    if (t == ID) {
@@ -331,7 +336,8 @@ static Tree postfix(Tree p) {
 
 			    	t = gettok();
 			    } else
-			    	error("field name expected\n"); break;
+					error("field name expected\n");
+				break;
 		default:
 			return p;
 		}

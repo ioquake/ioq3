@@ -468,7 +468,8 @@ int PC_StringizeTokens(token_t *tokens, token_t *token)
 	strcat(token->string, "\"");
 	for (t = tokens; t; t = t->next)
 	{
-		strncat(token->string, t->string, MAX_TOKEN - strlen(token->string) - 1);
+		snprintf(token->string + strlen(token->string),
+			MAX_TOKEN - strlen(token->string), "%s", t->string);
 	} //end for
 	strncat(token->string, "\"", MAX_TOKEN - strlen(token->string) - 1);
 	return qtrue;
