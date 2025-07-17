@@ -264,30 +264,11 @@ CURLcode qcurl_easy_setopt_warn(CURL *curl, CURLoption option, ...)
 	return result;
 }
 
-void CL_HTTP_BeginDownload( const char *localName, const char *remoteURL )
+void CL_HTTP_BeginDownload( const char *remoteURL )
 {
 	CURLMcode result;
 
-	clc.httpUsed = qtrue;
-	Com_Printf("URL: %s\n", remoteURL);
-	Com_DPrintf("***** CL_HTTP_BeginDownload *****\n"
-		"Localname: %s\n"
-		"RemoteURL: %s\n"
-		"****************************\n", localName, remoteURL);
 	CL_cURL_Cleanup();
-	Q_strncpyz(clc.downloadURL, remoteURL, sizeof(clc.downloadURL));
-	Q_strncpyz(clc.downloadName, localName, sizeof(clc.downloadName));
-	Com_sprintf(clc.downloadTempName, sizeof(clc.downloadTempName),
-		"%s.tmp", localName);
-
-	// Set so UI gets access to it
-	Cvar_Set("cl_downloadName", localName);
-	Cvar_Set("cl_downloadSize", "0");
-	Cvar_Set("cl_downloadCount", "0");
-	Cvar_SetValue("cl_downloadTime", cls.realtime);
-
-	clc.downloadBlock = 0; // Starting new file
-	clc.downloadCount = 0;
 
 	downloadCURL = qcurl_easy_init();
 	if(!downloadCURL) {
@@ -295,16 +276,10 @@ void CL_HTTP_BeginDownload( const char *localName, const char *remoteURL )
 			"failed");
 		return;
 	}
-	clc.download = FS_SV_FOpenFileWrite(clc.downloadTempName);
-	if(!clc.download) {
-		Com_Error(ERR_DROP, "CL_HTTP_BeginDownload: failed to open "
-			"%s for writing", clc.downloadTempName);
-		return;
-	}
 
 	if(com_developer->integer)
 		qcurl_easy_setopt_warn(downloadCURL, CURLOPT_VERBOSE, 1);
-	qcurl_easy_setopt_warn(downloadCURL, CURLOPT_URL, clc.downloadURL);
+	qcurl_easy_setopt_warn(downloadCURL, CURLOPT_URL, remoteURL);
 	qcurl_easy_setopt_warn(downloadCURL, CURLOPT_TRANSFERTEXT, 0);
 	qcurl_easy_setopt_warn(downloadCURL, CURLOPT_REFERER, va("ioQ3://%s",
 		NET_AdrToString(clc.serverAddress)));
@@ -337,19 +312,9 @@ void CL_HTTP_BeginDownload( const char *localName, const char *remoteURL )
 		Com_Error(ERR_DROP,"CL_HTTP_BeginDownload: qcurl_multi_add_handle() failed: %s", qcurl_multi_strerror(result));
 		return;
 	}
-
-	if(!(clc.sv_allowDownload & DLF_NO_DISCONNECT) &&
-		!clc.disconnectedForHttpDownload) {
-
-		CL_AddReliableCommand("disconnect", qtrue);
-		CL_WritePacket();
-		CL_WritePacket();
-		CL_WritePacket();
-		clc.disconnectedForHttpDownload = qtrue;
-	}
 }
 
-void CL_HTTP_PerformDownload(void)
+qboolean CL_HTTP_PerformDownload(void)
 {
 	CURLMcode res;
 	CURLMsg *msg;
@@ -362,17 +327,12 @@ void CL_HTTP_PerformDownload(void)
 		i++;
 	}
 	if(res == CURLM_CALL_MULTI_PERFORM)
-		return;
+		return qfalse;
 	msg = qcurl_multi_info_read(downloadCURLM, &c);
 	if(msg == NULL) {
-		return;
+		return qfalse;
 	}
-	FS_FCloseFile(clc.download);
-	if(msg->msg == CURLMSG_DONE && msg->data.result == CURLE_OK) {
-		FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
-		clc.downloadRestart = qtrue;
-	}
-	else {
+	if(msg->msg != CURLMSG_DONE || msg->data.result != CURLE_OK) {
 		long code;
 
 		qcurl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE,
@@ -382,7 +342,7 @@ void CL_HTTP_PerformDownload(void)
 			code, clc.downloadURL);
 	}
 
-	CL_NextDownload();
+	return qtrue;
 }
 
 #endif /* USE_HTTP */
