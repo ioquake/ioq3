@@ -2154,33 +2154,72 @@ void CL_DownloadsComplete( void ) {
 
 /*
 =================
-CL_BeginDownload
-
-Requests a file to download from the server.  Stores it in the current
-game directory.
+CL_InitDownload
 =================
 */
-void CL_BeginDownload( const char *localName, const char *remoteName ) {
-
-	Com_DPrintf("***** CL_BeginDownload *****\n"
-				"Localname: %s\n"
-				"Remotename: %s\n"
-				"****************************\n", localName, remoteName);
-
+static void CL_InitDownload( const char *localName ) {
 	Q_strncpyz ( clc.downloadName, localName, sizeof(clc.downloadName) );
 	Com_sprintf( clc.downloadTempName, sizeof(clc.downloadTempName), "%s.tmp", localName );
 
 	// Set so UI gets access to it
-	Cvar_Set( "cl_downloadName", remoteName );
+	Cvar_Set( "cl_downloadName", localName );
 	Cvar_Set( "cl_downloadSize", "0" );
 	Cvar_Set( "cl_downloadCount", "0" );
 	Cvar_SetValue( "cl_downloadTime", cls.realtime );
 
 	clc.downloadBlock = 0; // Starting new file
 	clc.downloadCount = 0;
+}
 
+/*
+=================
+CL_BeginDownload
+
+Requests a file to download from the server.  Stores it in the current
+game directory.
+=================
+*/
+static void CL_BeginDownload( const char *remoteName ) {
 	CL_AddReliableCommand(va("download %s", remoteName), qfalse);
 }
+
+#ifdef USE_HTTP
+/*
+=================
+CL_BeginHttpDownload
+=================
+*/
+static void CL_BeginHttpDownload( const char *remoteURL ) {
+	if(Q_strncmp(remoteURL, "http://", strlen("http://")) != 0 &&
+		Q_strncmp(remoteURL, "https://", strlen("https://")) != 0) {
+		Com_Error(ERR_DROP, "Download Error: %s is a malformed/"
+			"unsupported URL", remoteURL);
+	}
+
+	Com_Printf("URL: %s\n", remoteURL);
+
+	CL_HTTP_BeginDownload(remoteURL);
+	Q_strncpyz(clc.downloadURL, remoteURL, sizeof(clc.downloadURL));
+
+	clc.download = FS_SV_FOpenFileWrite(clc.downloadTempName);
+	if(!clc.download) {
+		Com_Error(ERR_DROP, "CL_BeginHTTPDownload: failed to open "
+			"%s for writing", clc.downloadTempName);
+	}
+
+	if(!(clc.sv_allowDownload & DLF_NO_DISCONNECT) &&
+		!clc.disconnectedForHttpDownload) {
+
+		CL_AddReliableCommand("disconnect", qtrue);
+		CL_WritePacket();
+		CL_WritePacket();
+		CL_WritePacket();
+		clc.disconnectedForHttpDownload = qtrue;
+	}
+
+	clc.httpUsed = qtrue;
+}
+#endif /* USE_HTTP */
 
 /*
 =================
@@ -2244,8 +2283,10 @@ void CL_NextDownload(void)
 					"have sv_dlURL set\n");
 			}
 			else if(CL_HTTP_Available()) {
-				CL_HTTP_BeginDownload(localName, va("%s/%s",
+				CL_InitDownload(localName);
+				CL_BeginHttpDownload(va("%s/%s",
 					clc.sv_dlURL, remoteName));
+
 				usedHTTP = qtrue;
 			}
 		}
@@ -2265,7 +2306,8 @@ void CL_NextDownload(void)
 				return;	
 			}
 			else {
-				CL_BeginDownload( localName, remoteName );
+				CL_InitDownload( localName );
+				CL_BeginDownload( remoteName );
 			}
 		}
 		clc.downloadRestart = qtrue;
@@ -2932,7 +2974,19 @@ void CL_Frame ( int msec ) {
 
 #ifdef USE_HTTP
 	if(clc.httpUsed) {
-		CL_HTTP_PerformDownload();
+		qboolean finished = CL_HTTP_PerformDownload();
+
+		if(finished) {
+			if(clc.download) {
+				FS_FCloseFile(clc.download);
+				clc.download = 0;
+			}
+
+			FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
+			clc.downloadRestart = qtrue;
+			CL_NextDownload();
+		}
+
 		// we can't process frames normally when in disconnected
 		// download mode since the ui vm expects clc.state to be
 		// CA_CONNECTED
