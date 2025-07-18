@@ -154,8 +154,7 @@ Makefile.local:
   MISSIONPACK_CFLAGS   - custom CFLAGS for missionpack (default '-DMISSIONPACK')
   USE_OPENAL           - use OpenAL where available
   USE_OPENAL_DLOPEN    - link with OpenAL at runtime
-  USE_CURL             - use libcurl for http/ftp download support
-  USE_CURL_DLOPEN      - link with libcurl at runtime
+  USE_HTTP             - enable http download support
   USE_CODEC_VORBIS     - enable Ogg Vorbis support
   USE_CODEC_OPUS       - enable Ogg Opus support
   USE_MUMBLE           - enable Mumble support
@@ -208,7 +207,7 @@ set using command line arguments:
   cl_aviFrameRate                   - the framerate to use when capturing video
   cl_aviMotionJpeg                  - use the mjpeg codec when capturing video
   cl_guidServerUniq                 - makes cl_guid unique for each server
-  cl_cURLLib                        - filename of cURL library to load
+  cl_cURLLib                        - filename of cURL library to load (non-Windows)
   cl_consoleKeys                    - space delimited list of key names or
                                       characters that toggle the console
   cl_mouseAccelStyle                - Set to 1 for QuakeLive mouse acceleration
