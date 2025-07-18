@@ -30,7 +30,7 @@ if (clientHtmlFallback) {
     configFilename='./client-config.json';
 }
 
-if (window.location.protocol === 'file:') throw new Error(`Unfortunately browser security restrictions prevent loading wasm from a file: URL. This file must be loaded from a web server. The easiest way to do this is probably to use Python\'s built-in web server by running \`python3 -m http.server\` in the top level source directory and then navigate to http://localhost:8000/build/debug-emscripten-wasm32/${CLIENTBIN}.html`);
+if (window.location.protocol === 'file:') throw new Error(`Unfortunately browser security restrictions prevent loading wasm from a file: URL. This file must be loaded from a web server. The easiest way to do this is probably to use Python\'s built-in web server by running \`python3 -m http.server\` in the top level source directory and then navigate to http://localhost:8000/build/debug-emscripten-wasm32/index.html`);
 
 // First set up the command line arguments and the Emscripten filesystem.
 const urlParams = new URLSearchParams(window.location.search);
@@ -73,6 +73,13 @@ if (clientHtmlFallback) {
 
 const dataURL = new URL(dataPath, location.origin + location.pathname);
 
+/**
+ * @typedef {{ src: string, dst: string }} FileConfig
+ */
+/**
+ * @typedef {Record<string, { files: Array<FileConfig> }>} Config
+ */
+/** @type {Promise<Config>} */
 const configPromise = ( EMSCRIPTEN_PRELOAD_FILE === 1 ) ? Promise.resolve({[BASEGAME]: {files: []}})
   : fetch(configFilename).then(r => r.ok ? r.json() : { /* empty config */ });
 
@@ -96,17 +103,42 @@ ioquake3({
                     console.warn(`Game directory '${gamedir}' cannot be used. It must have files listed in ${configFilename}.`);
                     continue;
                 }
+                const cache = await caches.open('quake-game-files');
                 const files = config[gamedir].files;
-                const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
-                for (let i = 0; i < files.length; i++) {
-                    const response = await fetches[i];
-                    if (!response.ok) continue;
+                /** @type {Array<Promise<[FileConfig, Response]>>} */
+                const fetches = files.map(async file => [
+                    file,
+                    (await cache.match(file.src)) ??
+                        (await fetch(new URL(file.src, dataURL))),
+                ]);
+
+                Promise.all(fetches).then(fetches => {
+                    const missingFiles = fetches
+                        .filter(([file, response]) => !response.ok)
+                        .map(([file]) => file.src)
+                    if (missingFiles.length !== 0) {
+                        // Preserve query parameters,
+                        // so that that page knows where to return to.
+                        const nextPathname = new URL(
+                            './upload-game-files-to-cache.html',
+                            location.href
+                        ).pathname;
+                        const nextUrl = new URL(location.href);
+                        nextUrl.pathname = nextPathname;
+                        location.assign(nextUrl);
+                    }
+                });
+
+                const writeFilePromises = fetches.map(async (p) => {
+                    const [file, response] = await p;
+                    if (!response.ok) return;
                     const data = await response.arrayBuffer();
-                    let name = files[i].src.match(/[^/]+$/)[0];
-                    let dir = files[i].dst;
+                    let name = file.src.match(/[^/]+$/)[0];
+                    let dir = file.dst;
                     module.FS.mkdirTree(dir);
                     module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
-                }
+                });
+                await Promise.all(writeFilePromises);
             }
         } finally {
             module.removeRunDependency('setup-ioq3-filesystem');
