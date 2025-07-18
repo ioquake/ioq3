@@ -179,16 +179,8 @@ ifndef USE_OPENAL_DLOPEN
 USE_OPENAL_DLOPEN=1
 endif
 
-ifndef USE_CURL
-USE_CURL=1
-endif
-
-ifndef USE_CURL_DLOPEN
-  ifdef MINGW
-    USE_CURL_DLOPEN=0
-  else
-    USE_CURL_DLOPEN=1
-  endif
+ifndef USE_HTTP
+USE_HTTP=1
 endif
 
 ifndef USE_CODEC_VORBIS
@@ -424,11 +416,9 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   ifeq ($(USE_MUMBLE),1)
@@ -583,11 +573,9 @@ ifeq ($(PLATFORM),darwin)
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   BASE_CFLAGS += -D_THREAD_SAFE=1
@@ -761,21 +749,7 @@ ifdef MINGW
     FREETYPE_CFLAGS = -Ifreetype2
   endif
 
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      ifeq ($(USE_LOCAL_HEADERS),1)
-        CLIENT_CFLAGS += -DCURL_STATICLIB
-        ifeq ($(ARCH),x86_64)
-          CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
-        else
-          CLIENT_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
-        endif
-      else
-        CLIENT_LIBS += $(CURL_LIBS)
-      endif
-    endif
-  endif
+  USE_HTTP=0
 
   ifeq ($(ARCH),x86)
     # build 32bit
@@ -851,11 +825,9 @@ ifeq ($(PLATFORM),freebsd)
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifeq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   # cross-compiling tweaks
@@ -915,9 +887,9 @@ ifeq ($(PLATFORM),openbsd)
   endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    USE_CURL_DLOPEN=0
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   # no shm_open on OpenBSD
@@ -938,12 +910,6 @@ ifeq ($(PLATFORM),openbsd)
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
       CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
-    endif
-  endif
-
-  ifeq ($(USE_CURL),1)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
     endif
   endif
 else # ifeq openbsd
@@ -1268,11 +1234,8 @@ ifeq ($(USE_OPENAL),1)
   endif
 endif
 
-ifeq ($(USE_CURL),1)
-  CLIENT_CFLAGS += -DUSE_CURL
-  ifeq ($(USE_CURL_DLOPEN),1)
-    CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
-  endif
+ifeq ($(USE_HTTP),1)
+  CLIENT_CFLAGS += -DUSE_HTTP
 endif
 
 ifeq ($(USE_VOIP),1)
@@ -1950,7 +1913,7 @@ Q3OBJ = \
   $(B)/client/qal.o \
   $(B)/client/snd_openal.o \
   \
-  $(B)/client/cl_curl.o \
+  $(B)/client/cl_http_curl.o \
   \
   $(B)/client/sv_bot.o \
   $(B)/client/sv_ccmds.o \
@@ -3246,7 +3209,6 @@ ifdef MINGW
 		SDLDLL=$(SDLDLL) \
 		USE_RENDERER_DLOPEN=$(USE_RENDERER_DLOPEN) \
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
-		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \
 		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB) \
 		USE_INTERNAL_JPEG=$(USE_INTERNAL_JPEG)

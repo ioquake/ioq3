@@ -155,16 +155,6 @@ Section "OpenAL-Soft library" OpenAL
 SectionEnd
 !endif
 
-!ifdef USE_CURL_DLOPEN
-Section "libcurl" libcurl
-
-  SetOutPath $INSTDIR
-
-  File "libcurl-4.dll"
-
-SectionEnd
-!endif
-
 ;--------------------------------
 
 ; Uninstaller
@@ -210,9 +200,6 @@ Section "Uninstall"
 !ifdef USE_OPENAL_DLOPEN
   Delete $INSTDIR\OpenAL32.dll
 !endif
-!ifdef USE_CURL_DLOPEN
-  Delete $INSTDIR\libcurl-4.dll
-!endif
 
   Delete $INSTDIR\uninstall.exe
 
@@ -234,8 +221,5 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${ProtocolHandler} "The protocol handler lets you connect to a game by clicking a link in a web browser."
 !ifdef USE_OPENAL_DLOPEN
   !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} "Advanced audio mixer that supports surround sound."
-!endif
-!ifdef USE_CURL_DLOPEN
-  !insertmacro MUI_DESCRIPTION_TEXT ${libcurl} "Used for HTTP file downloads."
 !endif
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
