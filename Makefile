@@ -749,7 +749,9 @@ ifdef MINGW
     FREETYPE_CFLAGS = -Ifreetype2
   endif
 
-  USE_HTTP=0
+  ifeq ($(USE_HTTP),1)
+    CLIENT_LIBS += -lwininet
+  endif
 
   ifeq ($(ARCH),x86)
     # build 32bit
@@ -1914,8 +1916,6 @@ Q3OBJ = \
   $(B)/client/qal.o \
   $(B)/client/snd_openal.o \
   \
-  $(B)/client/cl_http_curl.o \
-  \
   $(B)/client/sv_bot.o \
   $(B)/client/sv_ccmds.o \
   $(B)/client/sv_client.o \
@@ -1970,6 +1970,14 @@ Q3OBJ = \
   $(B)/client/con_log.o \
   $(B)/client/sys_autoupdater.o \
   $(B)/client/sys_main.o
+
+ifdef MINGW
+  Q3OBJ += \
+    $(B)/client/cl_http_windows.o
+else
+  Q3OBJ += \
+    $(B)/client/cl_http_curl.o
+endif
 
 ifdef MINGW
   Q3OBJ += \
