@@ -38,10 +38,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <io.h>
 #include <conio.h>
 #include <wincrypt.h>
-#include <shfolder.h>
 #include <shlobj.h>
 #include <psapi.h>
 #include <float.h>
+
+typedef HRESULT (STDAPICALLTYPE *PFNSHGETFOLDERPATHA)(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath);
 
 #ifndef KEY_WOW64_32KEY
 #define KEY_WOW64_32KEY 0x0200
