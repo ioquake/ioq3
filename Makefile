@@ -179,16 +179,8 @@ ifndef USE_OPENAL_DLOPEN
 USE_OPENAL_DLOPEN=1
 endif
 
-ifndef USE_CURL
-USE_CURL=1
-endif
-
-ifndef USE_CURL_DLOPEN
-  ifdef MINGW
-    USE_CURL_DLOPEN=0
-  else
-    USE_CURL_DLOPEN=1
-  endif
+ifndef USE_HTTP
+USE_HTTP=1
 endif
 
 ifndef USE_CODEC_VORBIS
@@ -275,6 +267,7 @@ NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
 Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-9f
+CURLDIR=$(MOUNT_DIR)/curl-8.15.0
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.6
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.7
 OPUSDIR=$(MOUNT_DIR)/opus-1.5.2
@@ -326,6 +319,10 @@ else
   # assume they're in the system default paths (no -I or -L needed)
   CURL_LIBS ?= -lcurl
   OPENAL_LIBS ?= -lopenal
+endif
+
+ifeq ($(USE_LOCAL_HEADERS),1)
+  CURL_CFLAGS+=-I$(CURLDIR)/include
 endif
 
 # Use sdl2-config if all else fails
@@ -419,11 +416,9 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   ifeq ($(USE_MUMBLE),1)
@@ -578,11 +573,9 @@ ifeq ($(PLATFORM),darwin)
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   BASE_CFLAGS += -D_THREAD_SAFE=1
@@ -756,20 +749,8 @@ ifdef MINGW
     FREETYPE_CFLAGS = -Ifreetype2
   endif
 
-  ifeq ($(USE_CURL),1)
-    CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      ifeq ($(USE_LOCAL_HEADERS),1)
-        CLIENT_CFLAGS += -DCURL_STATICLIB
-        ifeq ($(ARCH),x86_64)
-          CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
-        else
-          CLIENT_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
-        endif
-      else
-        CLIENT_LIBS += $(CURL_LIBS)
-      endif
-    endif
+  ifeq ($(USE_HTTP),1)
+    CLIENT_LIBS += -lwininet
   endif
 
   ifeq ($(ARCH),x86)
@@ -846,11 +827,9 @@ ifeq ($(PLATFORM),freebsd)
     endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    ifeq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
-    endif
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   # cross-compiling tweaks
@@ -910,9 +889,9 @@ ifeq ($(PLATFORM),openbsd)
   endif
   endif
 
-  ifeq ($(USE_CURL),1)
+  ifeq ($(USE_HTTP),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    USE_CURL_DLOPEN=0
+    CLIENT_LIBS += $(CURL_LIBS)
   endif
 
   # no shm_open on OpenBSD
@@ -933,12 +912,6 @@ ifeq ($(PLATFORM),openbsd)
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
       CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
-    endif
-  endif
-
-  ifeq ($(USE_CURL),1)
-    ifneq ($(USE_CURL_DLOPEN),1)
-      CLIENT_LIBS += $(CURL_LIBS)
     endif
   endif
 else # ifeq openbsd
@@ -1069,6 +1042,7 @@ ifeq ($(PLATFORM),emscripten)
   BUILD_GAME_SO=0
   BUILD_RENDERER_OPENGL1=0
   BUILD_SERVER=0
+  USE_HTTP=0
 
   CLIENT_CFLAGS+=-s USE_SDL=2
 
@@ -1263,11 +1237,8 @@ ifeq ($(USE_OPENAL),1)
   endif
 endif
 
-ifeq ($(USE_CURL),1)
-  CLIENT_CFLAGS += -DUSE_CURL
-  ifeq ($(USE_CURL_DLOPEN),1)
-    CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
-  endif
+ifeq ($(USE_HTTP),1)
+  CLIENT_CFLAGS += -DUSE_HTTP
 endif
 
 ifeq ($(USE_VOIP),1)
@@ -1945,8 +1916,6 @@ Q3OBJ = \
   $(B)/client/qal.o \
   $(B)/client/snd_openal.o \
   \
-  $(B)/client/cl_curl.o \
-  \
   $(B)/client/sv_bot.o \
   $(B)/client/sv_ccmds.o \
   $(B)/client/sv_client.o \
@@ -2001,6 +1970,14 @@ Q3OBJ = \
   $(B)/client/con_log.o \
   $(B)/client/sys_autoupdater.o \
   $(B)/client/sys_main.o
+
+ifdef MINGW
+  Q3OBJ += \
+    $(B)/client/cl_http_windows.o
+else
+  Q3OBJ += \
+    $(B)/client/cl_http_curl.o
+endif
 
 ifdef MINGW
   Q3OBJ += \
@@ -3241,7 +3218,6 @@ ifdef MINGW
 		SDLDLL=$(SDLDLL) \
 		USE_RENDERER_DLOPEN=$(USE_RENDERER_DLOPEN) \
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
-		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \
 		USE_INTERNAL_ZLIB=$(USE_INTERNAL_ZLIB) \
 		USE_INTERNAL_JPEG=$(USE_INTERNAL_JPEG)

@@ -1210,8 +1210,8 @@ void CL_ShutdownAll(qboolean shutdownRef)
 	if(clc.demorecording)
 		CL_StopRecord_f();
 
-#ifdef USE_CURL
-	CL_cURL_Shutdown();
+#ifdef USE_HTTP
+	CL_HTTP_Shutdown();
 #endif
 	// clear sounds
 	S_DisableSounds();
@@ -2088,17 +2088,17 @@ Called when all downloading has been completed
 */
 void CL_DownloadsComplete( void ) {
 
-#ifdef USE_CURL
-	// if we downloaded with cURL
-	if(clc.cURLUsed) { 
-		clc.cURLUsed = qfalse;
-		CL_cURL_Shutdown();
-		if( clc.cURLDisconnected ) {
+#ifdef USE_HTTP
+	// if we downloaded with HTTP
+	if(clc.httpUsed) {
+		clc.httpUsed = qfalse;
+		CL_HTTP_Shutdown();
+		if( clc.disconnectedForHttpDownload ) {
 			if(clc.downloadRestart) {
 				FS_Restart(clc.checksumFeed);
 				clc.downloadRestart = qfalse;
 			}
-			clc.cURLDisconnected = qfalse;
+			clc.disconnectedForHttpDownload = qfalse;
 			CL_Reconnect_f();
 			return;
 		}
@@ -2154,33 +2154,72 @@ void CL_DownloadsComplete( void ) {
 
 /*
 =================
-CL_BeginDownload
-
-Requests a file to download from the server.  Stores it in the current
-game directory.
+CL_InitDownload
 =================
 */
-void CL_BeginDownload( const char *localName, const char *remoteName ) {
-
-	Com_DPrintf("***** CL_BeginDownload *****\n"
-				"Localname: %s\n"
-				"Remotename: %s\n"
-				"****************************\n", localName, remoteName);
-
+static void CL_InitDownload( const char *localName ) {
 	Q_strncpyz ( clc.downloadName, localName, sizeof(clc.downloadName) );
 	Com_sprintf( clc.downloadTempName, sizeof(clc.downloadTempName), "%s.tmp", localName );
 
 	// Set so UI gets access to it
-	Cvar_Set( "cl_downloadName", remoteName );
+	Cvar_Set( "cl_downloadName", localName );
 	Cvar_Set( "cl_downloadSize", "0" );
 	Cvar_Set( "cl_downloadCount", "0" );
 	Cvar_SetValue( "cl_downloadTime", cls.realtime );
 
 	clc.downloadBlock = 0; // Starting new file
 	clc.downloadCount = 0;
+}
 
+/*
+=================
+CL_BeginDownload
+
+Requests a file to download from the server.  Stores it in the current
+game directory.
+=================
+*/
+static void CL_BeginDownload( const char *remoteName ) {
 	CL_AddReliableCommand(va("download %s", remoteName), qfalse);
 }
+
+#ifdef USE_HTTP
+/*
+=================
+CL_BeginHttpDownload
+=================
+*/
+static void CL_BeginHttpDownload( const char *remoteURL ) {
+	if(Q_strncmp(remoteURL, "http://", strlen("http://")) != 0 &&
+		Q_strncmp(remoteURL, "https://", strlen("https://")) != 0) {
+		Com_Error(ERR_DROP, "Download Error: %s is a malformed/"
+			"unsupported URL", remoteURL);
+	}
+
+	Com_Printf("URL: %s\n", remoteURL);
+
+	CL_HTTP_BeginDownload(remoteURL);
+	Q_strncpyz(clc.downloadURL, remoteURL, sizeof(clc.downloadURL));
+
+	clc.download = FS_SV_FOpenFileWrite(clc.downloadTempName);
+	if(!clc.download) {
+		Com_Error(ERR_DROP, "CL_BeginHTTPDownload: failed to open "
+			"%s for writing", clc.downloadTempName);
+	}
+
+	if(!(clc.sv_allowDownload & DLF_NO_DISCONNECT) &&
+		!clc.disconnectedForHttpDownload) {
+
+		CL_AddReliableCommand("disconnect", qtrue);
+		CL_WritePacket();
+		CL_WritePacket();
+		CL_WritePacket();
+		clc.disconnectedForHttpDownload = qtrue;
+	}
+
+	clc.httpUsed = qtrue;
+}
+#endif /* USE_HTTP */
 
 /*
 =================
@@ -2193,7 +2232,7 @@ void CL_NextDownload(void)
 {
 	char *s;
 	char *remoteName, *localName;
-	qboolean useCURL = qfalse;
+	qboolean usedHTTP = qfalse;
 
 	// A download has finished, check whether this matches a referenced checksum
 	if(*clc.downloadName)
@@ -2230,7 +2269,7 @@ void CL_NextDownload(void)
 			*s++ = 0;
 		else
 			s = localName + strlen(localName); // point at the nul byte
-#ifdef USE_CURL
+#ifdef USE_HTTP
 		if(!(cl_allowDownload->integer & DLF_NO_REDIRECT)) {
 			if(clc.sv_allowDownload & DLF_NO_REDIRECT) {
 				Com_Printf("WARNING: server does not "
@@ -2243,14 +2282,12 @@ void CL_NextDownload(void)
 					"download redirection, but does not "
 					"have sv_dlURL set\n");
 			}
-			else if(!CL_cURL_Init()) {
-				Com_Printf("WARNING: could not load "
-					"cURL library\n");
-			}
-			else {
-				CL_cURL_BeginDownload(localName, va("%s/%s",
+			else if(CL_HTTP_Available()) {
+				CL_InitDownload(localName);
+				CL_BeginHttpDownload(va("%s/%s",
 					clc.sv_dlURL, remoteName));
-				useCURL = qtrue;
+
+				usedHTTP = qtrue;
 			}
 		}
 		else if(!(clc.sv_allowDownload & DLF_NO_REDIRECT)) {
@@ -2259,8 +2296,8 @@ void CL_NextDownload(void)
 				"configuration (cl_allowDownload is %d)\n",
 				cl_allowDownload->integer);
 		}
-#endif /* USE_CURL */
-		if(!useCURL) {
+#endif /* USE_HTTP */
+		if(!usedHTTP) {
 			if((cl_allowDownload->integer & DLF_NO_UDP)) {
 				Com_Error(ERR_DROP, "UDP Downloads are "
 					"disabled on your client. "
@@ -2269,7 +2306,8 @@ void CL_NextDownload(void)
 				return;	
 			}
 			else {
-				CL_BeginDownload( localName, remoteName );
+				CL_InitDownload( localName );
+				CL_BeginDownload( remoteName );
 			}
 		}
 		clc.downloadRestart = qtrue;
@@ -2934,13 +2972,25 @@ void CL_Frame ( int msec ) {
 		return;
 	}
 
-#ifdef USE_CURL
-	if(clc.downloadCURLM) {
-		CL_cURL_PerformDownload();
+#ifdef USE_HTTP
+	if(clc.httpUsed) {
+		qboolean finished = CL_HTTP_PerformDownload();
+
+		if(finished) {
+			if(clc.download) {
+				FS_FCloseFile(clc.download);
+				clc.download = 0;
+			}
+
+			FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
+			clc.downloadRestart = qtrue;
+			CL_NextDownload();
+		}
+
 		// we can't process frames normally when in disconnected
 		// download mode since the ui vm expects clc.state to be
 		// CA_CONNECTED
-		if(clc.cURLDisconnected) {
+		if(clc.disconnectedForHttpDownload) {
 			cls.realFrametime = msec;
 			cls.frametime = msec;
 			cls.realtime += cls.frametime;
@@ -3559,9 +3609,6 @@ void CL_Init( void ) {
 	cl_showMouseRate = Cvar_Get ("cl_showmouserate", "0", 0);
 
 	cl_allowDownload = Cvar_Get ("cl_allowDownload", "0", CVAR_ARCHIVE);
-#ifdef USE_CURL_DLOPEN
-	cl_cURLLib = Cvar_Get("cl_cURLLib", DEFAULT_CURL_LIB, CVAR_ARCHIVE | CVAR_PROTECTED);
-#endif
 
 	cl_conXOffset = Cvar_Get ("cl_conXOffset", "0", 0);
 #ifdef __APPLE__
@@ -3656,6 +3703,11 @@ void CL_Init( void ) {
 	cl_voipProtocol = Cvar_Get ("cl_voipProtocol", cl_voip->integer ? "opus" : "", CVAR_USERINFO | CVAR_ROM);
 #endif
 
+#ifdef USE_HTTP
+	if(!CL_HTTP_Init()) {
+		Com_Printf("WARNING: couldn't initialize HTTP download support\n");
+	}
+#endif
 
 	// cgame might not be initialized before menu is used
 	Cvar_Get ("cg_viewsize", "100", CVAR_ARCHIVE );
