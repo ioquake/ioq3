@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Use EnumProcesses() with Windows XP compatibility
 #define PSAPI_VERSION 1
 
+// Causes GUID definitions (e.g. FOLDERID_RoamingAppData) to be
+// emitted in this compilation unit
+#define INITGUID
+
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "sys_local.h"
@@ -38,8 +42,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <io.h>
 #include <conio.h>
 #include <wincrypt.h>
-#include <shfolder.h>
 #include <shlobj.h>
+#include <knownfolders.h>
+#include <objbase.h>
 #include <psapi.h>
 #include <float.h>
 
@@ -103,43 +108,35 @@ Sys_DefaultHomePath
 */
 char *Sys_DefaultHomePath( void )
 {
-	TCHAR szPath[MAX_PATH];
-	PFNSHGETFOLDERPATHA qSHGetFolderPath;
-	HMODULE shfolder = LoadLibrary("shfolder.dll");
+	PWSTR pszPath = NULL;
 
-	if(shfolder == NULL)
+	if (!*homePath && com_homepath)
 	{
-		Com_Printf("Unable to load SHFolder.dll\n");
-		return NULL;
-	}
-
-	if(!*homePath && com_homepath)
-	{
-		qSHGetFolderPath = (PFNSHGETFOLDERPATHA)GetProcAddress(shfolder, "SHGetFolderPathA");
-		if(qSHGetFolderPath == NULL)
+		HRESULT hr = SHGetKnownFolderPath(&FOLDERID_RoamingAppData, 0, NULL, &pszPath);
+		if (FAILED(hr))
 		{
-			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
-			FreeLibrary(shfolder);
+			Com_Printf("Unable to get FOLDERID_RoamingAppData\n");
 			return NULL;
 		}
 
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_APPDATA,
-						NULL, 0, szPath ) ) )
+		char appDataPath[MAX_PATH];
+		int len = WideCharToMultiByte(CP_ACP, 0, pszPath, -1, appDataPath, sizeof(appDataPath), NULL, NULL);
+		CoTaskMemFree(pszPath);
+
+		if (len == 0)
 		{
-			Com_Printf("Unable to detect CSIDL_APPDATA\n");
-			FreeLibrary(shfolder);
+			Com_Printf("WideCharToMultiByte failed: %lu\n", GetLastError());
 			return NULL;
 		}
-		
-		Com_sprintf(homePath, sizeof(homePath), "%s%c", szPath, PATH_SEP);
 
-		if(com_homepath->string[0])
+		Com_sprintf(homePath, sizeof(homePath), "%s%c", appDataPath, PATH_SEP);
+
+		if (com_homepath->string[0])
 			Q_strcat(homePath, sizeof(homePath), com_homepath->string);
 		else
 			Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_WIN);
 	}
 
-	FreeLibrary(shfolder);
 	return homePath;
 }
 
@@ -237,38 +234,29 @@ Sys_MicrosoftStorePath
 char* Sys_MicrosoftStorePath(void)
 {
 #ifdef MSSTORE_PATH
-	if (!microsoftStorePath[0]) 
+	if (!microsoftStorePath[0])
 	{
-		TCHAR szPath[MAX_PATH];
-		PFNSHGETFOLDERPATHA qSHGetFolderPath;
-		HMODULE shfolder = LoadLibrary("shfolder.dll");
-
-		if(shfolder == NULL)
+		PWSTR pszPath = NULL;
+		HRESULT hr = SHGetKnownFolderPath(&FOLDERID_ProgramFiles, 0, NULL, &pszPath);
+		if (FAILED(hr))
 		{
-			Com_Printf("Unable to load SHFolder.dll\n");
+			Com_Printf("Unable to get FOLDERID_ProgramFiles\n");
 			return microsoftStorePath;
 		}
 
-		qSHGetFolderPath = (PFNSHGETFOLDERPATHA)GetProcAddress(shfolder, "SHGetFolderPathA");
-		if(qSHGetFolderPath == NULL)
+		char programFilesPath[MAX_PATH];
+		int len = WideCharToMultiByte(CP_ACP, 0, pszPath, -1, programFilesPath, sizeof(programFilesPath), NULL, NULL);
+		CoTaskMemFree(pszPath);
+
+		if (len == 0)
 		{
-			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
-			FreeLibrary(shfolder);
+			Com_Printf("WideCharToMultiByte failed: %lu\n", GetLastError());
 			return microsoftStorePath;
 		}
-
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_PROGRAM_FILES,
-						NULL, 0, szPath ) ) )
-		{
-			Com_Printf("Unable to detect CSIDL_PROGRAM_FILES\n");
-			FreeLibrary(shfolder);
-			return microsoftStorePath;
-		}
-
-		FreeLibrary(shfolder);
 
 		// default: C:\Program Files\ModifiableWindowsApps\Quake 3\EN
-		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN", szPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
+		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN",
+					programFilesPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
 	}
 #endif
 	return microsoftStorePath;
