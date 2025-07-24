@@ -1203,7 +1203,8 @@ ifeq ($(PLATFORM),emscripten)
   endif
 
   ifneq ($(BUILD_CLIENT),0)
-    TARGETS += $(B)/$(CLIENTBIN).html
+    TARGETS += $(B)/index.html
+    TARGETS += $(B)/upload-game-files-to-cache.html
     ifneq ($(EMSCRIPTEN_PRELOAD_FILE),1)
       TARGETS += $(B)/$(CLIENTBIN)-config.json
     endif
@@ -1619,7 +1620,14 @@ endif
 ifneq ($(PLATFORM),darwin)
   ifdef ARCHIVE
 	@rm -f $@
+  ifndef ARCHIVE_NOZIP
 	@(cd $(B) && zip -r9 ../../$@ $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
+  else
+    # Instead of making a .zip file, make it a directory
+    # and simply copy the files there.
+    # This is a little ugly, but works for GitHub pages deployment.
+	@(cd $(B) && mkdir --parents ../../$@ && cp -t ../../$@ --parents $(NAKED_TARGETS) $(NAKED_GENERATEDTARGETS))
+  endif
   endif
 endif
 	@:
@@ -3099,9 +3107,13 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # EMSCRIPTEN
 #############################################################################
 
-$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
+$(B)/index.html: $(WEBDIR)/index.html
 	$(echo_cmd) "SED $@"
 	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
+
+$(B)/upload-game-files-to-cache.html: $(WEBDIR)/upload-game-files-to-cache.html
+	$(echo_cmd) "CP $@"
+	$(Q)cp $< $@
 
 $(B)/$(CLIENTBIN)-config.json: $(WEBDIR)/client-config.json
 	$(echo_cmd) "CP $@"

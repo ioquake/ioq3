@@ -108,7 +108,7 @@ For Web, building with Emscripten
      `client-config.json` will be loaded.
   4. Start a web server serving this directory. `python3 -m http.server`
      is an easy default that you may already have installed.
-  5. Open `http://localhost:8000/build/debug-emscripten-wasm32/ioquake3.html`
+  5. Open `http://localhost:8000/build/debug-emscripten-wasm32/index.html`
      in a web browser. Open the developer console to see errors and warnings.
   6. Debugging the C code is possible using a Chrome extension. For details
      see https://developer.chrome.com/blog/wasm-debugging-2020
