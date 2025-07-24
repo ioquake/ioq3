@@ -14,6 +14,14 @@ ifeq ($(shell uname -m), aarch64)
   COMPILE_ARCH=arm64
 endif
 
+ifneq (,$(findstring MINGW32,$(shell uname)))
+  COMPILE_PLATFORM=mingw32
+endif
+
+ifneq (,$(findstring MINGW64,$(shell uname)))
+  COMPILE_PLATFORM=mingw64
+endif
+
 ifeq ($(COMPILE_PLATFORM),sunos)
   # Solaris uname and GNU uname differ
   COMPILE_ARCH=$(shell uname -p | sed -e 's/i.86/x86/')
