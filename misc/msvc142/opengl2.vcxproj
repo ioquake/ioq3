@@ -136,7 +136,7 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-9f;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;HAVE_CONFIG_H;MISSIONPACK;USE_INTERNAL_JPEG;USE_RENDERER_DLOPEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -220,7 +220,7 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-9f;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;HAVE_CONFIG_H;USE_INTERNAL_JPEG;USE_RENDERER_DLOPEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader />
@@ -307,7 +307,7 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-9f;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;HAVE_CONFIG_H;USE_INTERNAL_JPEG;USE_RENDERER_DLOPEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -387,7 +387,7 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-8c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\code\SDL2\include;..\..\code\libcurl;..\..\code\AL;..\..\code\libspeex\include;..\..\code\zlib;..\..\code\jpeg-9f;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN32;WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;BOTLIB;USE_ICON;USE_CURL;USE_CURL_DLOPEN;USE_OPENAL;USE_OPENAL_DLOPEN;USE_VOIP;HAVE_CONFIG_H;MISSIONPACK;USE_INTERNAL_JPEG;USE_RENDERER_DLOPEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader />
@@ -457,52 +457,52 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     <ClCompile Include="..\..\build\dynamic\renderergl2\texturecolor_vp.c" />
     <ClCompile Include="..\..\build\dynamic\renderergl2\tonemap_fp.c" />
     <ClCompile Include="..\..\build\dynamic\renderergl2\tonemap_vp.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jaricom.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcapimin.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcapistd.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcarith.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jccoefct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jccolor.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcdctmgr.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jchuff.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcinit.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcmainct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcmarker.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcmaster.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcomapi.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcparam.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcprepct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jcsample.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jctrans.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdapimin.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdapistd.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdarith.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdatadst.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdatasrc.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdcoefct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdcolor.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jddctmgr.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdhuff.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdinput.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdmainct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdmarker.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdmaster.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdmerge.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdpostct.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdsample.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jdtrans.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jerror.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jfdctflt.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jfdctfst.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jfdctint.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jidctflt.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jidctfst.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jidctint.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jmemmgr.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jmemnobs.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jquant1.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jquant2.c" />
-    <ClCompile Include="..\..\code\jpeg-8c\jutils.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jaricom.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcapimin.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcapistd.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcarith.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jccoefct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jccolor.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcdctmgr.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jchuff.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcinit.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcmainct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcmarker.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcmaster.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcomapi.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcparam.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcprepct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jcsample.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jctrans.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdapimin.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdapistd.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdarith.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdatadst.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdatasrc.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdcoefct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdcolor.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jddctmgr.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdhuff.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdinput.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdmainct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdmarker.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdmaster.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdmerge.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdpostct.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdsample.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jdtrans.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jerror.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jfdctflt.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jfdctfst.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jfdctint.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jidctflt.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jidctfst.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jidctint.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jmemmgr.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jmemnobs.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jquant1.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jquant2.c" />
+    <ClCompile Include="..\..\code\jpeg-9f\jutils.c" />
     <ClCompile Include="..\..\code\qcommon\puff.c" />
     <ClCompile Include="..\..\code\qcommon\q_math.c" />
     <ClCompile Include="..\..\code\qcommon\q_shared.c" />
@@ -546,12 +546,12 @@ cscript.exe glsl_stringify.vbs ..\..\code\renderergl2\glsl\tonemap_vp.glsl ..\..
     <ClCompile Include="..\..\code\renderergl2\tr_world.c" />
     <ClCompile Include="..\..\code\sdl\sdl_gamma.c" />
     <ClCompile Include="..\..\code\sdl\sdl_glimp.c" />
-    <ClCompile Include="..\..\code\zlib\adler32.c" />
-    <ClCompile Include="..\..\code\zlib\crc32.c" />
-    <ClCompile Include="..\..\code\zlib\inffast.c" />
-    <ClCompile Include="..\..\code\zlib\inflate.c" />
-    <ClCompile Include="..\..\code\zlib\inftrees.c" />
-    <ClCompile Include="..\..\code\zlib\zutil.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\adler32.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\crc32.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\inffast.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\inflate.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\inftrees.c" />
+    <ClCompile Include="..\..\code\zlib-1.3.1\zutil.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\tr_types.h" />
