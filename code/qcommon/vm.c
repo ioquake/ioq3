@@ -745,7 +745,7 @@ void VM_Forced_Unload_Done(void) {
 	forced_unload = 0;
 }
 
-void *VM_ArgPtr( intptr_t intValue ) {
+void *VM_ArgPtr( intptr_t intValue, size_t requiredSpace ) {
 	if ( !intValue ) {
 		return NULL;
 	}
@@ -757,8 +757,36 @@ void *VM_ArgPtr( intptr_t intValue ) {
 		return (void *)(currentVM->dataBase + intValue);
 	}
 	else {
-		return (void *)(currentVM->dataBase + (intValue & currentVM->dataMask));
+		int addr = intValue & currentVM->dataMask;
+		size_t addrAvailable = (size_t)(currentVM->dataMask - addr + 1);
+		if (addrAvailable < requiredSpace)
+			Com_Error(ERR_DROP, "VM invalid memory access %x+%u", addr, (unsigned int)requiredSpace);
+		return (void *)(currentVM->dataBase + addr);
 	}
+}
+
+void *VM_ArgPtrDyn( intptr_t intValue, intptr_t requestedCount, size_t sizePerUnit, size_t maxCount ) {
+	if ( requestedCount < 0 )
+		Com_Error(ERR_DROP, "VM syscall negative item count");
+
+	size_t szCount = (size_t)requestedCount;
+	if ( szCount > maxCount )
+		Com_Error(ERR_DROP, "VM syscall oversized item count %u", (unsigned int)szCount);
+
+	return VM_ArgPtr(intValue, szCount * sizePerUnit);
+}
+
+
+void *VM_ArgPtrDynSized(intptr_t intValue, intptr_t requestedCount, intptr_t requestedSizePerUnit, size_t minSizePerUnit, size_t maxCount) {
+	if (requestedSizePerUnit <= 0)
+		Com_Error(ERR_DROP, "VM syscall specified size was negative");
+
+	size_t requestedSizeSz = (size_t)requestedSizePerUnit;
+
+	if (requestedSizeSz < minSizePerUnit)
+		Com_Error(ERR_DROP, "VM syscall specified size is below minimum size");
+
+	return VM_ArgPtrDyn(intValue, requestedCount, requestedSizeSz, SIZE_MAX / requestedSizeSz);
 }
 
 void *VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue ) {
@@ -776,6 +804,24 @@ void *VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue ) {
 	}
 	else {
 		return (void *)(vm->dataBase + (intValue & vm->dataMask));
+	}
+}
+
+size_t VM_ArgPtrLimit(intptr_t intValue, size_t nativeLimit) {
+	if (!intValue) {
+		return 0;
+	}
+	// currentVM is missing on reconnect
+	if (currentVM == NULL)
+		return 0;
+
+	if (currentVM->entryPoint) {
+		return nativeLimit;
+	}
+	else {
+		int addr = intValue & currentVM->dataMask;
+		size_t addrAvailable = (size_t)(currentVM->dataMask - addr + 1);
+		return addrAvailable;
 	}
 }
 
