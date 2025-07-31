@@ -147,6 +147,7 @@ Makefile.local:
   USE_RENDERER_DLOPEN  - build and use the renderer in a library
   BUILD_RENDERER_OPENGL1 build the opengl1 client / renderer library
   BUILD_RENDERER_OPENGL2 build the opengl2 client / renderer library
+  BUILD_RENDERER_VULKAN  build the vulkan client / renderer library
   USE_YACC             - use yacc to update code/tools/lcc/lburg/gram.c
   BASEGAME             - rename 'baseq3'
   BASEGAME_CFLAGS      - custom CFLAGS for basegame
@@ -195,6 +196,12 @@ set using command line arguments:
 
     ioquake3 +set cl_renderer opengl2 +set r_preferOpenGLES 1
 
+
+# Vulkan support
+
+The vulkan rendender can be enabled by:
+
+    ioquake3 +set cl_renderer vulkan
 
 # Console
 
