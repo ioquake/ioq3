@@ -2,6 +2,7 @@ build
 Makefile.local
 *.swp
 *tags
+base/*/*.log
 
 # OS X
 ####################
