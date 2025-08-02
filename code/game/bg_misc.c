@@ -1437,6 +1437,7 @@ void BG_TouchJumpPad( playerState_t *ps, entityState_t *jumppad ) {
 	// if we didn't hit this same jumppad the previous frame
 	// then don't play the event sound again if we are in a fat trigger
 	if ( ps->jumppad_ent != jumppad->number ) {
+		Com_Printf("Touched a jump pad\n");
 
 		vectoangles( jumppad->origin2, angles);
 		p = fabs( AngleNormalize180( angles[PITCH] ) );
