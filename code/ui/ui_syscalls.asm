@@ -88,6 +88,7 @@ equ trap_LAN_ServerIsVisible				-85
 equ trap_LAN_CompareServers					-86
 equ trap_FS_Seek		-87
 equ trap_SetPbClStatus -88
+equ	trap_Javascript							-91
 
 equ	qk_memset						-101
 equ	qk_memcpy						-102
