@@ -337,7 +337,9 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 	case G_FS_SEEK:
 		return FS_Seek( args[1], args[2], args[3] );
-
+	case G_JAVASCRIPT:
+		Com_Printf( "Server javascript isn't supported. Content is: %s\n", (const char*)VMA(1) );
+		return 0;
 	case G_LOCATE_GAME_DATA:
 		SV_LocateGameData( VMA(1), args[2], args[3], VMA(4), args[5] );
 		return 0;
