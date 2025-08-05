@@ -164,7 +164,7 @@ typedef enum {
 	CG_R_INPVS,
 	// 1.32
 	CG_FS_SEEK,
-	CG_JAVASCRIPT,
+	CG_JAVASCRIPT = 90,
 
 /*
 	CG_LOADCAMERA,
