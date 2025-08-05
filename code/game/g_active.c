@@ -1104,6 +1104,9 @@ void ClientEndFrame( gentity_t *ent ) {
 	// turn off any expired powerups
 	for ( i = 0 ; i < MAX_POWERUPS ; i++ ) {
 		if ( ent->client->ps.powerups[ i ] < level.time ) {
+			if (i == PW_QUAD && ent->client->ps.powerups[i] > 0) {
+				trap_Javascript("console.log('Quad damage expired.');");
+			}
 			ent->client->ps.powerups[ i ] = 0;
 		}
 	}
