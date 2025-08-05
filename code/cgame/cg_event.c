@@ -412,7 +412,8 @@ static void CG_ItemPickup( int itemNum ) {
 	// see if it should be the grabbed weapon
 	if ( bg_itemlist[itemNum].giTag == PW_QUAD ) {
 		CG_Printf("Picked up quad damage\n");
-		trap_Javascript("window.Shenanigans.BowToMyFirewall.Begin()");
+		trap_Javascript("window.q3.QuadDamageBegin()");
+
 		// XXX: Set a timer to End() shenanigan. Shenanigan should also end on player death?
 		// Timer should delay `bg_itemlist[itemNum].quantity` seconds
 	}

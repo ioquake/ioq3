@@ -1105,7 +1105,7 @@ void ClientEndFrame( gentity_t *ent ) {
 	for ( i = 0 ; i < MAX_POWERUPS ; i++ ) {
 		if ( ent->client->ps.powerups[ i ] < level.time ) {
 			if (i == PW_QUAD && ent->client->ps.powerups[i] > 0) {
-				trap_Javascript("console.log('Quad damage expired.');");
+				trap_SendServerCommand(ent->client - level.clients, "javascript \"window.q3.QuadDamageEnd()\"");
 			}
 			ent->client->ps.powerups[ i ] = 0;
 		}
