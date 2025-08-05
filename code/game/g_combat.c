@@ -616,9 +616,15 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	if ( (self->health <= GIB_HEALTH && !(contents & CONTENTS_NODROP) && g_blood.integer) || meansOfDeath == MOD_SUICIDE) {
 		// gib death
 		GibEntity( self, killer );
+
+		// Shenanigans
+		trap_SendServerCommand(self->client - level.clients, "javascript \"window.q3.YouGibbed()\"");
 	} else {
 		// normal death
 		static int i;
+
+		// Shenanigans
+		trap_SendServerCommand(self->client - level.clients, "javascript \"window.q3.YouDied()\"");
 
 		switch ( i ) {
 		case 0:
@@ -646,6 +652,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 		G_AddEvent( self, EV_DEATH1 + i, killer );
 
+
 		// the body can still be gibbed
 		self->die = body_die;
 
@@ -660,7 +667,6 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	}
 
 	trap_LinkEntity (self);
-
 }
 
 
