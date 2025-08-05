@@ -424,8 +424,6 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	if (other->health < 1)
 		return;		// dead people can't pickup
 
-  Com_Printf("Touch Item\n");
-
 	// the same pickup rules are used for client side and server side
 	if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps ) ) {
 		return;
@@ -698,7 +696,8 @@ void FinishSpawningItem( gentity_t *ent ) {
 		respawn = 45 + crandom() * 15;
 		ent->s.eFlags |= EF_NODRAW;
 		ent->r.contents = 0;
-		ent->nextthink = level.time + respawn * 1000;
+		//ent->nextthink = level.time + respawn * 1000;
+		ent->nextthink = level.time + 5 /* respawn */ * 1000;
 		ent->think = RespawnItem;
 		return;
 	}
