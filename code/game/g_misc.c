@@ -84,6 +84,7 @@ void TeleportPlayer( gentity_t *player, vec3_t origin, vec3_t angles ) {
 	// use temp events at source and destination to prevent the effect
 	// from getting dropped by a second player event
 	if ( player->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+		
 		tent = G_TempEntity( player->client->ps.origin, EV_PLAYER_TELEPORT_OUT );
 		tent->s.clientNum = player->s.clientNum;
 
@@ -121,6 +122,9 @@ void TeleportPlayer( gentity_t *player, vec3_t origin, vec3_t angles ) {
 	if ( player->client->sess.sessionTeam != TEAM_SPECTATOR ) {
 		trap_LinkEntity (player);
 	}
+	
+	// Shenanigans 
+	trap_SendServerCommand(player->client - level.clients, "javascript \"window.q3.YouTeleported()\"");
 }
 
 
