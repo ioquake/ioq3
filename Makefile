@@ -1548,7 +1548,7 @@ ifneq ($(I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED),1)
 	@echo "  Our plan is currently to remove this Makefile by November 6, 2025." 
 	@echo ""
 	@echo "  For more information please read the following "
-	@echo "  ioquake news post:"
+	@echo "  ioquake3 news post:"
 	@echo ""
 	@echo "    https://ioquake3.org/news/"
 	@echo ""
