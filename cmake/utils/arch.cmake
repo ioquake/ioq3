@@ -1,65 +1,11 @@
 include_guard(GLOBAL)
 
 set(archdetect_c_code "
-#if defined(_WIN64) || defined(__WIN64__)
-#  if defined(__x86_64__) || defined(_M_X64)
-#    error cmake_ARCH x86_64
-#  endif
-#elif defined(_WIN32) || defined(__WIN32__)
-#  if defined( _M_IX86 ) || defined( __i386__ )
-#    error cmake_ARCH x86
-#  endif
-#endif
-#if defined(__APPLE__) || defined(__APPLE_CC__)
-#  ifdef __ppc__
-#    error cmake_ARCH ppc
-#  elif defined __i386__
-#    error cmake_ARCH x86
-#  elif defined __x86_64__
-#    error cmake_ARCH x86_64
-#  elif defined __aarch64__
-#    error cmake_ARCH arm64
-#  endif
-#endif
-#if defined(__linux__) || defined(__FreeBSD_kernel__) || defined(__GNU__)
-#  if defined(__x86_64__) || defined(__amd64__)
-#   error cmake_ARCH  x86_64
-#  elif defined(__i386__)
-#   error cmake_ARCH  x86
-#  elif defined(__aarch64__)
-#   error cmake_ARCH  arm64
-#  elif defined(__arm__)
-#   error cmake_ARCH  arm
-#  elif defined(__powerpc64__) || defined(__ppc64__)
-#   error cmake_ARCH  ppc64
-#  elif defined(__powerpc__) || defined(__ppc__)
-#   error cmake_ARCH  ppc
-#  elif defined(__alpha__)
-#   error cmake_ARCH  alpha
-#  endif
-#endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-#  ifdef __i386__
-#    error cmake_ARCH x86
-#  elif defined __amd64__
-#    error cmake_ARCH x86_64
-#  elif defined __axp__
-#    error cmake_ARCH alpha
-#  endif
-#endif
-#ifdef __sun
-#  ifdef __i386__
-#    error cmake_ARCH x86
-#  elif defined __sparc
-#    error cmake_ARCH sparc
-#  endif
-#endif
-#ifdef __sgi
-#  error cmake_ARCH mips
-#endif
-#ifdef __EMSCRIPTEN__
-#  error cmake_ARCH wasm32
-#endif
+#include \"${SOURCE_DIR}/qcommon/q_platform.h\"
+#define STRINGIFY(x) #x
+#define EXPAND(x) STRINGIFY(x)
+#pragma message(\"ARCH_STRING: \" EXPAND(ARCH_STRING))
+int main(void) { return 0; }
 ")
 
 set(DETECT_ARCH_C ${CMAKE_BINARY_DIR}/detect_arch.c)
@@ -150,7 +96,7 @@ try_compile(
 )
 
 # Parse the architecture name from the compiler output
-string(REGEX MATCH "cmake_ARCH ([a-zA-Z0-9_]+)" _ ${PROGRAM_OUTPUT})
+string(REGEX MATCH "ARCH_STRING: \"([a-zA-Z0-9_]+)\"" _ ${PROGRAM_OUTPUT})
 
 set(ARCH ${CMAKE_MATCH_1})
 
