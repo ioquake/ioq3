@@ -1552,7 +1552,7 @@ ifneq ($(I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED),1)
 	@echo ""
 	@echo "    https://ioquake3.org/news/"
 	@echo ""
-	@echo "    If you are a developer who uses ioquake3 for your project, please read and 
+	@echo "    If you are a developer who uses ioquake3 for your project, please read and" 
 	@echo "    comment on this GitHub issue:"
 	@echo ""
 	@echo "    https://github.com/ioquake/ioq3/issues/748"
