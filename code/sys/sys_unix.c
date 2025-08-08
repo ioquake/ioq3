@@ -79,40 +79,49 @@ char *Sys_DefaultHomePath(void)
 				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_MACOSX);
 		}
 #else
+		char origPath[ MAX_OSPATH ] = { 0 };
+
 		if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
 		{
-			if( ( p = getenv( "XDG_DATA_HOME" ) ) != NULL && *p != '\0' )
-			{
-				Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
-			}
-			else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
-			{
-				Com_sprintf(homePath, sizeof(homePath), "%s%c.local%cshare%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
-			}
-
-			if( *homePath )
-			{
-				char *dir;
-
-				if(com_homepath->string[0])
-					dir = com_homepath->string;
-				else
-					dir = HOMEPATH_NAME_UNIX;
-
-				if(dir[0] == '.' && dir[1] != '\0')
-					dir++;
-
-				Q_strcat(homePath, sizeof(homePath), dir);
-			}
+			// don't use original homepath in Flatpak
 		}
 		else if( ( p = getenv( "HOME" ) ) != NULL )
 		{
-			Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
+			Com_sprintf(origPath, sizeof(origPath), "%s%c", p, PATH_SEP);
 
 			if(com_homepath->string[0])
-				Q_strcat(homePath, sizeof(homePath), com_homepath->string);
+				Q_strcat(origPath, sizeof(origPath), com_homepath->string);
 			else
-				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_UNIX);
+				Q_strcat(origPath, sizeof(origPath), HOMEPATH_NAME_UNIX);
+		}
+
+		if( ( p = getenv( "XDG_DATA_HOME" ) ) != NULL && *p != '\0' )
+		{
+			Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
+		}
+		else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
+		{
+			Com_sprintf(homePath, sizeof(homePath), "%s%c.local%cshare%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
+		}
+
+		if( *homePath )
+		{
+			char *dir;
+
+			if(com_homepath->string[0])
+				dir = com_homepath->string;
+			else
+				dir = HOMEPATH_NAME_UNIX;
+
+			if(dir[0] == '.' && dir[1] != '\0')
+				dir++;
+
+			Q_strcat(homePath, sizeof(homePath), dir);
+		}
+
+		if( *homePath == '\0' || ( *origPath != '\0' && access(origPath, F_OK) == 0 && access(homePath, F_OK) < 0 ) )
+		{
+			Q_strncpyz(homePath, origPath, sizeof(homePath));
 		}
 #endif
 	}
