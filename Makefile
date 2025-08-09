@@ -1478,12 +1478,14 @@ debug:
 	@$(MAKE) targets B=$(BD) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
 	  OPTIMIZE="$(DEBUG_CFLAGS)" OPTIMIZEVM="$(DEBUG_CFLAGS)" \
 	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V) \
-	  LDFLAGS="$(LDFLAGS) $(DEBUG_LDFLAGS)"
+	  LDFLAGS="$(LDFLAGS) $(DEBUG_LDFLAGS)" \
+	  I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED=${I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED}
 
 release:
 	@$(MAKE) targets B=$(BR) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
 	  OPTIMIZE="-DNDEBUG $(OPTIMIZE)" OPTIMIZEVM="-DNDEBUG $(OPTIMIZEVM)" \
-	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V)
+	  CLIENT_CFLAGS="$(CLIENT_CFLAGS)" SERVER_CFLAGS="$(SERVER_CFLAGS)" V=$(V) \
+	  I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED=${I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED}
 
 ifneq ($(call bin_path, tput),)
   TERM_COLUMNS=$(shell if c=`tput cols`; then echo $$(($$c-4)); else echo 76; fi)
@@ -1528,9 +1530,43 @@ else
   print_wrapped=$(print_list)
 endif
 
+REQUIRE_DEPRECATION_ACK=0
+
 # Create the build directories, check libraries and print out
 # an informational message, then start building
 targets: makedirs
+ifneq ($(I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED),1)
+	@echo ""
+	@echo "=== IMPORTANT NOTICE ==========================================================="
+	@echo ""
+	@echo "  Going forward, ioq3 is transitioning to the CMake build system and using the"
+	@echo "  Makefile is now deprecated."
+	@echo "  Our plan is currently to remove this Makefile by November 6, 2025."
+	@echo ""
+	@echo "  For more information please read the following "
+	@echo "  ioquake3 news post:"
+	@echo ""
+	@echo "    https://ioquake3.org/news/"
+	@echo ""
+	@echo "    If you are a developer who uses ioquake3 for your project, please read and"
+	@echo "    comment on this GitHub issue:"
+	@echo ""
+	@echo "    https://github.com/ioquake/ioq3/issues/748"
+	@echo ""
+	@echo "  CMake can be downloaded from:"
+	@echo ""
+	@echo "    https://cmake.org/download/"
+	@echo ""
+	@echo "  To disable this message, please add the following to Makefile.local:"
+	@echo ""
+	@echo "    I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED=1"
+	@echo "================================================================================"
+ifeq ($(REQUIRE_DEPRECATION_ACK),1)
+	@false
+else
+	@[ -t 0 ] && echo "Press a key to continue..." && read dummy || true
+endif
+endif
 	@echo ""
 	@echo "Building in $(B):"
 	@echo "  PLATFORM: $(PLATFORM)"
