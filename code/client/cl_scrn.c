@@ -154,10 +154,10 @@ static void SCR_DrawChar( int x, int y, float size, int ch ) {
 }
 
 /*
-** SCR_DrawSmallChar
+** SCR_DrawNativeSmallChar
 ** small chars are drawn at native screen resolution
 */
-void SCR_DrawSmallChar( int x, int y, int ch ) {
+void SCR_DrawNativeSmallChar( int x, int y, int ch ) {
 	int row, col;
 	float frow, fcol;
 	float size;
@@ -185,6 +185,33 @@ void SCR_DrawSmallChar( int x, int y, int ch ) {
 					   cls.charSetShader );
 }
 
+void SCR_DrawSmallChar( int x, int y, int width, int height, int ch ) {
+	int row, col;
+	float frow, fcol;
+	float size;
+
+	ch &= 255;
+
+	if ( ch == ' ' ) {
+		return;
+	}
+
+	if ( y < -height ) {
+		return;
+	}
+
+	row = ch>>4;
+	col = ch&15;
+
+	frow = row*0.0625;
+	fcol = col*0.0625;
+	size = 0.0625;
+
+	re.DrawStretchPic( x, y, width, height,
+					   fcol, frow, 
+					   fcol + size, frow + size, 
+					   cls.charSetShader );
+}
 
 /*
 ==================
@@ -264,7 +291,7 @@ Draws a multi-colored string with a drop shadow, optionally forcing
 to a fixed color.
 ==================
 */
-void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, qboolean forceColor,
+void SCR_DrawSmallStringExt( int x, int y, int width, int height, const char *string, float *setColor, qboolean forceColor,
 		qboolean noColorEscape ) {
 	vec4_t		color;
 	const char	*s;
@@ -286,13 +313,42 @@ void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, 
 				continue;
 			}
 		}
-		SCR_DrawSmallChar( xx, y, *s );
-		xx += SMALLCHAR_WIDTH;
+		SCR_DrawSmallChar( xx, y, width, height, *s );
+		xx += width;
 		s++;
 	}
 	re.SetColor( NULL );
 }
 
+
+void SCR_DrawNativeSmallStringExt( int x, int y, const char *string, float *setColor, qboolean forceColor,
+		qboolean noColorEscape ) {
+	vec4_t		color;
+	const char	*s;
+	int			xx;
+
+	// draw the colored text
+	s = string;
+	xx = x;
+	re.SetColor( setColor );
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			if ( !forceColor ) {
+				Com_Memcpy( color, g_color_table[ColorIndex(*(s+1))], sizeof( color ) );
+				color[3] = setColor[3];
+				re.SetColor( color );
+			}
+			if ( !noColorEscape ) {
+				s += 2;
+				continue;
+			}
+		}
+		SCR_DrawNativeSmallChar( xx, y, *s );
+		xx += SMALLCHAR_WIDTH;
+		s++;
+	}
+	re.SetColor( NULL );
+}
 
 
 /*
