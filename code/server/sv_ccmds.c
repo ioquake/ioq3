@@ -1337,20 +1337,25 @@ static void SV_ConJavascript_f(void) {
 	}
 
 	if ( Cmd_Argc() < 3 ) {
-		Com_Printf ("Usage: javascript <client number> <text>\n");
-		return;
-	}
-
-	cl = SV_GetPlayerByNum();
-	if ( !cl ) {
+		Com_Printf ("Usage: javascript <client number | all> <text>\n");
 		return;
 	}
 
 	p = Cmd_ArgsFrom(2);
 	strcat(text, p);
 
-	Com_Printf ("SV_ConJavascript text (ArgsFrom(0)): <<<%s>>>\n", (const char *)text);
-	SV_SendServerCommand(cl, "javascript \"%s\"", text);
+	if (strcmp(Cmd_Argv(1), "all") == 0) {
+		// Send this javascript command to all clients
+		SV_SendServerCommand(NULL, "javascript \"%s\"", text);
+	} else {
+		cl = SV_GetPlayerByNum();
+		if ( !cl ) {
+			return;
+		}
+
+		Com_Printf ("SV_ConJavascript text (ArgsFrom(0)): <<<%s>>>\n", (const char *)text);
+		SV_SendServerCommand(cl, "javascript \"%s\"", text);
+	}
 }
 
 static void SV_ConGive_f(void) {
