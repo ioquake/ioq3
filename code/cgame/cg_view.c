@@ -707,6 +707,9 @@ static void CG_PowerupTimerSounds( void ) {
 		if ( t - cg.time >= POWERUP_BLINKS * POWERUP_BLINK_TIME ) {
 			continue;
 		}
+		if ( ( t - cg.time ) / 1000 == 0 ) {
+			trap_Javascript("console.log('cg_view.c: Powerup expiring');");
+		}
 		if ( ( t - cg.time ) / POWERUP_BLINK_TIME != ( t - cg.oldTime ) / POWERUP_BLINK_TIME ) {
 			trap_S_StartSound( NULL, cg.snap->ps.clientNum, CHAN_ITEM, cgs.media.wearOffSound );
 		}
