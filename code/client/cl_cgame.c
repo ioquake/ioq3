@@ -419,6 +419,20 @@ static int	FloatAsInt( float f ) {
 	return fi.i;
 }
 
+void evalJavascriptSuperSafeOK(const char *js) {
+#ifdef __EMSCRIPTEN__
+		char code[1024];
+		Com_Printf( "Executing Javascript, definitely a safe thing to do: %s\n", js);
+		Com_sprintf( code, 1024, "try { %s } catch (e) { console.log('evalJavascript error', e); }", js);
+		Com_Printf( "Code: %s\n", code);
+		//emscripten_run_script((const char *)VMA(1));
+		emscripten_run_script(code);
+			// console.error('QVM Javascript Error: ', e);
+#else
+		Com_Printf("trap_Javascript invoked outside of browser/qvm?! - %s\n", (const char *)VMA(1));
+#endif
+}
+
 /*
 ====================
 CL_CgameSystemCalls`
@@ -725,18 +739,14 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re.inPVS( VMA(1), VMA(2) );
 
 	case CG_JAVASCRIPT:
-#ifdef __EMSCRIPTEN__
-		Com_Printf( "Executing Javascript: %s\n", (const char *)VMA(1) );
-		emscripten_run_script((const char *)VMA(1));
-#else
-		Com_Printf("trap_Javascript invoked outside of browser/qvm?! - %s\n", (const char *)VMA(1));
-#endif
+		evalJavascriptSuperSafeOK((const char *)VMA(1));
+		//Com_Printf( "Warning: trap_Javascript invoked but outside of emscripten\n");
 		break;
 
 	
 	default:
 	        assert(0);
-		Com_Error( ERR_DROP, "Bad cgame system trap: %ld", (long int) args[0] );
+					Com_Error( ERR_DROP, "Bad cgame system trap: %ld", (long int) args[0] );
 	}
 	return 0;
 }
