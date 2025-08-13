@@ -18,13 +18,12 @@ The following is a set of guidelines for contributing to ioquake3 which is hoste
 
 > **Note:** Please don't file an issue to ask a question. You'll get faster results by using the resources below.
 
-We have an official message board and a wiki where the community provides helpful advice if you have questions.
+We have an official message board where the community provides helpful advice if you have questions.
 
 * [Discourse, the official ioquake message board](https://discourse.ioquake.org)
-* [ioquake3 wiki](http://wiki.ioquake3.org/Main_Page)
 
 If you'd prefer to chat live with other users, sysadmins, and developers, we have IRC and Discord, with a bridge between the two:
-* IRC: We're on Freenode (irc.freenode.net) in #ioquake3
+* IRC: We're on Libera Chat (```irc.libera.chat```) in ```#ioquake3```
 * Or you can join our Discord [via this link](https://discord.gg/fPaGNuy)
 With either of these services it might take a while before someone responds to your question, if you can't wait, [use the forums](https://discourse.ioquake.org)
 
@@ -41,7 +40,7 @@ Before creating bug reports, please check [this list](#before-submitting-a-bug-r
 #### Before Submitting A Bug Report
 
 * **Check the latest version** The version in our installers is from 2009! Check if you can reproduce the problem [in the latest test build of ioquake3](http://ioquake3.org/get-it/test-builds/).
-* **Search the [wiki](http://wiki.ioquake3.org/) and the [forum](https://discourse.ioquake.org)** for your questions and problems.
+* **Search the [forum](https://discourse.ioquake.org)** for your questions and problems.
 * **Perform a [cursory search](https://github.com/search?q=+is%3Aissue+user%3Aioquake)** to see if the problem has already been reported. If it has **and the issue is still open**, add a comment to the existing issue instead of opening a new one.
 
 #### How Do I Submit A (Good) Bug Report?
@@ -73,13 +72,13 @@ Include details about your configuration and environment:
 * **What graphics card or chipset is in your computer?**
 
 ### Helping others
-People have questions, they ask them on our [forums](https://discourse.ioquake.org/), [Facebook](https://www.facebook.com/ioquake3/), [Live Chat](http://wiki.ioquake3.org/Live_Chat), and on other services and websites. Answer them if you can, and add them to the [Players Guide](http://wiki.ioquake3.org/Players_Guide) on the wiki or [Sys Admin Guide](http://wiki.ioquake3.org/Sys_Admin_Guide) if the same questions keep coming up. If the answers are already in the one of our guides, copy and paste the answer and then link the people asking questions to those pages if they have more questions.
+People have questions, they ask them on our [forums](https://discourse.ioquake.org/), Discord, and on other services and websites. Answer them if you can, and suggest they get added to the [Players Guide](https://ioquake3.org/help/players-guide/) or [Sys Admin Guide](https://ioquake3.org/help/sys-admin-guide/) if the same questions keep coming up. If the answers are already in the one of our guides, copy and paste the answer and then link the people asking questions to those pages if they have more questions.
 
-### Donate
-Money buys servers, hosting, and time. We can [accept donations](http://ioquake3.org/donate/) although we are not yet a 501(c)(3) nonprofit.
+### Tip ioquake3 developers
+Money buys servers, hosting, and time. [Support ioquake3 developers directly through the links on this page](https://ioquake3.org/help/get-involved/).
 
 ### Social Media
-Throw ioquake3 a [Like on Facebook](https://www.facebook.com/ioquake3/) or [follow ioquake3 on Twitter](https://twitter.com/ioquake3). Let other Quake 3 players know about ioquake3, some people are still playing with id's client!
+Follow ioquake3 [on Mastodon](https://mastodon.social/@ioquake3) and [on Blue Sky](https://bsky.app/profile/ioquake3.org). Let other Quake 3 players know about ioquake3, some people are still playing with id's client!
 
 ### Suggesting Enhancements
 
@@ -109,11 +108,11 @@ Enhancement suggestions are tracked as [GitHub issues](https://guides.github.com
 
 Unsure where to begin contributing to ioquake3?
 
-If you want to read about using ioquake3, the [ioquake3 wiki](http://wiki.ioquake3.org) is free and available online.
+Check out our issues and pull requests, you can review and make new suggestions.
 
 #### Local development
 
-ioquake3 can be developed locally. For instructions on how to do this, see [the instructions on our wiki for building it on your computer](http://wiki.ioquake3.org/Building_ioquake3).
+ioquake3 can be developed locally. For instructions on how to do this, read the README.md.
 
 ### Pull Requests
 
