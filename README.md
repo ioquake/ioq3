@@ -76,12 +76,33 @@ https://discourse.ioquake.org
 # Compilation and installation
 
 For *nix
-  1. Change to the directory containing this readme.
-  2. Run 'make'.
+  1. ```git clone git://github.com/ioquake/ioq3.git```
+  2. ```cd ioq3```
+  3. Install dependencies according to your operating system's instructions.  
+     for apt-based systems, ```sudo apt-get install cmake libsdl2-dev ninja-build```
+  4. Run these commands:  
+     ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+     ```cmake --build build```
+  5. The resulting files will be in the ```build``` directory.
 
 For Windows,
-  1. Please refer to the excellent instructions here:
-     https://ioquake3.org/help/building-ioquake3/
+  1. Install Visual Studio Community Edition from Microsoft  
+     https://visualstudio.microsoft.com/vs/community/
+  2. Install CMake https://cmake.org/cmake/download
+  3. Clone our git repository either using the command-line or a GUI tool:  
+      ```git clone git://github.com/ioquake/ioq3.git```
+  4. Compile using Visual Studio by selecting our CMakeLists.txt and clicking Build.
+  5. Or using the command-line:  
+     ```cmake -S . -B build -G "Visual Studio 17 2022"```
+     ```make --build build --config Release```
+
+For macOS, using our new CMake system:
+  1. Install XCode
+  2. CMake via homebrew https://brew.sh or your package manager of choice.
+  3. ```git clone git://github.com/ioquake/ioq3.git```
+  4. ```cd ioq3```
+  5. ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+  6. ```cmake --build build```
 
 For macOS, building a Universal Binary (macOS 10.5 to 10.8, x86_64, x86, ppc)
   1. Install MacOSX SDK packages from XCode.  For maximum compatibility,
