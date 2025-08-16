@@ -24,6 +24,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_types.h"
 
+#ifdef USE_LOCAL_HEADERS
+  #include "../zlib/zlib.h"
+#else
+  #include <zlib.h>
+#endif
+
 #define	REF_API_VERSION		8
 
 //
@@ -180,6 +186,17 @@ typedef struct {
 	void	(*Sys_GLimpSafeInit)( void );
 	void	(*Sys_GLimpInit)( void );
 	qboolean (*Sys_LowPhysicalMemory)( void );
+
+	void	(*Cvar_VariableStringBuffer) (const char *var_name, char *buffer, int bufsize);
+
+	// zlib for png screenshots
+	int (*zlib_compress) (Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+	uLong (*zlib_crc32) (uLong crc, const Bytef *buf, uInt len);
+
+	// get extra info for png screenshots
+	void	(*CL_GetModDescription)( char *buf, int bufLength );
+	void	(*CL_GetMapTitle)( char *buf, int bufLength );
+	void	(*CL_GetPlayerLocation)( char *buf, int bufLength );
 } refimport_t;
 
 

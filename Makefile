@@ -2371,10 +2371,13 @@ endif
 ifeq ($(USE_INTERNAL_ZLIB),1)
 Q3OBJ += \
   $(B)/client/adler32.o \
+  $(B)/client/compress.o \
   $(B)/client/crc32.o \
+  $(B)/client/deflate.o \
   $(B)/client/inffast.o \
   $(B)/client/inflate.o \
   $(B)/client/inftrees.o \
+  $(B)/client/trees.o \
   $(B)/client/zutil.o
 endif
 
