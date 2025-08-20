@@ -22,4 +22,6 @@ add_compile_options(-Wno-format-zero-length -Wno-format-nonliteral)
 # that rely on the compiler not optimising them away, so disable it
 add_compile_options(-fno-strict-aliasing)
 
-set(CMAKE_INSTALL_PREFIX /opt/quake3)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX /opt/quake3)
+endif()
