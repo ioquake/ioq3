@@ -41,18 +41,20 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
 
-set(PRODUCT_VERSION "${CMAKE_PROJECT_VERSION}")
+if(NOT PRODUCT_VERSION)
+    set(PRODUCT_VERSION "${CMAKE_PROJECT_VERSION}")
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    execute_process(
-        COMMAND git show -s --pretty=format:%h
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE GIT_REV
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+        execute_process(
+            COMMAND git show -s --pretty=format:%h
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE GIT_REV
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
 
-    if(GIT_REV)
-        set(PRODUCT_VERSION "${PRODUCT_VERSION}_g${GIT_REV}")
+        if(GIT_REV)
+            set(PRODUCT_VERSION "${PRODUCT_VERSION}_g${GIT_REV}")
+        endif()
     endif()
 endif()
 
