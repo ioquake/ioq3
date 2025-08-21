@@ -344,7 +344,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #if !defined( ARCH_STRING )
+#ifdef USE_ARCHLESS_FILENAMES
+// If we aren't putting the architecture name in filenames, then the
+// architecture is not functionally significant, so we can behave
+// generically.
+#define ARCH_STRING "unknownarch"
+#define NO_VM_COMPILED
+#else
 #error "Architecture not supported"
+#endif
 #endif
 
 #ifndef ID_INLINE
