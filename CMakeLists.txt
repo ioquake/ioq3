@@ -13,7 +13,6 @@ option(BUILD_GAME_LIBRARIES "Build game module libraries" ON)
 option(BUILD_GAME_QVMS "Build game module qvms" ON)
 option(BUILD_STANDALONE "Build binaries for standalone games" OFF)
 
-option(USE_ARCHLESS_FILENAMES "Don't include the architecture in binary filenames" OFF)
 option(USE_RENDERER_DLOPEN "Dynamically load the renderer(s)" ON)
 option(USE_OPENAL "OpenAL audio" ON)
 option(USE_OPENAL_DLOPEN "Dynamically load OpenAL" ON)

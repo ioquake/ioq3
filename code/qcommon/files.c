@@ -1456,7 +1456,7 @@ int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, i
 		Com_Error(ERR_FATAL, "Filesystem call made without initialization");
 
 	if(enableDll)
-		Com_sprintf(dllName, sizeof(dllName), "%s" ARCH_DLL_EXT, name);
+		Com_sprintf(dllName, sizeof(dllName), "%s" DLL_EXT, name);
 
 	Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name);
 

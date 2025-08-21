@@ -4,10 +4,6 @@ if(NOT APPLE)
     return()
 endif()
 
-# Including the arch in the filename doesn't really make sense
-# on macOS where we're building Universal Binaries
-set(USE_ARCHLESS_FILENAMES ON CACHE INTERNAL "")
-
 option(BUILD_MACOS_APP "Deploy as a macOS .app" ON)
 
 enable_language(OBJC)

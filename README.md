@@ -147,7 +147,6 @@ The following CMake variables may be set, using `-D` on the command line.
   BUILD_GAME_QVMS         - build the game qvms
   BUILD_STANDALONE        - build binaries suited for stand-alone games
 
-  USE_ARCHLESS_FILENAMES  - don't include the architecture in binary filenames
   USE_RENDERER_DLOPEN     - build and use the renderer in a library
   USE_OPENAL              - use OpenAL where available
   USE_OPENAL_DLOPEN       - link with OpenAL at runtime

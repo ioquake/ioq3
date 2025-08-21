@@ -3250,12 +3250,6 @@ void CL_InitRef( void ) {
 #ifdef USE_RENDERER_DLOPEN
 	GetRefAPI_t		GetRefAPI;
 	char			dllName[MAX_OSPATH];
-
-#ifdef USE_ARCHLESS_FILENAMES
-#define RENDERER_ARCH_DLL_EXT ARCH_DLL_EXT
-#else
-#define RENDERER_ARCH_DLL_EXT "_" ARCH_DLL_EXT
-#endif
 #endif
 
 	Com_Printf( "----- Initializing Renderer ----\n" );
@@ -3263,14 +3257,14 @@ void CL_InitRef( void ) {
 #ifdef USE_RENDERER_DLOPEN
 	cl_renderer = Cvar_Get("cl_renderer", "opengl2", CVAR_ARCHIVE | CVAR_LATCH);
 
-	Com_sprintf(dllName, sizeof(dllName), "renderer_%s" RENDERER_ARCH_DLL_EXT, cl_renderer->string);
+	Com_sprintf(dllName, sizeof(dllName), "renderer_%s" DLL_EXT, cl_renderer->string);
 
 	if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
 	{
 		Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
 		Cvar_ForceReset("cl_renderer");
 
-		Com_sprintf(dllName, sizeof(dllName), "renderer_%s" RENDERER_ARCH_DLL_EXT, cl_renderer->resetString);
+		Com_sprintf(dllName, sizeof(dllName), "renderer_%s" DLL_EXT, cl_renderer->resetString);
 		rendererLib = Sys_LoadDll(dllName, qfalse);
 	}
 
