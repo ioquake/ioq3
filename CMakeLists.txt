@@ -13,7 +13,15 @@ option(BUILD_GAME_LIBRARIES "Build game module libraries" ON)
 option(BUILD_GAME_QVMS "Build game module qvms" ON)
 option(BUILD_STANDALONE "Build binaries for standalone games" OFF)
 
-option(USE_ARCHLESS_FILENAMES "Don't include the architecture in binary filenames" OFF)
+if(APPLE)
+    # Including the arch in the filename doesn't really make sense
+    # on macOS where we're building Universal Binaries
+    set(DEFAULT_ARCHLESS_FILENAMES ON)
+else()
+    set(DEFAULT_ARCHLESS_FILENAMES OFF)
+endif()
+
+option(USE_ARCHLESS_FILENAMES "Don't include the architecture in binary filenames" ${DEFAULT_ARCHLESS_FILENAMES})
 option(USE_RENDERER_DLOPEN "Dynamically load the renderer(s)" ON)
 option(USE_OPENAL "OpenAL audio" ON)
 option(USE_OPENAL_DLOPEN "Dynamically load OpenAL" ON)
@@ -57,6 +65,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
 endif()
 
 add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
+
+if(USE_ARCHLESS_FILENAMES)
+    add_compile_definitions(USE_ARCHLESS_FILENAMES)
+endif()
 
 # For CI to read from
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/version.txt CONTENT ${PRODUCT_VERSION})
