@@ -1449,14 +1449,11 @@ int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, i
 	searchpath_t *search, *lastSearch;
 	directory_t *dir;
 	pack_t *pack;
-	char dllName[MAX_OSPATH], qvmName[MAX_OSPATH];
+	char qvmName[MAX_OSPATH];
 	char *netpath;
 
 	if(!fs_searchpaths)
 		Com_Error(ERR_FATAL, "Filesystem call made without initialization");
-
-	if(enableDll)
-		Com_sprintf(dllName, sizeof(dllName), "%s" DLL_EXT, name);
 
 	Com_sprintf(qvmName, sizeof(qvmName), "vm/%s.qvm", name);
 
@@ -1474,14 +1471,28 @@ int FS_FindVM(void **startSearch, char *found, int foundlen, const char *name, i
 
 			if(enableDll)
 			{
-				netpath = FS_BuildOSPath(dir->path, dir->gamedir, dllName);
-
-				if(FS_FileInPathExists(netpath))
+				// The original Q3 put the architecture in the library name; in case
+				// we're loading an old binary only mod, fallback on this format if
+				// the architecture-less library doesn't exist
+				const char *dllNameFormats[] =
 				{
-					Q_strncpyz(found, netpath, foundlen);
-					*startSearch = search;
+					"%s" DLL_EXT,
+					"%s" ARCH_STRING DLL_EXT
+				};
 
-					return VMI_NATIVE;
+				for(int i = 0; i < ARRAY_LEN(dllNameFormats); i++)
+				{
+					char dllName[MAX_OSPATH];
+					Com_sprintf(dllName, sizeof(dllName), dllNameFormats[i], name);
+					netpath = FS_BuildOSPath(dir->path, dir->gamedir, dllName);
+
+					if(FS_FileInPathExists(netpath))
+					{
+						Q_strncpyz(found, netpath, foundlen);
+						*startSearch = search;
+
+						return VMI_NATIVE;
+					}
 				}
 			}
 
