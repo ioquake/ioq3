@@ -8,7 +8,6 @@ enable_language(ASM)
 
 set(ASM_SOURCES
     ${SOURCE_DIR}/asm/ftola.c
-    ${SOURCE_DIR}/asm/matha.S
     ${SOURCE_DIR}/asm/snapvector.c
 )
 

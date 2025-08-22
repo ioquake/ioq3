@@ -2173,7 +2173,6 @@ endif
 ifeq ($(ARCH),x86)
   Q3OBJ += \
     $(B)/client/snd_mixa.o \
-    $(B)/client/matha.o \
     $(B)/client/snapvector.o \
     $(B)/client/ftola.o
 endif
@@ -2534,7 +2533,6 @@ Q3DOBJ = \
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \
-      $(B)/ded/matha.o \
       $(B)/ded/snapvector.o \
       $(B)/ded/ftola.o
 endif
