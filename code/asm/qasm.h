@@ -25,7 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_platform.h"
 
 #ifdef __ELF__
+#if defined(__arm__)
+.section .note.GNU-stack,"",%progbits
+#else
 .section .note.GNU-stack,"",@progbits
+#endif
 #endif
 
 #if defined(__ELF__) || defined(__WIN64__)
