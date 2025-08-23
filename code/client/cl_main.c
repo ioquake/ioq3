@@ -2282,7 +2282,7 @@ void CL_NextDownload(void)
 					"download redirection, but does not "
 					"have sv_dlURL set\n");
 			}
-			else if(CL_HTTP_Available()) {
+			else if(CL_HTTP_Startup()) {
 				CL_InitDownload(localName);
 				CL_BeginHttpDownload(va("%s/%s",
 					clc.sv_dlURL, remoteName));
@@ -3710,9 +3710,7 @@ void CL_Init( void ) {
 #endif
 
 #ifdef USE_HTTP
-	if(!CL_HTTP_Init()) {
-		Com_Printf("WARNING: couldn't initialize HTTP download support\n");
-	}
+	CL_HTTP_Init();
 #endif
 
 	// cgame might not be initialized before menu is used

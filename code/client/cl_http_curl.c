@@ -103,12 +103,22 @@ static void *GPA(char *str)
 CL_HTTP_Init
 =================
 */
-qboolean CL_HTTP_Init()
+void CL_HTTP_Init()
+{
+	cl_cURLLib = Cvar_Get("cl_cURLLib", DEFAULT_CURL_LIB, CVAR_ARCHIVE | CVAR_PROTECTED);
+}
+
+/*
+=================
+CL_HTTP_Startup
+
+Loads HTTP support if needed and returns qtrue if available.
+=================
+*/
+qboolean CL_HTTP_Startup()
 {
 	if(cURLLib)
 		return qtrue;
-
-	cl_cURLLib = Cvar_Get("cl_cURLLib", DEFAULT_CURL_LIB, CVAR_ARCHIVE | CVAR_PROTECTED);
 
 	Com_Printf("Loading \"%s\"...", cl_cURLLib->string);
 	if(!(cURLLib = Sys_LoadDll(cl_cURLLib->string, qtrue)))
@@ -117,7 +127,10 @@ qboolean CL_HTTP_Init()
 		// On some linux distributions there is no libcurl.so.3, but only libcurl.so.4. That one works too.
 		if(!(cURLLib = Sys_LoadDll(ALTERNATE_CURL_LIB, qtrue)))
 #endif
-			return qfalse;
+			{
+				Com_Printf( "WARNING: couldn't initialize HTTP download support\n" );
+				return qfalse;
+			}
 	}
 
 	cURLSymbolLoadFailed = qfalse;
@@ -151,16 +164,6 @@ qboolean CL_HTTP_Init()
 	Com_Printf("OK\n");
 
 	return qtrue;
-}
-
-/*
-=================
-CL_HTTP_Available
-=================
-*/
-qboolean CL_HTTP_Available()
-{
-	return cURLLib != NULL;
 }
 
 static void CL_cURL_Cleanup(void)

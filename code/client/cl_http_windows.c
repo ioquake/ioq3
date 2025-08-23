@@ -50,30 +50,38 @@ static void DropIf(qboolean condition, const char *fmt, ...)
 CL_HTTP_Init
 =================
 */
-qboolean CL_HTTP_Init()
+void CL_HTTP_Init()
 {
-    OSVERSIONINFO osvi = {sizeof(OSVERSIONINFO)};
-    const char *windowsVersion = GetVersionEx(&osvi) ? va("Windows %lu.%lu (build %lu)",
-                                                          osvi.dwMajorVersion,
-                                                          osvi.dwMinorVersion,
-                                                          osvi.dwBuildNumber)
-                                                     : "Windows";
-
-    hInternet = InternetOpenA(
-        va("%s %s", Q3_VERSION, windowsVersion),
-        INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-
-    return hInternet != NULL;
 }
 
 /*
 =================
-CL_HTTP_Available
+CL_HTTP_Startup
+
+Loads HTTP support if needed and returns qtrue if available.
 =================
 */
-qboolean CL_HTTP_Available()
+qboolean CL_HTTP_Startup(void)
 {
-    return hInternet != NULL;
+    if ( !hInternet ) {
+        OSVERSIONINFO osvi = {sizeof(OSVERSIONINFO)};
+        const char *windowsVersion = GetVersionEx(&osvi) ? va("Windows %lu.%lu (build %lu)",
+                                                              osvi.dwMajorVersion,
+                                                              osvi.dwMinorVersion,
+                                                              osvi.dwBuildNumber)
+                                                         : "Windows";
+
+        hInternet = InternetOpenA(
+            va("%s %s", Q3_VERSION, windowsVersion),
+            INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    }
+
+    if ( !hInternet ) {
+		Com_Printf( "WARNING: couldn't initialize HTTP download support\n" );
+        return qfalse;
+	}
+
+    return qtrue;
 }
 
 /*
