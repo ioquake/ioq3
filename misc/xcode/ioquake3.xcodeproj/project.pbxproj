@@ -51,7 +51,6 @@
 		2735379E14D8F13E000D6E73 /* botlib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2735379B14D8F13E000D6E73 /* botlib.a */; };
 		274FAB79178FA81800B17C7A /* snd_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 274FAB78178FA81700B17C7A /* snd_main.c */; };
 		274FAB7B178FA86E00B17C7A /* md5.c in Sources */ = {isa = PBXBuildFile; fileRef = 274FAB7A178FA86E00B17C7A /* md5.c */; };
-		274FAB88178FA98E00B17C7A /* snd_mixa.s in Sources */ = {isa = PBXBuildFile; fileRef = 274FAB82178FA97100B17C7A /* snd_mixa.s */; };
 		274FABFD178FAC4900B17C7A /* vm_x86.c in Sources */ = {isa = PBXBuildFile; fileRef = 2711BE9E14D136DF005EB142 /* vm_x86.c */; };
 		274FABFE178FAC6E00B17C7A /* tr_noise.c in Sources */ = {isa = PBXBuildFile; fileRef = 27AAD064178E03620093DFC0 /* tr_noise.c */; };
 		2758BB3317905B8F007F6582 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2758BB3217905B8F007F6582 /* IOKit.framework */; };
@@ -173,9 +172,7 @@
 		274FAB7A178FA86E00B17C7A /* md5.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = md5.c; sourceTree = "<group>"; };
 		274FAB7D178FA97100B17C7A /* ftola.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ftola.c; sourceTree = "<group>"; };
 		274FAB7F178FA97100B17C7A /* qasm-inline.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "qasm-inline.h"; sourceTree = "<group>"; };
-		274FAB80178FA97100B17C7A /* qasm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qasm.h; sourceTree = "<group>"; };
 		274FAB81178FA97100B17C7A /* snapvector.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = snapvector.c; sourceTree = "<group>"; };
-		274FAB82178FA97100B17C7A /* snd_mixa.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; path = snd_mixa.s; sourceTree = "<group>"; };
 		274FAB83178FA97100B17C7A /* ftola.asm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm.asm; path = ftola.asm; sourceTree = "<group>"; };
 		274FAB84178FA97100B17C7A /* snapvector.asm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm.asm; path = snapvector.asm; sourceTree = "<group>"; };
 		274FAB85178FA97100B17C7A /* vm_x86_64.asm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm.asm; path = vm_x86_64.asm; sourceTree = "<group>"; };
@@ -596,9 +593,7 @@
 			children = (
 				274FAB7D178FA97100B17C7A /* ftola.c */,
 				274FAB7F178FA97100B17C7A /* qasm-inline.h */,
-				274FAB80178FA97100B17C7A /* qasm.h */,
 				274FAB81178FA97100B17C7A /* snapvector.c */,
-				274FAB82178FA97100B17C7A /* snd_mixa.s */,
 				274FAB83178FA97100B17C7A /* ftola.asm */,
 				274FAB84178FA97100B17C7A /* snapvector.asm */,
 				274FAB85178FA97100B17C7A /* vm_x86_64.asm */,
@@ -921,7 +916,6 @@
 				27AAD02D178E013E0093DFC0 /* sdl_snd.c in Sources */,
 				274FAB79178FA81800B17C7A /* snd_main.c in Sources */,
 				274FAB7B178FA86E00B17C7A /* md5.c in Sources */,
-				274FAB88178FA98E00B17C7A /* snd_mixa.s in Sources */,
 				274FABFD178FAC4900B17C7A /* vm_x86.c in Sources */,
 				274FABFE178FAC6E00B17C7A /* tr_noise.c in Sources */,
 				A1F318612603128500A11B0E /* snapvector.c in Sources */,

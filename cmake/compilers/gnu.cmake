@@ -11,10 +11,6 @@ set(ASM_SOURCES
     ${SOURCE_DIR}/asm/snapvector.c
 )
 
-set(CLIENT_ASM_SOURCES
-    ${SOURCE_DIR}/asm/snd_mixa.S
-)
-
 add_compile_options(-Wall -Wimplicit
     -Wstrict-prototypes -Wformat=2  -Wformat-security
     -Wstrict-aliasing=2 -Wmissing-format-attribute

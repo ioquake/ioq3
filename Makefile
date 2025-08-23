@@ -2172,7 +2172,6 @@ endif
 
 ifeq ($(ARCH),x86)
   Q3OBJ += \
-    $(B)/client/snd_mixa.o \
     $(B)/client/snapvector.o \
     $(B)/client/ftola.o
 endif
