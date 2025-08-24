@@ -199,6 +199,10 @@ ifndef USE_VOIP
 USE_VOIP=1
 endif
 
+ifndef USE_HTTP_SERVER
+USE_HTTP_SERVER=0
+endif
+
 ifndef USE_FREETYPE
 USE_FREETYPE=0
 endif
@@ -1193,6 +1197,10 @@ endif
 
 ifeq ($(USE_HTTP),1)
   CLIENT_CFLAGS += -DUSE_HTTP
+endif
+
+ifeq ($(USE_HTTP_SERVER),1)
+  SERVER_CFLAGS += -DUSE_HTTP_SERVER
 endif
 
 ifeq ($(USE_VOIP),1)
@@ -2464,6 +2472,7 @@ Q3DOBJ = \
   $(B)/ded/sv_client.o \
   $(B)/ded/sv_ccmds.o \
   $(B)/ded/sv_game.o \
+  $(B)/ded/sv_http.o \
   $(B)/ded/sv_init.o \
   $(B)/ded/sv_main.o \
   $(B)/ded/sv_net_chan.o \
