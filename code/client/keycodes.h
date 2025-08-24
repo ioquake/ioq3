@@ -294,6 +294,11 @@ typedef enum {
 	K_PAD0_PADDLE3,  /* Xbox Elite paddle P2 */
 	K_PAD0_PADDLE4,  /* Xbox Elite paddle P4 */
 	K_PAD0_TOUCHPAD, /* PS4/PS5 touchpad button */
+	K_PAD0_MISC2,    /**< Additional button */
+	K_PAD0_MISC3,    /**< Additional button */
+	K_PAD0_MISC4,    /**< Additional button */
+	K_PAD0_MISC5,    /**< Additional button */
+	K_PAD0_MISC6,    /**< Additional button */
 
 	// Pseudo-key that brings the console down
 	K_CONSOLE,
