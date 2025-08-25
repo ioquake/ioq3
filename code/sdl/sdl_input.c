@@ -316,6 +316,32 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 	{
 		// Console keys can't be bound or generate characters
 		key = K_CONSOLE;
+	} else if ( cl_consoleUseScanCode->integer && keysym->scancode == SDL_SCANCODE_GRAVE ) {
+		// Use the QWERTY grave key location as a console key (whatever the actual layout)
+		// We try our best to avoid any possible conflicts with keys at this location
+		// on other layouts such as:
+		//  ^ (German)
+		//  " (Brazilian)
+		//  $ (French Bepo, Programmer Dvorak)
+		//  0 (Hungarian)
+		//  ; (Czech)
+		//  | (Italian)
+		//  # (Canadian French)
+		// and probably others
+		qboolean console_has_text = strlen(g_consoleField.buffer) > 0;
+
+		// Don't force console if a modifier is held
+		if ( keys[K_SHIFT].down || keys[K_ALT].down || keys[K_CTRL].down || keys[K_SUPER].down ) {
+			return key;
+		}
+
+		// We need to exclude the invalid 0 key because the German layout outputs a dead key
+		// which is not recognized correctly by SDL under X11
+		if ( (key > 0 && key < 0x20) || key > 0x7f || key == '~' || key == '`'
+					|| ( Key_GetCatcher() != KEYCATCH_MESSAGE && !console_has_text ) )
+		{
+			key = K_CONSOLE;
+		}
 	}
 
 	return key;
