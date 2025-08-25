@@ -150,7 +150,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libsdl2-dev zlib1g-dev libjpeg-dev libopenal-dev \
-          libogg-dev libvorbis-dev libopus-dev libcurl4-openssl-dev
+          libogg-dev libvorbis-dev libopus-dev libopusfile-dev libcurl4-openssl-dev
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DUSE_INTERNAL_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
