@@ -653,7 +653,7 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 	vm->compiled = qfalse;
 
-#ifdef NO_VM_COMPILED
+#ifndef HAVE_VM_COMPILED
 	if(interpret >= VMI_COMPILED) {
 		Com_Printf("Architecture doesn't have a bytecode compiler, using interpreter\n");
 		interpret = VMI_BYTECODE;
@@ -838,7 +838,7 @@ intptr_t QDECL VM_Call( vm_t *vm, int callnum, ... )
                             args[8],  args[9], args[10], args[11]);
 	} else {
 #if ( id386 || idsparc ) && !defined __clang__ // calling convention doesn't need conversion in some cases
-#ifndef NO_VM_COMPILED
+#ifdef HAVE_VM_COMPILED
 		if ( vm->compiled )
 			r = VM_CallCompiled( vm, (int*)&callnum );
 		else
@@ -857,7 +857,7 @@ intptr_t QDECL VM_Call( vm_t *vm, int callnum, ... )
 			a.args[i] = va_arg(ap, int);
 		}
 		va_end(ap);
-#ifndef NO_VM_COMPILED
+#ifdef HAVE_VM_COMPILED
 		if ( vm->compiled )
 			r = VM_CallCompiled( vm, &a.callnum );
 		else
