@@ -346,6 +346,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // ARCH_STRING is (mostly) only used for informational purposes, so we allow
 // it to be undefined so that more diverse architectures may be compiled
 #define ARCH_STRING "unknown"
+#define NO_VM_COMPILED
 #endif
 
 #ifndef ID_INLINE
