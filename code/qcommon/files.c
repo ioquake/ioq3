@@ -675,25 +675,21 @@ qboolean FS_BaseDir_FileExists( const char *file )
 
 /*
 ===========
-FS_BaseDir_FOpenFileWrite
-
+FS_OSPath_FOpenFileWrite
 ===========
 */
-fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename ) {
-	char *ospath;
+static fileHandle_t FS_OSPath_FOpenFileWrite( const char *ospath, const char *filename ) {
 	fileHandle_t	f;
 
 	if ( !fs_searchpaths ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization" );
 	}
 
-	ospath = FS_BaseDir_BuildOSPath( fs_homepath->string, filename );
-
 	f = FS_HandleForFile();
 	fsh[f].zipFile = qfalse;
 
 	if ( fs_debug->integer ) {
-		Com_Printf( "FS_BaseDir_FOpenFileWrite: %s\n", ospath );
+		Com_Printf( "FS_OSPath_FOpenFileWrite: %s\n", ospath );
 	}
 
 	FS_CheckFilenameIsMutable( ospath, __func__ );
@@ -702,7 +698,6 @@ fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename ) {
 		return 0;
 	}
 
-	Com_DPrintf( "writing to: %s\n", ospath );
 	fsh[f].handleFiles.file.o = Sys_FOpen( ospath, "wb" );
 
 	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
@@ -712,6 +707,17 @@ fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename ) {
 		f = 0;
 	}
 	return f;
+}
+
+/*
+===========
+FS_BaseDir_FOpenFileWrite
+
+===========
+*/
+fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename ) {
+	return FS_OSPath_FOpenFileWrite(
+		FS_BaseDir_BuildOSPath(fs_homepath->string, filename), filename);
 }
 
 /*
@@ -875,40 +881,8 @@ FS_FOpenFileWrite
 ===========
 */
 fileHandle_t FS_FOpenFileWrite( const char *filename ) {
-	char			*ospath;
-	fileHandle_t	f;
-
-	if ( !fs_searchpaths ) {
-		Com_Error( ERR_FATAL, "Filesystem call made without initialization" );
-	}
-
-	f = FS_HandleForFile();
-	fsh[f].zipFile = qfalse;
-
-	ospath = FS_BuildOSPath( fs_homepath->string, fs_gamedir, filename );
-
-	if ( fs_debug->integer ) {
-		Com_Printf( "FS_FOpenFileWrite: %s\n", ospath );
-	}
-
-	FS_CheckFilenameIsMutable( ospath, __func__ );
-
-	if( FS_CreatePath( ospath ) ) {
-		return 0;
-	}
-
-	// enabling the following line causes a recursive function call loop
-	// when running with +set logfile 1 +set developer 1
-	//Com_DPrintf( "writing to: %s\n", ospath );
-	fsh[f].handleFiles.file.o = Sys_FOpen( ospath, "wb" );
-
-	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
-
-	fsh[f].handleSync = qfalse;
-	if (!fsh[f].handleFiles.file.o) {
-		f = 0;
-	}
-	return f;
+	return FS_OSPath_FOpenFileWrite(
+		FS_BuildOSPath(fs_homepath->string, fs_gamedir, filename), filename);
 }
 
 /*
