@@ -88,7 +88,7 @@ void Sys_SetFloatEnv(void)
 Sys_DefaultHomePath
 ================
 */
-char *Sys_DefaultHomePath( void )
+static char *Sys_DefaultHomePath( void )
 {
 	static char homePath[ MAX_OSPATH ] = { 0 };
 
@@ -113,6 +113,10 @@ char *Sys_DefaultHomePath( void )
 
 	return homePath;
 }
+
+char *Sys_DefaultHomeConfigPath(void) { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeDataPath(void)   { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeStatePath(void)  { return Sys_DefaultHomePath(); }
 
 /*
 ================

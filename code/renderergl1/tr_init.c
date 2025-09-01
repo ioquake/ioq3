@@ -333,7 +333,7 @@ static void R_ModeList_f( void )
 
 NOTE TTimo
 some thoughts about the screenshots system:
-screenshots get written in fs_homepath + fs_gamedir
+screenshots get written in fs_homedatapath + fs_gamedir
 vanilla q3 .. baseq3/screenshots/ *.tga
 team arena .. missionpack/screenshots/ *.tga
 
