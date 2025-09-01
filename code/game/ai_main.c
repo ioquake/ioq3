@@ -1647,9 +1647,6 @@ int BotInitLibrary(void) {
 	//game directory
 	trap_Cvar_VariableStringBuffer("fs_game", buf, sizeof(buf));
 	if (strlen(buf)) trap_BotLibVarSet("gamedir", buf);
-	//home directory
-	trap_Cvar_VariableStringBuffer("fs_homepath", buf, sizeof(buf));
-	if (strlen(buf)) trap_BotLibVarSet("homedir", buf);
 	//
 #ifdef MISSIONPACK
 	trap_BotLibDefine("MISSIONPACK");

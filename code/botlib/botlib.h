@@ -438,7 +438,6 @@ botlib_export_t *GetBotLibAPI( int apiVersion, botlib_import_t *import );
 name:						default:			module(s):			description:
 
 "basedir"					""					-					base directory
-"homedir"					""					be_interface.c		home directory
 "gamedir"					""					be_interface.c		mod game directory
 "basegame"					""					be_interface.c		base game directory
 
