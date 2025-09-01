@@ -731,8 +731,6 @@ qboolean FS_InvalidGameDir(const char *gamedir);
 qboolean FS_idPak(char *pak, char *base, int numPaks);
 qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring );
 
-void FS_Rename( const char *from, const char *to );
-
 void FS_Remove( const char *osPath );
 void FS_HomeRemove( const char *homePath );
 
