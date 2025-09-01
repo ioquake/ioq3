@@ -1342,7 +1342,7 @@ static void CL_UpdateGUID( const char *prefix, int prefix_len )
 	fileHandle_t f;
 	int len;
 
-	len = FS_SV_FOpenFileRead( QKEY_FILE, &f );
+	len = FS_BaseDir_FOpenFileRead( QKEY_FILE, &f );
 	FS_FCloseFile( f );
 
 	if( len != QKEY_SIZE ) 
@@ -2197,7 +2197,7 @@ static void CL_BeginHttpDownload( const char *remoteURL ) {
 	CL_HTTP_BeginDownload(remoteURL);
 	Q_strncpyz(clc.downloadURL, remoteURL, sizeof(clc.downloadURL));
 
-	clc.download = FS_SV_FOpenFileWrite(clc.downloadTempName);
+	clc.download = FS_BaseDir_FOpenFileWrite(clc.downloadTempName);
 	if(!clc.download) {
 		Com_Error(ERR_DROP, "CL_BeginHTTPDownload: failed to open "
 			"%s for writing", clc.downloadTempName);
@@ -2977,7 +2977,7 @@ void CL_Frame ( int msec ) {
 				clc.download = 0;
 			}
 
-			FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
+			FS_BaseDir_Rename(clc.downloadTempName, clc.downloadName, qfalse);
 			clc.downloadRestart = qtrue;
 			CL_NextDownload();
 		}
@@ -3456,7 +3456,7 @@ static void CL_GenerateQKey(void)
 	unsigned char buff[ QKEY_SIZE ];
 	fileHandle_t f;
 
-	len = FS_SV_FOpenFileRead( QKEY_FILE, &f );
+	len = FS_BaseDir_FOpenFileRead( QKEY_FILE, &f );
 	FS_FCloseFile( f );
 	if( len == QKEY_SIZE ) {
 		Com_Printf( "QKEY found.\n" );
@@ -3471,7 +3471,7 @@ static void CL_GenerateQKey(void)
 		Com_Printf( "QKEY building random string\n" );
 		Com_RandomBytes( buff, sizeof(buff) );
 
-		f = FS_SV_FOpenFileWrite( QKEY_FILE );
+		f = FS_BaseDir_FOpenFileWrite( QKEY_FILE );
 		if( !f ) {
 			Com_Printf( "QKEY could not open %s for write\n",
 				QKEY_FILE );

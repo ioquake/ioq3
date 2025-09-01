@@ -271,7 +271,7 @@ char *Com_MD5File( const char *fn, int length, const char *prefix, int prefix_le
 
 	Q_strncpyz( final, "", sizeof( final ) );
 
-	filelen = FS_SV_FOpenFileRead( fn, &f );
+	filelen = FS_BaseDir_FOpenFileRead( fn, &f );
 
 	if( !f ) {
 		return final;

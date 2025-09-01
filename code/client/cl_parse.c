@@ -608,7 +608,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 	// open the file if not opened yet
 	if (!clc.download)
 	{
-		clc.download = FS_SV_FOpenFileWrite( clc.downloadTempName );
+		clc.download = FS_BaseDir_FOpenFileWrite( clc.downloadTempName );
 
 		if (!clc.download) {
 			Com_Printf( "Could not create %s\n", clc.downloadTempName );
@@ -635,7 +635,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 			clc.download = 0;
 
 			// rename the file
-			FS_SV_Rename ( clc.downloadTempName, clc.downloadName, qfalse );
+			FS_BaseDir_Rename ( clc.downloadTempName, clc.downloadName, qfalse );
 		}
 
 		// send intentions now

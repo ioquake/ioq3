@@ -651,7 +651,7 @@ static void SV_RehashBans_f(void)
 
 	Com_sprintf(filepath, sizeof(filepath), "%s/%s", FS_GetCurrentGameDir(), sv_banFile->string);
 
-	if((filelen = FS_SV_FOpenFileRead(filepath, &readfrom)) >= 0)
+	if((filelen = FS_BaseDir_FOpenFileRead(filepath, &readfrom)) >= 0)
 	{
 		if(filelen < 2)
 		{
@@ -730,7 +730,7 @@ static void SV_WriteBans(void)
 	
 	Com_sprintf(filepath, sizeof(filepath), "%s/%s", FS_GetCurrentGameDir(), sv_banFile->string);
 
-	if((writeto = FS_SV_FOpenFileWrite(filepath)))
+	if((writeto = FS_BaseDir_FOpenFileWrite(filepath)))
 	{
 		char writebuf[128];
 		serverBan_t *curban;

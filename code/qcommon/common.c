@@ -2468,7 +2468,7 @@ void Com_ReadCDKey( const char *filename ) {
 
 	Com_sprintf(fbuffer, sizeof(fbuffer), "%s/q3key", filename);
 
-	FS_SV_FOpenFileRead( fbuffer, &f );
+	FS_BaseDir_FOpenFileRead( fbuffer, &f );
 	if ( !f ) {
 		Com_Memset( cl_cdkey, '\0', 17 );
 		return;
@@ -2498,7 +2498,7 @@ void Com_AppendCDKey( const char *filename ) {
 
 	Com_sprintf(fbuffer, sizeof(fbuffer), "%s/q3key", filename);
 
-	FS_SV_FOpenFileRead( fbuffer, &f );
+	FS_BaseDir_FOpenFileRead( fbuffer, &f );
 	if (!f) {
 		Com_Memset( &cl_cdkey[16], '\0', 17 );
 		return;
@@ -2543,7 +2543,7 @@ static void Com_WriteCDKey( const char *filename, const char *ikey ) {
 #ifndef _WIN32
 	savedumask = umask(0077);
 #endif
-	f = FS_SV_FOpenFileWrite( fbuffer );
+	f = FS_BaseDir_FOpenFileWrite( fbuffer );
 	if ( !f ) {
 		Com_Printf ("Couldn't write CD key to %s.\n", fbuffer );
 		goto out;

@@ -662,12 +662,12 @@ qboolean FS_FileExists(const char *file)
 
 /*
 ================
-FS_SV_FileExists
+FS_BaseDir_FileExists
 
 Tests if the file exists 
 ================
 */
-qboolean FS_SV_FileExists( const char *file )
+qboolean FS_BaseDir_FileExists( const char *file )
 {
 	return FS_FileInPathExists(FS_BaseDir_BuildOSPath(fs_homepath->string, file));
 }
@@ -675,11 +675,11 @@ qboolean FS_SV_FileExists( const char *file )
 
 /*
 ===========
-FS_SV_FOpenFileWrite
+FS_BaseDir_FOpenFileWrite
 
 ===========
 */
-fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
+fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename ) {
 	char *ospath;
 	fileHandle_t	f;
 
@@ -693,7 +693,7 @@ fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
 	fsh[f].zipFile = qfalse;
 
 	if ( fs_debug->integer ) {
-		Com_Printf( "FS_SV_FOpenFileWrite: %s\n", ospath );
+		Com_Printf( "FS_BaseDir_FOpenFileWrite: %s\n", ospath );
 	}
 
 	FS_CheckFilenameIsMutable( ospath, __func__ );
@@ -716,13 +716,13 @@ fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
 
 /*
 ===========
-FS_SV_FOpenFileRead
+FS_BaseDir_FOpenFileRead
 
 Search for a file somewhere below the home path then base path
 in that order
 ===========
 */
-long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp)
+long FS_BaseDir_FOpenFileRead(const char *filename, fileHandle_t *fp)
 {
 	char *ospath;
 	fileHandle_t f = 0;
@@ -756,7 +756,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp)
 
 		if ( fs_debug->integer )
 		{
-			Com_Printf( "FS_SV_FOpenFileRead (%s): %s\n", pathVar->name, ospath );
+			Com_Printf( "FS_BaseDir_FOpenFileRead (%s): %s\n", pathVar->name, ospath );
 		}
 
 		fsh[f].handleFiles.file.o = Sys_FOpen( ospath, "rb" );
@@ -779,11 +779,11 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp)
 
 /*
 ===========
-FS_SV_Rename
+FS_BaseDir_Rename
 
 ===========
 */
-void FS_SV_Rename( const char *from, const char *to, qboolean safe ) {
+void FS_BaseDir_Rename( const char *from, const char *to, qboolean safe ) {
 	char			*from_ospath, *to_ospath;
 
 	if ( !fs_searchpaths ) {
@@ -797,7 +797,7 @@ void FS_SV_Rename( const char *from, const char *to, qboolean safe ) {
 	to_ospath = FS_BaseDir_BuildOSPath( fs_homepath->string, to );
 
 	if ( fs_debug->integer ) {
-		Com_Printf( "FS_SV_Rename: %s --> %s\n", from_ospath, to_ospath );
+		Com_Printf( "FS_BaseDir_Rename: %s --> %s\n", from_ospath, to_ospath );
 	}
 
 	if ( safe ) {
@@ -2480,7 +2480,7 @@ void FS_GetModDescription( const char *modDir, char *description, int descriptio
 	FILE			*file;
 
 	Com_sprintf( descPath, sizeof ( descPath ), "%s%cdescription.txt", modDir, PATH_SEP );
-	nDescLen = FS_SV_FOpenFileRead( descPath, &descHandle );
+	nDescLen = FS_BaseDir_FOpenFileRead( descPath, &descHandle );
 
 	if ( nDescLen > 0 ) {
 		file = FS_FileForHandle(descHandle);
@@ -3189,7 +3189,7 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 				// Local name
 				Q_strcat( neededpaks, len, "@");
 				// Do we have one with the same name?
-				if ( FS_SV_FileExists( va( "%s.pk3", fs_serverReferencedPakNames[i] ) ) )
+				if ( FS_BaseDir_FileExists( va( "%s.pk3", fs_serverReferencedPakNames[i] ) ) )
 				{
 					char st[MAX_ZPATH];
 					// We already have one called this, we need to download it to another name
@@ -3216,7 +3216,7 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring ) {
 				Q_strcat( neededpaks, len, fs_serverReferencedPakNames[i] );
 				Q_strcat( neededpaks, len, ".pk3" );
 				// Do we have one with the same name?
-				if ( FS_SV_FileExists( va( "%s.pk3", fs_serverReferencedPakNames[i] ) ) )
+				if ( FS_BaseDir_FileExists( va( "%s.pk3", fs_serverReferencedPakNames[i] ) ) )
 				{
 					Q_strcat( neededpaks, len, " (local file exists with wrong checksum)");
 				}
