@@ -2233,8 +2233,7 @@ void CL_NextDownload(void)
 	// A download has finished, check whether this matches a referenced checksum
 	if(*clc.downloadName)
 	{
-		char *zippath = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), clc.downloadName, "");
-		zippath[strlen(zippath)-1] = '\0';
+		char *zippath = FS_BaseDir_BuildOSPath(Cvar_VariableString("fs_homepath"), clc.downloadName);
 
 		if(!FS_CompareZipChecksum(zippath))
 			Com_Error(ERR_DROP, "Incorrect checksum for file: %s", clc.downloadName);

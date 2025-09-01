@@ -521,6 +521,20 @@ char *FS_BuildOSPath( const char *base, const char *game, const char *qpath ) {
 	return ospath[toggle];
 }
 
+/*
+===================
+FS_BaseDir_BuildOSPath
+
+Qpath may have either forward or backwards slashes
+===================
+*/
+char *FS_BaseDir_BuildOSPath( const char *base, const char *qpath ) {
+	char *ospath = FS_BuildOSPath(base, qpath, "");
+	ospath[strlen(ospath) - 1] = '\0';
+
+	return ospath;
+}
+
 
 /*
 ============
@@ -655,12 +669,7 @@ Tests if the file exists
 */
 qboolean FS_SV_FileExists( const char *file )
 {
-	char *testpath;
-
-	testpath = FS_BuildOSPath( fs_homepath->string, file, "");
-	testpath[strlen(testpath)-1] = '\0';
-
-	return FS_FileInPathExists(testpath);
+	return FS_FileInPathExists(FS_BaseDir_BuildOSPath(fs_homepath->string, file));
 }
 
 
@@ -678,8 +687,7 @@ fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization" );
 	}
 
-	ospath = FS_BuildOSPath( fs_homepath->string, filename, "" );
-	ospath[strlen(ospath)-1] = '\0';
+	ospath = FS_BaseDir_BuildOSPath( fs_homepath->string, filename );
 
 	f = FS_HandleForFile();
 	fsh[f].zipFile = qfalse;
@@ -744,8 +752,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp)
 			continue;
 		}
 
-		ospath = FS_BuildOSPath( pathVar->string, filename, "" );
-		ospath[strlen(ospath)-1] = '\0'; // remove trailing slash
+		ospath = FS_BaseDir_BuildOSPath( pathVar->string, filename );
 
 		if ( fs_debug->integer )
 		{
@@ -786,10 +793,8 @@ void FS_SV_Rename( const char *from, const char *to, qboolean safe ) {
 	// don't let sound stutter
 	S_ClearSoundBuffer();
 
-	from_ospath = FS_BuildOSPath( fs_homepath->string, from, "" );
-	to_ospath = FS_BuildOSPath( fs_homepath->string, to, "" );
-	from_ospath[strlen(from_ospath)-1] = '\0';
-	to_ospath[strlen(to_ospath)-1] = '\0';
+	from_ospath = FS_BaseDir_BuildOSPath( fs_homepath->string, from );
+	to_ospath = FS_BaseDir_BuildOSPath( fs_homepath->string, to );
 
 	if ( fs_debug->integer ) {
 		Com_Printf( "FS_SV_Rename: %s --> %s\n", from_ospath, to_ospath );
@@ -2560,7 +2565,7 @@ int	FS_GetModList( char *listbuf, int bufsize ) {
 				continue;
 			}
 
-			path = FS_BuildOSPath(pathVar->string, name, "");
+			path = FS_BaseDir_BuildOSPath(pathVar->string, name);
 			nPaks = nDirs = nPakDirs = 0;
 			pPaks = Sys_ListFiles(path, ".pk3", NULL, &nPaks, qfalse);
 			pDirs = Sys_ListFiles(path, "/", NULL, &nDirs, qfalse);
@@ -2918,8 +2923,7 @@ static void FS_AddGameDirectory( const char *path, const char *dir ) {
 	Q_strncpyz( fs_gamedir, dir, sizeof( fs_gamedir ) );
 
 	// find all pak files in this directory
-	Q_strncpyz(curpath, FS_BuildOSPath(path, dir, ""), sizeof(curpath));
-	curpath[strlen(curpath) - 1] = '\0';	// strip the trailing slash
+	Q_strncpyz(curpath, FS_BaseDir_BuildOSPath(path, dir), sizeof(curpath));
 
 	// Get .pk3 files
 	pakfiles = Sys_ListFiles(curpath, ".pk3", NULL, &numfiles, qfalse);
