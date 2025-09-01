@@ -181,10 +181,10 @@ Sys_PIDFileName
 */
 static char *Sys_PIDFileName( const char *gamedir )
 {
-	const char *homePath = Cvar_VariableString( "fs_homepath" );
+	const char *homeStatePath = Cvar_VariableString( "fs_homestatepath" );
 
-	if( *homePath != '\0' )
-		return va( "%s/%s/%s", homePath, gamedir, PID_FILENAME );
+	if( *homeStatePath != '\0' )
+		return va( "%s/%s/%s", homeStatePath, gamedir, PID_FILENAME );
 
 	return NULL;
 }

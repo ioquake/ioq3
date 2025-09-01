@@ -616,7 +616,7 @@ char	**FS_ListFiles( const char *directory, const char *extension, int *numfiles
 
 void	FS_FreeFileList( char **list );
 
-qboolean FS_FileExists( const char *file );
+qboolean FS_FileExists_HomeData( const char *file );
 
 qboolean FS_CreatePath (const char *OSPath);
 
@@ -633,14 +633,18 @@ int		FS_GetModList(  char *listbuf, int bufsize );
 
 void	FS_GetModDescription( const char *modDir, char *description, int descriptionLen );
 
-fileHandle_t	FS_FOpenFileWrite( const char *qpath );
-fileHandle_t	FS_FOpenFileAppend( const char *filename );
+fileHandle_t	FS_FOpenFileWrite_HomeConfig( const char *filename );
+fileHandle_t	FS_FOpenFileWrite_HomeData( const char *filename );
+fileHandle_t	FS_FOpenFileWrite_HomeState( const char *filename );
+fileHandle_t	FS_FOpenFileAppend_HomeData( const char *filename );
 fileHandle_t	FS_FCreateOpenPipeFile( const char *filename );
 // will properly create any needed paths and deal with seperater character issues
 
-fileHandle_t FS_BaseDir_FOpenFileWrite( const char *filename );
+fileHandle_t FS_BaseDir_FOpenFileWrite_HomeConfig( const char *filename );
+fileHandle_t FS_BaseDir_FOpenFileWrite_HomeData( const char *filename );
+fileHandle_t FS_BaseDir_FOpenFileWrite_HomeState( const char *filename );
 long		FS_BaseDir_FOpenFileRead( const char *filename, fileHandle_t *fp );
-void	FS_BaseDir_Rename( const char *from, const char *to, qboolean safe );
+void	FS_BaseDir_Rename_HomeData( const char *from, const char *to, qboolean safe );
 long		FS_FOpenFileRead( const char *qpath, fileHandle_t *file, qboolean uniqueFILE );
 // if uniqueFILE is true, then a new FILE will be fopened even if the file
 // is found in an already open pak file.  If uniqueFILE is false, you must call
@@ -725,7 +729,7 @@ qboolean FS_idPak(char *pak, char *base, int numPaks);
 qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring );
 
 void FS_Remove( const char *osPath );
-void FS_HomeRemove( const char *homePath );
+void FS_Remove_HomeData( const char *homePath );
 
 void	FS_FilenameCompletion( const char *dir, const char *ext, char *filter,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk );
@@ -1122,7 +1126,9 @@ char	*Sys_MicrosoftStorePath(void);
 char    *Sys_DefaultAppPath(void);
 #endif
 
-char	*Sys_DefaultHomePath(void);
+char	*Sys_DefaultHomeConfigPath(void);
+char	*Sys_DefaultHomeDataPath(void);
+char	*Sys_DefaultHomeStatePath(void);
 const char *Sys_Dirname( char *path );
 const char *Sys_Basename( char *path );
 char *Sys_ConsoleInput(void);
