@@ -46,18 +46,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define KEY_WOW64_32KEY 0x0200
 #endif
 
-// Used to determine where to store user-specific files
-static char homePath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the Steam Quake 3 installation path
-static char steamPath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the GOG Quake 3 installation path
-static char gogPath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the Microsoft Store Quake 3 installation path
-static char microsoftStorePath[MAX_OSPATH] = { 0 };
-
 #ifndef DEDICATED
 static UINT timerResolution = 0;
 #endif
@@ -102,10 +90,11 @@ Sys_DefaultHomePath
 */
 char *Sys_DefaultHomePath( void )
 {
-	TCHAR szPath[MAX_PATH];
+	static char homePath[ MAX_OSPATH ] = { 0 };
 
 	if(!*homePath && com_homepath)
 	{
+		TCHAR szPath[MAX_PATH];
 
 		if( !SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_APPDATA,
 						NULL, 0, szPath ) ) )
@@ -132,14 +121,20 @@ Sys_SteamPath
 */
 char *Sys_SteamPath( void )
 {
-#if defined(STEAMPATH_NAME) || defined(STEAMPATH_APPID)
+#ifndef STANDALONE
+
+#define STEAMPATH_NAME "Quake 3 Arena"
+#define STEAMPATH_APPID "2200"
+
+	static char steamPath[ MAX_OSPATH ] = { 0 };
+
 	HKEY steamRegKey;
 	DWORD pathLen = MAX_OSPATH;
 	qboolean finishPath = qfalse;
 
-#ifdef STEAMPATH_APPID
 	// Assuming Steam is a 32-bit app
-	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App " STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
+	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App "
+		STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
 	{
 		pathLen = MAX_OSPATH;
 		if (RegQueryValueEx(steamRegKey, "InstallLocation", NULL, NULL, (LPBYTE)steamPath, &pathLen))
@@ -147,9 +142,7 @@ char *Sys_SteamPath( void )
 
 		RegCloseKey(steamRegKey);
 	}
-#endif
 
-#ifdef STEAMPATH_NAME
 	if (!steamPath[0] && !RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_QUERY_VALUE, &steamRegKey))
 	{
 		pathLen = MAX_OSPATH;
@@ -162,7 +155,6 @@ char *Sys_SteamPath( void )
 
 		RegCloseKey(steamRegKey);
 	}
-#endif
 
 	if (steamPath[0])
 	{
@@ -174,9 +166,11 @@ char *Sys_SteamPath( void )
 		if (finishPath)
 			Q_strcat(steamPath, MAX_OSPATH, "\\SteamApps\\common\\" STEAMPATH_NAME );
 	}
-#endif
 
 	return steamPath;
+#else
+	return "";
+#endif
 }
 
 /*
@@ -186,7 +180,12 @@ Sys_GogPath
 */
 char *Sys_GogPath( void )
 {
-#ifdef GOGPATH_ID
+#ifndef STANDALONE
+
+#define GOGPATH_ID "1441704920"
+
+	static char gogPath[ MAX_OSPATH ] = { 0 };
+
 	HKEY gogRegKey;
 	DWORD pathLen = MAX_OSPATH;
 
@@ -206,9 +205,11 @@ char *Sys_GogPath( void )
 
 		gogPath[pathLen] = '\0';
 	}
-#endif
 
 	return gogPath;
+#else
+	return "";
+#endif
 }
 
 /*
@@ -218,7 +219,12 @@ Sys_MicrosoftStorePath
 */
 char* Sys_MicrosoftStorePath(void)
 {
-#ifdef MSSTORE_PATH
+#ifndef STANDALONE
+
+#define MSSTORE_PATH "Quake 3"
+
+	static char microsoftStorePath[MAX_OSPATH] = { 0 };
+
 	if (!microsoftStorePath[0]) 
 	{
 		TCHAR szPath[MAX_PATH];
@@ -233,8 +239,11 @@ char* Sys_MicrosoftStorePath(void)
 		// default: C:\Program Files\ModifiableWindowsApps\Quake 3\EN
 		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN", szPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
 	}
-#endif
+
 	return microsoftStorePath;
+#else
+	return "";
+#endif
 }
 
 /*
