@@ -43,72 +43,412 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 qboolean stdinIsATTY;
 
+#ifdef __APPLE__
+
 /*
 ==================
 Sys_DefaultHomePath
 ==================
 */
-char *Sys_DefaultHomePath(void)
+static char *Sys_DefaultHomePath(void)
 {
 	static char homePath[ MAX_OSPATH ] = { 0 };
 	char *p;
 
 	if( !*homePath && com_homepath != NULL )
 	{
-#ifdef __APPLE__
 		if( ( p = getenv( "HOME" ) ) != NULL )
 		{
-			Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
+			Com_sprintf( homePath, sizeof(homePath), "%s%c%s",
+				p, PATH_SEP, "Library/Application Support/" );
 
-			Q_strcat(homePath, sizeof(homePath),
-				"Library/Application Support/");
-
-			if(com_homepath->string[0])
+			if( com_homepath->string[0] )
 				Q_strcat(homePath, sizeof(homePath), com_homepath->string);
 			else
 				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_MACOSX);
 		}
-#else
-		if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
-		{
-			if( ( p = getenv( "XDG_DATA_HOME" ) ) != NULL && *p != '\0' )
-			{
-				Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
-			}
-			else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
-			{
-				Com_sprintf(homePath, sizeof(homePath), "%s%c.local%cshare%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
-			}
-
-			if( *homePath )
-			{
-				char *dir;
-
-				if(com_homepath->string[0])
-					dir = com_homepath->string;
-				else
-					dir = HOMEPATH_NAME_UNIX;
-
-				if(dir[0] == '.' && dir[1] != '\0')
-					dir++;
-
-				Q_strcat(homePath, sizeof(homePath), dir);
-			}
-		}
-		else if( ( p = getenv( "HOME" ) ) != NULL )
-		{
-			Com_sprintf(homePath, sizeof(homePath), "%s%c", p, PATH_SEP);
-
-			if(com_homepath->string[0])
-				Q_strcat(homePath, sizeof(homePath), com_homepath->string);
-			else
-				Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_UNIX);
-		}
-#endif
 	}
 
 	return homePath;
 }
+
+char *Sys_DefaultHomeConfigPath(void) { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeDataPath(void)   { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeStatePath(void)  { return Sys_DefaultHomePath(); }
+
+#else // __APPLE__
+
+static char execBuffer[ 1024 ];
+static char *execBufferPointer;
+static char *execArgv[ 16 ];
+static int execArgc;
+
+/*
+==============
+Sys_ClearExecBuffer
+==============
+*/
+static void Sys_ClearExecBuffer( void )
+{
+	execBufferPointer = execBuffer;
+	Com_Memset( execArgv, 0, sizeof( execArgv ) );
+	execArgc = 0;
+}
+
+/*
+==============
+Sys_AppendToExecBuffer
+==============
+*/
+static void Sys_AppendToExecBuffer( const char *text )
+{
+	size_t size = sizeof( execBuffer ) - ( execBufferPointer - execBuffer );
+	int length = strlen( text ) + 1;
+
+	if( length > size || execArgc >= ARRAY_LEN( execArgv ) )
+		return;
+
+	Q_strncpyz( execBufferPointer, text, size );
+	execArgv[ execArgc++ ] = execBufferPointer;
+
+	execBufferPointer += length;
+}
+
+/*
+==============
+Sys_Exec
+==============
+*/
+static int Sys_Exec( void )
+{
+	pid_t pid = fork( );
+
+	if( pid < 0 )
+		return -1;
+
+	if( pid )
+	{
+		// Parent
+		int exitCode;
+
+		wait( &exitCode );
+
+		return WEXITSTATUS( exitCode );
+	}
+	else
+	{
+		// Child
+		execvp( execArgv[ 0 ], execArgv );
+
+		// Failed to execute
+		exit( -1 );
+
+		return -1;
+	}
+}
+
+/*
+==================
+Sys_HomeConfigPath
+==================
+*/
+char *Sys_HomeConfigPath(void)
+{
+	static char homeConfigPath[ MAX_OSPATH ] = { 0 };
+	char *p;
+
+	if( !*homeConfigPath )
+	{
+		if( ( p = getenv( "XDG_CONFIG_HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeConfigPath, sizeof(homeConfigPath), "%s%c", p, PATH_SEP);
+		else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeConfigPath, sizeof(homeConfigPath), "%s%c.config%c", p, PATH_SEP, PATH_SEP);
+
+		if( *homeConfigPath )
+		{
+			if( com_homepath && com_homepath->string[0] )
+				Q_strcat(homeConfigPath, sizeof(homeConfigPath), com_homepath->string);
+			else
+				Q_strcat(homeConfigPath, sizeof(homeConfigPath), HOMEPATH_NAME_UNIX);
+		}
+	}
+
+	return homeConfigPath;
+}
+
+/*
+==================
+Sys_HomeDataPath
+==================
+*/
+char *Sys_HomeDataPath(void)
+{
+	static char homeDataPath[ MAX_OSPATH ] = { 0 };
+	char *p;
+
+	if( !*homeDataPath )
+	{
+		if( ( p = getenv( "XDG_DATA_HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeDataPath, sizeof(homeDataPath), "%s%c", p, PATH_SEP);
+		else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeDataPath, sizeof(homeDataPath), "%s%c.local%cshare%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
+
+		if( *homeDataPath )
+		{
+			if( com_homepath && com_homepath->string[0] )
+				Q_strcat(homeDataPath, sizeof(homeDataPath), com_homepath->string);
+			else
+				Q_strcat(homeDataPath, sizeof(homeDataPath), HOMEPATH_NAME_UNIX);
+		}
+	}
+
+	return homeDataPath;
+}
+
+/*
+==================
+Sys_HomeStatePath
+==================
+*/
+char *Sys_HomeStatePath(void)
+{
+	static char homeStatePath[ MAX_OSPATH ] = { 0 };
+	char *p;
+
+	if( !*homeStatePath )
+	{
+		if( ( p = getenv( "XDG_STATE_HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeStatePath, sizeof(homeStatePath), "%s%c", p, PATH_SEP);
+		else if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
+			Com_sprintf(homeStatePath, sizeof(homeStatePath), "%s%c.local%cstate%c", p, PATH_SEP, PATH_SEP, PATH_SEP);
+
+		if( *homeStatePath )
+		{
+			if( com_homepath && com_homepath->string[0] )
+				Q_strcat(homeStatePath, sizeof(homeStatePath), com_homepath->string);
+			else
+				Q_strcat(homeStatePath, sizeof(homeStatePath), HOMEPATH_NAME_UNIX);
+		}
+	}
+
+	return homeStatePath;
+}
+
+/*
+==================
+Sys_LegacyHomePath
+==================
+*/
+static char *Sys_LegacyHomePath(void)
+{
+	static char homePath[ MAX_OSPATH ] = { 0 };
+	char *p;
+
+	if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
+	{
+		// Flatpaks always use XDG
+		return "";
+	}
+
+	if( !*homePath )
+	{
+		if( ( p = getenv( "HOME" ) ) != NULL && *p != '\0' )
+		{
+			Com_sprintf(homePath, sizeof(homePath), "%s%c%s",
+				p, PATH_SEP, HOMEPATH_NAME_UNIX_LEGACY);
+		}
+	}
+
+	return homePath;
+}
+
+/*
+==================
+Sys_MigrateToXDG
+==================
+*/
+qboolean Sys_MigrateToXDG(void)
+{
+	const char *scriptTemplate =
+		"#!/bin/sh\n"
+
+		"set -eu\n"
+
+		"legacy_home=\"%s\"\n"
+		"xdg_config_home=\"%s\"\n"
+		"xdg_data_home=\"%s\"\n"
+		"xdg_state_home=\"%s\"\n"
+
+		"glob_copy() {\n"
+		"    src=\"$1\"\n"
+		"    dst=\"$2\"\n"
+		"    shift 2\n"
+
+		"    for pattern in \"$@\"; do\n"
+		"        subdir=$(dirname \"$pattern\")\n"
+		"        [ \"$subdir\" = \".\" ] && subdir=\"\"\n"
+		"        find \"$src\" -path \"$src/$pattern\" -type f \\\n"
+		"            -exec mkdir -p \"$dst/$subdir\" \\; \\\n"
+		"            -exec cp -v {} \"$dst/$subdir\" \\;\n"
+		"    done\n"
+		"}\n"
+
+		"echo \"Starting XDG migration...\"\n"
+
+		"glob_copy \"$legacy_home\" \"$xdg_state_home\" \\\n"
+		"    \"qkey\"\n"
+
+		"for game_dir in \"$legacy_home\"/*; do\n"
+		"    [ -d \"$game_dir\" ] || continue\n"
+		"    game=$(basename \"$game_dir\")\n"
+
+		"    glob_copy \"$legacy_home/$game\" \"$xdg_config_home/$game\" \\\n"
+		"        \"*.cfg\"\n"
+
+		"    glob_copy \"$legacy_home/$game\" \"$xdg_data_home/$game\" \\\n"
+		"        \"demos/*.dm_*\" \"*.log\" \"*.pk3\" \"*.txt\" \\\n"
+		"        \"screenshots/*.jpg\" \"screenshots/*.tga\" \"videos/*.avi\"\n"
+
+		"    glob_copy \"$legacy_home/$game\" \"$xdg_state_home/$game\" \\\n"
+		"        \"*.dat\" \"q3history\" \"q3key\"\n"
+		"done\n"
+
+		"echo \"XDG migration complete!\"\n";
+
+	char scriptBuffer[2048];
+	int len = Com_sprintf( scriptBuffer, sizeof( scriptBuffer ), scriptTemplate,
+		Sys_LegacyHomePath( ), Sys_HomeConfigPath( ),
+		Sys_HomeDataPath( ), Sys_HomeStatePath( ) );
+
+	if ( len < 0 || len >= (int)sizeof( scriptBuffer ) )
+	{
+		Com_Printf( "XDG migration error: substitution failed.\n" );
+		return qfalse;
+	}
+
+	char scriptPath[] = "/tmp/xdgmigrationXXXXXX";
+	int fd = mkstemp( scriptPath );
+	if ( fd == -1 )
+	{
+		Com_Printf( "XDG migration error: script creation failed.\n" );
+		return qfalse;
+	}
+
+	if ( write( fd, scriptBuffer, len ) != len )
+	{
+		close( fd );
+		unlink( scriptPath );
+		Com_Printf( "XDG migration error: script write failed.\n" );
+		return qfalse;
+	}
+	close( fd );
+
+	if ( chmod( scriptPath, 0700 ) == -1 )
+	{
+		unlink( scriptPath );
+		Com_Printf( "XDG migration error: script chmod failed.\n" );
+		return qfalse;
+	}
+
+	Sys_ClearExecBuffer( );
+	Sys_AppendToExecBuffer( scriptPath );
+	int result = Sys_Exec( );
+	unlink( scriptPath );
+
+	return result == 0;
+}
+
+/*
+==================
+Sys_ShouldUseLegacyHomePath
+==================
+*/
+static qboolean Sys_ShouldUseLegacyHomePath(void)
+{
+	if( access( Sys_HomeConfigPath( ), F_OK ) == 0 )
+	{
+		// If the XDG config directory exists, prefer that, regardless
+		return qfalse;
+	}
+
+	const char *legacyHomePath = Sys_LegacyHomePath();
+
+	if( !*legacyHomePath || access( legacyHomePath, F_OK ) != 0 )
+	{
+		// The legacy home path doesn't exist
+		return qfalse;
+	}
+
+	char migrationRefusedPath[ MAX_OSPATH ];
+	Com_sprintf( migrationRefusedPath, sizeof( migrationRefusedPath ),
+		"%s/.xdgMigrationRefused", legacyHomePath );
+
+	// If the user hasn't already refused, ask if they want to migrate
+	if( access( migrationRefusedPath, F_OK ) != 0 )
+	{
+		dialogResult_t result = Sys_Dialog( DT_YES_NO, va(
+			"Games and applications now store files in different "
+			"directories to match the Free Desktop standard.\n\n"
+			"Here's what that would look like:\n\n"
+			"%s\nConfiguration files.\n\n"
+			"%s\nData files; pk3s, screenshots, logs, demos, etc..\n\n"
+			"%s\nInternal runtime files.\n\n"
+			"Right now you are using %s for all these files.\n\n"
+			"Do you want to copy your files to the new directories?",
+			Sys_HomeConfigPath( ), Sys_HomeDataPath( ), Sys_HomeStatePath( ),
+			legacyHomePath ),
+			"Legacy Home Directory Path" );
+
+		if( result == DR_YES )
+			return !Sys_MigrateToXDG( );
+
+		// Guard against asking again in future
+		fclose( fopen( migrationRefusedPath, "w" ) );
+	}
+
+	return qtrue;
+}
+
+/*
+==================
+Sys_DefaultHomeConfigPath
+==================
+*/
+char *Sys_DefaultHomeConfigPath(void)
+{
+	if( Sys_ShouldUseLegacyHomePath( ) )
+		return Sys_LegacyHomePath( );
+
+	return Sys_HomeConfigPath( );
+}
+
+/*
+==================
+Sys_DefaultHomeDataPath
+==================
+*/
+char *Sys_DefaultHomeDataPath(void)
+{
+	if( Sys_ShouldUseLegacyHomePath( ) )
+		return Sys_LegacyHomePath( );
+
+	return Sys_HomeDataPath( );
+}
+
+/*
+==================
+Sys_DefaultHomeStatePath
+==================
+*/
+char *Sys_DefaultHomeStatePath(void)
+{
+	if( Sys_ShouldUseLegacyHomePath( ) )
+		return Sys_LegacyHomePath( );
+
+	return Sys_HomeStatePath( );
+}
+
+#endif
 
 /*
 ================
@@ -599,11 +939,11 @@ void Sys_ErrorDialog( const char *error )
 	char buffer[ 1024 ];
 	unsigned int size;
 	int f = -1;
-	const char *homepath = Cvar_VariableString( "fs_homepath" );
+	const char *homedatapath = Cvar_VariableString( "fs_homedatapath" );
 	const char *gamedir = Cvar_VariableString( "fs_game" );
 	const char *fileName = "crashlog.txt";
-	char *dirpath = FS_BuildOSPath( homepath, gamedir, "");
-	char *ospath = FS_BuildOSPath( homepath, gamedir, fileName );
+	char *dirpath = FS_BuildOSPath( homedatapath, gamedir, "");
+	char *ospath = FS_BuildOSPath( homedatapath, gamedir, fileName );
 
 	Sys_Print( va( "%s\n", error ) );
 
@@ -613,9 +953,9 @@ void Sys_ErrorDialog( const char *error )
 
 	// Make sure the write path for the crashlog exists...
 
-	if(!Sys_Mkdir(homepath))
+	if(!Sys_Mkdir(homedatapath))
 	{
-		Com_Printf("ERROR: couldn't create path '%s' for crash log.\n", homepath);
+		Com_Printf("ERROR: couldn't create path '%s' for crash log.\n", homedatapath);
 		return;
 	}
 
@@ -647,74 +987,6 @@ void Sys_ErrorDialog( const char *error )
 }
 
 #ifndef __APPLE__
-static char execBuffer[ 1024 ];
-static char *execBufferPointer;
-static char *execArgv[ 16 ];
-static int execArgc;
-
-/*
-==============
-Sys_ClearExecBuffer
-==============
-*/
-static void Sys_ClearExecBuffer( void )
-{
-	execBufferPointer = execBuffer;
-	Com_Memset( execArgv, 0, sizeof( execArgv ) );
-	execArgc = 0;
-}
-
-/*
-==============
-Sys_AppendToExecBuffer
-==============
-*/
-static void Sys_AppendToExecBuffer( const char *text )
-{
-	size_t size = sizeof( execBuffer ) - ( execBufferPointer - execBuffer );
-	int length = strlen( text ) + 1;
-
-	if( length > size || execArgc >= ARRAY_LEN( execArgv ) )
-		return;
-
-	Q_strncpyz( execBufferPointer, text, size );
-	execArgv[ execArgc++ ] = execBufferPointer;
-
-	execBufferPointer += length;
-}
-
-/*
-==============
-Sys_Exec
-==============
-*/
-static int Sys_Exec( void )
-{
-	pid_t pid = fork( );
-
-	if( pid < 0 )
-		return -1;
-
-	if( pid )
-	{
-		// Parent
-		int exitCode;
-
-		wait( &exitCode );
-
-		return WEXITSTATUS( exitCode );
-	}
-	else
-	{
-		// Child
-		execvp( execArgv[ 0 ], execArgv );
-
-		// Failed to execute
-		exit( -1 );
-
-		return -1;
-	}
-}
 
 /*
 ==============
