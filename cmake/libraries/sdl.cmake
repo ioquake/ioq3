@@ -2,6 +2,13 @@ if(NOT BUILD_CLIENT)
     return()
 endif()
 
+if(EMSCRIPTEN)
+    # Emscripten provides its own self contained SDL setup
+    list(APPEND CLIENT_COMPILE_OPTIONS -sUSE_SDL=2)
+    list(APPEND CLIENT_LINK_OPTIONS -sUSE_SDL=2)
+    return()
+endif()
+
 set(INTERNAL_SDL_DIR ${SOURCE_DIR}/thirdparty/SDL2-2.32.8)
 
 include(utils/arch)

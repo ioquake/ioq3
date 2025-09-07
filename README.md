@@ -118,7 +118,7 @@ For Emscripten,
      setting up the environment with emsdk_env. https://emscripten.org/
   2. `git clone git://github.com/ioquake/ioq3.git`
   3. `cd ioq3`
-  4. `emcmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+  4. `emcmake cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
   5. `cmake --build build`
   3. Copy or symlink your baseq3 pk3 files into the `build/Release/baseq3`
      directory so they can be loaded at run-time. Only game files listed in
