@@ -283,7 +283,7 @@ void Con_CheckResize (void)
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	short	tbuf[CON_TEXTSIZE];
 
-	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH) - 2;
+	width = (cls.glconfig.vidWidth / SMALLCHAR_WIDTH) - 2;
 
 	if (width == con.linewidth)
 		return;
