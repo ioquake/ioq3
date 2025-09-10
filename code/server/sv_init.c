@@ -669,6 +669,8 @@ void SV_Init (void)
 	sv_zombietime = Cvar_Get ("sv_zombietime", "2", CVAR_TEMP );
 	Cvar_Get ("nextmap", "", CVAR_TEMP );
 
+	sv_entityPath = Cvar_Get("sv_entityPath", "maps", CVAR_ARCHIVE );
+
 	sv_allowDownload = Cvar_Get ("sv_allowDownload", "0", CVAR_SERVERINFO);
 	Cvar_Get ("sv_dlURL", "", CVAR_SERVERINFO | CVAR_ARCHIVE);
 	
