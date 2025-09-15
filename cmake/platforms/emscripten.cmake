@@ -32,7 +32,7 @@ if(EMSCRIPTEN_PRELOAD_FILE)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${BASEGAME}")
         message(FATAL_ERROR "No files in '${BASEGAME}' directory for emscripten to preload.")
     endif()
-    list(APPEND CLIENT_LINK_OPTIONS "--preload-file ${BASEGAME}")
+    list(APPEND CLIENT_LINK_OPTIONS --preload-file "${BASEGAME}")
 endif()
 
 set(POST_CLIENT_CONFIGURE_FUNCTION deploy_shell_files)
