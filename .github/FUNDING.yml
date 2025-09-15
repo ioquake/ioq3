@@ -8,7 +8,7 @@ community_bridge: # Replace with a single Community Bridge project-name e.g., cl
 liberapay: # Replace with a single Liberapay username
 issuehunt: # Replace with a single IssueHunt username
 otechie: # Replace with a single Otechie username
-custom: ['https://www.patreon.com/icculus', 'https://www.patreon.com/SmileTheory', 'https://ko-fi.com/zturtleman']
+custom: ['https://www.patreon.com/icculus', 'https://www.patreon.com/SmileTheory']
 
 
 #please add your links to this if you've been a long-time contributor!
