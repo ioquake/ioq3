@@ -567,12 +567,15 @@ See opengl2-readme.md for more information.
 
 Maintainers
 
+  * Tim Angus <tim@ngus.net>
+  * Jack "Mr. Nuclear Monster" Slater <jack@ioquake.org>
+
+Former Maintainers
+
   * James Canete <use.less01@gmail.com>
   * Ludwig Nussel <ludwig.nussel@suse.de>
   * Thilo Schulz <arny@ats.s.bawue.de>
-  * Tim Angus <tim@ngus.net>
   * Tony J. White <tjw@tjw.org>
-  * Jack "Mr. Nuclear Monster" Slater <jack@ioquake.org>
   * Zack Middleton <zturtleman@gmail.com>
 
 Significant contributions from
