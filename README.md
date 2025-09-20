@@ -301,6 +301,10 @@ set using command line arguments:
                                       "Network protocols" section below
                                       (startup only)
 
+  g_shotgunGibFix                   - enable the fix for the bug where the
+                                      shotgun doesn't gib unless you aim at the
+                                      feet.
+
   in_joystickNo                     - select which joystick to use
   in_availableJoysticks             - list of available Joysticks
   in_keyboardDebug                  - print keyboard debug info
