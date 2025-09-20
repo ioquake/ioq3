@@ -1577,7 +1577,7 @@ void CL_SaveConsoleHistory( void )
 
 	consoleSaveBufferSize = strlen( consoleSaveBuffer );
 
-	f = FS_FOpenFileWrite( CONSOLE_HISTORY_FILE );
+	f = FS_FOpenFileWrite_HomeState( CONSOLE_HISTORY_FILE );
 	if( !f )
 	{
 		Com_Printf( "Couldn't write %s.\n", CONSOLE_HISTORY_FILE );
