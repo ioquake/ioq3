@@ -110,6 +110,8 @@ Unsure where to begin contributing to ioquake3?
 
 Check out our issues and pull requests, you can review and make new suggestions.
 
+We also have a label called [new contributor](https://github.com/ioquake/ioq3/issues?q=state%3Aopen%20label%3A%22new%20contributor%22) that might be a good starting point.
+
 #### Local development
 
 ioquake3 can be developed locally. For instructions on how to do this, read the README.md.
