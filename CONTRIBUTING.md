@@ -1,6 +1,6 @@
 # Contributing to The ioquake3 Project
 
-The following is a set of guidelines for contributing to ioquake3 which is hosted in the [The ioquake Group](https://github.com/ioquake) on Github. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing to ioquake3 which is hosted in the [The ioquake Group](https://github.com/ioquake) on Github. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request. The intent of this project is to provide a baseline engine which may be used for further development and to play Quake 3: Arena, Team Arena, and mods. 
 
 ## Table Of Contents
 
