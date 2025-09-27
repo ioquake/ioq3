@@ -54,6 +54,7 @@ vmCvar_t	g_gravity;
 vmCvar_t	g_cheats;
 vmCvar_t	g_knockback;
 vmCvar_t	g_quadfactor;
+vmCvar_t	g_shotgunMorePellets;
 vmCvar_t	g_forcerespawn;
 vmCvar_t	g_inactivity;
 vmCvar_t	g_debugMove;
@@ -142,6 +143,10 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_gravity, "g_gravity", "800", 0, 0, qtrue  },
 	{ &g_knockback, "g_knockback", "1000", 0, 0, qtrue  },
 	{ &g_quadfactor, "g_quadfactor", "3", 0, 0, qtrue  },
+	// So is it supposed to be `g_` or `com_`?
+	// Because these are `CVAR_SERVERINFO` things, the client cannot set them
+	// separately.
+	{ &g_shotgunMorePellets, "g_shotgunMorePellets", "0", CVAR_SERVERINFO, 0, qtrue },
 	{ &g_weaponRespawn, "g_weaponrespawn", "5", 0, 0, qtrue  },
 	{ &g_weaponTeamRespawn, "g_weaponTeamRespawn", "30", 0, 0, qtrue },
 	{ &g_forcerespawn, "g_forcerespawn", "20", 0, 0, qtrue },

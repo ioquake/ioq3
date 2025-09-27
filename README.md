@@ -301,6 +301,14 @@ set using command line arguments:
                                       "Network protocols" section below
                                       (startup only)
 
+  g_shotgunMorePellets              - Doubles the amount of pellets that the
+                                      shotgun fires, while keeping the damage
+                                      the same, like in Quake Live. Increases
+                                      the reliability of the shotgun damage.
+                                      Note that client-side this might not be
+                                      visible, due to the usage of a different
+                                      `cgame.vm`.
+
   in_joystickNo                     - select which joystick to use
   in_availableJoysticks             - list of available Joysticks
   in_keyboardDebug                  - print keyboard debug info

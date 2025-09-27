@@ -1013,6 +1013,7 @@ typedef struct {
 	char			mapname[MAX_QPATH];
 	char			redTeam[MAX_QPATH];
 	char			blueTeam[MAX_QPATH];
+	qboolean 		g_shotgunMorePellets;
 
 	int				voteTime;
 	int				voteYes;
