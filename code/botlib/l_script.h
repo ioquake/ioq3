@@ -234,7 +234,7 @@ char *PunctuationFromNum(script_t *script, int num);
 //load a script from the given file at the given offset with the given length
 script_t *LoadScriptFile(const char *filename);
 //load a script from the given memory with the given length
-script_t *LoadScriptMemory(char *ptr, int length, char *name);
+script_t *LoadScriptMemory(const char *ptr, int length, char *name);
 //free a script
 void FreeScript(script_t *script);
 //set the base folder to load files from
