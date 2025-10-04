@@ -141,7 +141,140 @@ Draws vertex normals for debugging
 ================
 */
 static void DrawNormals (shaderCommands_t *input) {
-	//FIXME: implement this
+	if (!input) return;
+
+	const int vertexCount = input->numVertexes;
+	if (vertexCount <= 0 || !input->xyz || !input->normal) return;
+	if (!input->shader || input->shader->isSky) return;   // do not draw over sky/clouds
+	if (input->shader->numDeforms > 0) return;  // skip vertex-deformed surfaces
+
+	// Skip animated entities that are interpolating; otherwise normals will appear to "swim".
+	if (backEnd.currentEntity != &tr.worldEntity) {
+		const trRefEntity_t* refEnt = backEnd.currentEntity;
+		if (refEnt && refEnt->e.backlerp > 0) return;
+	}
+
+	const float       lineLength = 6.0f;
+
+	// xyz is vec4_t (x,y,z,1)
+	const float*      positionsXYZW   = (const float*)input->xyz;
+	const int16_t*    packedNormals   = (const int16_t*)input->normal;
+	const float*      floatNormals    = (const float*)input->normal;
+
+	const vao_t*      boundVao        = glState.currentVao;
+	qboolean          usePacked       = qfalse;
+
+	if (boundVao) {
+		const vaoAttrib_t* a = &boundVao->attribs[ATTR_INDEX_NORMAL];
+		usePacked = (a->type == GL_SHORT && a->normalized);
+	}
+	else {
+		const float sx = packedNormals[0] * (1.0f / 32767.0f);
+		const float sy = packedNormals[1] * (1.0f / 32767.0f);
+		const float sz = packedNormals[2] * (1.0f / 32767.0f);
+
+		const float lp = sx * sx + sy * sy + sz * sz;
+		const float lf = floatNormals[0] * floatNormals[0]
+			+ floatNormals[1] * floatNormals[1]
+			+ floatNormals[2] * floatNormals[2];
+
+		usePacked = fabsf(lp - 1.0f) <= fabsf(lf - 1.0f);
+	}
+
+	const GLsizeiptr floatsPerVertex = 6;
+	const GLsizeiptr maxFloatCount = floatsPerVertex * (GLsizeiptr)vertexCount;
+	const GLsizeiptr maxByteCount = (GLsizeiptr)sizeof(float) * maxFloatCount;
+
+	float* lineVertices = (float*)ri.Hunk_AllocateTempMemory((int)maxByteCount);
+	float* writePtr = lineVertices;
+
+	// Build the line list
+	for (int i = 0; i < vertexCount; ++i, positionsXYZW += 4) {
+		vec3_t n;
+
+		if (usePacked) {
+			R_VaoUnpackNormal(n, (int16_t*)packedNormals);
+			packedNormals += 4;
+		}
+		else {
+			n[0] = floatNormals[0];
+			n[1] = floatNormals[1];
+			n[2] = floatNormals[2];
+			floatNormals += 4;
+		}
+
+		// endpoints in object/world space
+		const float startX = positionsXYZW[0];
+		const float startY = positionsXYZW[1];
+		const float startZ = positionsXYZW[2];
+
+		const float endX = startX + n[0] * lineLength;
+		const float endY = startY + n[1] * lineLength;
+		const float endZ = startZ + n[2] * lineLength;
+
+
+		// emit line
+		*writePtr++ = startX; *writePtr++ = startY; *writePtr++ = startZ;
+		*writePtr++ = endX;   *writePtr++ = endY;   *writePtr++ = endZ;
+	}
+
+	const GLsizei numVerts = (GLsizei)((writePtr - lineVertices) / 3);
+	if (numVerts == 0) {
+		ri.Hunk_FreeTempMemory(lineVertices);
+		return;
+	}
+
+	// save bindings
+	GLint prevProg = 0, prevVao = 0, prevArrayBuf = 0;
+	qglGetIntegerv(GL_CURRENT_PROGRAM, &prevProg);
+	qglGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
+	qglGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
+
+	GL_BindToTMU(tr.whiteImage, TB_COLORMAP);
+	GL_State(GLS_POLYMODE_LINE);
+	GLboolean prevDepthMask;
+	qglGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+	qglDepthMask(GL_FALSE);
+
+
+	R_BindNullVao();
+
+	// temp VAO/VBO
+	GLuint vao = 0, vbo = 0;
+	qglGenVertexArrays(1, &vao);
+	qglBindVertexArray(vao);
+
+	qglGenBuffers(1, &vbo);
+	qglBindBuffer(GL_ARRAY_BUFFER, vbo);
+	qglBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * numVerts, lineVertices, GL_STREAM_DRAW);
+
+	shaderProgram_t* program = &tr.textureColorShader;
+	GLSL_BindProgram(program);
+	GLSL_SetUniformMat4(program, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+	vec4_t white;
+	VectorSet4(white, 1, 1, 1, 1);
+	GLSL_SetUniformVec4(program, UNIFORM_COLOR, white);
+
+	// position at location 0 in this backend
+	qglEnableVertexAttribArray(ATTR_INDEX_POSITION);
+	qglVertexAttribPointer(ATTR_INDEX_POSITION, 3, GL_FLOAT, GL_FALSE, 0, (const void*)0);
+
+	qglDrawArrays(GL_LINES, 0, numVerts);
+
+	qglDisableVertexAttribArray(ATTR_INDEX_POSITION);
+
+	// restore
+	qglDepthMask(prevDepthMask);
+	qglBindBuffer(GL_ARRAY_BUFFER, prevArrayBuf);
+	qglBindVertexArray(prevVao);
+	qglDeleteBuffers(1, &vbo);
+	qglDeleteVertexArrays(1, &vao);
+
+	if (prevProg) qglUseProgram((GLuint)prevProg);
+	else          qglUseProgram(0);
+
+	ri.Hunk_FreeTempMemory(lineVertices);
 }
 
 /*
