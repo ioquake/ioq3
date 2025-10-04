@@ -522,7 +522,7 @@ void SV_DirectConnect( netadr_t from ) {
 			}
 		}
 		else {
-			NET_OutOfBandPrint( NS_SERVER, from, "print\nServer is full.\n" );
+			NET_OutOfBandPrint( NS_SERVER, from, "print\nServer is full\n" );
 			Com_DPrintf ("Rejected a connection.\n");
 			return;
 		}
