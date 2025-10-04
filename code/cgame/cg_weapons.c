@@ -2034,6 +2034,7 @@ hit splashes
 */
 static void CG_ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, int otherEntNum ) {
 	int			i;
+	int 		numPellets;
 	float		r, u;
 	vec3_t		end;
 	vec3_t		forward, right, up;
@@ -2044,8 +2045,9 @@ static void CG_ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, int othe
 	PerpendicularVector( right, forward );
 	CrossProduct( forward, right, up );
 
+	numPellets = DEFAULT_SHOTGUN_COUNT * (cgs.g_shotgunMorePellets ? 2 : 1);
 	// generate the "random" spread pattern
-	for ( i = 0 ; i < DEFAULT_SHOTGUN_COUNT ; i++ ) {
+	for ( i = 0 ; i < numPellets ; i++ ) {
 		r = Q_crandom( &seed ) * DEFAULT_SHOTGUN_SPREAD * 16;
 		u = Q_crandom( &seed ) * DEFAULT_SHOTGUN_SPREAD * 16;
 		VectorMA( origin, 8192 * 16, forward, end);
