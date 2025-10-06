@@ -43,8 +43,13 @@ The original id software readme that accompanied the Q3 source release has been
 renamed to id-readme.txt so as to prevent confusion. Please refer to the
 website for updated status.
 
-More documentation including a Player's Guide and Sysadmin Guide are on:
-https://ioquake3.org/help/
+## Just want to play ioquake3?
+Check out our Player's Guide here:
+https://ioquake3.org/help/players-guide/
+
+## Want to run a server?
+Our SysAdmin guide is here:
+https://ioquake3.org/help/sys-admin-guide/
 
 If you've got issues that you aren't sure are worth filing as bugs, or just
 want to chat, please visit our forums:
