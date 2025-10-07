@@ -4,7 +4,6 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set bounds of container window to {100, 100, 600, 500}
 
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
@@ -14,15 +13,34 @@ tell application "Finder"
             set background picture of viewOptions to file ".background:background.png"
         end try
 
-        set position of item "@CLIENT_NAME@.app" to {100, 80}
-        set position of item "Applications" to {400, 80}
+        if "@CPACK_DMG_SUBDIRECTORY@" is not "" then
+            if not (exists folder "@CPACK_DMG_SUBDIRECTORY@") then
+                make new folder at container window with properties {name:"@CPACK_DMG_SUBDIRECTORY@"}
+            end if
 
-        set position of item "@SERVER_NAME@" to {100, 260}
-        set position of item "@BASEGAME@" to {250, 260}
+            move item "@CLIENT_NAME@.app" to folder "@CPACK_DMG_SUBDIRECTORY@"
+            move item "@SERVER_NAME@" to folder "@CPACK_DMG_SUBDIRECTORY@"
+            move item "@BASEGAME@" to folder "@CPACK_DMG_SUBDIRECTORY@"
 
-        if exists item "missionpack" then
-            set position of item "missionpack" to {400, 260}
+            if exists item "missionpack" then
+                move item "missionpack" to folder "@CPACK_DMG_SUBDIRECTORY@"
+            end if
+
+            set position of item "@CPACK_DMG_SUBDIRECTORY@" to {100, 80}
+            set bounds of container window to {100, 100, 600, 320}
+        else
+            set position of item "@CLIENT_NAME@.app" to {100, 80}
+            set position of item "@SERVER_NAME@" to {100, 260}
+            set position of item "@BASEGAME@" to {250, 260}
+
+            if exists item "missionpack" then
+                set position of item "missionpack" to {400, 260}
+            end if
+
+            set bounds of container window to {100, 100, 600, 500}
         end if
+
+        set position of item "Applications" to {400, 80}
 
         close
         open
