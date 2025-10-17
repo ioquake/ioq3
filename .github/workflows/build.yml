@@ -205,6 +205,19 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
+  openbsd:
+    name: OpenBSD
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Compile
+      uses: vmactions/openbsd-vm@v1
+      with:
+        prepare: |
+          pkg_add cmake ninja sdl2
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
   check-is-release:
     if: github.event_name != 'pull_request'
