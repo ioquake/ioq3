@@ -192,6 +192,19 @@ jobs:
       run: |
         cmake -S . -B build -G Ninja -DUSE_INTERNAL_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
         cmake --build build
+  freebsd:
+    name: FreeBSD
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Compile
+      uses: vmactions/freebsd-vm@v1
+      with:
+        prepare: |
+          pkg install -y cmake ninja devel/sdl20
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
   check-is-release:
     if: github.event_name != 'pull_request'
