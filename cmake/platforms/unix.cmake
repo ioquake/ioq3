@@ -16,7 +16,12 @@ if(USE_HTTP)
     list(APPEND CLIENT_PLATFORM_SOURCES ${SOURCE_DIR}/client/cl_http_curl.c)
 endif()
 
+if(NOT BSD)
+    list(APPEND COMMON_LIBRARIES
+        dl  # Dynamic loader
+    )
+endif()
+
 list(APPEND COMMON_LIBRARIES
-    dl  # Dynamic loader
     m   # Math library
 )
