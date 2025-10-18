@@ -1052,10 +1052,10 @@ static void CL_CompleteDemoName( char *args, int argNum )
 {
 	if( argNum == 2 )
 	{
-		char demoExt[ 16 ];
+		char demoFilter[ 16 ];
 
-		Com_sprintf(demoExt, sizeof(demoExt), ".%s%d", DEMOEXT, com_protocol->integer);
-		Field_CompleteFilename( "demos", demoExt, qtrue, qtrue );
+		Com_sprintf( demoFilter, sizeof(demoFilter), "*.%s*", DEMOEXT );
+		Field_CompleteFilename( "demos", "", demoFilter, qfalse, qtrue );
 	}
 }
 

@@ -727,7 +727,7 @@ qboolean FS_ComparePaks( char *neededpaks, int len, qboolean dlstring );
 void FS_Remove( const char *osPath );
 void FS_HomeRemove( const char *homePath );
 
-void	FS_FilenameCompletion( const char *dir, const char *ext,
+void	FS_FilenameCompletion( const char *dir, const char *ext, char *filter,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk );
 
 const char *FS_GetCurrentGameDir(void);
@@ -752,8 +752,9 @@ typedef struct {
 void Field_Clear( field_t *edit );
 void Field_AutoComplete( field_t *edit );
 void Field_CompleteKeyname( void );
-void Field_CompleteFilename( const char *dir,
-		const char *ext, qboolean stripExt, qboolean allowNonPureFilesOnDisk );
+void Field_CompleteFilename( const char *dir, const char *ext,
+		char *filter, qboolean stripExt,
+		qboolean allowNonPureFilesOnDisk );
 void Field_CompleteCommand( char *cmd,
 		qboolean doCommands, qboolean doCvars );
 void Field_CompletePlayerName( const char **names, int count );

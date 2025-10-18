@@ -3451,16 +3451,17 @@ void Field_CompleteKeyname( void )
 Field_CompleteFilename
 ===============
 */
-void Field_CompleteFilename( const char *dir,
-		const char *ext, qboolean stripExt, qboolean allowNonPureFilesOnDisk )
+void Field_CompleteFilename( const char *dir, const char *ext,
+		char *filter, qboolean stripExt,
+		qboolean allowNonPureFilesOnDisk )
 {
 	matchCount = 0;
 	shortestMatch[ 0 ] = 0;
 
-	FS_FilenameCompletion( dir, ext, stripExt, FindMatches, allowNonPureFilesOnDisk );
+	FS_FilenameCompletion( dir, ext, filter, stripExt, FindMatches, allowNonPureFilesOnDisk );
 
 	if( !Field_Complete( ) )
-		FS_FilenameCompletion( dir, ext, stripExt, PrintMatches, allowNonPureFilesOnDisk );
+		FS_FilenameCompletion( dir, ext, filter, stripExt, PrintMatches, allowNonPureFilesOnDisk );
 }
 
 /*
