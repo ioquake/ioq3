@@ -626,7 +626,7 @@ int Com_Filter(char *filter, char *name, int casesensitive)
 		if (*filter == '*') {
 			filter++;
 			for (i = 0; *filter; i++) {
-				if (*filter == '*' || *filter == '?') break;
+				if (*filter == '*' || *filter == '?' || *filter == '[') break;
 				buf[i] = *filter;
 				filter++;
 			}
