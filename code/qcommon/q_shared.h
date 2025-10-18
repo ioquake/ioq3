@@ -31,9 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define BASEGAME					"foobar"
   #define CLIENT_WINDOW_TITLE		"changeme"
   #define CLIENT_WINDOW_MIN_TITLE	"changeme2"
-  #define HOMEPATH_NAME_UNIX		".foo"
-  #define HOMEPATH_NAME_WIN			"FooBar"
-  #define HOMEPATH_NAME_MACOSX		HOMEPATH_NAME_WIN
+  #define HOMEPATH_NAME_UNIX_LEGACY	".foo"
+  #define HOMEPATH_NAME				"FooBar"
   #define GAMENAME_FOR_MASTER		"foobar"	// must NOT contain whitespace
   #define CINEMATICS_LOGO		"foologo.roq"
   #define CINEMATICS_INTRO		"intro.roq"
@@ -45,9 +44,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define BASEGAME					"baseq3"
   #define CLIENT_WINDOW_TITLE		"ioquake3"
   #define CLIENT_WINDOW_MIN_TITLE	"ioq3"
-  #define HOMEPATH_NAME_UNIX		".q3a"
-  #define HOMEPATH_NAME_WIN			"Quake3"
-  #define HOMEPATH_NAME_MACOSX		HOMEPATH_NAME_WIN
+  #define HOMEPATH_NAME_UNIX_LEGACY	".q3a"
+  #define HOMEPATH_NAME				"Quake3"
   #define GAMENAME_FOR_MASTER		"Quake3Arena"
   #define CINEMATICS_LOGO		"idlogo.RoQ"
   #define CINEMATICS_INTRO		"intro.RoQ"

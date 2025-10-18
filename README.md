@@ -202,6 +202,31 @@ set using command line arguments:
     ioquake3 +set cl_renderer opengl2 +set r_preferOpenGLES 1
 
 
+# Filesystem
+
+Compared to the original release, user configuration and data files are stored
+in more modern locations. If you want a different behaviour a specific path
+can be provided by adding `+set fs_homepath <path>` to the command line.
+
+### Windows
+
+`C:\Users\<username>\AppData\Roaming\Quake3`
+
+### macOS
+
+`/Users/<username>/Library/Application Support/Quake3`
+
+### Linux
+
+`/home/<username>/.config/Quake3` Configuration files.
+`/home/<username>/.local/share/Quake3` Data files (pk3s etc.).
+`/home/<username>/.local/state/Quake3` Other internal runtime files.
+
+These directories correspond to the Free Desktop XDG Base Directory
+Specification. The original release used `/home/.q3a`. This will be used if
+present, however in this case a prompt will be shown suggesting migration to
+the above locations, if desired.
+
 # Console
 
 ## New cvars
@@ -480,9 +505,8 @@ binary must not detect any original quake3 game pak files. If this
 condition is met, the game will set com_standalone to 1 and is then running
 in stand alone mode.
 
-If you want the engine to use a different directory in your homepath than
-e.g. "Quake3" on Windows or ".q3a" on Linux, then set a new name at startup
-by adding
+If you want the engine to use a different directory in your homepaths than
+"Quake3" then set a new name at startup by adding
 
     +set com_homepath <homedirname>
 
@@ -496,7 +520,7 @@ matching game name.
 
 Example line:
 
-    +set com_basegame basefoo +set com_homepath .foo
+    +set com_basegame basefoo +set com_homepath foo
     +set com_gamename foo
 
 If you really changed parts that would make vanilla ioquake3 incompatible with

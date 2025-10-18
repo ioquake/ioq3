@@ -725,7 +725,7 @@ static void SV_WriteBans(void)
 	
 	Com_sprintf(filepath, sizeof(filepath), "%s/%s", FS_GetCurrentGameDir(), sv_banFile->string);
 
-	if((writeto = FS_BaseDir_FOpenFileWrite(filepath)))
+	if((writeto = FS_BaseDir_FOpenFileWrite_HomeState(filepath)))
 	{
 		char writebuf[128];
 		serverBan_t *curban;
