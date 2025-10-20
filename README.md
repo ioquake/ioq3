@@ -12,8 +12,8 @@
 The intent of this project is to provide a baseline engine which may be used
 for further development and to play _Quake 3: Arena,_ _Team Arena,_ and mods.
 
-Our source code is currently at https://github.com/ioquake/ioq3 
-If aren't there, then this isn't ioquake3, it's someone else's project.
+Our source code is at https://github.com/ioquake/ioq3 
+If you aren't there, then this isn't ioquake3, it's someone else's project.
 
 Some of the major features currently implemented are:
 
