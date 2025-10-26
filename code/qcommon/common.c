@@ -1485,6 +1485,7 @@ void Hunk_Log( void) {
 	FS_Write(buf, strlen(buf), logfile);
 	Com_sprintf(buf, sizeof(buf), "%d hunk blocks\r\n", numBlocks);
 	FS_Write(buf, strlen(buf), logfile);
+	FS_Flush(logfile);
 }
 
 /*
@@ -1535,6 +1536,7 @@ void Hunk_SmallLog( void) {
 	FS_Write(buf, strlen(buf), logfile);
 	Com_sprintf(buf, sizeof(buf), "%d hunk blocks\r\n", numBlocks);
 	FS_Write(buf, strlen(buf), logfile);
+	FS_Flush(logfile);
 }
 
 /*
