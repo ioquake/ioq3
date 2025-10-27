@@ -1467,7 +1467,7 @@ static int	consoleSaveBufferSize = 0;
 ================
 CL_LoadConsoleHistory
 
-Load the console history from cl_consoleHistory
+Load the console history from CONSOLE_HISTORY_FILE
 ================
 */
 void CL_LoadConsoleHistory( void )
@@ -1536,7 +1536,7 @@ void CL_LoadConsoleHistory( void )
 ================
 CL_SaveConsoleHistory
 
-Save the console history into the cvar cl_consoleHistory
+Save the console history into CONSOLE_HISTORY_FILE
 so that it persists across invocations of q3
 ================
 */
