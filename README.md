@@ -12,6 +12,9 @@
 The intent of this project is to provide a baseline engine which may be used
 for further development and to play _Quake 3: Arena,_ _Team Arena,_ and mods.
 
+Our source code is at https://github.com/ioquake/ioq3 
+If you aren't there, then this isn't ioquake3, it's someone else's project.
+
 Some of the major features currently implemented are:
 
   * CMake meta-build system
@@ -55,6 +58,14 @@ https://ioquake3.org/help/sys-admin-guide/
 If you've got issues that you aren't sure are worth filing as bugs, or just
 want to chat:
 https://discourse.ioquake.org
+
+## I'm going to fork ioquake3 and do my own thing!
+Please update your fork's README.md to credit the ioquake3 project and inform users
+what project they're looking at so you get credit for your work. 
+
+Feel free to make a thread on our forums to let people know about
+your project. We're looking forward to hearing about it.
+
 
 # Thank You:
 
