@@ -153,7 +153,7 @@ jobs:
         success=0
         max_tries=10
         for i in $(seq $max_tries); do
-         cmake --build build/CPackConfig.cmake -B build/installer --verbose && success=1
+         cpack --build build/CPackConfig.cmake -B build/installer --verbose && success=1
          if test $success = 1; then
           break
          fi
