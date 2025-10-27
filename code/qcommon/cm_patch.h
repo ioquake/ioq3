@@ -61,7 +61,7 @@ properly.
 
 
 #define	MAX_FACETS			1024
-#define	MAX_PATCH_PLANES	2048
+#define	MAX_PATCH_PLANES	4096
 
 typedef struct {
 	float	plane[4];
