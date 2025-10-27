@@ -536,6 +536,9 @@ qboolean CL_UpdateVisiblePings_f( int source );
 //
 // console
 //
+extern int g_smallchar_width;
+extern int g_smallchar_height;
+
 void Con_DrawCharacter (int cx, int line, int num);
 
 void Con_CheckResize (void);
