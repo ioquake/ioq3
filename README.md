@@ -262,6 +262,8 @@ the above locations, if desired.
                                       input text when console is closed
   con_scale                         - Scales console text to make it legible at
                                       high resolutions
+  con_notifylines                   - The number of lines to display in the
+                                      notify area
 
   in_joystickUseAnalog              - Do not translate joystick axis events
                                       to keyboard commands
