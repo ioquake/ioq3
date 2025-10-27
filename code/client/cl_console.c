@@ -586,6 +586,8 @@ void Con_DrawNotify (void)
 	v = 0;
 	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
 	{
+		int linelength = 0;
+
 		if (i < 0)
 			continue;
 		time = con.times[i % NUM_CON_TIMES];
@@ -609,10 +611,17 @@ void Con_DrawNotify (void)
 				re.SetColor( g_color_table[currentColor] );
 			}
 			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*g_smallchar_width, v, text[x] & 0xff );
+			linelength++;
 		}
 
-		v += g_smallchar_height;
+		if (linelength > 0) {
+			v += g_smallchar_height;
+		}
 	}
+
+	// v is in native coordinates, convert to 640x480 for SCR_DrawBigString
+	v *= 480.0f / cls.glconfig.vidHeight;
+	v += 8;
 
 	re.SetColor( NULL );
 
