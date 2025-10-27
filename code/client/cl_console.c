@@ -29,7 +29,7 @@ int g_console_field_width = DEFAULT_CONSOLE_WIDTH;
 int g_smallchar_width = SMALLCHAR_WIDTH;
 int g_smallchar_height = SMALLCHAR_HEIGHT;
 
-#define	NUM_CON_TIMES 4
+#define	NUM_CON_TIMES 17
 
 #define		CON_TEXTSIZE	32768
 typedef struct {
@@ -60,6 +60,7 @@ console_t	con;
 cvar_t		*con_conspeed;
 cvar_t		*con_autoclear;
 cvar_t		*con_notifytime;
+cvar_t		*con_notifylines;
 cvar_t		*con_scale;
 
 
@@ -365,6 +366,8 @@ void Con_Init (void) {
 	int		i;
 
 	con_notifytime = Cvar_Get ("con_notifytime", "3", CVAR_ARCHIVE);
+	con_notifylines = Cvar_Get ("con_notifylines", "3", CVAR_ARCHIVE);
+	Cvar_CheckRange(con_notifylines, 1, NUM_CON_TIMES - 1, qtrue);
 	con_conspeed = Cvar_Get ("scr_conspeed", "3", CVAR_ARCHIVE);
 	con_autoclear = Cvar_Get("con_autoclear", "1", CVAR_ARCHIVE);
 	con_scale = Cvar_Get("con_scale", "1", CVAR_ARCHIVE);
@@ -584,7 +587,7 @@ void Con_DrawNotify (void)
 	re.SetColor( g_color_table[currentColor] );
 
 	v = 0;
-	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
+	for (i= con.current-con_notifylines->integer ; i<=con.current ; i++)
 	{
 		int linelength = 0;
 
