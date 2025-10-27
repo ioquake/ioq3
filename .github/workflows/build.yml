@@ -148,7 +148,6 @@ jobs:
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build
-        cpack --config build/CPackConfig.cmake -B build/installer --verbose
         # DMG creation on macOS occasionally fails, so try multiple times
         # https://gitlab.kitware.com/cmake/cmake/-/issues/25671
         success=0
