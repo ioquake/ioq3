@@ -37,6 +37,7 @@ Some of the major features currently implemented are:
     is stored in "%APPDATA%\Quake3")
   * PNG support
   * Web support via Emscripten
+  * console scaling with con_scale
   * Many, many bug fixes
 
 The map editor and associated compiling tools are not included. We suggest you
@@ -259,6 +260,8 @@ the above locations, if desired.
                                       at the beginning
   con_autoclear                     - Set to 0 to disable clearing console
                                       input text when console is closed
+  con_scale                         - Scales console text to make it legible at
+                                      high resolutions
 
   in_joystickUseAnalog              - Do not translate joystick axis events
                                       to keyboard commands
