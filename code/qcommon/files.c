@@ -3743,6 +3743,10 @@ static void FS_CheckPak0( void )
 			&& (!Q_stricmp(fs_gamedirvar->string, BASETA) || !Q_stricmp(fs_basegame->string, BASETA)))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
+		char gamePath[MAX_OSPATH];
+
+		Com_sprintf(gamePath, sizeof(gamePath), "%s%c%s%c",
+			installPath, PATH_SEP, BASETA, PATH_SEP);
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 Team Arena data files are missing. Please copy");
@@ -3751,7 +3755,7 @@ static void FS_CheckPak0( void )
 
 		Q_strcat(errorText, sizeof(errorText),
 				va(" from the \"%s\" directory in your Quake 3 Team Arena install or CD-ROM to:\n\n"
-				"%s%c%s%c\n\n", BASETA, installPath, PATH_SEP, BASETA, PATH_SEP));
+				"%s\n\n", BASETA, gamePath));
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 Team Arena must be purchased to legitimately obtain pak0. "
@@ -3773,6 +3777,7 @@ static void FS_CheckPak0( void )
 						"in the \"%s\" directory is present and readable", BASETA));
 		}
 
+		Sys_OpenFolderInFileManager(gamePath, qtrue);
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
 }
