@@ -2410,7 +2410,9 @@ void R_LoadImage( const char *name, byte **pic, int *width, int *height, GLenum 
 	qboolean orgNameFailed = qfalse;
 	int orgLoader = -1;
 	int i;
+	char base[ MAX_QPATH ];
 	char localName[ MAX_QPATH ];
+	char ddsName[ MAX_QPATH ];
 	const char *ext;
 	char *altName;
 
@@ -2420,79 +2422,82 @@ void R_LoadImage( const char *name, byte **pic, int *width, int *height, GLenum 
 	*picFormat = GL_RGBA8;
 	*numMips = 0;
 
-	Q_strncpyz( localName, name, MAX_QPATH );
+	Q_strncpyz(localName, name, sizeof(localName));
+	ext = COM_GetExtension(localName);
+	COM_StripExtension(name, base, sizeof(base));
 
-	ext = COM_GetExtension( localName );
+	// Build DDS name
+	Q_strncpyz(ddsName, base, sizeof(ddsName));
+	Q_strcat(ddsName, sizeof(ddsName), ".dds");
 
-	// If compressed textures are enabled, try loading a DDS first, it'll load fastest
-	if (r_ext_compressed_textures->integer)
-	{
-		char ddsName[MAX_QPATH];
-
-		COM_StripExtension(name, ddsName, MAX_QPATH);
-		Q_strcat(ddsName, MAX_QPATH, ".dds");
-
+	if (r_ext_compressed_textures->integer) {
+		// Try DDS first
 		R_LoadDDS(ddsName, pic, width, height, picFormat, numMips);
+		if (*pic) return;
 
-		// If loaded, we're done.
-		if (*pic)
-			return;
-	}
-
-	if( *ext )
-	{
-		// Look for the correct loader and use it
-		for( i = 0; i < numImageLoaders; i++ )
-		{
-			if( !Q_stricmp( ext, imageLoaders[ i ].ext ) )
-			{
-				// Load
-				imageLoaders[ i ].ImageLoader( localName, pic, width, height );
-				break;
+		// Then try explicitly requested extension (if not DDS)
+		if (ext && *ext && Q_stricmp(ext, "dds")) {
+			for (i = 0; i < numImageLoaders; i++) {
+				if (!Q_stricmp(ext, imageLoaders[i].ext)) {
+					imageLoaders[i].ImageLoader(localName, pic, width, height);
+					if (*pic) return;
+					orgNameFailed = qtrue;
+					orgLoader = i;
+					break;
+				}
 			}
+			COM_StripExtension(name, localName, sizeof(localName));
 		}
 
-		// A loader was found
-		if( i < numImageLoaders )
-		{
-			if( *pic == NULL )
-			{
-				// Loader failed, most likely because the file isn't there;
-				// try again without the extension
-				orgNameFailed = qtrue;
-				orgLoader = i;
-				COM_StripExtension( name, localName, MAX_QPATH );
-			}
-			else
-			{
-				// Something loaded
+		// Then probe all supported formats except the failed one
+		for (i = 0; i < numImageLoaders; i++) {
+			if (i == orgLoader)
+				continue;
+			altName = va("%s.%s", localName, imageLoaders[i].ext);
+			imageLoaders[i].ImageLoader(altName, pic, width, height);
+			if (*pic) {
+				if (orgNameFailed)
+					ri.Printf(PRINT_DEVELOPER, "WARNING: %s not present, using %s instead\n", name, altName);
 				return;
 			}
 		}
+
+		return;
 	}
 
-	// Try and find a suitable match using all
-	// the image formats supported
-	for( i = 0; i < numImageLoaders; i++ )
-	{
+	// Explicit non-dds extension requested, so try its image loader
+	if (ext && *ext && Q_stricmp(ext, "dds")) {
+		for (i = 0; i < numImageLoaders; i++) {
+			if (!Q_stricmp(ext, imageLoaders[i].ext)) {
+				imageLoaders[i].ImageLoader(localName, pic, width, height);
+				if (*pic) return;
+				orgNameFailed = qtrue;
+				orgLoader = i;
+				break;
+			}
+		}
+		COM_StripExtension(name, localName, sizeof(localName));
+	}
+
+	// Try all other uncompressed formats
+	for (i = 0; i < numImageLoaders; i++) {
 		if (i == orgLoader)
 			continue;
-
-		altName = va( "%s.%s", localName, imageLoaders[ i ].ext );
-
-		// Load
-		imageLoaders[ i ].ImageLoader( altName, pic, width, height );
-
-		if( *pic )
-		{
-			if( orgNameFailed )
-			{
-				ri.Printf( PRINT_DEVELOPER, "WARNING: %s not present, using %s instead\n",
-						name, altName );
-			}
-
-			break;
+		if (!Q_stricmp(imageLoaders[i].ext, "dds"))
+			continue;
+		altName = va("%s.%s", localName, imageLoaders[i].ext);
+		imageLoaders[i].ImageLoader(altName, pic, width, height);
+		if (*pic) {
+			if (orgNameFailed)
+				ri.Printf(PRINT_DEVELOPER, "WARNING: %s not present, using %s instead\n", name, altName);
+			return;
 		}
+	}
+
+	// Finally, allow DDS fallback even when compressed textures are off
+	if (!*pic) {
+		R_LoadDDS(ddsName, pic, width, height, picFormat, numMips);
+		if (*pic) ri.Printf(PRINT_DEVELOPER, "WARNING: falling back to compressed texture %s when r_ext_compressed_textures=0\n", ddsName);
 	}
 }
 
