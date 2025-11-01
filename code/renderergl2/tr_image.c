@@ -1805,12 +1805,8 @@ static GLenum RawImage_GetFormat(const byte *data, int numPixels, GLenum picForm
 	}
 	else if(lightMap)
 	{
-		// GL_LUMINANCE is not valid for OpenGL 3.2 Core context and
-		// everything becomes solid black
-		if(0 && r_greyscale->integer)
-			internalFormat = GL_LUMINANCE;
-		else
-			internalFormat = GL_RGBA;
+
+		internalFormat = GL_RGBA;
 	}
 	else
 	{
@@ -1822,72 +1818,53 @@ static GLenum RawImage_GetFormat(const byte *data, int numPixels, GLenum picForm
 		// select proper internal format
 		if ( samples == 3 )
 		{
-			if(0 && r_greyscale->integer)
+
+			if ( !forceNoCompression && (glRefConfig.textureCompression & TCR_BPTC) )
 			{
-				if(r_texturebits->integer == 16 || r_texturebits->integer == 32)
-					internalFormat = GL_LUMINANCE8;
-				else
-					internalFormat = GL_LUMINANCE;
+					internalFormat = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
+			}
+			else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC_ARB )
+			{
+					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+			}
+			else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC )
+			{
+					internalFormat = GL_RGB4_S3TC;
+			}
+			else if ( r_texturebits->integer == 16 )
+			{
+					internalFormat = GL_RGB5;
+			}
+			else if ( r_texturebits->integer == 32 )
+			{
+					internalFormat = GL_RGB8;
 			}
 			else
 			{
-				if ( !forceNoCompression && (glRefConfig.textureCompression & TCR_BPTC) )
-				{
-					internalFormat = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
-				}
-				else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC_ARB )
-				{
-					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-				}
-				else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC )
-				{
-					internalFormat = GL_RGB4_S3TC;
-				}
-				else if ( r_texturebits->integer == 16 )
-				{
-					internalFormat = GL_RGB5;
-				}
-				else if ( r_texturebits->integer == 32 )
-				{
-					internalFormat = GL_RGB8;
-				}
-				else
-				{
 					internalFormat = GL_RGB;
-				}
 			}
 		}
 		else if ( samples == 4 )
 		{
-			if(0 && r_greyscale->integer)
+			if ( !forceNoCompression && (glRefConfig.textureCompression & TCR_BPTC) )
 			{
-				if(r_texturebits->integer == 16 || r_texturebits->integer == 32)
-					internalFormat = GL_LUMINANCE8_ALPHA8;
-				else
-					internalFormat = GL_LUMINANCE_ALPHA;
+					internalFormat = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
+			}
+			else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC_ARB )
+			{
+					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+			}
+			else if ( r_texturebits->integer == 16 )
+			{
+					internalFormat = GL_RGBA4;
+			}
+			else if ( r_texturebits->integer == 32 )
+			{
+					internalFormat = GL_RGBA8;
 			}
 			else
 			{
-				if ( !forceNoCompression && (glRefConfig.textureCompression & TCR_BPTC) )
-				{
-					internalFormat = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
-				}
-				else if ( !forceNoCompression && glConfig.textureCompression == TC_S3TC_ARB )
-				{
-					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-				}
-				else if ( r_texturebits->integer == 16 )
-				{
-					internalFormat = GL_RGBA4;
-				}
-				else if ( r_texturebits->integer == 32 )
-				{
-					internalFormat = GL_RGBA8;
-				}
-				else
-				{
 					internalFormat = GL_RGBA;
-				}
 			}
 		}
 	}
@@ -2129,7 +2106,6 @@ Upload32
 static void Upload32(byte *data, int x, int y, int width, int height, GLenum picFormat, GLenum dataFormat, GLenum dataType, int numMips, image_t *image, qboolean scaled)
 {
 	int			i, c;
-	byte		*scan;
 
 	imgType_t type = image->type;
 	imgFlags_t flags = image->flags;
@@ -2142,30 +2118,9 @@ static void Upload32(byte *data, int x, int y, int width, int height, GLenum pic
 	if (rgba8 && !cubemap)
 	{
 		c = width*height;
-		scan = data;
 
 		if (type == IMGTYPE_COLORALPHA)
 		{
-			if( r_greyscale->integer )
-			{
-				for ( i = 0; i < c; i++ )
-				{
-					byte luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
-					scan[i*4] = luma;
-					scan[i*4 + 1] = luma;
-					scan[i*4 + 2] = luma;
-				}
-			}
-			else if( r_greyscale->value )
-			{
-				for ( i = 0; i < c; i++ )
-				{
-					float luma = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
-					scan[i*4] = LERP(scan[i*4], luma, r_greyscale->value);
-					scan[i*4 + 1] = LERP(scan[i*4 + 1], luma, r_greyscale->value);
-					scan[i*4 + 2] = LERP(scan[i*4 + 2], luma, r_greyscale->value);
-				}
-			}
 
 			// This corresponds to what the OpenGL1 renderer does.
 			if (!(flags & IMGFLAG_NOLIGHTSCALE) && (scaled || mipmap))
