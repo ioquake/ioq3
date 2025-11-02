@@ -788,8 +788,9 @@ int main( int argc, char **argv )
 	char *protocolCommand = NULL;
 #endif
 
-	extern void Sys_LaunchAutoupdater(int argc, char **argv);
+#ifdef USE_AUTOUPDATER
 	Sys_LaunchAutoupdater(argc, argv);
+#endif
 
 #ifndef DEDICATED
 	// SDL version check
