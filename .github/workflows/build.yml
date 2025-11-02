@@ -207,6 +207,20 @@ jobs:
       run: |
         cmake -S . -B build -G Ninja -DUSE_INTERNAL_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
         cmake --build build
+  linux-32bit:
+    name: Linux 32-bit
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Dependencies
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install gcc-multilib libsdl2-dev:i386
+    - name: Compile
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-m32 -msse -msse2"
+        cmake --build build
   freebsd:
     name: FreeBSD
     runs-on: ubuntu-latest
