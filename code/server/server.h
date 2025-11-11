@@ -325,6 +325,10 @@ struct leakyBucket_s {
 	long					hash;
 
 	leakyBucket_t *prev, *next;
+
+	// @Crimewavez: per-address RCON guard
+	int                    rconFailCount;   // consecutive bad rcon passwords
+	int                    rconLockUntil;   // timestamp
 };
 
 extern leakyBucket_t outboundLeakyBucket;

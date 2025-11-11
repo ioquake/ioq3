@@ -711,9 +711,25 @@ static void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	char		remaining[1024];
 	// TTimo - scaled down to accumulate, but not overflow anything network wise, print wise etc.
 	// (OOB messages are the bottleneck here)
-#define SV_OUTPUTBUF_LENGTH (1024 - 16)
+#define SV_OUTPUTBUF_LENGTH (8192 - 16)
 	char		sv_outputbuf[SV_OUTPUTBUF_LENGTH];
 	char *cmd_aux;
+
+        // @Crimewavez: Rcon lockout variables
+        const int  rconMaxFails = 3;
+        const int  rconLockTime = 60000;
+        int now = Sys_Milliseconds();
+        leakyBucket_t *addrBucket;
+        addrBucket = SVC_BucketForAddress( from, 10, 1000 );
+
+        // @Crimewavez: If this address is locked, drop it.
+        if (sv_rconPassword->string[0] && addrBucket != NULL && addrBucket->rconLockUntil > 0 && now < addrBucket->rconLockUntil) {
+            const int remainingMs  = addrBucket->rconLockUntil - now;
+            const int remainingSec = remainingMs > 0 ? (remainingMs / 1000) : 0;
+
+            Com_DPrintf("SVC_RemoteCommand: rcon locked for %s (%d s remaining)\n", NET_AdrToString(from), remainingSec);
+            return;
+        }
 
 	// Prevent using rcon as an amplifier and make dictionary attacks impractical
 	if ( SVC_RateLimitAddress( from, 10, 1000 ) ) {
@@ -723,20 +739,38 @@ static void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	}
 
 	if ( !strlen( sv_rconPassword->string ) ||
-		strcmp (Cmd_Argv(1), sv_rconPassword->string) ) {
-		static leakyBucket_t bucket;
+	    strcmp (Cmd_Argv(1), sv_rconPassword->string) ) {
+	    static leakyBucket_t bucket;
 
-		// Make DoS via rcon impractical
-		if ( SVC_RateLimit( &bucket, 10, 1000 ) ) {
-			Com_DPrintf( "SVC_RemoteCommand: rate limit exceeded, dropping request\n" );
-			return;
-		}
+	    // Make DoS via rcon impractical
+	    if ( SVC_RateLimit( &bucket, 10, 1000 ) ) {
+	        Com_DPrintf( "SVC_RemoteCommand: rate limit exceeded, dropping request\n" );
+	        return;
+	    }
 
-		valid = qfalse;
-		Com_Printf ("Bad rcon from %s: %s\n", NET_AdrToString (from), Cmd_ArgsFrom(2) );
+	    valid = qfalse;
+	    Com_Printf ("Bad rcon from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2));
+
+	    // @Crimewavez: Rcon lockout - check if password exists, only then count failures.
+	    if (sv_rconPassword->string[0] && addrBucket != NULL) {
+	        addrBucket->rconFailCount++;
+
+	        if (addrBucket->rconFailCount >= rconMaxFails) {
+	            addrBucket->rconLockUntil = now + rconLockTime;
+	            addrBucket->rconFailCount = 0;
+
+	            Com_DPrintf("SVC_RemoteCommand: too many bad rcon attempts from %s, locking rcon for %d seconds\n", NET_AdrToString(from), rconLockTime / 1000);
+	        }
+	    }
 	} else {
-		valid = qtrue;
-		Com_Printf ("Rcon from %s: %s\n", NET_AdrToString (from), Cmd_ArgsFrom(2) );
+	    valid = qtrue;
+	    Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2));
+
+	    // @Crimewavez: Rcon lockout - clear on success
+	    if ( addrBucket != NULL ) {
+	        addrBucket->rconFailCount = 0;
+	        addrBucket->rconLockUntil = 0;
+	    }
 	}
 
 	// start redirecting all print outputs to the packet
