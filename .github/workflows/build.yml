@@ -88,7 +88,7 @@ jobs:
     - name: Import Code Signing Certificate
       if: github.ref_name == 'main'
       run: |
-        misc/ci-macos-import-codesign-cert.sh
+        misc/macos/ci-macos-import-codesign-cert.sh
         echo "APPLE_CERTIFICATE_ID=${{ secrets.APPLE_CERTIFICATE_ID }}" >> $GITHUB_ENV
       env:
         APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
@@ -117,7 +117,7 @@ jobs:
     - name: Notarize
       if: github.ref_name == 'main'
       run: |
-        misc/ci-macos-notarize.sh build/Release/*.dmg
+        misc/macos/ci-macos-notarize.sh build/Release/*.dmg
       env:
         APPLE_NOTARIZATION_USERNAME: ${{ secrets.APPLE_NOTARIZATION_USERNAME }}
         APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
