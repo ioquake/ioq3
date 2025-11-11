@@ -81,7 +81,7 @@ jobs:
           build/Release/**/*.qvm
   macos:
     name: macOS
-    runs-on: macos-13
+    runs-on: macos-15
     needs: version
     steps:
     - uses: actions/checkout@v4
