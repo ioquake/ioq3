@@ -72,7 +72,7 @@ if(NOT PRODUCT_VERSION)
     endif()
 endif()
 
-add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
+# add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
 
 # For CI to read from
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/version.txt CONTENT ${PRODUCT_VERSION})
@@ -84,6 +84,10 @@ endif()
 
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/code)
 
+# configure identity header
+configure_file(${PROJECT_SOURCE_DIR}/cmake/identity.h.in ${PROJECT_BINARY_DIR}/include/identity.h @ONLY)
+include_directories(${PROJECT_BINARY_DIR}/include)
+
 include(compilers/all)
 include(platforms/all)
 include(libraries/all)
@@ -93,7 +97,9 @@ include(renderer_gl1)
 include(renderer_gl2)
 include(client)
 include(basegame)
-include(missionpack)
+if(NOT BUILD_STANDALONE)
+    include(missionpack)
+endif()
 
 include(post_configure)
 include(installer)

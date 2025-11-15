@@ -1116,7 +1116,7 @@ void CL_InitUI( void ) {
 			interpret = VMI_COMPILED;
 	}
 
-	uivm = VM_Create( "ui", CL_UISystemCalls, interpret );
+	uivm = VM_Create( UI_MODULE, CL_UISystemCalls, interpret );
 	if ( !uivm ) {
 		Com_Error( ERR_FATAL, "VM_Create on UI failed" );
 	}
