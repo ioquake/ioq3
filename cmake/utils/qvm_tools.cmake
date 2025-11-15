@@ -55,6 +55,11 @@ function(add_qvm MODULE_NAME)
         list(APPEND LCC_FLAGS "-D${DEFINITION}")
     endforeach()
 
+    # identity.h include directory
+    set(IDENTITY_HEADER_DIR "${PROJECT_BINARY_DIR}/include")
+    cmake_path(RELATIVE_PATH IDENTITY_HEADER_DIR BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/code/${MODULE_NAME}/) # FIXME!!!
+    list(APPEND LCC_FLAGS "-I${IDENTITY_HEADER_DIR}")
+
     set(ASM_FILES "")
     foreach(SOURCE ${ARG_SOURCES})
         if(${SOURCE} MATCHES "\\.asm$")

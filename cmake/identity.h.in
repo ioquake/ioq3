@@ -1,0 +1,44 @@
+/*
+===========================================================================
+Copyright (C) 1999-2005 Id Software, Inc.
+
+This file is part of Quake III Arena source code.
+
+Quake III Arena source code is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the License,
+or (at your option) any later version.
+
+Quake III Arena source code is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Quake III Arena source code; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+===========================================================================
+*/
+//
+#ifndef __IDENTITY_H
+#define __IDENTITY_H
+
+#cmakedefine PRODUCT_NAME "@PRODUCT_NAME@"
+#cmakedefine PRODUCT_VERSION "@PRODUCT_VERSION@"
+#cmakedefine BASEGAME "@BASEGAME@"
+#cmakedefine CLIENT_WINDOW_TITLE "@CLIENT_WINDOW_TITLE@"
+#cmakedefine CLIENT_WINDOW_MIN_TITLE "@CLIENT_WINDOW_MIN_TITLE@"
+#cmakedefine HOMEPATH_NAME_UNIX_LEGACY "@HOMEPATH_NAME_UNIX_LEGACY@"
+#cmakedefine HOMEPATH_NAME "@HOMEPATH_NAME@"
+#cmakedefine GAMENAME_FOR_MASTER "@GAMENAME_FOR_MASTER@"
+#cmakedefine CINEMATICS_LOGO "@CINEMATICS_LOGO@"
+#cmakedefine CINEMATICS_INTRO "@CINEMATICS_INTRO@"
+#cmakedefine LEGACY_PROTOCOL
+#cmakedefine PROTOCOL_HANDLER "@PROTOCOL_HANDLER@"
+#cmakedefine CONFIG_PREFIX "@CONFIG_PREFIX@"
+#cmakedefine DEMOEXT "@DEMOEXT@"
+#cmakedefine CGAME_MODULE "@CGAME_MODULE@"
+#cmakedefine GAME_MODULE "@GAME_MODULE@"
+#cmakedefine UI_MODULE "@UI_MODULE@"
+
+#endif	// __IDENTITY_H
