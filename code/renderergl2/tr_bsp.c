@@ -2349,6 +2349,10 @@ void R_LoadEntities( lump_t *l ) {
 			continue;
 		}
 	}
+
+	w->lightGridMaxSize = w->lightGridSize[0];
+	if (w->lightGridSize[1] > w->lightGridMaxSize) w->lightGridMaxSize = w->lightGridSize[1];
+	if (w->lightGridSize[2] > w->lightGridMaxSize) w->lightGridMaxSize = w->lightGridSize[2];
 }
 
 /*
