@@ -1186,6 +1186,7 @@ typedef struct {
 	vec3_t		lightGridOrigin;
 	vec3_t		lightGridSize;
 	vec3_t		lightGridInverseSize;
+	float		lightGridMaxSize;
 	int			lightGridBounds[3];
 	byte		*lightGridData;
 	uint16_t	*lightGrid16;

@@ -465,18 +465,42 @@ int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, ve
 int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world )
 {
 	trRefEntity_t ent;
+	vec3_t samplePoint;
+	vec3_t dir;
+	float len, normalDot;
 	
 	if ( world->lightGridData == NULL )
 	  return qfalse;
 
-	Com_Memset(&ent, 0, sizeof(ent));
-	VectorCopy( point, ent.e.origin );
+	// Sample half a cell behind the surface along its normal to avoid boundaries
+	if ( world->lightGridMaxSize > 0.0f ) {
+		VectorMA( point, -0.5f * world->lightGridMaxSize, normal, samplePoint );
+	}
+	else {
+		// If we are unable to determine cell size, just use the original point with no offset
+		ri.Printf(PRINT_WARNING,
+			"R_LightDirForPoint: lightGridMaxSize <= 0 (invalid gridsize in worldspawn?)\n");
+		VectorCopy( point, samplePoint );
+	}
+
+	Com_Memset( &ent, 0, sizeof(ent) );
+	VectorCopy( samplePoint, ent.e.origin );
 	R_SetupEntityLightingGrid( &ent, world );
 
-	if (DotProduct(ent.lightDir, normal) > 0.2f)
-		VectorCopy(ent.lightDir, lightDir);
-	else
-		VectorCopy(normal, lightDir);
+	// Normalize the sampled light direction, if it is zero use the geometric normal
+	VectorCopy( ent.lightDir, dir );
+	len = VectorNormalize( dir );
+
+	if ( !len ) {
+		VectorCopy( normal, lightDir );
+		return qtrue;
+	}
+	// Keep direction in the same hemisphere as the surface normal
+	normalDot = DotProduct( normal, dir );
+	if ( normalDot < 0.0f ) {
+		VectorMA( dir, -2.0f * normalDot, normal, dir );
+	}
+	VectorCopy( dir, lightDir );
 
 	return qtrue;
 }
