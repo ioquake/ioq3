@@ -121,6 +121,13 @@ ioquake3 can be developed locally. For instructions on how to do this, read the 
 * Fill in [the required template](PULL_REQUEST_TEMPLATE.md)
 * Do not include issue numbers in the PR title.
 
+### Technical Guidelines
+
+* Please apply the prevailing coding style in the file/function you are adjusting, as much as is practical
+* Avoid making whitespace/style changes to existing code, as much as is practical
+* Do not surround your additions in "tag" style comments e.g. "// l33tc0der67: frob the disfunctionator";
+  credit for your contributions is automatically recorded in source control
+* Ensure that new code is built by the continuous integration service
 
 ### Building Official Installers
 
