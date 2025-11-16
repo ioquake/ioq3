@@ -715,14 +715,14 @@ static void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	char		sv_outputbuf[SV_OUTPUTBUF_LENGTH];
 	char *cmd_aux;
 
-        // @Crimewavez: Rcon lockout variables
+        // Rcon lockout variables
         const int  rconMaxFails = 3;
         const int  rconLockTime = 60000;
         int now = Sys_Milliseconds();
         leakyBucket_t *addrBucket;
         addrBucket = SVC_BucketForAddress( from, 10, 1000 );
 
-        // @Crimewavez: If this address is locked, drop it.
+        // If this address is locked, drop it.
         if (sv_rconPassword->string[0] && addrBucket != NULL && addrBucket->rconLockUntil > 0 && now < addrBucket->rconLockUntil) {
             const int remainingMs  = addrBucket->rconLockUntil - now;
             const int remainingSec = remainingMs > 0 ? (remainingMs / 1000) : 0;
@@ -751,7 +751,7 @@ static void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	    valid = qfalse;
 	    Com_Printf ("Bad rcon from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2));
 
-	    // @Crimewavez: Rcon lockout - check if password exists, only then count failures.
+	    // Rcon lockout - check if password exists, only then count failures.
 	    if (sv_rconPassword->string[0] && addrBucket != NULL) {
 	        addrBucket->rconFailCount++;
 
@@ -766,7 +766,7 @@ static void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	    valid = qtrue;
 	    Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2));
 
-	    // @Crimewavez: Rcon lockout - clear on success
+	    // Rcon lockout - clear on success
 	    if ( addrBucket != NULL ) {
 	        addrBucket->rconFailCount = 0;
 	        addrBucket->rconLockUntil = 0;
