@@ -138,6 +138,7 @@ void *R_GetCommandBufferReserved( int bytes, int reservedBytes ) {
 			ri.Error( ERR_FATAL, "R_GetCommandBuffer: bad size %i", bytes );
 		}
 		// if we run out of room, just start dropping commands
+		ri.Printf( PRINT_WARNING, "Failed to allocate render command of size %d\n", bytes );
 		return NULL;
 	}
 
