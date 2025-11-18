@@ -54,6 +54,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CROUCH_VIEWHEIGHT	12
 #define DEAD_HEIGHT			-8
 #define	DEAD_VIEWHEIGHT		-16
+#define INVUL_RADIUS		42
 
 //
 // config strings are a general means of communicating variable length strings
