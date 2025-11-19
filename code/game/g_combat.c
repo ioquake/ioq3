@@ -753,8 +753,7 @@ int G_InvulnerabilityEffect( gentity_t *targ, vec3_t dir, vec3_t point, vec3_t i
 	}
 	VectorCopy(dir, vec);
 	VectorInverse(vec);
-	// sphere model radius = 42 units
-	n = RaySphereIntersections( targ->client->ps.origin, 42, point, vec, intersections);
+	n = RaySphereIntersections( targ->client->ps.origin, INVUL_RADIUS, point, vec, intersections);
 	if (n > 0) {
 		impact = G_TempEntity( targ->client->ps.origin, EV_INVUL_IMPACT );
 		VectorSubtract(intersections[0], targ->client->ps.origin, vec);
