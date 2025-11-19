@@ -504,10 +504,10 @@ int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *w
 	}
 
 	float minDot = 0.3f; // cos(72 degrees)
-	if (normalDot < minDot) {
+	if ( normalDot < minDot ) {
 		float blend = (minDot - normalDot) / minDot; // 0..1
-		VectorLerp(dir, normal, blend, dir);
-		VectorNormalize(dir);
+		VectorLerp( dir, normal, blend, dir );
+		VectorNormalize( dir );
 	}
 
 	VectorCopy( dir, lightDir );
