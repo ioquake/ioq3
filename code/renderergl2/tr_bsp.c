@@ -2176,6 +2176,10 @@ void R_LoadLightGrid( lump_t *l ) {
 	w->lightGridInverseSize[1] = 1.0f / w->lightGridSize[1];
 	w->lightGridInverseSize[2] = 1.0f / w->lightGridSize[2];
 
+	w->lightGridMaxSize = w->lightGridSize[0];
+	if (w->lightGridSize[1] > w->lightGridMaxSize) w->lightGridMaxSize = w->lightGridSize[1];
+	if (w->lightGridSize[2] > w->lightGridMaxSize) w->lightGridMaxSize = w->lightGridSize[2];
+
 	wMins = w->bmodels[0].bounds[0];
 	wMaxs = w->bmodels[0].bounds[1];
 
