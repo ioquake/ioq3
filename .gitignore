@@ -1,5 +1,4 @@
 build*/
-CMakeUserPresets.json
 Makefile.local
 *.swp
 *tags
