@@ -1,7 +1,7 @@
 #ifndef TR_CVAR_H_
 #define TR_CVAR_H_
 
-#include "../qcommon/q_shared.h"
+#include "../../qcommon/q_shared.h"
 
 
 extern cvar_t	*r_railWidth;

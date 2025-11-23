@@ -209,6 +209,12 @@ typedef int		clipHandle_t;
 
 #define PADP(base, alignment)	((void *) PAD((intptr_t) (base), (alignment)))
 
+#ifdef __GNUC__
+#define QALIGN(x) __attribute__((aligned(x)))
+#else
+#define QALIGN(x)
+#endif
+
 #ifndef NULL
 #define NULL ((void *)0)
 #endif
