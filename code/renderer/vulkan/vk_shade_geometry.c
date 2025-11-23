@@ -70,7 +70,7 @@ void set_modelview_matrix(const float mv[16])
 }
 
 
-const float * getptr_modelview_matrix()
+const float * getptr_modelview_matrix(void)
 {
     return s_modelview_matrix;
 }
@@ -235,7 +235,7 @@ void vk_createVertexBuffer(void)
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     ri.Printf(PRINT_ALL, " Allocate device memory for Vertex Buffer: %ld bytes. \n",
-            alloc_info.allocationSize);
+		(unsigned long long)alloc_info.allocationSize);
 
     VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &shadingDat.vertex_buffer_memory));
 
@@ -287,7 +287,7 @@ void vk_createIndexBuffer(void)
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     ri.Printf(PRINT_ALL, " Allocate device memory for Index Buffer: %ld bytes. \n",
-            alloc_info.allocationSize);
+		(unsigned long long)alloc_info.allocationSize);
 
     VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &shadingDat.index_buffer_memory));
     qvkBindBufferMemory(vk.device, shadingDat.index_buffer, shadingDat.index_buffer_memory, 0);

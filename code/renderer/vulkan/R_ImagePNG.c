@@ -530,7 +530,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 
 	if(!(BF && Buffer))
 	{
-		return(-1);
+		return 0;
 	}
 
 	/*
@@ -551,7 +551,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 
 	if(!FindChunk(BF, PNG_ChunkType_IDAT))
 	{
-		return(-1);
+		return 0;
 	}
 
 	/*
@@ -574,7 +574,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 
 			BufferedFileRewind(BF, BytesToRewind);
 
-			return(-1);
+			return 0;
 		}
 
 		/*
@@ -611,7 +611,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 			{
 				BufferedFileRewind(BF, BytesToRewind);
 
-				return(-1);
+				return 0;
 			}
 
 			BytesToRewind += Length + PNG_ChunkCRC_Size;
@@ -624,7 +624,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 	CompressedData = ri.Malloc(CompressedDataLength);
 	if(!CompressedData)
 	{
-		return(-1);
+		return 0;
 	}
 
 	CompressedDataPtr = CompressedData;
@@ -644,7 +644,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 		{
 			ri.Free(CompressedData); 
 
-			return(-1);
+			return 0;
 		}
 
 		/*
@@ -678,14 +678,14 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 			{
 				ri.Free(CompressedData); 
 
-				return(-1);
+				return 0;
 			}
 
 			if(!BufferedFileSkip(BF, PNG_ChunkCRC_Size))
 			{
 				ri.Free(CompressedData); 
 
-				return(-1);
+				return 0;
 			}
 
 			memcpy(CompressedDataPtr, OrigCompressedData, Length);
@@ -716,7 +716,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 	{
 		ri.Free(CompressedData);
 
-		return(-1);
+		return 0;
 	}
 
 	/*
@@ -728,7 +728,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 	{
 		ri.Free(CompressedData);
 
-		return(-1);
+		return 0;
 	}
 
 	/*
@@ -759,7 +759,7 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 	{
 		ri.Free(DecompressedData);
 
-		return(-1);
+		return 0;
 	}
 
 	/*
@@ -2362,7 +2362,7 @@ void R_LoadPNG(const char *name, byte **pic, int *width, int *height)
 	 *  Rewind to the start of the file.
 	 */
 
-	if(!BufferedFileRewind(ThePNG, -1))
+	if(!BufferedFileRewind(ThePNG, (unsigned)-1))
 	{
 		CloseBufferedFile(ThePNG);
 

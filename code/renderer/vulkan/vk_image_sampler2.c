@@ -130,7 +130,7 @@ VkSampler vk_find_sampler(VkBool32 mipmap, VkBool32 repeat_texture)
 	VkSamplerAddressMode address_mode = repeat_texture ?
         VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
-	VkFilter mag_filter;
+	VkFilter mag_filter = VK_FILTER_LINEAR;
 	if (sampler_def.gl_mag_filter == GL_NEAREST)
     {
 		mag_filter = VK_FILTER_NEAREST;
@@ -144,8 +144,8 @@ VkSampler vk_find_sampler(VkBool32 mipmap, VkBool32 repeat_texture)
 		ri.Error(ERR_FATAL, "vk_find_sampler: invalid gl_mag_filter");
 	}
 
-	VkFilter min_filter;
-	VkSamplerMipmapMode mipmap_mode;
+	VkFilter min_filter = VK_FILTER_LINEAR;
+	VkSamplerMipmapMode mipmap_mode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 	qboolean max_lod_0_25 = qfalse; // used to emulate OpenGL's GL_LINEAR/GL_NEAREST minification filter
 	if (sampler_def.gl_min_filter == GL_NEAREST) {
 		min_filter = VK_FILTER_NEAREST;

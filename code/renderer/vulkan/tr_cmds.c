@@ -577,7 +577,7 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters )
 
             case RC_VIDEOFRAME:
             {
-                const videoFrameCommand_t * const cmd = data;
+                const videoFrameCommand_t * const cmd = (const videoFrameCommand_t*)data;
 
                 RB_TakeVideoFrameCmd( cmd );
 

@@ -44,7 +44,7 @@ static int generateHashValue( const char *fname, const int size )
 
 
 
-void R_ClearShaderHashTable()
+void R_ClearShaderHashTable(void)
 {
 	memset(hashTable, 0, sizeof(hashTable));
 }

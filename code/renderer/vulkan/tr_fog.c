@@ -9,13 +9,13 @@ static float FogTable[FOG_TABLE_SIZE];
 
 void R_InitFogTable( void )
 {
-	float exp = 0.5;
+	float exp = 0.5f;
 
     unsigned int i;
 
 	for ( i = 0 ; i < FOG_TABLE_SIZE ; i++ )
     {
-		FogTable[i] = pow ( (float)i/(FOG_TABLE_SIZE-1), exp );
+		FogTable[i] = powf ( (float)i/(FOG_TABLE_SIZE-1), exp );
 	}
 }
 

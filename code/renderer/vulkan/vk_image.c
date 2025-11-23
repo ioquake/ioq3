@@ -67,7 +67,7 @@ uint32_t find_memory_type(uint32_t memory_type_bits, VkMemoryPropertyFlags prope
     }
 
     ri.Error(ERR_FATAL, "Vulkan: failed to find matching memory type with requested properties");
-    return -1;
+    return UINT32_MAX;
 }
 
 
@@ -124,7 +124,7 @@ static void vk_createStagingBuffer(uint32_t size)
         VK_CHECK(qvkBindBufferMemory(vk.device, StagBuf.buff, StagBuf.mappableMem, 0));
 
         ri.Printf(PRINT_ALL, " Stagging buffer alignment: %ld, memoryTypeBits: 0x%x, Type Index: %d. \n",
-            memory_requirements.alignment, memory_requirements.memoryTypeBits, alloc_info.memoryTypeIndex);
+            (unsigned long long)memory_requirements.alignment, memory_requirements.memoryTypeBits, alloc_info.memoryTypeIndex);
     }
 }
 
@@ -334,7 +334,7 @@ static void vk_createImageAndBindWithMemory(image_t* pImg)
     ri.Printf(PRINT_ALL, " --- Device memory allocation --- \n");
 
     ri.Printf(PRINT_ALL, "alignment: %ld, Type Index: %d. \n",
-            memory_requirements.alignment, alloc_info.memoryTypeIndex);
+        (unsigned long long)memory_requirements.alignment, alloc_info.memoryTypeIndex);
     
     ri.Printf(PRINT_ALL, "Image chuck memory consumed: %d M \n",
             devMemImg.Index * (IMAGE_CHUNK_SIZE >> 20) );
@@ -746,13 +746,13 @@ void RE_UploadCinematic (int w, int h, int cols, int rows, const unsigned char *
     image_t* prtImage = tr.scratchImage[client];
     
     // if the scratchImage isn't in the format we want, specify it as a new texture
-    if ( (cols != prtImage->uploadWidth) || (rows != prtImage->uploadHeight) )
+    if ( ((uint32_t)cols != prtImage->uploadWidth) || (rows != prtImage->uploadHeight) )
     {
         ri.Printf(PRINT_ALL, "w=%d, h=%d, cols=%d, rows=%d, client=%d, prtImage->width=%d, prtImage->height=%d\n", 
            w, h, cols, rows, client, prtImage->uploadWidth, prtImage->uploadHeight);
 
-        prtImage->uploadWidth = cols;
-        prtImage->uploadHeight = rows;
+        prtImage->uploadWidth = (uint32_t)cols;
+        prtImage->uploadHeight = (uint32_t)rows;
         prtImage->mipLevels = 1;
         // VULKAN
 

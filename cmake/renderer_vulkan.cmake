@@ -81,6 +81,7 @@ set(RENDERER_VULKAN_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/R_ImagePNG.c
     ${SOURCE_DIR}/renderer/vulkan/R_ImageBMP.c
     ${SOURCE_DIR}/renderer/vulkan/R_ImagePCX.c
+    ${SOURCE_DIR}/renderer/vulkan/stb_image_impl.c
 
     ${SOURCE_DIR}/renderer/vulkan/ref_import.c
     ${SOURCE_DIR}/renderer/vulkan/render_export.c

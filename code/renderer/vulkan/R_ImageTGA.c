@@ -155,7 +155,7 @@ void R_LoadTGA ( const char *name, unsigned char** pic, int *width, int *height)
 			pixbuf = targa_rgba + row*columns*4;
 			for(column=0; column<columns; column++) 
 			{
-				unsigned char red,green,blue,alphabyte;
+				unsigned char red = 0,green = 0,blue = 0,alphabyte = 0;
 				switch (targa_header.pixel_size) 
 				{
 					
@@ -196,7 +196,7 @@ void R_LoadTGA ( const char *name, unsigned char** pic, int *width, int *height)
 		}
 	}
 	else if (targa_header.image_type==10) {   // Runlength encoded RGB images
-		unsigned char red,green,blue,alphabyte,packetHeader,packetSize,j;
+		unsigned char red = 0, green = 0, blue = 0, alphabyte = 0, packetHeader, packetSize, j;
 
 		for(row=rows-1; row>=0; row--) {
 			pixbuf = targa_rgba + row*columns*4;
