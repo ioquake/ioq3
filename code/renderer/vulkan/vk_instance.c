@@ -251,33 +251,48 @@ static void vk_createInstance(void)
 
     const char* const validation_layer_name = "VK_LAYER_KHRONOS_validation";
     instanceCreateInfo.enabledLayerCount = 1;
-	instanceCreateInfo.ppEnabledLayerNames = &validation_layer_name;
+    instanceCreateInfo.ppEnabledLayerNames = &validation_layer_name;
 #else
     instanceCreateInfo.enabledLayerCount = 0;
-	instanceCreateInfo.ppEnabledLayerNames = NULL;
+    instanceCreateInfo.ppEnabledLayerNames = NULL;
 #endif
 
-
     VkResult e = qvkCreateInstance(&instanceCreateInfo, NULL, &vk.instance);
-    if(e == VK_SUCCESS)
+
+#ifndef NDEBUG
+    // In debug builds, fall back if the validation layer is not available
+    if (e == VK_ERROR_LAYER_NOT_PRESENT) {
+        ri.Printf(PRINT_WARNING,
+            "VK: validation layer VK_LAYER_KHRONOS_validation not present, "
+            "retrying vkCreateInstance without it\n");
+
+        instanceCreateInfo.enabledLayerCount = 0;
+        instanceCreateInfo.ppEnabledLayerNames = NULL;
+
+        e = qvkCreateInstance(&instanceCreateInfo, NULL, &vk.instance);
+    }
+#endif
+
+    if (e == VK_SUCCESS)
     {
         ri.Printf(PRINT_ALL, "--- Vulkan create instance success! ---\n\n");
     }
     else if (e == VK_ERROR_INCOMPATIBLE_DRIVER)
-	{
-		// The requested version of Vulkan is not supported by the driver 
-		// or is otherwise incompatible for implementation-specific reasons.
-        ri.Error(ERR_FATAL, 
-            "The requested version of Vulkan is not supported by the driver." );
+    {
+        // The requested version of Vulkan is not supported by the driver 
+        // or is otherwise incompatible for implementation-specific reasons.
+        ri.Error(ERR_FATAL,
+            "The requested version of Vulkan is not supported by the driver.");
     }
     else if (e == VK_ERROR_EXTENSION_NOT_PRESENT)
     {
-        ri.Error(ERR_FATAL, "Cannot find a specified extension library.");
+        ri.Error(ERR_FATAL, "Cannot find a specified Vulkan extension library.");
     }
-    else 
+    else
     {
-        ri.Error(ERR_FATAL, "%d, returned by qvkCreateInstance.", e);
+        ri.Error(ERR_FATAL, "VK: vkCreateInstance failed: %d (qvkCreateInstance)", e);
     }
+
    
     free(ppInstanceExt);
 

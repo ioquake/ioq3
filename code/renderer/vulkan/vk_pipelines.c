@@ -905,7 +905,14 @@ void create_standard_pipelines(void)
 void vk_destroyShaderStagePipeline(void)
 {
     // shader stage
-    qvkDeviceWaitIdle(vk.device);
+     // If Vulkan failed to initialize, device or function pointer may be null.
+    if (vk.device != VK_NULL_HANDLE && qvkDeviceWaitIdle) {
+        qvkDeviceWaitIdle(vk.device);
+    } else {
+        ri.Printf(PRINT_WARNING,
+            "VK: skipping vkDeviceWaitIdle in vk_destroyShaderStagePipeline (device=%p, func=%p)\n",
+            (void*)vk.device, (void*)qvkDeviceWaitIdle);
+    }
     uint32_t i;
     for (i = 0; i < s_numPipelines; i++)
     {
