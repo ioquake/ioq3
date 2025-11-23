@@ -1,14 +1,14 @@
 include_guard(GLOBAL)
 
 set(RENDERER_COMMON_SOURCES
-    ${SOURCE_DIR}/renderercommon/tr_font.c
-    ${SOURCE_DIR}/renderercommon/tr_image_bmp.c
-    ${SOURCE_DIR}/renderercommon/tr_image_jpg.c
-    ${SOURCE_DIR}/renderercommon/tr_image_pcx.c
-    ${SOURCE_DIR}/renderercommon/tr_image_png.c
-    ${SOURCE_DIR}/renderercommon/tr_image_tga.c
-    ${SOURCE_DIR}/renderercommon/tr_noise.c
-    ${SOURCE_DIR}/renderercommon/puff.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_font.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_image_bmp.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_image_jpg.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_image_pcx.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_image_png.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_image_tga.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_noise.c
+    ${SOURCE_DIR}/renderer/renderercommon/puff.c
 )
 
 set(SDL_RENDERER_SOURCES
@@ -17,7 +17,7 @@ set(SDL_RENDERER_SOURCES
 )
 
 set(DYNAMIC_RENDERER_SOURCES
-    ${SOURCE_DIR}/renderercommon/tr_subs.c
+    ${SOURCE_DIR}/renderer/renderercommon/tr_subs.c
     ${SOURCE_DIR}/qcommon/q_shared.c
     ${SOURCE_DIR}/qcommon/q_math.c
 )

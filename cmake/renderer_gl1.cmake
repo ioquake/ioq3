@@ -6,29 +6,29 @@ include(utils/set_output_dirs)
 include(renderer_common)
 
 set(RENDERER_GL1_SOURCES
-    ${SOURCE_DIR}/renderergl1/tr_altivec.c
-    ${SOURCE_DIR}/renderergl1/tr_animation.c
-    ${SOURCE_DIR}/renderergl1/tr_backend.c
-    ${SOURCE_DIR}/renderergl1/tr_bsp.c
-    ${SOURCE_DIR}/renderergl1/tr_cmds.c
-    ${SOURCE_DIR}/renderergl1/tr_curve.c
-    ${SOURCE_DIR}/renderergl1/tr_flares.c
-    ${SOURCE_DIR}/renderergl1/tr_image.c
-    ${SOURCE_DIR}/renderergl1/tr_init.c
-    ${SOURCE_DIR}/renderergl1/tr_light.c
-    ${SOURCE_DIR}/renderergl1/tr_main.c
-    ${SOURCE_DIR}/renderergl1/tr_marks.c
-    ${SOURCE_DIR}/renderergl1/tr_mesh.c
-    ${SOURCE_DIR}/renderergl1/tr_model.c
-    ${SOURCE_DIR}/renderergl1/tr_model_iqm.c
-    ${SOURCE_DIR}/renderergl1/tr_scene.c
-    ${SOURCE_DIR}/renderergl1/tr_shade.c
-    ${SOURCE_DIR}/renderergl1/tr_shade_calc.c
-    ${SOURCE_DIR}/renderergl1/tr_shader.c
-    ${SOURCE_DIR}/renderergl1/tr_shadows.c
-    ${SOURCE_DIR}/renderergl1/tr_sky.c
-    ${SOURCE_DIR}/renderergl1/tr_surface.c
-    ${SOURCE_DIR}/renderergl1/tr_world.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_altivec.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_animation.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_backend.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_bsp.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_cmds.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_curve.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_flares.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_image.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_init.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_light.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_main.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_marks.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_mesh.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_model.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_model_iqm.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_scene.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_shade.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_shade_calc.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_shader.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_shadows.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_sky.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_surface.c
+    ${SOURCE_DIR}/renderer/renderergl1/tr_world.c
 )
 
 set(RENDERER_GL1_BASENAME renderer_opengl1)

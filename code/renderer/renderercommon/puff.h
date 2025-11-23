@@ -30,7 +30,7 @@
 #ifndef __PUFF_H
 #define __PUFF_H
 
-#include "../qcommon/q_shared.h"			/* for definitions of the <stdint.h> types */
+#include "../../qcommon/q_shared.h"			/* for definitions of the <stdint.h> types */
 
 /*
  * See puff.c for purpose and usage.
