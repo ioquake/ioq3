@@ -49,6 +49,12 @@ void vk_createDepthAttachment(int Width, int Height)
         VK_CHECK(qvkBindImageMemory(vk.device, vk.depth_image, vk.depth_image_memory, 0));
     }
 
+    VkImageAspectFlags image_aspect_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (vk.fmt_DepthStencil == VK_FORMAT_D24_UNORM_S8_UINT ||
+        vk.fmt_DepthStencil == VK_FORMAT_D32_SFLOAT_S8_UINT)
+    {
+        image_aspect_flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
 
     ri.Printf(PRINT_ALL, " Create image view for depth image: vk.depth_image_view. \n");
     {
@@ -63,7 +69,7 @@ void vk_createDepthAttachment(int Width, int Height)
         desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
         desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
         desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        desc.subresourceRange.aspectMask = image_aspect_flags;
         desc.subresourceRange.baseMipLevel = 0;
         desc.subresourceRange.levelCount = 1;
         desc.subresourceRange.baseArrayLayer = 0;
@@ -71,7 +77,6 @@ void vk_createDepthAttachment(int Width, int Height)
         VK_CHECK(qvkCreateImageView(vk.device, &desc, NULL, &vk.depth_image_view));
     }
 
-    VkImageAspectFlags image_aspect_flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
 
     VkCommandBufferAllocateInfo alloc_info;
