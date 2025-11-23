@@ -487,7 +487,7 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters )
     *(int *)(BE_Commands.cmds + BE_Commands.used) = RC_END_OF_LIST;
 
 
-    const void * data = BE_Commands.cmds;
+    const byte *data = BE_Commands.cmds;
 
 
     while(1)
@@ -497,7 +497,7 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters )
         {
             case RC_SET_COLOR:
             {
-                const setColorCommand_t * const cmd = data;
+                const setColorCommand_t * const cmd = (const setColorCommand_t*)data;
 
                 backEnd.Color2D[0] = cmd->color[0] * 255;
                 backEnd.Color2D[1] = cmd->color[1] * 255;
@@ -509,7 +509,7 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters )
 
             case RC_STRETCH_PIC:
             {
-                const stretchPicCommand_t * const cmd = data;
+                const stretchPicCommand_t * const cmd = (const stretchPicCommand_t*)data;;
 
                 RB_StretchPic( cmd );
 
@@ -567,7 +567,7 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters )
 
             case RC_SCREENSHOT:
             {   
-                const screenshotCommand_t * const cmd = data;
+                const screenshotCommand_t * const cmd = (const screenshotCommand_t*)data;;
 
                 RB_TakeScreenshot( cmd->width, cmd->height, cmd->fileName, cmd->jpeg);
 

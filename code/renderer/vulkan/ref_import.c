@@ -1,4 +1,4 @@
-#include "../qcommon/q_shared.h"
+#include "../../qcommon/q_shared.h"
 #include "../renderercommon/tr_public.h"
 
 extern refexport_t* R_Export(void);

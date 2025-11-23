@@ -1,7 +1,7 @@
 #ifndef RENDER_EXPORT_H_
 #define RENDER_EXPORT_H_
 
-#include "../qcommon/q_shared.h"
+#include "../../qcommon/q_shared.h"
 #include "../renderercommon/tr_types.h"
 #include "../renderercommon/tr_public.h"
 

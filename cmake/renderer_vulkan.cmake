@@ -5,6 +5,12 @@ endif()
 include(utils/set_output_dirs)
 include(renderer_common)
 
+set(RENDERER_VULKAN_LIBRARY_SOURCES ${RENDERER_LIBRARY_SOURCES})
+set(RENDERER_VULKAN_DYNAMIC_SOURCES ${DYNAMIC_RENDERER_SOURCES})
+
+list(FILTER RENDERER_VULKAN_DYNAMIC_SOURCES EXCLUDE REGEX "tr_subs\\.c$")
+list(FILTER RENDERER_VULKAN_LIBRARY_SOURCES EXCLUDE REGEX "tr_subs\\.c$")
+
 set(RENDERER_VULKAN_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/matrix_multiplication.c
     ${SOURCE_DIR}/renderer/vulkan/tr_globals.c
@@ -41,6 +47,7 @@ set(RENDERER_VULKAN_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/tr_flares.c
     ${SOURCE_DIR}/renderer/vulkan/tr_fog.c
     ${SOURCE_DIR}/renderer/vulkan/tr_world.c
+
     ${SOURCE_DIR}/renderer/vulkan/vk_instance.c
     ${SOURCE_DIR}/renderer/vulkan/vk_init.c
     ${SOURCE_DIR}/renderer/vulkan/vk_cmd.c
@@ -53,16 +60,20 @@ set(RENDERER_VULKAN_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/vk_shade_geometry.c
     ${SOURCE_DIR}/renderer/vulkan/vk_depth_attachment.c
     ${SOURCE_DIR}/renderer/vulkan/vk_shaders.c
+
     ${SOURCE_DIR}/renderer/vulkan/R_StretchRaw.c
     ${SOURCE_DIR}/renderer/vulkan/R_DebugGraphics.c
     ${SOURCE_DIR}/renderer/vulkan/RB_ShowImages.c
     ${SOURCE_DIR}/renderer/vulkan/RB_DrawNormals.c
+    ${SOURCE_DIR}/renderer/vulkan/RB_DrawTris.c
+    ${SOURCE_DIR}/renderer/vulkan/RB_SurfaceAnim.c
     ${SOURCE_DIR}/renderer/vulkan/tr_backend.c
     ${SOURCE_DIR}/renderer/vulkan/tr_Cull.c
     ${SOURCE_DIR}/renderer/vulkan/glConfig.c
     ${SOURCE_DIR}/renderer/vulkan/R_Parser.c
     ${SOURCE_DIR}/renderer/vulkan/R_PortalPlane.c
     ${SOURCE_DIR}/renderer/vulkan/R_PrintMat.c
+
     ${SOURCE_DIR}/renderer/vulkan/R_LoadImage2.c
     ${SOURCE_DIR}/renderer/vulkan/R_LoadImage.c
     ${SOURCE_DIR}/renderer/vulkan/R_ImageJPG.c
@@ -70,11 +81,15 @@ set(RENDERER_VULKAN_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/R_ImagePNG.c
     ${SOURCE_DIR}/renderer/vulkan/R_ImageBMP.c
     ${SOURCE_DIR}/renderer/vulkan/R_ImagePCX.c
+
     ${SOURCE_DIR}/renderer/vulkan/ref_import.c
     ${SOURCE_DIR}/renderer/vulkan/render_export.c
+
     ${SOURCE_DIR}/renderer/vulkan/vk_create_window_SDL.c
+    ${SOURCE_DIR}/qcommon/puff.c
 )
 
+# Auto-include the generated SPIR-V C stubs
 file(GLOB RENDERER_VULKAN_SHADER_C_SOURCES
     ${SOURCE_DIR}/renderer/vulkan/shaders/Compiled/*.c
 )
@@ -82,17 +97,15 @@ file(GLOB RENDERER_VULKAN_SHADER_C_SOURCES
 set(RENDERER_VULKAN_BASENAME renderer_vulkan)
 set(RENDERER_VULKAN_BINARY  ${RENDERER_VULKAN_BASENAME})
 
+# IMPORTANT: Do *not* pull in RENDERER_COMMON_SOURCES or SDL_RENDERER_SOURCES here.
 list(APPEND RENDERER_VULKAN_BINARY_SOURCES
-    ${RENDERER_COMMON_SOURCES}
     ${RENDERER_VULKAN_SOURCES}
     ${RENDERER_VULKAN_SHADER_C_SOURCES}
-    ${SDL_RENDERER_SOURCES}
-    ${RENDERER_LIBRARY_SOURCES}
+    ${RENDERER_VULKAN_LIBRARY_SOURCES}
 )
 
-# Build the dlopen-able renderer .so/.dll equivalent to renderer_vulkan_$(SHLIBNAME)
 if(USE_RENDERER_DLOPEN)
-    list(APPEND RENDERER_VULKAN_BINARY_SOURCES ${DYNAMIC_RENDERER_SOURCES})
+    list(APPEND RENDERER_VULKAN_BINARY_SOURCES ${RENDERER_VULKAN_DYNAMIC_SOURCES})
 
     add_library(${RENDERER_VULKAN_BINARY} SHARED ${RENDERER_VULKAN_BINARY_SOURCES})
 
@@ -104,3 +117,4 @@ if(USE_RENDERER_DLOPEN)
 
     set_output_dirs(${RENDERER_VULKAN_BINARY})
 endif()
+

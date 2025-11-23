@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 ===========================================================================
 */
 
-#include "../qcommon/puff.h"
+#include "../../qcommon/puff.h"
 
 #include "ref_import.h"
 #include "image_loader.h"
