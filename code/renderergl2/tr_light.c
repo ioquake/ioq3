@@ -465,18 +465,55 @@ int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, ve
 int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world )
 {
 	trRefEntity_t ent;
-	
-	if ( world->lightGridData == NULL )
-	  return qfalse;
+	vec3_t samplePoint, dir;
+	float len, normalDot, normalBias;
 
-	Com_Memset(&ent, 0, sizeof(ent));
-	VectorCopy( point, ent.e.origin );
+	if ( world->lightGridData == NULL )
+		return qfalse;
+
+	// Sample half a cell behind the surface along its normal to avoid boundaries
+	if ( world->lightGridMaxSize > 0.0f ) {
+		normalBias = -0.5f * world->lightGridMaxSize;
+		VectorMA( point, normalBias, normal, samplePoint );
+	} else {
+		// If we are unable to determine cell size, just use the original point with no offset
+		ri.Printf( PRINT_WARNING,
+			"R_LightDirForPoint: lightGridMaxSize <= 0 (invalid gridsize in worldspawn?)\n" );
+		VectorCopy( point, samplePoint );
+	}
+
+	Com_Memset( &ent, 0, sizeof(ent) );
+	VectorCopy( samplePoint, ent.e.origin );
 	R_SetupEntityLightingGrid( &ent, world );
 
-	if (DotProduct(ent.lightDir, normal) > 0.2f)
-		VectorCopy(ent.lightDir, lightDir);
-	else
-		VectorCopy(normal, lightDir);
+	// Normalize the sampled light direction, if it is zero use the geometric normal
+	VectorCopy( ent.lightDir, dir );
+	len = VectorNormalize( dir );
+
+	if ( len == 0.0f ) {
+		VectorCopy( normal, lightDir );
+		return qtrue;
+	}
+
+	// Discard light directions that face away from the surface
+	normalDot = DotProduct( normal, dir );
+	if ( normalDot <= 0.0f ) {
+		VectorCopy( normal, dir );
+		normalDot = 1.0f;
+	}
+
+	// When the sampled direction is very shallow, interpolate it towards the normal
+	{
+		float minDot = 0.3f; // cos(72 degrees)
+		if ( normalDot < minDot ) {
+			float blend = (minDot - normalDot) / minDot;
+			blend = Com_Clamp( 0.0f, 1.0f, blend );
+			VectorLerp( dir, normal, blend, dir );
+			VectorNormalize( dir );
+		}
+	}
+
+	VectorCopy( dir, lightDir );
 
 	return qtrue;
 }
