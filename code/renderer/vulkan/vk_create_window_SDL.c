@@ -32,16 +32,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "glConfig.h"
 
 
-#ifdef USE_INTERNAL_SDL_HEADERS
+#if defined(USE_INTERNAL_SDL_HEADERS) || defined(__OpenBSD__)
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "SDL_vulkan.h"
 #else
-
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <SDL2/SDL_vulkan.h>
-
 #endif
 
 
