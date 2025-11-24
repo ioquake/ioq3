@@ -47,12 +47,12 @@ prepare "https://downloads.xiph.org/releases/ogg/libogg-${OGG_VERSION}.tar.gz" \
 prepare "https://downloads.xiph.org/releases/vorbis/libvorbis-${VORBIS_VERSION}.tar.gz" \
     "./configure" \
     "\./\(include\|lib\)/.*\.[ch]" \
-    "\./lib/\(barkmel\|psytune\|tone\)\.c"
+    "\./lib/\(barkmel\|psytune\|tone\|vorbisenc\)\.c"
 
 prepare "https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz" \
     "./configure" \
     "\./\(celt\|include\|silk\|src\)/.*\.[ch]" \
-    "\./.*\(arm\|_compare\|_demo\|fixed\|mips\|tests\|x86\).*"
+    "\./.*\(arm\|_compare\|_demo\|fixed\|mapping_matrix\|mips\|opus_projection_\|tests\|x86\).*"
 
 prepare "https://downloads.xiph.org/releases/opus/opusfile-${OPUSFILE_VERSION}.tar.gz" \
     "./configure" \
@@ -61,7 +61,7 @@ prepare "https://downloads.xiph.org/releases/opus/opusfile-${OPUSFILE_VERSION}.t
 prepare "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" \
     "" \
     "\./[^/]*\.[ch]" \
-    "\./gz.*\.[c]"
+    "\./\(compress\|deflate\|infback\|trees\|uncompr\|gz.*\)\.[c]"
 
 prepare "https://www.ijg.org/files/jpegsrc.v${JPEG_VERSION}.tar.gz" \
     "./configure" \
