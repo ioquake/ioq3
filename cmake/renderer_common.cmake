@@ -29,10 +29,26 @@ endif()
 
 if(USE_RENDERER_DLOPEN)
     list(APPEND RENDERER_DEFINITIONS USE_RENDERER_DLOPEN)
-elseif(BUILD_RENDERER_GL1 AND BUILD_RENDERER_GL2)
-    message(FATAL_ERROR "Multiple static renderers enabled; choose one")
-elseif(NOT BUILD_RENDERER_GL1 AND NOT BUILD_RENDERER_GL2)
-    message(FATAL_ERROR "Zero static renderers enabled; choose one")
+else()
+    math(EXPR RENDERER_COUNT "0")
+
+    if(BUILD_RENDERER_GL1)
+        math(EXPR RENDERER_COUNT "${RENDERER_COUNT}+1")
+    endif()
+
+    if(BUILD_RENDERER_GL2)
+        math(EXPR RENDERER_COUNT "${RENDERER_COUNT}+1")
+    endif()
+
+    if(BUILD_RENDERER_METAL)
+        math(EXPR RENDERER_COUNT "${RENDERER_COUNT}+1")
+    endif()
+
+    if(RENDERER_COUNT GREATER 1)
+        message(FATAL_ERROR "Multiple static renderers enabled; choose one")
+    elseif(RENDERER_COUNT EQUAL 0)
+        message(FATAL_ERROR "Zero static renderers enabled; choose one")
+    endif()
 endif()
 
 list(APPEND RENDERER_LIBRARIES ${COMMON_LIBRARIES})

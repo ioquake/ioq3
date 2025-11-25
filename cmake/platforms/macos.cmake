@@ -74,6 +74,11 @@ function(finish_macos_app)
             set_output_dirs(${RENDERER_GL2_BINARY} SUBDIRECTORY ${MACOS_APP_BINARY_DIR})
             add_dependencies(${CLIENT_BINARY} ${RENDERER_GL2_BINARY})
         endif()
+
+        if(BUILD_RENDERER_METAL)
+            set_output_dirs(${RENDERER_METAL_BINARY} SUBDIRECTORY ${MACOS_APP_BINARY_DIR})
+            add_dependencies(${CLIENT_BINARY} ${RENDERER_METAL_BINARY})
+        endif()
     endif()
 endfunction()
 
