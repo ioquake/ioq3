@@ -1,3 +1,12 @@
+/*
+===========================================================================
+Copyright (C) 1999-2005 Id Software, Inc.
+Copyright (C) 2025 Modern Metal Renderer Implementation
+
+Metal renderer with RAII and modern C++ practices
+===========================================================================
+*/
+
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_public.h"
 
@@ -31,373 +40,437 @@ extern "C" {
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <memory>
+#include <vector>
 
-struct CinematicSlot
-{
-	MTL::Texture *texture = nullptr;
-	int cols = 0;
-	int rows = 0;
+//=============================================================================
+// RAII Wrapper for Metal Objects
+//=============================================================================
+
+template<typename T>
+class MetalPtr {
+	T* ptr_ = nullptr;
+
+public:
+	MetalPtr() = default;
+	explicit MetalPtr(T* p) : ptr_(p) {}
+	
+	~MetalPtr() {
+		if (ptr_) {
+			ptr_->release();
+		}
+	}
+
+	// Move-only semantics
+	MetalPtr(MetalPtr&& other) noexcept : ptr_(other.ptr_) {
+		other.ptr_ = nullptr;
+	}
+
+	MetalPtr& operator=(MetalPtr&& other) noexcept {
+		if (this != &other) {
+			reset();
+			ptr_ = other.ptr_;
+			other.ptr_ = nullptr;
+		}
+		return *this;
+	}
+
+	// Deleted copy
+	MetalPtr(const MetalPtr&) = delete;
+	MetalPtr& operator=(const MetalPtr&) = delete;
+
+	T* get() const { return ptr_; }
+	T* operator->() const { return ptr_; }
+	T& operator*() const { return *ptr_; }
+	explicit operator bool() const { return ptr_ != nullptr; }
+
+	T* release() {
+		T* tmp = ptr_;
+		ptr_ = nullptr;
+		return tmp;
+	}
+
+	void reset(T* p = nullptr) {
+		if (ptr_) {
+			ptr_->release();
+		}
+		ptr_ = p;
+	}
 };
 
-static refimport_t ri;
-static MTL::Device *g_device = nullptr;
-static MTL::CommandQueue *g_commandQueue = nullptr;
-static CA::MetalLayer *g_layer = nullptr;
-static MTL::Texture *g_frameTexture = nullptr;
-static int g_frameCols = 0;
-static int g_frameRows = 0;
-static MTL::RenderPipelineState *g_pipelineState = nullptr;
-static MTL::SamplerState *g_samplerState = nullptr;
-static glconfig_t g_glConfig{};
-static bool g_inputInitialized = false;
-static std::array<CinematicSlot, 8> g_slots{};
+//=============================================================================
+// Metal Renderer Class
+//=============================================================================
 
-static int g_pendingClient = 0;
-static int g_pendingCols = 0;
-static int g_pendingRows = 0;
-static int g_pendingX = 0;
-static int g_pendingY = 0;
-static int g_pendingW = 0;
-static int g_pendingH = 0;
-static bool g_pendingDirty = false;
-static std::vector<uint8_t> g_pendingData;
+class MetalRenderer {
+public:
+	MetalRenderer() = default;
+	~MetalRenderer() { shutdown(qtrue); }
 
-static void Metal_Destroy(qboolean destroyWindow)
-{
-	if (g_samplerState)
-	{
-		g_samplerState->release();
-		g_samplerState = nullptr;
-	}
-	if (g_pipelineState)
-	{
-		g_pipelineState->release();
-		g_pipelineState = nullptr;
-	}
-	for (auto &slot : g_slots)
-	{
-		if (slot.texture)
-		{
-			slot.texture->release();
-			slot.texture = nullptr;
-		}
+	// Delete copy/move (singleton pattern)
+	MetalRenderer(const MetalRenderer&) = delete;
+	MetalRenderer& operator=(const MetalRenderer&) = delete;
+
+	bool initialize(refimport_t imports);
+	void shutdown(qboolean destroyWindow);
+
+	void beginRegistration(glconfig_t* configOut);
+	void beginFrame();
+	void endFrame(int* frontEndMsec, int* backEndMsec);
+
+	void uploadCinematic(int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty);
+	void drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty);
+
+	const glconfig_t& config() const { return config_; }
+
+private:
+	struct CinematicSlot {
+		MetalPtr<MTL::Texture> texture;
+		int cols = 0;
+		int rows = 0;
+	};
+
+	struct PendingCinematic {
+		std::vector<uint8_t> data;
+		int client = 0;
+		int cols = 0;
+		int rows = 0;
+		int x = 0;
+		int y = 0;
+		int w = 0;
+		int h = 0;
+		bool dirty = false;
+	};
+
+	refimport_t ri_{};
+	MetalPtr<MTL::Device> device_;
+	MetalPtr<MTL::CommandQueue> commandQueue_;
+	CA::MetalLayer* layer_ = nullptr;  // Not owned, managed by SDL
+	MetalPtr<MTL::RenderPipelineState> pipeline_;
+	MetalPtr<MTL::SamplerState> sampler_;
+
+	std::array<CinematicSlot, 8> cinematicSlots_;
+	PendingCinematic pendingCinematic_;
+
+	// Current frame cinematic texture (not owned, points into cinematicSlots_)
+	MTL::Texture* frameCinematicTexture_ = nullptr;
+	int frameCinematicCols_ = 0;
+	int frameCinematicRows_ = 0;
+
+	glconfig_t config_{};
+	bool inputInitialized_ = false;
+
+	bool initializeWindow(int& width, int& height, qboolean& fullscreen);
+	bool createPipeline(MTL::Texture* drawableTexture);
+	void processPendingUploads();
+	void fillConfigDefaults(int width, int height, qboolean fullscreen);
+};
+
+//=============================================================================
+// Implementation
+//=============================================================================
+
+bool MetalRenderer::initialize(refimport_t imports) {
+	ri_ = imports;
+	return true;
+}
+
+void MetalRenderer::shutdown(qboolean destroyWindow) {
+	// RAII handles Metal object cleanup automatically
+	sampler_.reset();
+	pipeline_.reset();
+	
+	for (auto& slot : cinematicSlots_) {
+		slot.texture.reset();
 		slot.cols = slot.rows = 0;
 	}
-	if (g_commandQueue)
-	{
-		g_commandQueue->release();
-		g_commandQueue = nullptr;
-	}
-	if (g_device)
-	{
-		g_device->release();
-		g_device = nullptr;
-	}
 	
-	// Shutdown input system before SDL cleanup (matches OpenGL behavior)
-	if (g_inputInitialized)
-	{
-		ri.IN_Shutdown();
-		g_inputInitialized = false;
+	commandQueue_.reset();
+	device_.reset();
+
+	// Shutdown input before SDL
+	if (inputInitialized_) {
+		ri_.IN_Shutdown();
+		inputInitialized_ = false;
 	}
-	
+
 	SDLMetal_Shutdown(destroyWindow);
-	g_layer = nullptr;
+	layer_ = nullptr;
+	frameCinematicTexture_ = nullptr;
 }
 
-static void Metal_FillConfigDefaults(int width, int height, qboolean fullscreen)
-{
-	std::snprintf(g_glConfig.renderer_string, sizeof(g_glConfig.renderer_string), "Metal");
-	std::snprintf(g_glConfig.vendor_string, sizeof(g_glConfig.vendor_string), "Apple");
-	std::snprintf(g_glConfig.version_string, sizeof(g_glConfig.version_string), "Metal");
-	g_glConfig.extensions_string[0] = '\0';
+void MetalRenderer::fillConfigDefaults(int width, int height, qboolean fullscreen) {
+	std::snprintf(config_.renderer_string, sizeof(config_.renderer_string), "Metal");
+	std::snprintf(config_.vendor_string, sizeof(config_.vendor_string), "Apple");
+	std::snprintf(config_.version_string, sizeof(config_.version_string), "Metal");
+	config_.extensions_string[0] = '\0';
 
-	g_glConfig.maxTextureSize = 0;
-	g_glConfig.numTextureUnits = 0;
-
-	g_glConfig.colorBits = 32;
-	g_glConfig.depthBits = 24;
-	g_glConfig.stencilBits = 8;
-
-	g_glConfig.driverType = GLDRV_ICD;
-	g_glConfig.hardwareType = GLHW_GENERIC;
-
-	g_glConfig.deviceSupportsGamma = qfalse;
-	g_glConfig.textureCompression = TC_NONE;
-	g_glConfig.textureEnvAddAvailable = qfalse;
-
-	g_glConfig.vidWidth = width;
-	g_glConfig.vidHeight = height;
-	g_glConfig.windowAspect = static_cast<float>(width) / static_cast<float>(height);
-	g_glConfig.displayFrequency = 0;
-	g_glConfig.isFullscreen = fullscreen;
-	g_glConfig.stereoEnabled = qfalse;
-	g_glConfig.smpActive = qfalse;
+	config_.maxTextureSize = 0;
+	config_.numTextureUnits = 0;
+	config_.colorBits = 32;
+	config_.depthBits = 24;
+	config_.stencilBits = 8;
+	config_.driverType = GLDRV_ICD;
+	config_.hardwareType = GLHW_GENERIC;
+	config_.deviceSupportsGamma = qfalse;
+	config_.textureCompression = TC_NONE;
+	config_.textureEnvAddAvailable = qfalse;
+	config_.vidWidth = width;
+	config_.vidHeight = height;
+	config_.windowAspect = static_cast<float>(width) / static_cast<float>(height);
+	config_.displayFrequency = 0;
+	config_.isFullscreen = fullscreen;
+	config_.stereoEnabled = qfalse;
+	config_.smpActive = qfalse;
 }
 
-static bool Metal_InitWindow()
-{
-	int width = 1280;
-	int height = 720;
-	qboolean fullscreen = qfalse;
-
+bool MetalRenderer::initializeWindow(int& width, int& height, qboolean& fullscreen) {
 	// Get window size preferences from cvars
-	int cw = ri.Cvar_VariableIntegerValue("r_customwidth");
-	int ch = ri.Cvar_VariableIntegerValue("r_customheight");
-	fullscreen = ri.Cvar_VariableIntegerValue("r_fullscreen") ? qtrue : qfalse;
-	if (cw > 0 && ch > 0)
-	{
+	int cw = ri_.Cvar_VariableIntegerValue("r_customwidth");
+	int ch = ri_.Cvar_VariableIntegerValue("r_customheight");
+	fullscreen = ri_.Cvar_VariableIntegerValue("r_fullscreen") ? qtrue : qfalse;
+	
+	if (cw > 0 && ch > 0) {
 		width = cw;
 		height = ch;
-	}
-	else
-	{
+	} else {
 		SDL_DisplayMode dm;
-		if (SDL_GetDesktopDisplayMode(0, &dm) == 0)
-		{
+		if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
 			width = dm.w;
 			height = dm.h;
 		}
 	}
 
-	if (!SDLMetal_Init(width, height, fullscreen))
-	{
+	if (!SDLMetal_Init(width, height, fullscreen)) {
 		return false;
 	}
 
-	g_device = MTL::CreateSystemDefaultDevice();
-	if (!g_device)
-	{
-		ri.Printf(PRINT_ALL, "Metal device creation failed\n");
+	device_.reset(MTL::CreateSystemDefaultDevice());
+	if (!device_) {
+		ri_.Printf(PRINT_ALL, "Metal device creation failed\n");
 		SDLMetal_Shutdown(qtrue);
 		return false;
 	}
 
-	g_commandQueue = g_device->newCommandQueue();
-	g_layer = reinterpret_cast<CA::MetalLayer *>(SDLMetal_GetLayer());
-	if (g_layer)
-	{
-		g_layer->setDevice(g_device);
-		g_layer->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm);
-		g_layer->setFramebufferOnly(false);
-		g_layer->setDisplaySyncEnabled(true);
-		g_layer->setMaximumDrawableCount(3);
+	commandQueue_.reset(device_->newCommandQueue());
+	layer_ = reinterpret_cast<CA::MetalLayer*>(SDLMetal_GetLayer());
+	
+	if (layer_) {
+		layer_->setDevice(device_.get());
+		layer_->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm);
+		layer_->setFramebufferOnly(false);
+		layer_->setDisplaySyncEnabled(true);
+		layer_->setMaximumDrawableCount(3);
+		
 		CGSize drawableSize;
 		drawableSize.width = static_cast<CGFloat>(width);
 		drawableSize.height = static_cast<CGFloat>(height);
-		g_layer->setDrawableSize(drawableSize);
+		layer_->setDrawableSize(drawableSize);
 	}
 
-	Metal_FillConfigDefaults(width, height, fullscreen);
+	fillConfigDefaults(width, height, fullscreen);
 	return true;
 }
 
-static void Metal_EnsurePipeline(MTL::Texture *drawableTexture)
-{
-	if (g_pipelineState && g_samplerState)
-	{
-		return;
+bool MetalRenderer::createPipeline(MTL::Texture* drawableTexture) {
+	if (pipeline_ && sampler_) {
+		return true;
 	}
-	if (!g_device || !drawableTexture)
-	{
-		return;
+	if (!device_ || !drawableTexture) {
+		return false;
 	}
 
-	static const char *shaderSrc =
-		R"(
+	// Simple shader for cinematic playback
+	static const char* shaderSrc = R"(
 		using namespace metal;
 		struct VertexIn { float2 pos [[attribute(0)]]; float2 uv [[attribute(1)]]; };
 		struct VertexOut { float4 position [[position]]; float2 uv; };
-		vertex VertexOut vmain(uint vid [[vertex_id]], const device VertexIn* verts [[buffer(0)]])
-		{
+		
+		vertex VertexOut vmain(uint vid [[vertex_id]], const device VertexIn* verts [[buffer(0)]]) {
 			VertexOut out;
 			VertexIn v = verts[vid];
 			out.position = float4(v.pos, 0.0, 1.0);
 			out.uv = v.uv;
 			return out;
 		}
-		fragment float4 fmain(VertexOut in [[stage_in]], texture2d<float> tex [[texture(0)]], sampler samp [[sampler(0)]])
-		{
+		
+		fragment float4 fmain(VertexOut in [[stage_in]], texture2d<float> tex [[texture(0)]], sampler samp [[sampler(0)]]) {
 			return tex.sample(samp, in.uv);
 		}
-		)";
+	)";
 
-	NS::Error *error = nullptr;
-	NS::String *src = NS::String::string(shaderSrc, NS::ASCIIStringEncoding);
-	MTL::Library *lib = g_device->newLibrary(src, nullptr, &error);
+	NS::Error* error = nullptr;
+	NS::String* src = NS::String::string(shaderSrc, NS::ASCIIStringEncoding);
+	MTL::Library* lib = device_->newLibrary(src, nullptr, &error);
 	src->release();
-	if (!lib)
-	{
-		if (error)
-		{
-			ri.Printf(PRINT_WARNING, "Metal: shader compile failed: %s\n", error->localizedDescription()->utf8String());
+
+	if (!lib) {
+		if (error) {
+			ri_.Printf(PRINT_WARNING, "Metal shader compilation failed: %s\n", error->localizedDescription()->utf8String());
 			error->release();
 		}
-		return;
+		return false;
 	}
 
-	MTL::Function *vfn = lib->newFunction(NS::String::string("vmain", NS::ASCIIStringEncoding));
-	MTL::Function *ffn = lib->newFunction(NS::String::string("fmain", NS::ASCIIStringEncoding));
+	MTL::Function* vfn = lib->newFunction(NS::String::string("vmain", NS::ASCIIStringEncoding));
+	MTL::Function* ffn = lib->newFunction(NS::String::string("fmain", NS::ASCIIStringEncoding));
 
-	MTL::RenderPipelineDescriptor *pd = MTL::RenderPipelineDescriptor::alloc()->init();
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
 	pd->setVertexFunction(vfn);
 	pd->setFragmentFunction(ffn);
 	pd->colorAttachments()->object(0)->setPixelFormat(drawableTexture->pixelFormat());
 
-	g_pipelineState = g_device->newRenderPipelineState(pd, &error);
+	pipeline_.reset(device_->newRenderPipelineState(pd, &error));
 
 	pd->release();
 	vfn->release();
 	ffn->release();
 	lib->release();
 
-	if (!g_pipelineState)
-	{
-		if (error)
-		{
-			ri.Printf(PRINT_WARNING, "Metal: pipeline creation failed: %s\n", error->localizedDescription()->utf8String());
+	if (!pipeline_) {
+		if (error) {
+			ri_.Printf(PRINT_WARNING, "Metal pipeline creation failed: %s\n", error->localizedDescription()->utf8String());
 			error->release();
 		}
-		return;
+		return false;
 	}
 
-	MTL::SamplerDescriptor *sd = MTL::SamplerDescriptor::alloc()->init();
+	// Create sampler
+	MTL::SamplerDescriptor* sd = MTL::SamplerDescriptor::alloc()->init();
 	sd->setMinFilter(MTL::SamplerMinMagFilterLinear);
 	sd->setMagFilter(MTL::SamplerMinMagFilterLinear);
 	sd->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
 	sd->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
-	g_samplerState = g_device->newSamplerState(sd);
+	sampler_.reset(device_->newSamplerState(sd));
 	sd->release();
+
+	return true;
 }
 
-static void Metal_BeginFrame(stereoFrame_t)
-{
-	if (!Metal_InitWindow())
-	{
-		ri.Error(ERR_FATAL, "Metal renderer failed to create window");
-		return;
+void MetalRenderer::beginFrame() {
+	if (!device_) {
+		int width = 1280;
+		int height = 720;
+		qboolean fullscreen = qfalse;
+		
+		if (!initializeWindow(width, height, fullscreen)) {
+			ri_.Error(ERR_FATAL, "Metal renderer failed to create window");
+			return;
+		}
 	}
+
 	int w = 0, h = 0;
 	SDLMetal_GetDrawableSize(&w, &h);
-	if (w > 0 && h > 0)
-	{
-		g_glConfig.vidWidth = w;
-		g_glConfig.vidHeight = h;
-		g_glConfig.windowAspect = static_cast<float>(w) / static_cast<float>(h);
-		if (g_layer)
-		{
+	
+	if (w > 0 && h > 0) {
+		config_.vidWidth = w;
+		config_.vidHeight = h;
+		config_.windowAspect = static_cast<float>(w) / static_cast<float>(h);
+		
+		if (layer_) {
 			CGSize drawableSize;
 			drawableSize.width = static_cast<CGFloat>(w);
 			drawableSize.height = static_cast<CGFloat>(h);
-			g_layer->setDrawableSize(drawableSize);
+			layer_->setDrawableSize(drawableSize);
 		}
 	}
 }
 
-static void Metal_EndFrame(int *frontEndMsec, int *backEndMsec)
-{
-	if (frontEndMsec)
-	{
-		*frontEndMsec = 0;
-	}
-	if (backEndMsec)
-	{
-		*backEndMsec = 0;
-	}
-	if (!g_layer || !g_commandQueue)
-	{
+void MetalRenderer::processPendingUploads() {
+	if (!pendingCinematic_.dirty || !device_) {
 		return;
 	}
 
-	CA::MetalDrawable *drawable = g_layer->nextDrawable();
-	if (!drawable)
-	{
+	int clientIndex = std::clamp(pendingCinematic_.client, 0, static_cast<int>(cinematicSlots_.size()) - 1);
+	CinematicSlot& slot = cinematicSlots_[clientIndex];
+
+	// Recreate texture if dimensions changed
+	if (!slot.texture || slot.cols != pendingCinematic_.cols || slot.rows != pendingCinematic_.rows) {
+		MTL::TextureDescriptor* desc = MTL::TextureDescriptor::texture2DDescriptor(
+			MTL::PixelFormatRGBA8Unorm, pendingCinematic_.cols, pendingCinematic_.rows, false);
+		desc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+		desc->setStorageMode(MTL::StorageModeShared);
+		slot.texture.reset(device_->newTexture(desc));
+		slot.cols = pendingCinematic_.cols;
+		slot.rows = pendingCinematic_.rows;
+		desc->release();
+	}
+
+	// Upload pixel data
+	if (slot.texture) {
+		MTL::Region region = MTL::Region::Make2D(0, 0, pendingCinematic_.cols, pendingCinematic_.rows);
+		slot.texture->replaceRegion(region, 0, pendingCinematic_.data.data(), pendingCinematic_.cols * 4);
+	}
+
+	pendingCinematic_.dirty = false;
+	frameCinematicTexture_ = slot.texture.get();
+	frameCinematicCols_ = slot.cols;
+	frameCinematicRows_ = slot.rows;
+}
+
+void MetalRenderer::endFrame(int* frontEndMsec, int* backEndMsec) {
+	if (frontEndMsec) *frontEndMsec = 0;
+	if (backEndMsec) *backEndMsec = 0;
+
+	if (!layer_ || !commandQueue_) {
 		return;
 	}
 
-	Metal_EnsurePipeline(drawable->texture());
-	if (!g_pipelineState || !g_samplerState)
-	{
+	CA::MetalDrawable* drawable = layer_->nextDrawable();
+	if (!drawable) {
+		return;
+	}
+
+	createPipeline(drawable->texture());
+	if (!pipeline_ || !sampler_) {
 		drawable->release();
 		return;
 	}
 
-	if (g_pendingDirty && g_device)
-	{
-		int clientIndex = std::clamp(g_pendingClient, 0, static_cast<int>(g_slots.size()) - 1);
-		CinematicSlot &slot = g_slots[clientIndex];
+	processPendingUploads();
 
-		if (!slot.texture || slot.cols != g_pendingCols || slot.rows != g_pendingRows)
-		{
-			if (slot.texture)
-			{
-				slot.texture->release();
-				slot.texture = nullptr;
-			}
-			MTL::TextureDescriptor *desc = MTL::TextureDescriptor::texture2DDescriptor(
-			    MTL::PixelFormatRGBA8Unorm, g_pendingCols, g_pendingRows, false);
-			desc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
-			desc->setStorageMode(MTL::StorageModeShared);
-			slot.texture = g_device->newTexture(desc);
-			slot.cols = g_pendingCols;
-			slot.rows = g_pendingRows;
-			desc->release();
-		}
-
-		if (slot.texture)
-		{
-			MTL::Region region = MTL::Region::Make2D(0, 0, g_pendingCols, g_pendingRows);
-			slot.texture->replaceRegion(region, 0, g_pendingData.data(), g_pendingCols * 4);
-		}
-
-		g_pendingDirty = false;
-		g_frameTexture = slot.texture;
-		g_frameCols = slot.cols;
-		g_frameRows = slot.rows;
-	}
-
-	if (!g_frameTexture)
-	{
+	if (!frameCinematicTexture_) {
 		drawable->release();
 		return;
 	}
 
-	struct Vertex
-	{
+	// Build quad vertices
+	struct Vertex {
 		float pos[2];
 		float uv[2];
 	};
 
-	const float fbWidth = static_cast<float>(g_glConfig.vidWidth);
-	const float fbHeight = static_cast<float>(g_glConfig.vidHeight);
+	const float fbWidth = static_cast<float>(config_.vidWidth);
+	const float fbHeight = static_cast<float>(config_.vidHeight);
+	const float ndcLeft = (pendingCinematic_.x * 2.0f / fbWidth) - 1.0f;
+	const float ndcRight = ((pendingCinematic_.x + pendingCinematic_.w) * 2.0f / fbWidth) - 1.0f;
+	const float ndcTop = 1.0f - (pendingCinematic_.y * 2.0f / fbHeight);
+	const float ndcBottom = 1.0f - ((pendingCinematic_.y + pendingCinematic_.h) * 2.0f / fbHeight);
 
-	const float ndcLeft = (g_pendingX * 2.0f / fbWidth) - 1.0f;
-	const float ndcRight = ((g_pendingX + g_pendingW) * 2.0f / fbWidth) - 1.0f;
-	const float ndcTop = 1.0f - (g_pendingY * 2.0f / fbHeight);
-	const float ndcBottom = 1.0f - ((g_pendingY + g_pendingH) * 2.0f / fbHeight);
-
-	const float u0 = 0.5f / static_cast<float>(g_frameCols);
-	const float v0 = 0.5f / static_cast<float>(g_frameRows);
-	const float u1 = (static_cast<float>(g_frameCols) - 0.5f) / static_cast<float>(g_frameCols);
-	const float v1 = (static_cast<float>(g_frameRows) - 0.5f) / static_cast<float>(g_frameRows);
+	const float u0 = 0.5f / static_cast<float>(frameCinematicCols_);
+	const float v0 = 0.5f / static_cast<float>(frameCinematicRows_);
+	const float u1 = (static_cast<float>(frameCinematicCols_) - 0.5f) / static_cast<float>(frameCinematicCols_);
+	const float v1 = (static_cast<float>(frameCinematicRows_) - 0.5f) / static_cast<float>(frameCinematicRows_);
 
 	Vertex verts[6] = {
-	    {{ndcLeft, ndcTop}, {u0, v0}},
-	    {{ndcRight, ndcTop}, {u1, v0}},
-	    {{ndcRight, ndcBottom}, {u1, v1}},
-	    {{ndcLeft, ndcTop}, {u0, v0}},
-	    {{ndcRight, ndcBottom}, {u1, v1}},
-	    {{ndcLeft, ndcBottom}, {u0, v1}},
+		{{ndcLeft, ndcTop}, {u0, v0}},
+		{{ndcRight, ndcTop}, {u1, v0}},
+		{{ndcRight, ndcBottom}, {u1, v1}},
+		{{ndcLeft, ndcTop}, {u0, v0}},
+		{{ndcRight, ndcBottom}, {u1, v1}},
+		{{ndcLeft, ndcBottom}, {u0, v1}},
 	};
 
-	MTL::RenderPassDescriptor *rp = MTL::RenderPassDescriptor::renderPassDescriptor();
+	// Render
+	MTL::RenderPassDescriptor* rp = MTL::RenderPassDescriptor::renderPassDescriptor();
 	rp->colorAttachments()->object(0)->setTexture(drawable->texture());
 	rp->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
 	rp->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
 
-	MTL::CommandBuffer *cb = g_commandQueue->commandBuffer();
-	MTL::RenderCommandEncoder *enc = cb->renderCommandEncoder(rp);
-	enc->setRenderPipelineState(g_pipelineState);
+	MTL::CommandBuffer* cb = commandQueue_->commandBuffer();
+	MTL::RenderCommandEncoder* enc = cb->renderCommandEncoder(rp);
+	enc->setRenderPipelineState(pipeline_.get());
+
 	MTL::Viewport vp;
 	vp.originX = 0.0;
 	vp.originY = 0.0;
@@ -406,9 +479,10 @@ static void Metal_EndFrame(int *frontEndMsec, int *backEndMsec)
 	vp.znear = 0.0;
 	vp.zfar = 1.0;
 	enc->setViewport(vp);
+
 	enc->setVertexBytes(verts, sizeof(verts), 0);
-	enc->setFragmentTexture(g_frameTexture, 0);
-	enc->setFragmentSamplerState(g_samplerState, 0);
+	enc->setFragmentTexture(frameCinematicTexture_, 0);
+	enc->setFragmentSamplerState(sampler_.get(), 0);
 	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
 	enc->endEncoding();
 
@@ -420,165 +494,173 @@ static void Metal_EndFrame(int *frontEndMsec, int *backEndMsec)
 	drawable->release();
 }
 
-static void Metal_UploadCinematic(int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty)
-{
+void MetalRenderer::uploadCinematic(int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
 	(void)w;
 	(void)h;
 
-	if (!data || cols <= 0 || rows <= 0)
-	{
+	if (!data || cols <= 0 || rows <= 0) {
 		return;
 	}
+
+	// Validate power-of-two
 	auto isPowerOfTwo = [](int v) { return v > 0 && (v & (v - 1)) == 0; };
-	if (!isPowerOfTwo(cols) || !isPowerOfTwo(rows))
-	{
-		ri.Printf(PRINT_WARNING, "Metal: UploadCinematic got non-power-of-two %dx%d\n", cols, rows);
+	if (!isPowerOfTwo(cols) || !isPowerOfTwo(rows)) {
+		ri_.Printf(PRINT_WARNING, "Metal: UploadCinematic got non-power-of-two %dx%d\n", cols, rows);
 		return;
 	}
 
 	const size_t expected = static_cast<size_t>(cols) * static_cast<size_t>(rows) * 4;
-	g_pendingData.assign(data, data + expected);
-	g_pendingCols = cols;
-	g_pendingRows = rows;
-	g_pendingClient = std::clamp(client, 0, static_cast<int>(g_slots.size()) - 1);
-	g_pendingDirty = dirty ? true : false;
+	pendingCinematic_.data.assign(data, data + expected);
+	pendingCinematic_.cols = cols;
+	pendingCinematic_.rows = rows;
+	pendingCinematic_.client = std::clamp(client, 0, static_cast<int>(cinematicSlots_.size()) - 1);
+	pendingCinematic_.dirty = dirty ? true : false;
 }
 
-static void Metal_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty)
-{
-	if (!data || cols <= 0 || rows <= 0 || w <= 0 || h <= 0)
-	{
+void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
+	if (!data || cols <= 0 || rows <= 0 || w <= 0 || h <= 0) {
 		return;
 	}
-	Metal_UploadCinematic(w, h, cols, rows, data, client, dirty);
 
-	g_pendingX = x;
-	g_pendingY = y;
-	g_pendingW = w;
-	g_pendingH = h;
+	uploadCinematic(w, h, cols, rows, data, client, dirty);
+
+	pendingCinematic_.x = x;
+	pendingCinematic_.y = y;
+	pendingCinematic_.w = w;
+	pendingCinematic_.h = h;
 }
 
-static void Metal_BeginRegistration(glconfig_t *config)
-{
-	if (!Metal_InitWindow())
-	{
-		ri.Error(ERR_FATAL, "Metal renderer failed to create SDL window");
-		return;
+void MetalRenderer::beginRegistration(glconfig_t* configOut) {
+	if (!device_) {
+		int width = 1280;
+		int height = 720;
+		qboolean fullscreen = qfalse;
+		
+		if (!initializeWindow(width, height, fullscreen)) {
+			ri_.Error(ERR_FATAL, "Metal renderer failed to create SDL window");
+			return;
+		}
 	}
-	if (config)
-	{
-		*config = g_glConfig;
+
+	if (configOut) {
+		*configOut = config_;
 	}
-	if (!g_inputInitialized)
-	{
-		ri.IN_Init(SDLMetal_GetWindow());
-		g_inputInitialized = true;
+
+	if (!inputInitialized_) {
+		ri_.IN_Init(SDLMetal_GetWindow());
+		inputInitialized_ = true;
 	}
 }
 
-static void Metal_Shutdown(qboolean destroyWindow)
-{
-	Metal_Destroy(destroyWindow);
-}
+//=============================================================================
+// Global Renderer Instance
+//=============================================================================
+
+static MetalRenderer g_renderer;
+
+//=============================================================================
+// C API Exports
+//=============================================================================
 
 extern "C" {
 
+static void Metal_Shutdown(qboolean destroyWindow) {
+	g_renderer.shutdown(destroyWindow);
+}
+
+static void Metal_BeginRegistration(glconfig_t* glconfigOut) {
+	g_renderer.beginRegistration(glconfigOut);
+}
+
+static void Metal_BeginFrame(stereoFrame_t stereoFrame) {
+	(void)stereoFrame;
+	g_renderer.beginFrame();
+}
+
+static void Metal_EndFrame(int* frontEndMsec, int* backEndMsec) {
+	g_renderer.endFrame(frontEndMsec, backEndMsec);
+}
+
+static void Metal_UploadCinematic(int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
+	g_renderer.uploadCinematic(w, h, cols, rows, data, client, dirty);
+}
+
+static void Metal_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
+	g_renderer.drawCinematic(x, y, w, h, cols, rows, data, client, dirty);
+}
+
 #ifdef USE_RENDERER_DLOPEN
-Q_EXPORT refexport_t *QDECL GetRefAPI(int apiVersion, refimport_t *rimp)
+Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp)
 #else
-refexport_t *GetRefAPI(int apiVersion, refimport_t *rimp)
+refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 #endif
 {
 	static refexport_t re;
 
-	if (apiVersion != REF_API_VERSION)
-	{
+	if (apiVersion != REF_API_VERSION) {
 		return nullptr;
 	}
 
-	ri = *rimp;
+	if (!g_renderer.initialize(*rimp)) {
+		return nullptr;
+	}
 
 	std::memset(&re, 0, sizeof(re));
 
 	re.Shutdown = Metal_Shutdown;
-
 	re.BeginRegistration = Metal_BeginRegistration;
-	re.RegisterModel = [](const char *) { return 0; };
-	re.RegisterSkin = [](const char *) { return 0; };
-	re.RegisterShader = [](const char *) { return 0; };
-	re.RegisterShaderNoMip = [](const char *) { return 0; };
-	re.LoadWorld = [](const char *) {};
-	re.SetWorldVisData = [](const byte *) {};
+	re.RegisterModel = [](const char*) { return 0; };
+	re.RegisterSkin = [](const char*) { return 0; };
+	re.RegisterShader = [](const char*) { return 0; };
+	re.RegisterShaderNoMip = [](const char*) { return 0; };
+	re.LoadWorld = [](const char*) {};
+	re.SetWorldVisData = [](const byte*) {};
 	re.EndRegistration = []() {};
 
 	re.BeginFrame = Metal_BeginFrame;
 	re.EndFrame = Metal_EndFrame;
 
-	re.MarkFragments = [](int, const vec3_t *, const vec3_t, int, vec3_t, int, markFragment_t *) { return 0; };
-	re.LerpTag = [](orientation_t *tag, qhandle_t, int, int, float, const char *) {
-		if (tag)
-		{
-			Com_Memset(tag, 0, sizeof(*tag));
-		}
+	re.MarkFragments = [](int, const vec3_t*, const vec3_t, int, vec3_t, int, markFragment_t*) { return 0; };
+	re.LerpTag = [](orientation_t* tag, qhandle_t, int, int, float, const char*) {
+		if (tag) Com_Memset(tag, 0, sizeof(*tag));
 		return 0;
 	};
 	re.ModelBounds = [](qhandle_t, vec3_t mins, vec3_t maxs) {
-		if (mins)
-		{
-			VectorClear(mins);
-		}
-		if (maxs)
-		{
-			VectorClear(maxs);
-		}
+		if (mins) VectorClear(mins);
+		if (maxs) VectorClear(maxs);
 	};
 
 	re.ClearScene = []() {};
-	re.AddRefEntityToScene = [](const refEntity_t *) {};
-	re.AddPolyToScene = [](qhandle_t, int, const polyVert_t *, int) {};
+	re.AddRefEntityToScene = [](const refEntity_t*) {};
+	re.AddPolyToScene = [](qhandle_t, int, const polyVert_t*, int) {};
 	re.LightForPoint = [](vec3_t, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
-		if (ambientLight)
-		{
-			VectorClear(ambientLight);
-		}
-		if (directedLight)
-		{
-			VectorClear(directedLight);
-		}
-		if (lightDir)
-		{
-			VectorClear(lightDir);
-		}
+		if (ambientLight) VectorClear(ambientLight);
+		if (directedLight) VectorClear(directedLight);
+		if (lightDir) VectorClear(lightDir);
 		return 0;
 	};
 	re.AddLightToScene = [](const vec3_t, float, float, float, float) {};
 	re.AddAdditiveLightToScene = [](const vec3_t, float, float, float, float) {};
-	re.RenderScene = [](const refdef_t *) {};
+	re.RenderScene = [](const refdef_t*) {};
 
-	re.SetColor = [](const float *) {};
+	re.SetColor = [](const float*) {};
 	re.DrawStretchPic = [](float, float, float, float, float, float, float, float, qhandle_t) {};
 	re.DrawStretchRaw = Metal_DrawStretchRaw;
 	re.UploadCinematic = Metal_UploadCinematic;
 
-	re.RegisterFont = [](const char *, int, fontInfo_t *font) {
-		if (font)
-		{
-			std::memset(font, 0, sizeof(*font));
-		}
+	re.RegisterFont = [](const char*, int, fontInfo_t* font) {
+		if (font) std::memset(font, 0, sizeof(*font));
 	};
-	re.RemapShader = [](const char *, const char *, const char *) {};
-	re.GetEntityToken = [](char *buffer, int size) {
-		if (buffer && size > 0)
-		{
-			buffer[0] = '\0';
-		}
+	re.RemapShader = [](const char*, const char*, const char*) {};
+	re.GetEntityToken = [](char* buffer, int size) {
+		if (buffer && size > 0) buffer[0] = '\0';
 		return qfalse;
 	};
 	re.inPVS = [](const vec3_t, const vec3_t) { return qfalse; };
 
-	re.TakeVideoFrame = [](int, int, byte *, byte *, qboolean) {};
+	re.TakeVideoFrame = [](int, int, byte*, byte*, qboolean) {};
 
 	return &re;
 }
 
-}
+} // extern "C"
