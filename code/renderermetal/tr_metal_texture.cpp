@@ -10,16 +10,24 @@ Texture loading and management implementation
 
 extern "C" {
 	#include "../renderercommon/tr_common.h"
-	extern refimport_t ri;
 }
 
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
 
+// Global refimport_t required by renderercommon image loaders
+// This will be set by TextureManager constructor
+refimport_t ri;
+
 TextureManager::TextureManager(MTL::Device* device, refimport_t* rimp)
 	: device_(device), ri_(rimp)
 {
+	// Set global ri for renderercommon image loaders
+	if (rimp) {
+		ri = *rimp;
+	}
+	
 	// Reserve handle 0 for default white texture
 	Texture defaultTex;
 	defaultTex.name = "*default";
@@ -35,6 +43,11 @@ TextureManager::TextureManager(MTL::Device* device, refimport_t* rimp)
 
 qhandle_t TextureManager::registerShader(const char* name, bool mipmap) {
 	if (!name || !name[0]) {
+		return DEFAULT_TEXTURE_HANDLE;
+	}
+
+	// Handle default white texture explicitly
+	if (strcmp(name, "white") == 0 || strcmp(name, "*white") == 0) {
 		return DEFAULT_TEXTURE_HANDLE;
 	}
 

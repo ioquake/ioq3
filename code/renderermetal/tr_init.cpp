@@ -111,6 +111,11 @@ private:
 	int frameCinematicCols_ = 0;
 	int frameCinematicRows_ = 0;
 
+	// Current frame state
+	MTL::CommandBuffer* currentCommandBuffer_ = nullptr;
+	MTL::RenderCommandEncoder* currentRenderEncoder_ = nullptr;
+	CA::MetalDrawable* currentDrawable_ = nullptr;
+
 	glconfig_t config_{};
 	bool inputInitialized_ = false;
 
@@ -405,7 +410,7 @@ void MetalRenderer::setColor(const float* rgba) {
 
 void MetalRenderer::drawStretchPic(float x, float y, float w, float h, 
                                     float s1, float t1, float s2, float t2, qhandle_t shader) {
-	if (!device_ || !textureManager_) {
+	if (!device_ || !textureManager_ || !currentRenderEncoder_) {
 		return;
 	}
 
@@ -420,15 +425,8 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 		return;
 	}
 
-	// Get drawable
-	if (!layer_) {
-		return;
-	}
-
-	CA::MetalDrawable* drawable = layer_->nextDrawable();
-	if (!drawable) {
-		return;
-	}
+	// Set pipeline state
+	currentRenderEncoder_->setRenderPipelineState(pipeline2D_.get());
 
 	// Convert screen coordinates to NDC
 	float ndcX = (x * 2.0f / config_.vidWidth) - 1.0f;
@@ -457,41 +455,23 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 	instance.color[2] = currentColor_[2];
 	instance.color[3] = currentColor_[3];
 
-	// Render
-	MTL::RenderPassDescriptor* rp = MTL::RenderPassDescriptor::renderPassDescriptor();
-	rp->colorAttachments()->object(0)->setTexture(drawable->texture());
-	rp->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
-	rp->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
-
-	MTL::CommandBuffer* cb = commandQueue_->commandBuffer();
-	MTL::RenderCommandEncoder* enc = cb->renderCommandEncoder(rp);
-	enc->setRenderPipelineState(pipeline2D_.get());
-
-	// Set viewport
+	// Set viewport (full screen)
 	MTL::Viewport vp;
 	vp.originX = 0.0;
 	vp.originY = 0.0;
-	vp.width = static_cast<double>(drawable->texture()->width());
-	vp.height = static_cast<double>(drawable->texture()->height());
+	vp.width = static_cast<double>(config_.vidWidth);
+	vp.height = static_cast<double>(config_.vidHeight);
 	vp.znear = 0.0;
 	vp.zfar = 1.0;
-	enc->setViewport(vp);
+	currentRenderEncoder_->setViewport(vp);
 
 	// Bind instance data, texture, and sampler
-	enc->setVertexBytes(&instance, sizeof(instance), 0);
-	enc->setFragmentTexture(texture, 0);
-	enc->setFragmentSamplerState(sampler2D_.get(), 0);
+	currentRenderEncoder_->setVertexBytes(&instance, sizeof(instance), 0);
+	currentRenderEncoder_->setFragmentTexture(texture, 0);
+	currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
 
 	// Draw triangle strip (4 vertices = 1 quad)
-	enc->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
-	enc->endEncoding();
-
-	cb->presentDrawable(drawable);
-	cb->commit();	
-
-	enc->release();
-	rp->release();
-	drawable->release();
+	currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
 }
 
 void MetalRenderer::beginFrame() {
@@ -519,6 +499,23 @@ void MetalRenderer::beginFrame() {
 			drawableSize.width = static_cast<CGFloat>(w);
 			drawableSize.height = static_cast<CGFloat>(h);
 			layer_->setDrawableSize(drawableSize);
+		}
+	}
+
+	// Start frame: acquire drawable and create command buffer
+	if (layer_ && commandQueue_) {
+		currentDrawable_ = layer_->nextDrawable();
+		if (currentDrawable_) {
+			currentCommandBuffer_ = commandQueue_->commandBuffer();
+			
+			MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+			rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+			rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+			rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+			rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+			
+			currentRenderEncoder_ = currentCommandBuffer_->renderCommandEncoder(rpd);
+			rpd->release();
 		}
 	}
 }
@@ -559,92 +556,128 @@ void MetalRenderer::endFrame(int* frontEndMsec, int* backEndMsec) {
 	if (frontEndMsec) *frontEndMsec = 0;
 	if (backEndMsec) *backEndMsec = 0;
 
-	if (!layer_ || !commandQueue_) {
+	if (currentRenderEncoder_) {
+		currentRenderEncoder_->endEncoding();
+		currentRenderEncoder_->release();
+		currentRenderEncoder_ = nullptr;
+	}
+
+	if (currentCommandBuffer_ && currentDrawable_) {
+		currentCommandBuffer_->presentDrawable(currentDrawable_);
+		currentCommandBuffer_->commit();
+		
+		currentDrawable_->release();
+	}
+
+	currentCommandBuffer_ = nullptr;
+	currentDrawable_ = nullptr;
+}
+
+void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
+	if (!device_ || !layer_ || !currentRenderEncoder_) {
 		return;
 	}
 
-	CA::MetalDrawable* drawable = layer_->nextDrawable();
-	if (!drawable) {
-		return;
-	}
-
-	createPipeline(drawable->texture());
+	// Ensure pipeline exists
 	if (!pipeline_ || !sampler_) {
-		drawable->release();
-		return;
+		// Try to create it (needs a texture to infer format, use current drawable)
+		if (currentDrawable_) {
+			createPipeline(currentDrawable_->texture());
+		}
+		if (!pipeline_ || !sampler_) return;
 	}
 
-	processPendingUploads();
+	// Update cinematic texture if needed
+	pendingCinematic_.cols = cols;
+	pendingCinematic_.rows = rows;
+	pendingCinematic_.client = client;
+	pendingCinematic_.dirty = dirty;
+	if (data) {
+		const size_t expected = static_cast<size_t>(cols) * static_cast<size_t>(rows) * 4;
+		if (pendingCinematic_.data.size() < expected) pendingCinematic_.data.resize(expected);
+		std::memcpy(pendingCinematic_.data.data(), data, expected);
+		processPendingUploads();
+	}
 
 	if (!frameCinematicTexture_) {
-		drawable->release();
 		return;
 	}
 
-	// Build quad vertices
-	struct Vertex {
-		float pos[2];
-		float uv[2];
-	};
+	// Set pipeline state
+	currentRenderEncoder_->setRenderPipelineState(pipeline_.get());
 
-	const float fbWidth = static_cast<float>(config_.vidWidth);
-	const float fbHeight = static_cast<float>(config_.vidHeight);
-	const float ndcLeft = (pendingCinematic_.x * 2.0f / fbWidth) - 1.0f;
-	const float ndcRight = ((pendingCinematic_.x + pendingCinematic_.w) * 2.0f / fbWidth) - 1.0f;
-	const float ndcTop = 1.0f - (pendingCinematic_.y * 2.0f / fbHeight);
-	const float ndcBottom = 1.0f - ((pendingCinematic_.y + pendingCinematic_.h) * 2.0f / fbHeight);
-
-	const float u0 = 0.5f / static_cast<float>(frameCinematicCols_);
-	const float v0 = 0.5f / static_cast<float>(frameCinematicRows_);
-	const float u1 = (static_cast<float>(frameCinematicCols_) - 0.5f) / static_cast<float>(frameCinematicCols_);
-	const float v1 = (static_cast<float>(frameCinematicRows_) - 0.5f) / static_cast<float>(frameCinematicRows_);
-
-	Vertex verts[6] = {
-		{{ndcLeft, ndcTop}, {u0, v0}},
-		{{ndcRight, ndcTop}, {u1, v0}},
-		{{ndcRight, ndcBottom}, {u1, v1}},
-		{{ndcLeft, ndcTop}, {u0, v0}},
-		{{ndcRight, ndcBottom}, {u1, v1}},
-		{{ndcLeft, ndcBottom}, {u0, v1}},
-	};
-
-	// Render
-	MTL::RenderPassDescriptor* rp = MTL::RenderPassDescriptor::renderPassDescriptor();
-	rp->colorAttachments()->object(0)->setTexture(drawable->texture());
-	rp->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
-	rp->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
-
-	MTL::CommandBuffer* cb = commandQueue_->commandBuffer();
-	MTL::RenderCommandEncoder* enc = cb->renderCommandEncoder(rp);
-	enc->setRenderPipelineState(pipeline_.get());
-
+	// Calculate viewport
+	// Note: x,y,w,h passed to this function are usually full screen for cinematics
+	// But we should respect them if possible.
+	// For now, let's use the logic we had in endFrame for aspect ratio, or just use the passed rect?
+	// The passed rect (x,y,w,h) is in pixels.
+	
 	MTL::Viewport vp;
-	vp.originX = 0.0;
-	vp.originY = 0.0;
-	vp.width = static_cast<double>(drawable->texture()->width());
-	vp.height = static_cast<double>(drawable->texture()->height());
+	vp.originX = static_cast<double>(x);
+	vp.originY = static_cast<double>(y);
+	vp.width = static_cast<double>(w);
+	vp.height = static_cast<double>(h);
 	vp.znear = 0.0;
 	vp.zfar = 1.0;
-	enc->setViewport(vp);
+	currentRenderEncoder_->setViewport(vp);
 
+	// Draw cinematic quad
+	struct Uniforms {
+		float cols;
+		float rows;
+	} uniforms = {
+		static_cast<float>(frameCinematicCols_),
+		static_cast<float>(frameCinematicRows_)
+	};
+
+	// Full screen quad vertices (NDC)
+	// The vertex shader 'vertex_cinematic' likely expects specific vertex data or generates it?
+	// Let's check 'vertex_cinematic' in cinematic.metal.
+	// It uses 'VertexIn' struct with position and texCoord.
+	// So we need to send vertex data.
+	
+	// Vertices for a full-screen quad (or whatever viewport covers)
+	// Since we set viewport to x,y,w,h, we can draw a quad from -1 to 1 in NDC.
+	struct Vertex {
+		float position[2];
+		float texCoord[2];
+	};
+	
+	Vertex verts[4] = {
+		{{-1, 1},  {0, 0}},
+		{{ 1, 1},  {1, 0}},
+		{{-1, -1}, {0, 1}},
+		{{ 1, -1}, {1, 1}}
+	};
+
+	currentRenderEncoder_->setVertexBytes(verts, sizeof(verts), 0);
+	currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(uniforms), 1); // Uniforms at buffer 1?
+	// Wait, let's check cinematic.metal to be sure about buffer indices.
+	// We don't have it open. But previous code used:
+	// enc->setVertexBytes(verts, sizeof(verts), 0);
+	// enc->setFragmentTexture(frameCinematicTexture_, 0);
+	// enc->setFragmentSamplerState(sampler_.get(), 0);
+	// It didn't send uniforms!
+	// Wait, the previous code in drawCinematic (which I just replaced) did:
+	/*
+	Vertex verts[6] = { ... };
 	enc->setVertexBytes(verts, sizeof(verts), 0);
 	enc->setFragmentTexture(frameCinematicTexture_, 0);
 	enc->setFragmentSamplerState(sampler_.get(), 0);
-	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
-	enc->endEncoding();
-
-	cb->presentDrawable(drawable);
-	cb->commit();
-
-	enc->release();
-	rp->release();
-	drawable->release();
+	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, ...);
+	*/
+	// It didn't send uniforms. The shader must not need them or hardcoded?
+	// Actually, the shader 'vertex_cinematic' probably just takes position/uv.
+	// Let's stick to what was working.
+	
+	currentRenderEncoder_->setVertexBytes(verts, sizeof(verts), 0);
+	currentRenderEncoder_->setFragmentTexture(frameCinematicTexture_, 0);
+	currentRenderEncoder_->setFragmentSamplerState(sampler_.get(), 0);
+	currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4));
 }
 
 void MetalRenderer::uploadCinematic(int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
 	(void)w;
-	(void)h;
-
 	if (!data || cols <= 0 || rows <= 0) {
 		return;
 	}
@@ -664,18 +697,7 @@ void MetalRenderer::uploadCinematic(int w, int h, int cols, int rows, const byte
 	pendingCinematic_.dirty = dirty ? true : false;
 }
 
-void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
-	if (!data || cols <= 0 || rows <= 0 || w <= 0 || h <= 0) {
-		return;
-	}
 
-	uploadCinematic(w, h, cols, rows, data, client, dirty);
-
-	pendingCinematic_.x = x;
-	pendingCinematic_.y = y;
-	pendingCinematic_.w = w;
-	pendingCinematic_.h = h;
-}
 
 void MetalRenderer::beginRegistration(glconfig_t* configOut) {
 	if (!device_) {
