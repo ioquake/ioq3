@@ -22,8 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_common.h"
 
+typedef struct gbix {
+	unsigned int magic;
+	unsigned int len;
+} gbix_t;
+
 typedef struct pvr {
-	unsigned char magic[4];
+	unsigned int magic;
 	unsigned int len_file;
 	unsigned int type;
 	unsigned short width;
@@ -97,6 +102,7 @@ void R_LoadPVR(const char *name, byte **pic, int *width, int *height)
 {
 	unsigned int length;
 	void *buffer;
+	byte *ptr;
 	pvr_t *pvr;
 	unsigned int *rgba;
 	int x, y;
@@ -112,12 +118,21 @@ void R_LoadPVR(const char *name, byte **pic, int *width, int *height)
 	if (!buffer || length < 0)
 		return;
 
+	ptr = (byte *)buffer;
+
+	// skip global index
+	if (memcmp(ptr, "GBIX", 4) == 0)
+	{
+		gbix_t *gbix = (gbix_t *)ptr;
+		ptr += sizeof(gbix_t) + LittleLong(gbix->len);
+	}
+
 	// check magic identifier
-	pvr = (pvr_t *)buffer;
-	if (memcmp(pvr->magic, "PVRT", sizeof(pvr->magic)) != 0)
+	if (memcmp(ptr, "PVRT", 4) != 0)
 		ri.Error(ERR_DROP, "LoadPVR: magic identifier does not match expected (%s)", name);
 
 	// fix up header
+	pvr = (pvr_t *)ptr;
 	pvr->len_file = LittleLong(pvr->len_file);
 	pvr->type = LittleLong(pvr->type);
 	pvr->width = LittleShort(pvr->width);
@@ -127,29 +142,51 @@ void R_LoadPVR(const char *name, byte **pic, int *width, int *height)
 	rgba = (unsigned int *)ri.Malloc(pvr->width * pvr->height * 4);
 
 	// decompress image
-	for (y = 0; y < pvr->height / 2; y++)
+	if ((pvr->type & 0xFF00) == 0x300) // vq compressed
 	{
-		for (x = 0; x < pvr->width / 2; x++)
+		for (y = 0; y < pvr->height / 2; y++)
 		{
-			unsigned short *colors;
-			int a, b, c, d;
-			int idx = from_xy(x, y, pvr->width, pvr->height);
+			for (x = 0; x < pvr->width / 2; x++)
+			{
+				unsigned short *colors;
+				int a, b, c, d;
+				int idx = from_xy(x, y, pvr->width, pvr->height);
 
-			if (idx < 0)
-				ri.Error(ERR_DROP, "LoadPVR: invalid data passed to decompressor (%s)", name);
+				if (idx < 0)
+					ri.Error(ERR_DROP, "LoadPVR: invalid data passed to decompressor (%s)", name);
 
-			colors = &pvr->codebook[pvr->indices[idx] * 4];
+				colors = &pvr->codebook[pvr->indices[idx] * 4];
 
-			a = ((y * 2) + 0) * pvr->width + ((x * 2) + 0);
-			b = ((y * 2) + 1) * pvr->width + ((x * 2) + 0);
-			c = ((y * 2) + 0) * pvr->width + ((x * 2) + 1);
-			d = ((y * 2) + 1) * pvr->width + ((x * 2) + 1);
+				a = ((y * 2) + 0) * pvr->width + ((x * 2) + 0);
+				b = ((y * 2) + 1) * pvr->width + ((x * 2) + 0);
+				c = ((y * 2) + 0) * pvr->width + ((x * 2) + 1);
+				d = ((y * 2) + 1) * pvr->width + ((x * 2) + 1);
 
-			rgba[a] = rgb565_to_rgba24(colors[0]);
-			rgba[b] = rgb565_to_rgba24(colors[1]);
-			rgba[c] = rgb565_to_rgba24(colors[2]);
-			rgba[d] = rgb565_to_rgba24(colors[3]);
+				rgba[a] = rgb565_to_rgba24(colors[0]);
+				rgba[b] = rgb565_to_rgba24(colors[1]);
+				rgba[c] = rgb565_to_rgba24(colors[2]);
+				rgba[d] = rgb565_to_rgba24(colors[3]);
+			}
 		}
+	}
+	else if ((pvr->type & 0xFF00) == 0x100) // twiddled
+	{
+		for (y = 0; y < pvr->height; y++)
+		{
+			for (x = 0; x < pvr->width; x++)
+			{
+				unsigned short color;
+				int idx = from_xy(x, y, pvr->width, pvr->height);
+
+				color = ((unsigned short *)pvr->codebook)[idx];
+
+				rgba[y * pvr->width + x] = rgb565_to_rgba24(color);
+			}
+		}
+	}
+	else
+	{
+		ri.Error(ERR_DROP, "LoadPVR: unsupported image type 0x%08x (%s)", pvr->type, name);
 	}
 
 	// clean up
