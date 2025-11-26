@@ -304,6 +304,196 @@ bool MetalRenderer::createPipeline(MTL::Texture* drawableTexture) {
 	return true;
 }
 
+bool MetalRenderer::create2DPipeline() {
+	if (pipeline2D_ && sampler2D_) {
+		return true;
+	}
+	if (!device_) {
+		return false;
+	}
+
+	// Load 2D shaders from metallib
+	NS::Error* error = nullptr;
+	MTL::Library* lib = device_->newDefaultLibrary();
+	if (!lib) {
+		ri_.Printf(PRINT_WARNING, "Metal: Failed to load shader library for 2D\n");
+		return false;
+	}
+
+	NS::String* vertexName = NS::String::string("vertex_ui_2d", NS::ASCIIStringEncoding);
+	NS::String* fragmentName = NS::String::string("fragment_ui_2d", NS::ASCIIStringEncoding);
+	
+	MTL::Function* vfn = lib->newFunction(vertexName);
+	MTL::Function* ffn = lib->newFunction(fragmentName);
+	
+	vertexName->release();
+	fragmentName->release();
+
+	if (!vfn || !ffn) {
+		ri_.Printf(PRINT_WARNING, "Metal: 2D shader functions not found\n");
+		if (vfn) vfn->release();
+		if (ffn) ffn->release();
+		lib->release();
+		return false;
+	}
+
+	// Create pipeline for 2D rendering
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+	pd->setVertexFunction(vfn);
+	pd->setFragmentFunction(ffn);
+	pd->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	
+	// Enable alpha blending
+	auto* colorAttachment = pd->colorAttachments()->object(0);
+	colorAttachment->setBlendingEnabled(true);
+	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	colorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+
+	pipeline2D_.reset(device_->newRenderPipelineState(pd, &error));
+
+	pd->release();
+	vfn->release();
+	ffn->release();
+	lib->release();
+
+	if (!pipeline2D_) {
+		if (error) {
+			ri_.Printf(PRINT_WARNING, "Metal: 2D pipeline creation failed: %s\n", 
+			          error->localizedDescription()->utf8String());
+			error->release();
+		}
+		return false;
+	}
+
+	// Create 2D sampler
+	MTL::SamplerDescriptor* sd = MTL::SamplerDescriptor::alloc()->init();
+	sd->setMinFilter(MTL::SamplerMinMagFilterLinear);
+	sd->setMagFilter(MTL::SamplerMinMagFilterLinear);
+	sd->setSAddressMode(MTL::SamplerAddressModeRepeat);
+	sd->setTAddressMode(MTL::SamplerAddressModeRepeat);
+	sampler2D_.reset(device_->newSamplerState(sd));
+	sd->release();
+
+	return true;
+}
+
+qhandle_t MetalRenderer::registerShader(const char* name, bool mipmap) {
+	// Create TextureManager on first use
+	if (!textureManager_ && device_) {
+		textureManager_ = std::make_unique<TextureManager>(device_.get(), &ri_);
+	}
+	
+	if (!textureManager_) {
+		return 0;
+	}
+	
+	return textureManager_->registerShader(name, mipmap);
+}
+
+void MetalRenderer::setColor(const float* rgba) {
+	if (rgba) {
+		currentColor_[0] = rgba[0];
+		currentColor_[1] = rgba[1];
+		currentColor_[2] = rgba[2];
+		currentColor_[3] = rgba[3];
+	} else {
+		currentColor_[0] = currentColor_[1] = currentColor_[2] = currentColor_[3] = 1.0f;
+	}
+}
+
+void MetalRenderer::drawStretchPic(float x, float y, float w, float h, 
+                                    float s1, float t1, float s2, float t2, qhandle_t shader) {
+	if (!device_ || !textureManager_) {
+		return;
+	}
+
+	// Ensure 2D pipeline exists
+	if (!create2DPipeline()) {
+		return;
+	}
+
+	// Get texture
+	MTL::Texture* texture = textureManager_->getTexture(shader);
+	if (!texture) {
+		return;
+	}
+
+	// Get drawable
+	if (!layer_) {
+		return;
+	}
+
+	CA::MetalDrawable* drawable = layer_->nextDrawable();
+	if (!drawable) {
+		return;
+	}
+
+	// Convert screen coordinates to NDC
+	float ndcX = (x * 2.0f / config_.vidWidth) - 1.0f;
+	float ndcY = 1.0f - (y * 2.0f / config_.vidHeight);
+	float ndcW = w * 2.0f / config_.vidWidth;
+	float ndcH = h * 2.0f / config_.vidHeight;
+
+	// Build quad instance data
+	struct QuadInstance {
+		float rect[4];      // x, y, w, h in NDC
+		float texCoords[4]; // s1, t1, s2, t2
+		float color[4];     // RGBA
+	};
+
+	QuadInstance instance;
+	instance.rect[0] = ndcX;
+	instance.rect[1] = ndcY - ndcH;  // Flip Y
+	instance.rect[2] = ndcW;
+	instance.rect[3] = ndcH;
+	instance.texCoords[0] = s1;
+	instance.texCoords[1] = t1;
+	instance.texCoords[2] = s2;
+	instance.texCoords[3] = t2;
+	instance.color[0] = currentColor_[0];
+	instance.color[1] = currentColor_[1];
+	instance.color[2] = currentColor_[2];
+	instance.color[3] = currentColor_[3];
+
+	// Render
+	MTL::RenderPassDescriptor* rp = MTL::RenderPassDescriptor::renderPassDescriptor();
+	rp->colorAttachments()->object(0)->setTexture(drawable->texture());
+	rp->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+	rp->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+
+	MTL::CommandBuffer* cb = commandQueue_->commandBuffer();
+	MTL::RenderCommandEncoder* enc = cb->renderCommandEncoder(rp);
+	enc->setRenderPipelineState(pipeline2D_.get());
+
+	// Set viewport
+	MTL::Viewport vp;
+	vp.originX = 0.0;
+	vp.originY = 0.0;
+	vp.width = static_cast<double>(drawable->texture()->width());
+	vp.height = static_cast<double>(drawable->texture()->height());
+	vp.znear = 0.0;
+	vp.zfar = 1.0;
+	enc->setViewport(vp);
+
+	// Bind instance data, texture, and sampler
+	enc->setVertexBytes(&instance, sizeof(instance), 0);
+	enc->setFragmentTexture(texture, 0);
+	enc->setFragmentSamplerState(sampler2D_.get(), 0);
+
+	// Draw triangle strip (4 vertices = 1 quad)
+	enc->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
+	enc->endEncoding();
+
+	cb->presentDrawable(drawable);
+	cb->commit();	
+
+	enc->release();
+	rp->release();
+	drawable->release();
+}
+
 void MetalRenderer::beginFrame() {
 	if (!device_) {
 		int width = 1280;
@@ -546,6 +736,22 @@ static void Metal_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows,
 	g_renderer.drawCinematic(x, y, w, h, cols, rows, data, client, dirty);
 }
 
+static qhandle_t Metal_RegisterShader(const char* name) {
+	return g_renderer.registerShader(name, true);
+}
+
+static qhandle_t Metal_RegisterShaderNoMip(const char* name) {
+	return g_renderer.registerShader(name, false);
+}
+
+static void Metal_SetColor(const float* rgba) {
+	g_renderer.setColor(rgba);
+}
+
+static void Metal_DrawStretchPic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t shader) {
+	g_renderer.drawStretchPic(x, y, w, h, s1, t1, s2, t2, shader);
+}
+
 #ifdef USE_RENDERER_DLOPEN
 Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp)
 #else
@@ -568,8 +774,8 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 	re.BeginRegistration = Metal_BeginRegistration;
 	re.RegisterModel = [](const char*) { return 0; };
 	re.RegisterSkin = [](const char*) { return 0; };
-	re.RegisterShader = [](const char*) { return 0; };
-	re.RegisterShaderNoMip = [](const char*) { return 0; };
+	re.RegisterShader = Metal_RegisterShader;
+	re.RegisterShaderNoMip = Metal_RegisterShaderNoMip;
 	re.LoadWorld = [](const char*) {};
 	re.SetWorldVisData = [](const byte*) {};
 	re.EndRegistration = []() {};
@@ -600,8 +806,8 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 	re.AddAdditiveLightToScene = [](const vec3_t, float, float, float, float) {};
 	re.RenderScene = [](const refdef_t*) {};
 
-	re.SetColor = [](const float*) {};
-	re.DrawStretchPic = [](float, float, float, float, float, float, float, float, qhandle_t) {};
+	re.SetColor = Metal_SetColor;
+	re.DrawStretchPic = Metal_DrawStretchPic;
 	re.DrawStretchRaw = Metal_DrawStretchRaw;
 	re.UploadCinematic = Metal_UploadCinematic;
 

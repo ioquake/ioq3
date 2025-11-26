@@ -10,6 +10,7 @@ Texture loading and management for 2D/3D rendering
 #define TR_METAL_TEXTURE_H
 
 #include "../qcommon/q_shared.h"
+#include "../renderercommon/tr_public.h"
 #include "tr_metal_utils.h"
 
 #include <Metal/Metal.hpp>
@@ -19,7 +20,7 @@ Texture loading and management for 2D/3D rendering
 
 class TextureManager {
 public:
-	explicit TextureManager(MTL::Device* device);
+	explicit TextureManager(MTL::Device* device, refimport_t* rimp);
 	~TextureManager() = default;
 
 	// Register a texture/shader by name (main API)
@@ -46,6 +47,7 @@ private:
 	MTL::Texture* createTexture(const byte* data, int width, int height, bool mipmap);
 
 	MTL::Device* device_;
+	refimport_t* ri_;  // Store pointer to engine imports
 	std::vector<Texture> textures_;
 	std::unordered_map<std::string, qhandle_t> nameToHandle_;
 	

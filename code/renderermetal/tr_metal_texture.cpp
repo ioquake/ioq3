@@ -7,15 +7,18 @@ Texture loading and management implementation
 */
 
 #include "tr_metal_texture.h"
-#include "../renderercommon/tr_common.h"
+
+extern "C" {
+	#include "../renderercommon/tr_common.h"
+	extern refimport_t ri;
+}
 
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
 
-extern refimport_t ri;
-
-TextureManager::TextureManager(MTL::Device* device)
-	: device_(device)
+TextureManager::TextureManager(MTL::Device* device, refimport_t* rimp)
+	: device_(device), ri_(rimp)
 {
 	// Reserve handle 0 for default white texture
 	Texture defaultTex;
@@ -76,7 +79,7 @@ qhandle_t TextureManager::loadImageFile(const char* name, bool mipmap) {
 	
 	for (const char* ext : extensions) {
 		char fullName[MAX_QPATH];
-		Com_sprintf(fullName, sizeof(fullName), "%s%s", name, ext);
+		std::snprintf(fullName, sizeof(fullName), "%s%s", name, ext);
 		
 		// Try TGA first
 		R_LoadTGA(fullName, &pic, &width, &height);
@@ -93,18 +96,18 @@ qhandle_t TextureManager::loadImageFile(const char* name, bool mipmap) {
 	
 	if (!pic || width <= 0 || height <= 0) {
 		if (pic) {
-			ri.Free(pic);
+			ri_->Free(pic);
 		}
-		ri.Printf(PRINT_WARNING, "TextureManager: Failed to load '%s'\n", name);
+		ri_->Printf(PRINT_WARNING, "TextureManager: Failed to load '%s'\n", name);
 		return DEFAULT_TEXTURE_HANDLE;
 	}
 
 	// Create Metal texture
 	MTL::Texture* metalTexture = createTexture(pic, width, height, mipmap);
-	ri.Free(pic);
+	ri_->Free(pic);
 	
 	if (!metalTexture) {
-		ri.Printf(PRINT_WARNING, "TextureManager: Failed to create Metal texture for '%s'\n", name);
+		ri_->Printf(PRINT_WARNING, "TextureManager: Failed to create Metal texture for '%s'\n", name);
 		return DEFAULT_TEXTURE_HANDLE;
 	}
 
@@ -119,7 +122,7 @@ qhandle_t TextureManager::loadImageFile(const char* name, bool mipmap) {
 	textures_.push_back(std::move(tex));
 	nameToHandle_[name] = handle;
 	
-	ri.Printf(PRINT_DEVELOPER, "TextureManager: Loaded '%s' (%dx%d, handle %d)\n",
+	ri_->Printf(PRINT_DEVELOPER, "TextureManager: Loaded '%s' (%dx%d, handle %d)\n",
 	          name, width, height, handle);
 	
 	return handle;
