@@ -93,9 +93,16 @@ static void Metal_Destroy(qboolean destroyWindow)
 		g_device->release();
 		g_device = nullptr;
 	}
+	
+	// Shutdown input system before SDL cleanup (matches OpenGL behavior)
+	if (g_inputInitialized)
+	{
+		ri.IN_Shutdown();
+		g_inputInitialized = false;
+	}
+	
 	SDLMetal_Shutdown(destroyWindow);
 	g_layer = nullptr;
-	g_inputInitialized = false;
 }
 
 static void Metal_FillConfigDefaults(int width, int height, qboolean fullscreen)
