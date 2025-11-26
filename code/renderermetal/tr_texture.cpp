@@ -6,7 +6,7 @@ Texture loading and management implementation
 ===========================================================================
 */
 
-#include "tr_metal_texture.h"
+#include "tr_texture.h"
 
 extern "C" {
 	#include "../renderercommon/tr_common.h"

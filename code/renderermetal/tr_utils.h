@@ -6,8 +6,43 @@ Metal renderer utilities and RAII wrappers
 ===========================================================================
 */
 
-#ifndef TR_METAL_UTILS_H
-#define TR_METAL_UTILS_H
+#ifndef TR_UTILS_H
+#define TR_UTILS_H
+
+//=============================================================================
+// Standard library helpers
+//=============================================================================
+
+#include <algorithm>
+#include <cctype>
+#include <string>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "../qcommon/q_shared.h"
+#include "../qcommon/qcommon.h"
+#ifdef __cplusplus
+}
+#endif
+
+inline std::string MetalNormalizeShaderName(const char *rawName) {
+	if (!rawName) {
+		return std::string();
+	}
+
+	char strippedName[MAX_QPATH];
+	COM_StripExtension(rawName, strippedName, sizeof(strippedName));
+
+	std::string key(strippedName);
+	std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) -> char {
+		if (ch == '\\') {
+			return '/';
+		}
+		return static_cast<char>(std::tolower(ch));
+	});
+	return key;
+}
 
 //=============================================================================
 // RAII Smart Pointer for Metal Objects
@@ -64,4 +99,4 @@ public:
 	}
 };
 
-#endif // TR_METAL_UTILS_H
+#endif // TR_UTILS_H

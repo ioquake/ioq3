@@ -7,8 +7,10 @@ Metal renderer with RAII and modern C++ practices
 ===========================================================================
 */
 
+extern "C" {
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_public.h"
+}
 
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
@@ -43,8 +45,8 @@ extern "C" {
 #include <memory>
 #include <vector>
 
-#include "tr_metal_utils.h"
-#include "tr_metal_texture.h"
+#include "tr_utils.h"
+#include "tr_texture.h"
 
 //=============================================================================
 // Metal Renderer Class

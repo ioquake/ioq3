@@ -6,12 +6,18 @@ Texture loading and management for 2D/3D rendering
 ===========================================================================
 */
 
-#ifndef TR_METAL_TEXTURE_H
-#define TR_METAL_TEXTURE_H
+#ifndef TR_TEXTURE_H
+#define TR_TEXTURE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_public.h"
-#include "tr_metal_utils.h"
+#ifdef __cplusplus
+}
+#endif
+#include "tr_utils.h"
 
 #include <Metal/Metal.hpp>
 #include <string>
@@ -55,4 +61,4 @@ private:
 	static constexpr qhandle_t DEFAULT_TEXTURE_HANDLE = 0;
 };
 
-#endif // TR_METAL_TEXTURE_H
+#endif // TR_TEXTURE_H
