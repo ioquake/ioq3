@@ -7,11 +7,19 @@
 
 #ifdef USE_INTERNAL_SDL_HEADERS
 #	include "SDL.h"
-#	include "SDL_metal.h"
 #else
 #	include <SDL.h>
-#	include <SDL_metal.h>
 #endif
+
+// SDL Metal module functions
+extern "C" {
+	qboolean SDLMetal_Init(int width, int height, qboolean fullscreen);
+	void SDLMetal_Shutdown(qboolean destroyWindow);
+	SDL_Window *SDLMetal_GetWindow(void);
+	void *SDLMetal_GetView(void);
+	void *SDLMetal_GetLayer(void);
+	void SDLMetal_GetDrawableSize(int *w, int *h);
+}
 
 #if !defined(__APPLE__)
 #error "Metal renderer requires an Apple platform"
@@ -32,8 +40,6 @@ struct CinematicSlot
 };
 
 static refimport_t ri;
-static SDL_Window *g_window = nullptr;
-static SDL_MetalView g_view = nullptr;
 static MTL::Device *g_device = nullptr;
 static MTL::CommandQueue *g_commandQueue = nullptr;
 static CA::MetalLayer *g_layer = nullptr;
@@ -87,43 +93,9 @@ static void Metal_Destroy(qboolean destroyWindow)
 		g_device->release();
 		g_device = nullptr;
 	}
-	if (g_view)
-	{
-		SDL_Metal_DestroyView(g_view);
-		g_view = nullptr;
-	}
-	if (destroyWindow && g_window)
-	{
-		SDL_DestroyWindow(g_window);
-		g_window = nullptr;
-		SDL_QuitSubSystem(SDL_INIT_VIDEO);
-	}
+	SDLMetal_Shutdown(destroyWindow);
 	g_layer = nullptr;
 	g_inputInitialized = false;
-}
-
-static void Metal_SelectWindowSize(int &width, int &height, qboolean &fullscreen)
-{
-	int cw = ri.Cvar_VariableIntegerValue("r_customwidth");
-	int ch = ri.Cvar_VariableIntegerValue("r_customheight");
-	fullscreen = ri.Cvar_VariableIntegerValue("r_fullscreen") ? qtrue : qfalse;
-	if (cw > 0 && ch > 0)
-	{
-		width = cw;
-		height = ch;
-		return;
-	}
-	SDL_DisplayMode dm;
-	if (SDL_GetDesktopDisplayMode(0, &dm) == 0)
-	{
-		width = dm.w;
-		height = dm.h;
-	}
-	else
-	{
-		width = 1280;
-		height = 720;
-	}
 }
 
 static void Metal_FillConfigDefaults(int width, int height, qboolean fullscreen)
@@ -158,38 +130,31 @@ static void Metal_FillConfigDefaults(int width, int height, qboolean fullscreen)
 
 static bool Metal_InitWindow()
 {
-	if (g_window)
-	{
-		return true;
-	}
-	if (SDL_WasInit(SDL_INIT_VIDEO) == 0)
-	{
-		if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
-		{
-			ri.Printf(PRINT_ALL, "SDL video init failed: %s\n", SDL_GetError());
-			return false;
-		}
-	}
-
 	int width = 1280;
 	int height = 720;
 	qboolean fullscreen = qfalse;
-	Metal_SelectWindowSize(width, height, fullscreen);
 
-	g_window = SDL_CreateWindow("ioquake3 (Metal)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
-	                            SDL_WINDOW_METAL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE |
-	                                (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
-	if (!g_window)
+	// Get window size preferences from cvars
+	int cw = ri.Cvar_VariableIntegerValue("r_customwidth");
+	int ch = ri.Cvar_VariableIntegerValue("r_customheight");
+	fullscreen = ri.Cvar_VariableIntegerValue("r_fullscreen") ? qtrue : qfalse;
+	if (cw > 0 && ch > 0)
 	{
-		ri.Printf(PRINT_ALL, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-		return false;
+		width = cw;
+		height = ch;
+	}
+	else
+	{
+		SDL_DisplayMode dm;
+		if (SDL_GetDesktopDisplayMode(0, &dm) == 0)
+		{
+			width = dm.w;
+			height = dm.h;
+		}
 	}
 
-	g_view = SDL_Metal_CreateView(g_window);
-	if (!g_view)
+	if (!SDLMetal_Init(width, height, fullscreen))
 	{
-		ri.Printf(PRINT_ALL, "SDL_Metal_CreateView failed: %s\n", SDL_GetError());
-		Metal_Destroy(qtrue);
 		return false;
 	}
 
@@ -197,12 +162,12 @@ static bool Metal_InitWindow()
 	if (!g_device)
 	{
 		ri.Printf(PRINT_ALL, "Metal device creation failed\n");
-		Metal_Destroy(qtrue);
+		SDLMetal_Shutdown(qtrue);
 		return false;
 	}
 
 	g_commandQueue = g_device->newCommandQueue();
-	g_layer = reinterpret_cast<CA::MetalLayer *>(SDL_Metal_GetLayer(g_view));
+	g_layer = reinterpret_cast<CA::MetalLayer *>(SDLMetal_GetLayer());
 	if (g_layer)
 	{
 		g_layer->setDevice(g_device);
@@ -306,7 +271,7 @@ static void Metal_BeginFrame(stereoFrame_t)
 		return;
 	}
 	int w = 0, h = 0;
-	SDL_Metal_GetDrawableSize(g_window, &w, &h);
+	SDLMetal_GetDrawableSize(&w, &h);
 	if (w > 0 && h > 0)
 	{
 		g_glConfig.vidWidth = w;
@@ -499,7 +464,7 @@ static void Metal_BeginRegistration(glconfig_t *config)
 	}
 	if (!g_inputInitialized)
 	{
-		ri.IN_Init(g_window);
+		ri.IN_Init(SDLMetal_GetWindow());
 		g_inputInitialized = true;
 	}
 }
