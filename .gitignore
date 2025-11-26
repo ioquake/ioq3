@@ -1,4 +1,4 @@
-build
+build*/
 Makefile.local
 *.swp
 *tags

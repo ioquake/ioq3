@@ -573,8 +573,8 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 		// we need to touch the cgame and ui qvm because they could be in
 		// separate pk3 files and the client will need to download the pk3
 		// files with the latest cgame and ui qvm to pass the pure check
-		SV_TouchFile( "vm/cgame.qvm" );
-		SV_TouchFile( "vm/ui.qvm" );
+		SV_TouchFile( "vm/" CGAME_MODULE ".qvm" );
+		SV_TouchFile( "vm/" UI_MODULE ".qvm" );
 	}
 	else {
 		Cvar_Set( "sv_paks", "" );
