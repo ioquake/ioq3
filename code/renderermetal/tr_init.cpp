@@ -280,40 +280,32 @@ bool MetalRenderer::createPipeline(MTL::Texture* drawableTexture) {
 		return false;
 	}
 
-	// Simple shader for cinematic playback
-	static const char* shaderSrc = R"(
-		using namespace metal;
-		struct VertexIn { float2 pos [[attribute(0)]]; float2 uv [[attribute(1)]]; };
-		struct VertexOut { float4 position [[position]]; float2 uv; };
-		
-		vertex VertexOut vmain(uint vid [[vertex_id]], const device VertexIn* verts [[buffer(0)]]) {
-			VertexOut out;
-			VertexIn v = verts[vid];
-			out.position = float4(v.pos, 0.0, 1.0);
-			out.uv = v.uv;
-			return out;
-		}
-		
-		fragment float4 fmain(VertexOut in [[stage_in]], texture2d<float> tex [[texture(0)]], sampler samp [[sampler(0)]]) {
-			return tex.sample(samp, in.uv);
-		}
-	)";
-
+	// Load from precompiled default.metallib
 	NS::Error* error = nullptr;
-	NS::String* src = NS::String::string(shaderSrc, NS::ASCIIStringEncoding);
-	MTL::Library* lib = device_->newLibrary(src, nullptr, &error);
-	src->release();
-
+	MTL::Library* lib = device_->newDefaultLibrary();
+	
 	if (!lib) {
-		if (error) {
-			ri_.Printf(PRINT_WARNING, "Metal shader compilation failed: %s\n", error->localizedDescription()->utf8String());
-			error->release();
-		}
+		ri_.Printf(PRINT_WARNING, "Metal: Failed to load default.metallib\n");
 		return false;
 	}
 
-	MTL::Function* vfn = lib->newFunction(NS::String::string("vmain", NS::ASCIIStringEncoding));
-	MTL::Function* ffn = lib->newFunction(NS::String::string("fmain", NS::ASCIIStringEncoding));
+	// Load shader functions from library
+	NS::String* vertexName = NS::String::string("vertex_cinematic", NS::ASCIIStringEncoding);
+	NS::String* fragmentName = NS::String::string("fragment_cinematic", NS::ASCIIStringEncoding);
+	
+	MTL::Function* vfn = lib->newFunction(vertexName);
+	MTL::Function* ffn = lib->newFunction(fragmentName);
+	
+	vertexName->release();
+	fragmentName->release();
+
+	if (!vfn || !ffn) {
+		ri_.Printf(PRINT_WARNING, "Metal: Shader functions not found in library\n");
+		if (vfn) vfn->release();
+		if (ffn) ffn->release();
+		lib->release();
+		return false;
+	}
 
 	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
 	pd->setVertexFunction(vfn);
