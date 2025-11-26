@@ -44,6 +44,7 @@ extern "C" {
 #include <vector>
 
 #include "tr_metal_utils.h"
+#include "tr_metal_texture.h"
 
 //=============================================================================
 // Metal Renderer Class
@@ -65,8 +66,14 @@ public:
 	void beginFrame();
 	void endFrame(int* frontEndMsec, int* backEndMsec);
 
+	// Cinematic playback
 	void uploadCinematic(int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty);
 	void drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty);
+
+	// 2D rendering APIs
+	qhandle_t registerShader(const char* name, bool mipmap);
+	void setColor(const float* rgba);
+	void drawStretchPic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t shader);
 
 	const glconfig_t& config() const { return config_; }
 
@@ -107,8 +114,15 @@ private:
 	glconfig_t config_{};
 	bool inputInitialized_ = false;
 
+	// 2D rendering state
+	std::unique_ptr<TextureManager> textureManager_;
+	MetalPtr<MTL::RenderPipelineState> pipeline2D_;
+	MetalPtr<MTL::SamplerState> sampler2D_;
+	float currentColor_[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
 	bool initializeWindow(int& width, int& height, qboolean& fullscreen);
 	bool createPipeline(MTL::Texture* drawableTexture);
+	bool create2DPipeline();
 	void processPendingUploads();
 	void fillConfigDefaults(int width, int height, qboolean fullscreen);
 };
@@ -119,11 +133,15 @@ private:
 
 bool MetalRenderer::initialize(refimport_t imports) {
 	ri_ = imports;
+	// TextureManager will be created when device is available
 	return true;
 }
 
 void MetalRenderer::shutdown(qboolean destroyWindow) {
 	// RAII handles Metal object cleanup automatically
+	textureManager_.reset();
+	sampler2D_.reset();
+	pipeline2D_.reset();
 	sampler_.reset();
 	pipeline_.reset();
 	

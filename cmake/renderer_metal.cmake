@@ -12,6 +12,7 @@ include(renderer_common)
 
 set(RENDERER_METAL_SOURCES
     ${SOURCE_DIR}/renderermetal/tr_init.cpp
+    ${SOURCE_DIR}/renderermetal/tr_metal_texture.cpp
     ${SOURCE_DIR}/sdl/sdl_metal.cpp
 )
 
