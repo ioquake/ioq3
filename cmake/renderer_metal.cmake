@@ -79,11 +79,13 @@ if(USE_RENDERER_DLOPEN)
 
     set_output_dirs(${RENDERER_METAL_BINARY})
     
-    # Copy metallib to the same directory as the renderer dylib
+    # Copy metallib to app bundle Resources directory (where Metal looks for it)
     add_custom_command(TARGET ${RENDERER_METAL_BINARY} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB_FILE} $<TARGET_FILE_DIR:${RENDERER_METAL_BINARY}>/default.metallib
-        COMMENT "Copying default.metallib to output directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_BUNDLE_CONTENT_DIR:ioquake3>/Resources
+        COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB_FILE} $<TARGET_BUNDLE_CONTENT_DIR:ioquake3>/Resources/default.metallib
+        COMMENT "Copying default.metallib to app bundle Resources"
         VERBATIM
     )
 endif()
+
 
