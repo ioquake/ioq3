@@ -443,9 +443,9 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 
 	QuadInstance instance;
 	instance.rect[0] = ndcX;
-	instance.rect[1] = ndcY - ndcH;  // Flip Y
+	instance.rect[1] = ndcY;         // Top Y (draw downwards)
 	instance.rect[2] = ndcW;
-	instance.rect[3] = ndcH;
+	instance.rect[3] = -ndcH;        // Negative height to draw down from top
 	instance.texCoords[0] = s1;
 	instance.texCoords[1] = t1;
 	instance.texCoords[2] = s2;

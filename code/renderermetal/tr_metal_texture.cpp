@@ -12,9 +12,64 @@ extern "C" {
 	#include "../renderercommon/tr_common.h"
 }
 
+
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <cstdio>
+
+namespace {
+int CaseInsensitiveCompare(const char* lhs, const char* rhs) {
+	if (lhs == rhs) {
+		return 0;
+	}
+	if (!lhs) {
+		return -1;
+	}
+	if (!rhs) {
+		return 1;
+	}
+
+	while (*lhs && *rhs) {
+		int diff = std::tolower(static_cast<unsigned char>(*lhs)) -
+		           std::tolower(static_cast<unsigned char>(*rhs));
+		if (diff != 0) {
+			return diff;
+		}
+		++lhs;
+		++rhs;
+	}
+
+	return std::tolower(static_cast<unsigned char>(*lhs)) -
+	       std::tolower(static_cast<unsigned char>(*rhs));
+}
+
+struct ShaderRemap {
+	const char* shaderName;
+	const char* fallbackTexture;
+};
+
+constexpr ShaderRemap kShaderRemaps[] = {
+	{"menuback", "textures/sfx/logo512"},
+	{"menubacknologo", "gfx/colors/black"},
+	{"menubackragepro", "textures/sfx/logo512"},
+	{"console", "gfx/misc/console01"},
+};
+
+const char* RemapShaderName(const char* name) {
+	if (!name || !name[0]) {
+		return nullptr;
+	}
+
+	for (const auto& remap : kShaderRemaps) {
+		if (CaseInsensitiveCompare(name, remap.shaderName) == 0) {
+			return remap.fallbackTexture;
+		}
+	}
+
+	return nullptr;
+}
+} // namespace
 
 // Global refimport_t required by renderercommon image loaders
 // This will be set by TextureManager constructor
@@ -57,8 +112,13 @@ qhandle_t TextureManager::registerShader(const char* name, bool mipmap) {
 		return it->second;
 	}
 
+	// Remap known multi-stage shaders to a representative texture so menus work
+	const char* loadName = name;
+	if (const char* remapped = RemapShaderName(name)) {
+		loadName = remapped;
+	}
 	// Load new texture
-	return loadImageFile(name, mipmap);
+	return loadImageFile(loadName, mipmap);
 }
 
 MTL::Texture* TextureManager::getTexture(qhandle_t handle) const {
@@ -94,16 +154,29 @@ qhandle_t TextureManager::loadImageFile(const char* name, bool mipmap) {
 		char fullName[MAX_QPATH];
 		std::snprintf(fullName, sizeof(fullName), "%s%s", name, ext);
 		
-		// Try TGA first
-		R_LoadTGA(fullName, &pic, &width, &height);
-		if (pic) break;
+		// Dispatch to correct loader based on extension
+		// Note: If ext is empty, we don't know the type, so we might skip or try all?
+		// But usually 'name' doesn't have extension if we are here.
+		// If 'name' has extension and ext is empty, we should check name's extension.
 		
-		// Try JPG
-		R_LoadJPG(fullName, &pic, &width, &height);
-		if (pic) break;
+		if (ext[0] == '\0') {
+			// If trying without extension, check if name has one
+			const char* existingExt = strrchr(name, '.');
+			if (existingExt) {
+				if (strcasecmp(existingExt, ".tga") == 0) R_LoadTGA(fullName, &pic, &width, &height);
+				else if (strcasecmp(existingExt, ".jpg") == 0 || strcasecmp(existingExt, ".jpeg") == 0) R_LoadJPG(fullName, &pic, &width, &height);
+				else if (strcasecmp(existingExt, ".png") == 0) R_LoadPNG(fullName, &pic, &width, &height);
+			}
+		} else {
+			if (strcasecmp(ext, ".tga") == 0) {
+				R_LoadTGA(fullName, &pic, &width, &height);
+			} else if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0) {
+				R_LoadJPG(fullName, &pic, &width, &height);
+			} else if (strcasecmp(ext, ".png") == 0) {
+				R_LoadPNG(fullName, &pic, &width, &height);
+			}
+		}
 		
-		// Try PNG
-		R_LoadPNG(fullName, &pic, &width, &height);
 		if (pic) break;
 	}
 	
