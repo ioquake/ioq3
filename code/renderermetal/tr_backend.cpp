@@ -1475,15 +1475,23 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 			continue;
 		}
 
-		// Skip fog volume surfaces - they will be rendered separately with fog shader
+		// Check if this is a fog volume shader
+		// Fog shaders with no texture stages should be skipped (volumetric fog only)
+		// Fog shaders WITH texture stages (like hellfog with animated clouds) should be rendered
 		MetalShaderResource* shaderResource = getShaderResource(shaderHandle);
 		if (shaderResource && shaderResource->hasScript && shaderResource->script.hasFogParms) {
-			if (ri_.Printf) {
-				std::string shaderName = shaderResource->name;
-				ri_.Printf(PRINT_ALL, "Metal: Skipping fog surface %d with shader '%s'\n",
-					surfaceIndex, shaderName.c_str());
+			// Check if shader has any actual texture stages to render
+			// Note: stageRuntimes isn't built yet, check script.stages instead
+			if (shaderResource->script.stages.empty()) {
+				// Pure fog volume with no visible surface - skip it
+				// The volumetric fog is handled by drawFogPasses()
+				continue;
 			}
-			continue;
+			// Has texture stages - render the animated fog surface
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_ALL, "Metal: Fog shader '%s' has %zu stages, will render surface\n",
+					shaderResource->name.c_str(), shaderResource->script.stages.size());
+			}
 		}
 
 		const size_t startVertex = worldVertexTemplate_.size();
@@ -2665,6 +2673,14 @@ void MetalRenderer::resetStagePipelineCache() {
 
 void MetalRenderer::ensureScriptHasStages(MetalRenderer::MetalShaderResource& resource) {
 	MetalShaderScriptInfo& script = resource.script;
+	
+	// Don't add default stages to fog volume shaders - they should remain invisible
+	// The volumetric fog effect is handled separately by drawFogPasses()
+	if (script.hasFogParms && script.stages.empty()) {
+		// Fog-only shader with no texture stages - leave it empty
+		return;
+	}
+	
 	if (script.stages.empty()) {
 		MetalShaderStageInfo stage;
 		stage.imagePaths = script.imagePaths;
@@ -3500,13 +3516,14 @@ bool MetalRenderer::drawFogPasses() {
 		}
 	}
 
-	if (ri_.Printf) {
-		static int logCounter = 0;
-		if (logCounter++ % 300 == 0) {  // Log every 5 seconds at 60fps
-			ri_.Printf(PRINT_ALL, "Metal: Drew fog passes for %d packets across %zu fog volumes\n", 
-			           totalFoggedPackets, worldFogs_.size());
-		}
-	}
+	// Debug logging disabled for performance
+	// if (ri_.Printf) {
+	// 	static int logCounter = 0;
+	// 	if (logCounter++ % 300 == 0) {
+	// 		ri_.Printf(PRINT_ALL, "Metal: Drew fog passes for %d packets across %zu fog volumes\n", 
+	// 		           totalFoggedPackets, worldFogs_.size());
+	// 	}
+	// }
 
 	return true;
 }
