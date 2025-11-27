@@ -2732,18 +2732,28 @@ void MetalRenderer::buildShaderStageRuntime(MetalRenderer::MetalShaderResource& 
 		return;
 	}
 
-	resource.stageRuntimes.resize(stageCount);
-	std::vector<std::vector<qhandle_t>> stageHandles(stageCount);
-	const size_t imageCount = resource.imageHandles.size();
-	for (size_t i = 0; i < imageCount; ++i) {
-		const int stageIndex = (i < resource.script.imageStageIndices.size())
-			? resource.script.imageStageIndices[i]
-			: 0;
-		if (stageIndex < 0 || static_cast<size_t>(stageIndex) >= stageCount) {
-			continue;
+	// Helper to normalize path for comparison (lowercase, no extension)
+	auto normalizePath = [](const std::string& path) -> std::string {
+		std::string result = path;
+		// Remove extension if present
+		size_t dotPos = result.rfind('.');
+		size_t slashPos = result.rfind('/');
+		if (dotPos != std::string::npos && (slashPos == std::string::npos || dotPos > slashPos)) {
+			result = result.substr(0, dotPos);
 		}
-		stageHandles[stageIndex].push_back(resource.imageHandles[i]);
+		// Convert to lowercase
+		for (auto& c : result) { c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }
+		return result;
+	};
+
+	// Build a lookup map from normalized image path to handle
+	std::unordered_map<std::string, qhandle_t> pathToHandle;
+	for (size_t i = 0; i < resource.imageHandles.size() && i < resource.script.imagePaths.size(); ++i) {
+		std::string normalized = normalizePath(resource.script.imagePaths[i]);
+		pathToHandle[normalized] = resource.imageHandles[i];
 	}
+
+	resource.stageRuntimes.resize(stageCount);
 
 	for (size_t stageIndex = 0; stageIndex < stageCount; ++stageIndex) {
 		MetalShaderResource::MetalShaderStageRuntime& runtime = resource.stageRuntimes[stageIndex];
@@ -2751,7 +2761,16 @@ void MetalRenderer::buildShaderStageRuntime(MetalRenderer::MetalShaderResource& 
 		runtime.stageInfo = &stageInfo;
 		runtime.usesLightmap = stageInfo.usesLightmap;
 		runtime.usesWhiteImage = stageInfo.usesWhiteImage;
-		runtime.stageImageHandles = stageHandles[stageIndex];
+		
+		// Find handles for this stage's image paths
+		for (const std::string& path : stageInfo.imagePaths) {
+			std::string normalized = normalizePath(path);
+			auto it = pathToHandle.find(normalized);
+			if (it != pathToHandle.end()) {
+				runtime.stageImageHandles.push_back(it->second);
+			}
+		}
+		
 		runtime.pipelineKey.blendMode = stageInfo.blendMode;
 		runtime.pipelineKey.srcBlend = stageInfo.srcBlendFactor;
 		runtime.pipelineKey.dstBlend = stageInfo.dstBlendFactor;
@@ -3346,14 +3365,15 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 		return params;
 	};
-
-	for (const ScenePolyPacket& packet : polyPackets_) {
+	
+	// Helper lambda to draw a single packet
+	auto drawPacket = [&](const ScenePolyPacket& packet) {
 		if (packet.vertexCount <= 0) {
-			continue;
+			return;
 		}
 		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
 		if (endVertex > polyVertexCountGPU_) {
-			continue;
+			return;
 		}
 
 		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
@@ -3361,7 +3381,7 @@ bool MetalRenderer::drawPolyPackets() {
 			shaderResource = getShaderResource(0);
 		}
 		if (!shaderResource || shaderResource->stageRuntimes.empty()) {
-			continue;
+			return;
 		}
 
 		const size_t stageCount = shaderResource->stageRuntimes.size();
@@ -3379,11 +3399,6 @@ bool MetalRenderer::drawPolyPackets() {
 
 			StagePipelineEntry* pipelineEntry = getStagePipeline(stageRuntime->pipelineKey);
 			if (!pipelineEntry || !pipelineEntry->pipeline || !pipelineEntry->depthState) {
-				static bool warned = false;
-				if (!warned && ri_.Printf) {
-					ri_.Printf(PRINT_ALL, "Metal: Missing pipeline for shader %s stage %zu\n", shaderResource->name.c_str(), stageIndex);
-					warned = true;
-				}
 				continue;
 			}
 
@@ -3415,7 +3430,34 @@ bool MetalRenderer::drawPolyPackets() {
 			                                   static_cast<NS::UInteger>(packet.firstVertex),
 			                                   static_cast<NS::UInteger>(packet.vertexCount));
 		}
+	};
+	
+	// Check if shader has fog surface texture stages (not just fogparms)
+	auto hasFogSurfaceStages = [this](const ScenePolyPacket& packet) -> bool {
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (!shaderResource) {
+			return false;
+		}
+		return shaderResource->hasScript && 
+		       shaderResource->script.hasFogParms && 
+		       !shaderResource->stageRuntimes.empty();
+	};
+
+	// Pass 1: Draw all non-fog-surface packets
+	for (const ScenePolyPacket& packet : polyPackets_) {
+		if (!hasFogSurfaceStages(packet)) {
+			drawPacket(packet);
+		}
 	}
+	
+	// Pass 2: Draw fog surface packets (they use filter blend which multiplies destination)
+	// These must be drawn after the geometry behind them for the filter blend to work correctly
+	for (const ScenePolyPacket& packet : polyPackets_) {
+		if (hasFogSurfaceStages(packet)) {
+			drawPacket(packet);
+		}
+	}
+
 	return true;
 }
 
