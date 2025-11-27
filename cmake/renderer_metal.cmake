@@ -11,8 +11,14 @@ include(utils/set_output_dirs)
 include(renderer_common)
 
 set(RENDERER_METAL_SOURCES
+    ${SOURCE_DIR}/renderermetal/tr_backend.cpp
     ${SOURCE_DIR}/renderermetal/tr_init.cpp
-    ${SOURCE_DIR}/renderermetal/tr_metal_texture.cpp
+    ${SOURCE_DIR}/renderermetal/tr_extensions.cpp
+    ${SOURCE_DIR}/renderermetal/tr_extramath.cpp
+    ${SOURCE_DIR}/renderermetal/tr_dsa.cpp
+    ${SOURCE_DIR}/renderermetal/tr_scene.cpp
+    ${SOURCE_DIR}/renderermetal/tr_shader.cpp
+    ${SOURCE_DIR}/renderermetal/tr_texture.cpp
     ${SOURCE_DIR}/sdl/sdl_metal.cpp
 )
 

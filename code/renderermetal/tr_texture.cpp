@@ -121,6 +121,42 @@ qhandle_t TextureManager::registerShader(const char* name, bool mipmap) {
 	return loadImageFile(loadName, mipmap);
 }
 
+qhandle_t TextureManager::registerRawImage(const char* name, const byte* rgba, int width, int height, bool mipmap) {
+	if (!name || !name[0] || !rgba || width <= 0 || height <= 0) {
+		return DEFAULT_TEXTURE_HANDLE;
+	}
+
+	auto existing = nameToHandle_.find(name);
+	if (existing != nameToHandle_.end()) {
+		return existing->second;
+	}
+
+	MTL::Texture* metalTexture = createTexture(rgba, width, height, mipmap);
+	if (!metalTexture) {
+		if (ri_) {
+			ri_->Printf(PRINT_WARNING, "TextureManager: Failed to create raw texture '%s'\n", name);
+		}
+		return DEFAULT_TEXTURE_HANDLE;
+	}
+
+	Texture tex;
+	tex.texture.reset(metalTexture);
+	tex.name = name;
+	tex.width = width;
+	tex.height = height;
+
+	qhandle_t handle = static_cast<qhandle_t>(textures_.size());
+	nameToHandle_[tex.name] = handle;
+	textures_.push_back(std::move(tex));
+
+	if (ri_) {
+		ri_->Printf(PRINT_DEVELOPER, "TextureManager: Registered raw '%s' (%dx%d, handle %d)\n",
+		            name, width, height, handle);
+	}
+
+	return handle;
+}
+
 MTL::Texture* TextureManager::getTexture(qhandle_t handle) const {
 	if (handle < 0 || static_cast<size_t>(handle) >= textures_.size()) {
 		return textures_[DEFAULT_TEXTURE_HANDLE].texture.get();
@@ -140,6 +176,31 @@ void TextureManager::clear() {
 	byte white[4] = {255, 255, 255, 255};
 	defaultTex.texture.reset(createTexture(white, 1, 1, false));
 	textures_.push_back(std::move(defaultTex));
+}
+
+void TextureManager::debugListTextures() const {
+	if (!ri_) {
+		return;
+	}
+
+	const size_t textureCount = textures_.size();
+	size_t totalBytes = 0;
+	ri_->Printf(PRINT_ALL, "\n-- Metal texture list (%zu entries) --\n", textureCount);
+
+	for (size_t i = 0; i < textureCount; ++i) {
+		const Texture& tex = textures_[i];
+		const size_t bytes = static_cast<size_t>(tex.width) * static_cast<size_t>(tex.height) * 4u;
+		totalBytes += bytes;
+		ri_->Printf(PRINT_ALL, "%4zu: %4d x %4d  %7zu KB  %s\n",
+		           i,
+		           tex.width,
+		           tex.height,
+		           bytes / 1024u,
+		           tex.name.c_str());
+	}
+
+	const double totalMB = static_cast<double>(totalBytes) / (1024.0 * 1024.0);
+	ri_->Printf(PRINT_ALL, "Total approx %.2f MB\n", totalMB);
 }
 
 qhandle_t TextureManager::loadImageFile(const char* name, bool mipmap) {

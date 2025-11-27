@@ -31,12 +31,17 @@ public:
 
 	// Register a texture/shader by name (main API)
 	qhandle_t registerShader(const char* name, bool mipmap);
+	// Register raw RGBA data as a texture (used for lightmaps, cinematics, etc.)
+	qhandle_t registerRawImage(const char* name, const byte* rgbaData, int width, int height, bool mipmap);
 	
 	// Get texture for rendering
 	MTL::Texture* getTexture(qhandle_t handle) const;
 	
 	// Clear all textures
 	void clear();
+
+	// Debug helpers
+	void debugListTextures() const;
 
 private:
 	struct Texture {

@@ -166,6 +166,8 @@ The following CMake variables may be set, using `-D` on the command line.
   BUILD_GAME_LIBRARIES    - build the game shared libraries
   BUILD_GAME_QVMS         - build the game qvms
   BUILD_STANDALONE        - build binaries suited for stand-alone games
+  BUILD_SHADER_PARSER     - build the shader_parser utility for dumping
+                            parsed shader metadata
 
   USE_RENDERER_DLOPEN     - build and use the renderer in a library
   USE_OPENAL              - use OpenAL where available
@@ -196,6 +198,41 @@ The following CMake variables may be set, using `-D` on the command line.
 ```
 
 The defaults for these variables may differ depending on the target platform.
+
+## Shader parser tool
+
+The optional `shader_parser` utility (enabled when `BUILD_SHADER_PARSER=ON`) is
+handy for generating deterministic JSON dumps of every shader parsed by the
+OpenGL2 pipeline. After configuring with CMake, build the target with:
+
+```
+cmake --build build --target shader_parser
+```
+
+The resulting binary lives in `build/Release/` (or your chosen configuration).
+Example usage:
+
+```
+./build/Release/shader_parser \
+    --scripts baseq3/scripts --scripts missionpack/scripts \
+    --filter "gfx/*" --output /tmp/shaders.json
+```
+
+Key flags:
+
+- `--scripts <dir>`: add one or more directories that contain `.shader` files;
+  defaults to `baseq3/scripts` and `missionpack/scripts` when unspecified.
+- `--filter <glob>`: optional glob(s) that limit which shader names appear in
+  the dump (case-insensitive, same rules as the in-engine `Com_Filter`).
+- `--output <path>`: write JSON to the provided file; omit or pass `-` to emit
+  to stdout instead.
+- `--verbose`: forward the renderer's developer prints to stdout for easier
+  debugging while iterating on shader sources.
+
+The JSON blob contains a `stats` section (number of script files discovered and
+loaded) followed by an array of fully parsed shader records, each with stage
+state, bundle info, and assorted metadata suitable for cross-renderer
+comparison pipelines.
 
 
 # OpenGL ES support
