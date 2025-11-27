@@ -10,6 +10,18 @@ struct SceneUniforms {
     float4 viewOrigin;
     float4 clipInfo;
     float4 timeInfo;
+
+    // Fog parameters
+    float4 fogDistanceVector;  // Distance from eye to fog volume
+    float4 fogDepthVector;     // Fog surface plane equation
+    float4 fogColor;           // Fog RGB color + alpha
+    float4 fogSurface;         // Fog surface normal and distance
+    float4 fogBoundsMin;       // Fog volume min bounds
+    float4 fogBoundsMax;       // Fog volume max bounds
+    float fogEyeT;             // Eye position relative to fog surface
+    float fogTcScale;          // Texture coordinate scale
+    float fogHasSurface;       // Whether fog has a visible surface plane
+    float fogEnabled;          // Enable/disable fog rendering
 };
 
 // Texture coordinate modification parameters
@@ -142,4 +154,92 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
         }
     }
     return color;
+}
+
+//
+// FOG RENDERING
+// Matches OpenGL2 fogpass_vp.glsl / fogpass_fp.glsl implementation
+//
+
+struct FogVertexOut {
+    float4 position [[position]];
+    float fogScale;      // Computed fog intensity/alpha scale
+};
+
+// Calculate fog intensity for a vertex position
+// Simplified approach: fog increases with depth below the fog surface
+float CalcFog(float3 position, constant SceneUniforms& uniforms) {
+    // t = how far the vertex is below the fog surface (positive = below surface)
+    float t = dot(float4(position, 1.0), uniforms.fogDepthVector);
+    
+    // If t <= 0, vertex is above fog surface - no fog
+    if (t <= 0.0) {
+        return 0.0;
+    }
+    
+    // eyeT tells us how far the camera is below the surface
+    float eyeT = uniforms.fogEyeT;
+    
+    // s = fog distance factor based on tcScale
+    // Using the depth below surface as our fog distance
+    float s = t * uniforms.fogTcScale * 8.0;
+    
+    // If eye is above the fog (eyeT < 0), we need to clip the fog
+    // to only show the portion of the vertex-to-eye line that's inside fog
+    if (eyeT < 0.0) {
+        // Eye is outside fog, vertex is inside
+        // Only fog the portion of the line from fog surface to vertex
+        // t is distance from surface to vertex, eyeT is (negative) distance from surface to eye
+        // The fraction of the line inside fog is t / (t - eyeT) 
+        float fraction = t / (t - eyeT);
+        s *= fraction;
+    }
+    // If eye is inside fog (eyeT >= 0), full fog applies
+    
+    return s;
+}
+
+// Fog vertex shader
+vertex FogVertexOut vertex_fog(VertexIn in [[stage_in]],
+                                constant SceneUniforms& uniforms [[buffer(1)]]) {
+    FogVertexOut out;
+
+    // Transform to clip space
+    float4 viewPos = uniforms.view * float4(in.position, 1.0);
+    out.position = uniforms.projection * viewPos;
+
+    // Check if vertex is inside the fog volume using BOTH bounds AND surface plane
+    float3 pos = in.position;
+    
+    // First check: is vertex within the fog's XY bounds?
+    bool inXYBounds = (pos.x >= uniforms.fogBoundsMin.x && pos.x <= uniforms.fogBoundsMax.x &&
+                       pos.y >= uniforms.fogBoundsMin.y && pos.y <= uniforms.fogBoundsMax.y);
+    
+    // Second check: is vertex below the fog surface? (t > 0 means below surface when surface normal points up)
+    // fogDepthVector is the fog surface plane equation
+    float surfaceT = dot(float4(pos, 1.0), uniforms.fogDepthVector);
+    bool belowSurface = (surfaceT > 0.0);
+    
+    // Only apply fog if in XY bounds AND below the fog surface
+    if (inXYBounds && belowSurface) {
+        // Calculate fog using the same formula as OpenGL2
+        float fogValue = CalcFog(in.position, uniforms);
+        // Apply color alpha squared (matches u_Color.a * u_Color.a in GLSL)
+        out.fogScale = fogValue * uniforms.fogColor.a * uniforms.fogColor.a;
+    } else {
+        // Outside fog volume - no fog effect
+        out.fogScale = 0.0;
+    }
+
+    return out;
+}
+
+// Fog fragment shader
+fragment float4 fragment_fog(FogVertexOut in [[stage_in]],
+                              constant SceneUniforms& uniforms [[buffer(1)]]) {
+    // Compute fog alpha matching OpenGL2: gl_FragColor.a = sqrt(clamp(var_Scale, 0.0, 1.0))
+    float alpha = sqrt(clamp(in.fogScale, 0.0, 1.0));
+
+    // Return fog color with computed alpha
+    return float4(uniforms.fogColor.rgb, alpha);
 }

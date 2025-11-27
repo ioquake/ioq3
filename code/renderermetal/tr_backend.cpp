@@ -584,6 +584,18 @@ private:
 		float viewOrigin[4] = {};
 		float clipInfo[4] = {};
 		float timeInfo[4] = {};
+
+		// Fog parameters
+		float fogDistanceVector[4] = {};  // Distance from eye to fog volume
+		float fogDepthVector[4] = {};     // Fog surface plane equation
+		float fogColor[4] = {};           // Fog RGB color + alpha
+		float fogSurface[4] = {};         // Fog surface normal and distance
+		float fogBoundsMin[4] = {};       // Fog volume min bounds (xyz)
+		float fogBoundsMax[4] = {};       // Fog volume max bounds (xyz)
+		float fogEyeT = 0.0f;             // Eye position relative to fog surface
+		float fogTcScale = 0.0f;          // Texture coordinate scale
+		float fogHasSurface = 0.0f;       // Whether fog has a visible surface plane
+		float fogEnabled = 0.0f;          // Enable/disable fog rendering
 	};
 
 	// Texture coordinate modification params (matches Metal shader TCModParams)
@@ -754,6 +766,23 @@ private:
 	qhandle_t debugPolyShaderHandle_ = 0;
 	float debugPolySize_ = 256.0f;
 	float debugPolyDistance_ = 256.0f;
+	// Fog rendering
+	struct FogVolume {
+		int originalBrushNumber;
+		float bounds[2][3];  // min, max
+		unsigned colorInt;
+		float tcScale;
+		bool hasSurface;
+		float surface[4];    // plane equation
+		float fogColor[3];
+		float depthForOpaque;
+	};
+	std::vector<FogVolume> worldFogs_;
+	MetalPtr<MTL::RenderPipelineState> fogPipeline_;
+	MetalPtr<MTL::Function> fogVertexFunction_;
+	MetalPtr<MTL::Function> fogFragmentFunction_;
+	MetalPtr<MTL::DepthStencilState> fogDepthState_;
+
 	bool worldLoaded_ = false;
 	std::string worldName_;
 	std::vector<MetalPolyVertex> worldVertexTemplate_;
@@ -795,9 +824,11 @@ private:
 	bool uploadPolyVertexBuffer();
 	bool uploadLightBuffer();
 	bool ensureSceneShaderResources();
+	bool ensureFogPipeline();
 	StagePipelineEntry* getStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
+	bool drawFogPasses();
 	void encodeEntityCommands(SceneDispatchSummary& summary);
 	void encodePolyCommands(SceneDispatchSummary& summary);
 	void encodeLightCommands(SceneDispatchSummary& summary);
@@ -856,6 +887,9 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	sceneFragmentFunction_.reset();
 	sceneVertexFunction_.reset();
 	sceneLibrary_.reset();
+	fogVertexFunction_.reset();
+	fogFragmentFunction_.reset();
+	fogPipeline_.reset();
 	depthTexture_.reset();
 	depthTextureWidth_ = depthTextureHeight_ = 0;
 	stagePipelineCache_.clear();
@@ -1233,6 +1267,16 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	const dsurface_t* surfaces = reinterpret_cast<const dsurface_t*>(getLumpRange(LUMP_SURFACES, surfaceCount, sizeof(dsurface_t)));
 	int lightmapCount = 0;
 	const byte* lightmapData = getLumpRange(LUMP_LIGHTMAPS, lightmapCount, kBspLightmapBytes);
+	int fogCount = 0;
+	const dfog_t* fogs = reinterpret_cast<const dfog_t*>(getLumpRange(LUMP_FOGS, fogCount, sizeof(dfog_t)));
+
+	// Load planes, brushes, and brush sides for fog surface calculation
+	int planeCount = 0;
+	const dplane_t* planes = reinterpret_cast<const dplane_t*>(getLumpRange(LUMP_PLANES, planeCount, sizeof(dplane_t)));
+	int brushCount = 0;
+	const dbrush_t* brushes = reinterpret_cast<const dbrush_t*>(getLumpRange(LUMP_BRUSHES, brushCount, sizeof(dbrush_t)));
+	int brushSideCount = 0;
+	const dbrushside_t* brushSides = reinterpret_cast<const dbrushside_t*>(getLumpRange(LUMP_BRUSHSIDES, brushSideCount, sizeof(dbrushside_t)));
 
 	if (!shaderTable || !drawVerts || !drawIndexes || !surfaces) {
 		if (ri_.Printf) {
@@ -1271,6 +1315,127 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		}
 	}
 
+	// Load fog volumes
+	worldFogs_.clear();
+	if (fogs && fogCount > 0) {
+		worldFogs_.reserve(fogCount);
+		for (int i = 0; i < fogCount; ++i) {
+			const dfog_t& dfog = fogs[i];
+			FogVolume fog{};
+
+			const int brushNum = LittleLong(dfog.brushNum);
+			fog.originalBrushNumber = brushNum;
+
+			// Register the fog shader to get its fog parameters
+			std::string fogShaderName(dfog.shader);
+			qhandle_t fogShaderHandle = registerShader(fogShaderName.c_str(), true);
+			MetalShaderResource* fogShader = getShaderResource(fogShaderHandle);
+
+			if (fogShader && fogShader->hasScript && fogShader->script.hasFogParms) {
+				fog.fogColor[0] = fogShader->script.fogColor[0];
+				fog.fogColor[1] = fogShader->script.fogColor[1];
+				fog.fogColor[2] = fogShader->script.fogColor[2];
+				fog.depthForOpaque = fogShader->script.fogDepthForOpaque;
+
+				// Calculate tcScale from depth
+				const float depth = (fog.depthForOpaque < 1.0f) ? 1.0f : fog.depthForOpaque;
+				fog.tcScale = 1.0f / (depth * 8.0f);
+
+				// Pack color into int for compatibility (RGBA)
+				fog.colorInt = (static_cast<unsigned>(fog.fogColor[0] * 255.0f) << 0) |
+				               (static_cast<unsigned>(fog.fogColor[1] * 255.0f) << 8) |
+				               (static_cast<unsigned>(fog.fogColor[2] * 255.0f) << 16) |
+				               (255u << 24);
+
+				// Initialize fog bounds and surface
+				fog.hasSurface = false;
+				fog.surface[0] = fog.surface[1] = fog.surface[2] = fog.surface[3] = 0.0f;
+				fog.bounds[0][0] = fog.bounds[0][1] = fog.bounds[0][2] = 0.0f;
+				fog.bounds[1][0] = fog.bounds[1][1] = fog.bounds[1][2] = 0.0f;
+
+				// Extract fog bounds and surface plane from BSP brush/plane data
+				if (brushes && brushSides && planes && brushNum >= 0 && brushNum < brushCount) {
+					const dbrush_t& brush = brushes[brushNum];
+					const int firstSide = LittleLong(brush.firstSide);
+					const int numSides = LittleLong(brush.numSides);
+
+					// Brushes have axial sides first (6 sides for bounds)
+					if (numSides >= 6 && firstSide >= 0 && (firstSide + 5) < brushSideCount) {
+						// Extract bounds from the 6 axial brush sides
+						// Side 0: -X plane, Side 1: +X plane
+						// Side 2: -Y plane, Side 3: +Y plane
+						// Side 4: -Z plane, Side 5: +Z plane
+						int planeNum;
+						
+						planeNum = LittleLong(brushSides[firstSide + 0].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[0][0] = -planes[planeNum].dist;
+						
+						planeNum = LittleLong(brushSides[firstSide + 1].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[1][0] = planes[planeNum].dist;
+						
+						planeNum = LittleLong(brushSides[firstSide + 2].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[0][1] = -planes[planeNum].dist;
+						
+						planeNum = LittleLong(brushSides[firstSide + 3].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[1][1] = planes[planeNum].dist;
+						
+						planeNum = LittleLong(brushSides[firstSide + 4].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[0][2] = -planes[planeNum].dist;
+						
+						planeNum = LittleLong(brushSides[firstSide + 5].planeNum);
+						if (planeNum >= 0 && planeNum < planeCount)
+							fog.bounds[1][2] = planes[planeNum].dist;
+
+						if (ri_.Printf) {
+							ri_.Printf(PRINT_ALL, "Metal: Fog %d bounds: min(%.1f, %.1f, %.1f) max(%.1f, %.1f, %.1f)\n",
+								i, fog.bounds[0][0], fog.bounds[0][1], fog.bounds[0][2],
+								fog.bounds[1][0], fog.bounds[1][1], fog.bounds[1][2]);
+						}
+					}
+
+					// Extract visible surface plane
+					const int visibleSide = LittleLong(dfog.visibleSide);
+					if (visibleSide != -1 && visibleSide < numSides) {
+						const int sideIndex = firstSide + visibleSide;
+						if (sideIndex >= 0 && sideIndex < brushSideCount) {
+							const dbrushside_t& side = brushSides[sideIndex];
+							const int planeNum = LittleLong(side.planeNum);
+
+							if (planeNum >= 0 && planeNum < planeCount) {
+								const dplane_t& plane = planes[planeNum];
+								// Store surface plane: negate normal as per OpenGL renderer
+								fog.surface[0] = -plane.normal[0];
+								fog.surface[1] = -plane.normal[1];
+								fog.surface[2] = -plane.normal[2];
+								fog.surface[3] = -plane.dist;
+								fog.hasSurface = true;
+
+								if (ri_.Printf) {
+									ri_.Printf(PRINT_ALL, "Metal: Fog %d surface plane: (%.2f, %.2f, %.2f, %.2f)\n",
+										i, fog.surface[0], fog.surface[1], fog.surface[2], fog.surface[3]);
+								}
+							}
+						}
+					}
+				}
+
+				worldFogs_.push_back(fog);
+
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL, "Metal: Loaded fog %d: shader='%s', color=(%.2f,%.2f,%.2f), depth=%.1f, hasSurface=%d\n",
+						i, fogShaderName.c_str(),
+						fog.fogColor[0], fog.fogColor[1], fog.fogColor[2],
+						fog.depthForOpaque, fog.hasSurface ? 1 : 0);
+				}
+			}
+		}
+	}
+
 	std::vector<qhandle_t> shaderHandles(shaderCount, -1);
 	auto resolveShaderHandle = [&](int shaderNum) -> qhandle_t {
 		if (shaderNum < 0 || shaderNum >= shaderCount) {
@@ -1306,6 +1471,17 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		const int shaderNum = LittleLong(ds.shaderNum);
 		qhandle_t shaderHandle = resolveShaderHandle(shaderNum);
 		if (shaderHandle <= 0) {
+			continue;
+		}
+
+		// Skip fog volume surfaces - they will be rendered separately with fog shader
+		MetalShaderResource* shaderResource = getShaderResource(shaderHandle);
+		if (shaderResource && shaderResource->hasScript && shaderResource->script.hasFogParms) {
+			if (ri_.Printf) {
+				std::string shaderName = shaderResource->name;
+				ri_.Printf(PRINT_ALL, "Metal: Skipping fog surface %d with shader '%s'\n",
+					surfaceIndex, shaderName.c_str());
+			}
 			continue;
 		}
 
@@ -1406,6 +1582,7 @@ void MetalRenderer::unloadWorldMap() {
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
 	worldLightmapHandles_.clear();
+	worldFogs_.clear();
 }
 
 bool MetalRenderer::initializeWindow(int& width, int& height, qboolean& fullscreen) {
@@ -2008,9 +2185,9 @@ void MetalRenderer::submitScene() {
 	sceneDispatched_ = false;
 
 	if (!state.refdefValid) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_WARNING, "Metal: submitScene - refdefValid=FALSE, clearing scene state\n");
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_WARNING, "Metal: submitScene - refdefValid=FALSE, clearing scene state\n");
+		// }
 		// Refdef invalid, clear scene state
 		drawPackets_.clear();
 		polyPackets_.clear();
@@ -2170,6 +2347,10 @@ void MetalRenderer::renderScenePackets() {
 	if (!drawPolyPackets()) {
 		return;
 	}
+	// Draw fog passes after normal rendering
+	if (!drawFogPasses()) {
+		return;
+	}
 	sceneDispatchSummary_ = summary;
 
 	if (ri_.Printf) {
@@ -2243,6 +2424,107 @@ bool MetalRenderer::uploadSceneUniforms() {
 	sceneUniforms_.clipInfo[1] = sceneCamera_.zFar;
 	sceneUniforms_.clipInfo[2] = sceneCamera_.zProj;
 	sceneUniforms_.clipInfo[3] = sceneCamera_.stereoSeparation;
+
+	// Initialize fog uniforms using proper fog surface plane calculations
+	// Based on RB_CalcFogTexCoords and ComputeFogValues from the OpenGL renderer
+	if (!worldFogs_.empty()) {
+		const FogVolume& fog = worldFogs_[0];  // Use first fog volume
+
+		// Set fog color and alpha
+		sceneUniforms_.fogColor[0] = fog.fogColor[0];
+		sceneUniforms_.fogColor[1] = fog.fogColor[1];
+		sceneUniforms_.fogColor[2] = fog.fogColor[2];
+		sceneUniforms_.fogColor[3] = 1.0f;  // Alpha for fog density
+
+		const float* viewOrigin = sceneCamera_.viewOrigin;
+
+		// For fog distance, we want view-independent distance calculation
+		// Use the fog surface plane normal direction for distance calculation
+		// This makes fog density based on height (Z) rather than view direction
+		// fogDistanceVector: use fog surface normal direction scaled by tcScale
+		// For typical ground fog, surface points up (0,0,-1 after negation), so we use Z depth
+		sceneUniforms_.fogDistanceVector[0] = fog.surface[0] * fog.tcScale;
+		sceneUniforms_.fogDistanceVector[1] = fog.surface[1] * fog.tcScale;
+		sceneUniforms_.fogDistanceVector[2] = fog.surface[2] * fog.tcScale;
+		// W = offset based on camera position relative to fog surface
+		sceneUniforms_.fogDistanceVector[3] = -(viewOrigin[0] * fog.surface[0] +
+		                                        viewOrigin[1] * fog.surface[1] +
+		                                        viewOrigin[2] * fog.surface[2]) * fog.tcScale;
+
+		// Calculate fog depth vector based on whether fog has a surface plane
+		if (fog.hasSurface) {
+			// For world geometry (identity axis), fogDepthVector = fog.surface directly
+			// fogDepthVector[3] = -fog.surface[3] + dot(modelOrigin, fog.surface)
+			// For world with origin at (0,0,0): fogDepthVector[3] = -fog.surface[3]
+			sceneUniforms_.fogDepthVector[0] = fog.surface[0];
+			sceneUniforms_.fogDepthVector[1] = fog.surface[1];
+			sceneUniforms_.fogDepthVector[2] = fog.surface[2];
+			sceneUniforms_.fogDepthVector[3] = -fog.surface[3];  // Note: fog.surface[3] was already negated during load
+
+			// eyeT = dot(viewOrigin, fogDepthVector) + fogDepthVector[3]
+			// viewOrigin here should be in model space, but for world it's the same as world space
+			sceneUniforms_.fogEyeT = viewOrigin[0] * sceneUniforms_.fogDepthVector[0] +
+			                         viewOrigin[1] * sceneUniforms_.fogDepthVector[1] +
+			                         viewOrigin[2] * sceneUniforms_.fogDepthVector[2] +
+			                         sceneUniforms_.fogDepthVector[3];
+		} else {
+			// No surface - fog fills volume, eye is always "inside"
+			sceneUniforms_.fogDepthVector[0] = 0.0f;
+			sceneUniforms_.fogDepthVector[1] = 0.0f;
+			sceneUniforms_.fogDepthVector[2] = 0.0f;
+			sceneUniforms_.fogDepthVector[3] = 0.0f;
+			sceneUniforms_.fogEyeT = 1.0f;  // Positive = eye inside fog
+		}
+
+		// Copy surface plane for reference
+		sceneUniforms_.fogSurface[0] = fog.surface[0];
+		sceneUniforms_.fogSurface[1] = fog.surface[1];
+		sceneUniforms_.fogSurface[2] = fog.surface[2];
+		sceneUniforms_.fogSurface[3] = fog.surface[3];
+
+		// Copy fog volume bounds
+		sceneUniforms_.fogBoundsMin[0] = fog.bounds[0][0];
+		sceneUniforms_.fogBoundsMin[1] = fog.bounds[0][1];
+		sceneUniforms_.fogBoundsMin[2] = fog.bounds[0][2];
+		sceneUniforms_.fogBoundsMin[3] = 0.0f;
+		sceneUniforms_.fogBoundsMax[0] = fog.bounds[1][0];
+		sceneUniforms_.fogBoundsMax[1] = fog.bounds[1][1];
+		sceneUniforms_.fogBoundsMax[2] = fog.bounds[1][2];
+		sceneUniforms_.fogBoundsMax[3] = 0.0f;
+
+		sceneUniforms_.fogTcScale = fog.tcScale;
+		sceneUniforms_.fogHasSurface = fog.hasSurface ? 1.0f : 0.0f;
+		sceneUniforms_.fogEnabled = 1.0f;
+
+		// Debug: Print fog parameters once per map load
+		static bool fogPrinted = false;
+		if (!fogPrinted && ri_.Printf) {
+			fogPrinted = true;
+			ri_.Printf(PRINT_ALL, "Metal: Fog Uniforms:\n");
+			ri_.Printf(PRINT_ALL, "  fogDistanceVector: (%.4f, %.4f, %.4f, %.4f)\n",
+				sceneUniforms_.fogDistanceVector[0], sceneUniforms_.fogDistanceVector[1],
+				sceneUniforms_.fogDistanceVector[2], sceneUniforms_.fogDistanceVector[3]);
+			ri_.Printf(PRINT_ALL, "  fogDepthVector: (%.4f, %.4f, %.4f, %.4f)\n",
+				sceneUniforms_.fogDepthVector[0], sceneUniforms_.fogDepthVector[1],
+				sceneUniforms_.fogDepthVector[2], sceneUniforms_.fogDepthVector[3]);
+			ri_.Printf(PRINT_ALL, "  fogEyeT: %.4f (eye %s fog)\n",
+				sceneUniforms_.fogEyeT, sceneUniforms_.fogEyeT < 0.0f ? "outside" : "inside");
+			ri_.Printf(PRINT_ALL, "  fogColor: (%.2f, %.2f, %.2f, %.2f)\n",
+				sceneUniforms_.fogColor[0], sceneUniforms_.fogColor[1],
+				sceneUniforms_.fogColor[2], sceneUniforms_.fogColor[3]);
+			ri_.Printf(PRINT_ALL, "  fogTcScale: %.6f, hasSurface: %d\n",
+				sceneUniforms_.fogTcScale, fog.hasSurface ? 1 : 0);
+			ri_.Printf(PRINT_ALL, "  fogBoundsMin: (%.1f, %.1f, %.1f)\n",
+				sceneUniforms_.fogBoundsMin[0], sceneUniforms_.fogBoundsMin[1], sceneUniforms_.fogBoundsMin[2]);
+			ri_.Printf(PRINT_ALL, "  fogBoundsMax: (%.1f, %.1f, %.1f)\n",
+				sceneUniforms_.fogBoundsMax[0], sceneUniforms_.fogBoundsMax[1], sceneUniforms_.fogBoundsMax[2]);
+			ri_.Printf(PRINT_ALL, "  viewOrigin: (%.1f, %.1f, %.1f)\n",
+				viewOrigin[0], viewOrigin[1], viewOrigin[2]);
+		}
+	} else {
+		// No fog - disable fog rendering
+		sceneUniforms_.fogEnabled = 0.0f;
+	}
 
 	// DEBUG: Print viewProjection matrix once
 	static bool printed = false;
@@ -2801,6 +3083,31 @@ bool MetalRenderer::ensureSceneShaderResources() {
 		}
 	}
 
+	// Load fog shader functions
+	if (!fogVertexFunction_) {
+		NS::String* fogVertexName = NS::String::string("vertex_fog", NS::ASCIIStringEncoding);
+		fogVertexFunction_.reset(sceneLibrary_->newFunction(fogVertexName));
+		fogVertexName->release();
+		if (!fogVertexFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: missing vertex_fog function\n");
+			}
+			return false;
+		}
+	}
+
+	if (!fogFragmentFunction_) {
+		NS::String* fogFragmentName = NS::String::string("fragment_fog", NS::ASCIIStringEncoding);
+		fogFragmentFunction_.reset(sceneLibrary_->newFunction(fogFragmentName));
+		fogFragmentName->release();
+		if (!fogFragmentFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: missing fragment_fog function\n");
+			}
+			return false;
+		}
+	}
+
 	if (!sceneSampler_) {
 		MTL::SamplerDescriptor* sampDesc = MTL::SamplerDescriptor::alloc()->init();
 		sampDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
@@ -2815,6 +3122,66 @@ bool MetalRenderer::ensureSceneShaderResources() {
 	       sceneVertexDescriptor_.get() != nullptr &&
 	       sceneVertexFunction_.get() != nullptr &&
 	       sceneFragmentFunction_.get() != nullptr;
+}
+
+bool MetalRenderer::ensureFogPipeline() {
+	if (fogPipeline_) {
+		return true;
+	}
+	if (!device_ || !depthTexture_ || !fogVertexFunction_ || !fogFragmentFunction_ || !sceneVertexDescriptor_) {
+		return false;
+	}
+
+	NS::Error* error = nullptr;
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+
+	pd->setVertexFunction(fogVertexFunction_.get());
+	pd->setFragmentFunction(fogFragmentFunction_.get());
+	pd->setVertexDescriptor(sceneVertexDescriptor_.get());
+
+	// Color attachment with alpha blending
+	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
+	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setBlendingEnabled(true);
+	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	colorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+	colorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	colorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
+
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	fogPipeline_.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+
+	if (!fogPipeline_) {
+		if (error && ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create fog pipeline: %s\n",
+				error->localizedDescription()->utf8String());
+			error->release();
+		}
+		return false;
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: Created fog pipeline with alpha blending\n");
+	}
+
+	// Create fog depth stencil state if needed
+	if (!fogDepthState_) {
+		MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+		depthDesc->setDepthWriteEnabled(false);  // Don't write to depth buffer
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLessEqual);  // Draw on existing geometry
+		fogDepthState_.reset(device_->newDepthStencilState(depthDesc));
+		depthDesc->release();
+
+		if (ri_.Printf && fogDepthState_) {
+			ri_.Printf(PRINT_ALL, "Metal: Created fog depth stencil state\n");
+		}
+	}
+
+	return true;
 }
 
 MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(const MetalRenderer::MetalShaderResource::MetalPipelineKey& key) {
@@ -3024,6 +3391,66 @@ bool MetalRenderer::drawPolyPackets() {
 			                                   static_cast<NS::UInteger>(packet.vertexCount));
 		}
 	}
+	return true;
+}
+
+bool MetalRenderer::drawFogPasses() {
+	// Check if fog is enabled
+	if (sceneUniforms_.fogEnabled < 0.5f || worldFogs_.empty()) {
+		return true;  // No fog to render
+	}
+
+	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+		return true;  // No geometry to fog
+	}
+
+	if (!sceneUniformBuffer_) {
+		return false;
+	}
+
+	// Ensure fog pipeline and depth state are created
+	if (!ensureFogPipeline() || !fogPipeline_ || !fogDepthState_) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Fog pipeline not available\n");
+		}
+		return false;
+	}
+
+	// Set fog pipeline and depth state
+	currentRenderEncoder_->setRenderPipelineState(fogPipeline_.get());
+	currentRenderEncoder_->setDepthStencilState(fogDepthState_.get());
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);  // Allow viewing from inside fog
+
+	// Bind vertex buffer and uniforms
+	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+	currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 1);
+
+	// Draw fog pass for all world geometry packets
+	// We render the same geometry again with the fog shader to create volumetric fog effect
+	for (const ScenePolyPacket& packet : polyPackets_) {
+		if (packet.vertexCount <= 0) {
+			continue;
+		}
+
+		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
+		if (endVertex > polyVertexCountGPU_) {
+			continue;
+		}
+
+		// Draw the geometry with fog shader
+		currentRenderEncoder_->drawPrimitives(packet.primitive,
+		                                       static_cast<NS::UInteger>(packet.firstVertex),
+		                                       static_cast<NS::UInteger>(packet.vertexCount));
+	}
+
+	if (ri_.Printf) {
+		static int logCounter = 0;
+		if (logCounter++ % 60 == 0) {  // Log once per second at 60fps
+			ri_.Printf(PRINT_DEVELOPER, "Metal: Drew fog passes for %zu packets\n", polyPackets_.size());
+		}
+	}
+
 	return true;
 }
 
