@@ -2350,8 +2350,8 @@ bool MetalRenderer::ensureSceneShaderResources() {
 		MTL::SamplerDescriptor* sampDesc = MTL::SamplerDescriptor::alloc()->init();
 		sampDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
 		sampDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-		sampDesc->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
-		sampDesc->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
+		sampDesc->setSAddressMode(MTL::SamplerAddressModeRepeat);
+		sampDesc->setTAddressMode(MTL::SamplerAddressModeRepeat);
 		sceneSampler_.reset(device_->newSamplerState(sampDesc));
 		sampDesc->release();
 	}
