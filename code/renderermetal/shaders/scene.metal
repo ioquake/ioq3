@@ -208,28 +208,11 @@ vertex FogVertexOut vertex_fog(VertexIn in [[stage_in]],
     float4 viewPos = uniforms.view * float4(in.position, 1.0);
     out.position = uniforms.projection * viewPos;
 
-    // Check if vertex is inside the fog volume using BOTH bounds AND surface plane
-    float3 pos = in.position;
-    
-    // First check: is vertex within the fog's XY bounds?
-    bool inXYBounds = (pos.x >= uniforms.fogBoundsMin.x && pos.x <= uniforms.fogBoundsMax.x &&
-                       pos.y >= uniforms.fogBoundsMin.y && pos.y <= uniforms.fogBoundsMax.y);
-    
-    // Second check: is vertex below the fog surface? (t > 0 means below surface when surface normal points up)
-    // fogDepthVector is the fog surface plane equation
-    float surfaceT = dot(float4(pos, 1.0), uniforms.fogDepthVector);
-    bool belowSurface = (surfaceT > 0.0);
-    
-    // Only apply fog if in XY bounds AND below the fog surface
-    if (inXYBounds && belowSurface) {
-        // Calculate fog using the same formula as OpenGL2
-        float fogValue = CalcFog(in.position, uniforms);
-        // Apply color alpha squared (matches u_Color.a * u_Color.a in GLSL)
-        out.fogScale = fogValue * uniforms.fogColor.a * uniforms.fogColor.a;
-    } else {
-        // Outside fog volume - no fog effect
-        out.fogScale = 0.0;
-    }
+    // The surface's fogIndex already filters which surfaces are in fog volumes
+    // Just calculate fog for this vertex
+    float fogValue = CalcFog(in.position, uniforms);
+    // Apply color alpha squared (matches u_Color.a * u_Color.a in GLSL)
+    out.fogScale = fogValue * uniforms.fogColor.a * uniforms.fogColor.a;
 
     return out;
 }

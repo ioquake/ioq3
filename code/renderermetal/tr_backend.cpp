@@ -564,6 +564,7 @@ private:
 		int vertexCount = 0;
 		MTL::PrimitiveType primitive = MTL::PrimitiveTypeTriangle;
 		qhandle_t lightmapHandle = 0;
+		int fogIndex = 0;  // 0 = no fog, 1+ = fog volume index (1-based)
 	};
 
 	struct SceneLightPacket {
@@ -1557,6 +1558,8 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		packet.firstVertex = static_cast<int>(startVertex);
 		packet.vertexCount = static_cast<int>(addedVerts);
 		packet.primitive = MTL::PrimitiveTypeTriangle;
+		// Store fog index for this surface (add 1 to match OpenGL convention: 0 = no fog)
+		packet.fogIndex = LittleLong(ds.fogNum) + 1;
 		worldPacketTemplate_.push_back(packet);
 	}
 
@@ -1565,9 +1568,15 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	if (worldLoaded_) {
 		worldName_ = requestedName;
 		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "Metal: loaded world '%s' (%zu surfaces, %zu verts)\n",
+			// Count surfaces with fog
+			int foggedSurfaces = 0;
+			for (const auto& p : worldPacketTemplate_) {
+				if (p.fogIndex > 0) foggedSurfaces++;
+			}
+			ri_.Printf(PRINT_ALL, "Metal: loaded world '%s' (%zu surfaces, %d fogged, %zu verts)\n",
 			           worldName_.c_str(),
 			           worldPacketTemplate_.size(),
+			           foggedSurfaces,
 			           worldVertexTemplate_.size());
 		}
 	} else if (ri_.Printf) {
@@ -3396,7 +3405,7 @@ bool MetalRenderer::drawPolyPackets() {
 
 bool MetalRenderer::drawFogPasses() {
 	// Check if fog is enabled
-	if (sceneUniforms_.fogEnabled < 0.5f || worldFogs_.empty()) {
+	if (worldFogs_.empty()) {
 		return true;  // No fog to render
 	}
 
@@ -3421,33 +3430,81 @@ bool MetalRenderer::drawFogPasses() {
 	currentRenderEncoder_->setDepthStencilState(fogDepthState_.get());
 	currentRenderEncoder_->setCullMode(MTL::CullModeNone);  // Allow viewing from inside fog
 
-	// Bind vertex buffer and uniforms
+	// Bind vertex buffer
 	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
-	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
-	currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 1);
 
-	// Draw fog pass for all world geometry packets
-	// We render the same geometry again with the fog shader to create volumetric fog effect
-	for (const ScenePolyPacket& packet : polyPackets_) {
-		if (packet.vertexCount <= 0) {
-			continue;
+	int totalFoggedPackets = 0;
+	const float* viewOrigin = sceneCamera_.viewOrigin;
+
+	// Process each fog volume
+	for (size_t fogIdx = 0; fogIdx < worldFogs_.size(); ++fogIdx) {
+		const FogVolume& fog = worldFogs_[fogIdx];
+		const int fogIndex = static_cast<int>(fogIdx) + 1;  // fogIndex is 1-based
+
+		// Update fog uniforms for this volume
+		sceneUniforms_.fogColor[0] = fog.fogColor[0];
+		sceneUniforms_.fogColor[1] = fog.fogColor[1];
+		sceneUniforms_.fogColor[2] = fog.fogColor[2];
+		sceneUniforms_.fogColor[3] = 1.0f;
+
+		// fogDistanceVector using fog surface plane
+		sceneUniforms_.fogDistanceVector[0] = fog.surface[0] * fog.tcScale;
+		sceneUniforms_.fogDistanceVector[1] = fog.surface[1] * fog.tcScale;
+		sceneUniforms_.fogDistanceVector[2] = fog.surface[2] * fog.tcScale;
+		sceneUniforms_.fogDistanceVector[3] = -(viewOrigin[0] * fog.surface[0] +
+		                                        viewOrigin[1] * fog.surface[1] +
+		                                        viewOrigin[2] * fog.surface[2]) * fog.tcScale;
+
+		if (fog.hasSurface) {
+			sceneUniforms_.fogDepthVector[0] = fog.surface[0];
+			sceneUniforms_.fogDepthVector[1] = fog.surface[1];
+			sceneUniforms_.fogDepthVector[2] = fog.surface[2];
+			sceneUniforms_.fogDepthVector[3] = -fog.surface[3];
+
+			sceneUniforms_.fogEyeT = viewOrigin[0] * sceneUniforms_.fogDepthVector[0] +
+			                         viewOrigin[1] * sceneUniforms_.fogDepthVector[1] +
+			                         viewOrigin[2] * sceneUniforms_.fogDepthVector[2] +
+			                         sceneUniforms_.fogDepthVector[3];
+		} else {
+			sceneUniforms_.fogDepthVector[0] = 0.0f;
+			sceneUniforms_.fogDepthVector[1] = 0.0f;
+			sceneUniforms_.fogDepthVector[2] = 0.0f;
+			sceneUniforms_.fogDepthVector[3] = 0.0f;
+			sceneUniforms_.fogEyeT = 1.0f;  // Always inside
 		}
 
-		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
-		if (endVertex > polyVertexCountGPU_) {
-			continue;
-		}
+		sceneUniforms_.fogTcScale = fog.tcScale;
+		sceneUniforms_.fogHasSurface = fog.hasSurface ? 1.0f : 0.0f;
+		sceneUniforms_.fogEnabled = 1.0f;
 
-		// Draw the geometry with fog shader
-		currentRenderEncoder_->drawPrimitives(packet.primitive,
-		                                       static_cast<NS::UInteger>(packet.firstVertex),
-		                                       static_cast<NS::UInteger>(packet.vertexCount));
+		// Upload updated uniforms
+		std::memcpy(sceneUniformBuffer_->contents(), &sceneUniforms_, sizeof(SceneUniforms));
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+		currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 1);
+
+		// Draw fog pass for surfaces in this fog volume
+		for (const ScenePolyPacket& packet : polyPackets_) {
+			if (packet.vertexCount <= 0 || packet.fogIndex != fogIndex) {
+				continue;
+			}
+
+			const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
+			if (endVertex > polyVertexCountGPU_) {
+				continue;
+			}
+
+			currentRenderEncoder_->drawPrimitives(packet.primitive,
+			                                       static_cast<NS::UInteger>(packet.firstVertex),
+			                                       static_cast<NS::UInteger>(packet.vertexCount));
+			totalFoggedPackets++;
+		}
 	}
 
 	if (ri_.Printf) {
 		static int logCounter = 0;
-		if (logCounter++ % 60 == 0) {  // Log once per second at 60fps
-			ri_.Printf(PRINT_DEVELOPER, "Metal: Drew fog passes for %zu packets\n", polyPackets_.size());
+		if (logCounter++ % 300 == 0) {  // Log every 5 seconds at 60fps
+			ri_.Printf(PRINT_ALL, "Metal: Drew fog passes for %d packets across %zu fog volumes\n", 
+			           totalFoggedPackets, worldFogs_.size());
 		}
 	}
 
