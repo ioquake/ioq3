@@ -141,6 +141,131 @@ extern "C" {
 #include "tr_shader.h"
 
 //=============================================================================
+// Bezier Patch Tessellation
+//=============================================================================
+
+namespace {
+// Tessellation level for curved surfaces (higher = smoother, more triangles)
+constexpr int PATCH_SUBDIVISIONS = 8;
+
+// Bezier patch tessellation for curved surfaces
+// Quake 3 patches are quadratic Bezier surfaces defined by a grid of control points
+// Each 3x3 block of control points defines one Bezier patch
+
+inline MetalPolyVertex LerpVertex(const MetalPolyVertex& a, const MetalPolyVertex& b, float t) {
+	MetalPolyVertex out{};
+	float omt = 1.0f - t;
+	out.xyz[0] = a.xyz[0] * omt + b.xyz[0] * t;
+	out.xyz[1] = a.xyz[1] * omt + b.xyz[1] * t;
+	out.xyz[2] = a.xyz[2] * omt + b.xyz[2] * t;
+	out.st[0] = a.st[0] * omt + b.st[0] * t;
+	out.st[1] = a.st[1] * omt + b.st[1] * t;
+	out.lightmap[0] = a.lightmap[0] * omt + b.lightmap[0] * t;
+	out.lightmap[1] = a.lightmap[1] * omt + b.lightmap[1] * t;
+	out.normal[0] = a.normal[0] * omt + b.normal[0] * t;
+	out.normal[1] = a.normal[1] * omt + b.normal[1] * t;
+	out.normal[2] = a.normal[2] * omt + b.normal[2] * t;
+	// Lerp colors
+	out.modulate[0] = static_cast<byte>(a.modulate[0] * omt + b.modulate[0] * t);
+	out.modulate[1] = static_cast<byte>(a.modulate[1] * omt + b.modulate[1] * t);
+	out.modulate[2] = static_cast<byte>(a.modulate[2] * omt + b.modulate[2] * t);
+	out.modulate[3] = static_cast<byte>(a.modulate[3] * omt + b.modulate[3] * t);
+	return out;
+}
+
+// Evaluate quadratic Bezier curve at parameter t (0 to 1)
+// control points: p0, p1, p2
+inline MetalPolyVertex EvaluateBezier(const MetalPolyVertex& p0, const MetalPolyVertex& p1, const MetalPolyVertex& p2, float t) {
+	// B(t) = (1-t)^2 * P0 + 2*(1-t)*t * P1 + t^2 * P2
+	MetalPolyVertex a = LerpVertex(p0, p1, t);
+	MetalPolyVertex b = LerpVertex(p1, p2, t);
+	return LerpVertex(a, b, t);
+}
+
+// Evaluate a 3x3 Bezier patch at (u, v) where u,v are in [0,1]
+inline MetalPolyVertex EvaluatePatch3x3(const MetalPolyVertex ctrl[3][3], float u, float v) {
+	// First interpolate along u for each row
+	MetalPolyVertex temp[3];
+	temp[0] = EvaluateBezier(ctrl[0][0], ctrl[0][1], ctrl[0][2], u);
+	temp[1] = EvaluateBezier(ctrl[1][0], ctrl[1][1], ctrl[1][2], u);
+	temp[2] = EvaluateBezier(ctrl[2][0], ctrl[2][1], ctrl[2][2], u);
+	// Then interpolate along v
+	return EvaluateBezier(temp[0], temp[1], temp[2], v);
+}
+
+// Tessellate a single 3x3 Bezier patch into triangles
+// tessLevel is the number of subdivisions (e.g., 8 means 8x8 grid = 64 quads = 128 triangles)
+inline void TessellatePatch3x3(const MetalPolyVertex ctrl[3][3], int tessLevel,
+                               std::vector<MetalPolyVertex>& outVerts) {
+	if (tessLevel < 1) tessLevel = 1;
+	if (tessLevel > 32) tessLevel = 32;
+	
+	const float step = 1.0f / static_cast<float>(tessLevel);
+	
+	// Generate a grid of vertices
+	std::vector<MetalPolyVertex> grid(static_cast<size_t>((tessLevel + 1) * (tessLevel + 1)));
+	for (int j = 0; j <= tessLevel; ++j) {
+		float v = static_cast<float>(j) * step;
+		for (int i = 0; i <= tessLevel; ++i) {
+			float u = static_cast<float>(i) * step;
+			grid[static_cast<size_t>(j * (tessLevel + 1) + i)] = EvaluatePatch3x3(ctrl, u, v);
+		}
+	}
+	
+	// Generate triangles from the grid
+	for (int j = 0; j < tessLevel; ++j) {
+		for (int i = 0; i < tessLevel; ++i) {
+			size_t idx00 = static_cast<size_t>(j * (tessLevel + 1) + i);
+			size_t idx10 = static_cast<size_t>(j * (tessLevel + 1) + i + 1);
+			size_t idx01 = static_cast<size_t>((j + 1) * (tessLevel + 1) + i);
+			size_t idx11 = static_cast<size_t>((j + 1) * (tessLevel + 1) + i + 1);
+			
+			// Two triangles per quad
+			outVerts.push_back(grid[idx00]);
+			outVerts.push_back(grid[idx10]);
+			outVerts.push_back(grid[idx11]);
+			
+			outVerts.push_back(grid[idx00]);
+			outVerts.push_back(grid[idx11]);
+			outVerts.push_back(grid[idx01]);
+		}
+	}
+}
+
+// Tessellate a full Bezier patch mesh (width x height control points)
+// Quake 3 patches have dimensions that are 2*n+1 (e.g., 3, 5, 7, 9...)
+// Each overlapping 3x3 section is a separate Bezier patch
+inline void TessellateBezierPatch(const drawVert_t* controlPoints, int width, int height,
+                                  std::vector<MetalPolyVertex>& outVerts, int tessLevel) {
+	// Convert all control points to our vertex format
+	std::vector<MetalPolyVertex> ctrl(static_cast<size_t>(width * height));
+	for (int i = 0; i < width * height; ++i) {
+		ctrl[static_cast<size_t>(i)] = ConvertDrawVert(controlPoints[i]);
+	}
+	
+	// Number of patches in each direction
+	int numPatchesX = (width - 1) / 2;
+	int numPatchesY = (height - 1) / 2;
+	
+	// Process each 3x3 patch
+	for (int py = 0; py < numPatchesY; ++py) {
+		for (int px = 0; px < numPatchesX; ++px) {
+			// Extract 3x3 control points for this patch
+			MetalPolyVertex patch[3][3];
+			for (int j = 0; j < 3; ++j) {
+				for (int i = 0; i < 3; ++i) {
+					int cx = px * 2 + i;
+					int cy = py * 2 + j;
+					patch[j][i] = ctrl[static_cast<size_t>(cy * width + cx)];
+				}
+			}
+			TessellatePatch3x3(patch, tessLevel, outVerts);
+		}
+	}
+}
+} // end anonymous namespace for patch tessellation
+
+//=============================================================================
 // Metal Renderer Class
 //=============================================================================
 
@@ -918,37 +1043,66 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	for (int surfaceIndex = 0; surfaceIndex < surfaceCount; ++surfaceIndex) {
 		const dsurface_t& ds = surfaces[surfaceIndex];
 		const int surfaceType = LittleLong(ds.surfaceType);
-		if (surfaceType != MST_PLANAR && surfaceType != MST_TRIANGLE_SOUP) {
+		
+		// Skip unsupported surface types
+		if (surfaceType != MST_PLANAR && surfaceType != MST_TRIANGLE_SOUP && surfaceType != MST_PATCH) {
 			continue;
 		}
 
-		const int firstVert = LittleLong(ds.firstVert);
-		const int firstIndex = LittleLong(ds.firstIndex);
-		const int numIndexes = LittleLong(ds.numIndexes);
 		const int shaderNum = LittleLong(ds.shaderNum);
-
-		if (firstIndex < 0 || numIndexes < 3 || firstIndex + numIndexes > indexCount) {
-			continue;
-		}
-
 		qhandle_t shaderHandle = resolveShaderHandle(shaderNum);
 		if (shaderHandle <= 0) {
 			continue;
 		}
 
 		const size_t startVertex = worldVertexTemplate_.size();
-		const int* surfIndexes = drawIndexes + firstIndex;
-		for (int i = 0; i + 2 < numIndexes; i += 3) {
-			// BSP indices are relative to firstVert, so add firstVert to get absolute index
-			const int idx0 = firstVert + LittleLong(surfIndexes[i + 0]);
-			const int idx1 = firstVert + LittleLong(surfIndexes[i + 1]);
-			const int idx2 = firstVert + LittleLong(surfIndexes[i + 2]);
-			if (idx0 < 0 || idx0 >= vertexCount || idx1 < 0 || idx1 >= vertexCount || idx2 < 0 || idx2 >= vertexCount) {
+
+		if (surfaceType == MST_PATCH) {
+			// Handle curved patch surfaces (Bezier patches)
+			const int patchWidth = LittleLong(ds.patchWidth);
+			const int patchHeight = LittleLong(ds.patchHeight);
+			const int firstVert = LittleLong(ds.firstVert);
+			const int numVerts = LittleLong(ds.numVerts);
+
+			// Validate patch dimensions - must be odd and at least 3
+			if (patchWidth < 3 || patchHeight < 3 || (patchWidth & 1) == 0 || (patchHeight & 1) == 0) {
 				continue;
 			}
-			worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx0]));
-			worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx1]));
-			worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx2]));
+			if (firstVert < 0 || numVerts < patchWidth * patchHeight || firstVert + numVerts > vertexCount) {
+				continue;
+			}
+
+			// Tessellate the patch into triangles
+			std::vector<MetalPolyVertex> patchVerts;
+			TessellateBezierPatch(&drawVerts[firstVert], patchWidth, patchHeight, patchVerts, PATCH_SUBDIVISIONS);
+
+			// Add tessellated vertices to the world buffer
+			for (const auto& v : patchVerts) {
+				worldVertexTemplate_.push_back(v);
+			}
+		} else {
+			// Handle MST_PLANAR and MST_TRIANGLE_SOUP (indexed geometry)
+			const int firstVert = LittleLong(ds.firstVert);
+			const int firstIndex = LittleLong(ds.firstIndex);
+			const int numIndexes = LittleLong(ds.numIndexes);
+
+			if (firstIndex < 0 || numIndexes < 3 || firstIndex + numIndexes > indexCount) {
+				continue;
+			}
+
+			const int* surfIndexes = drawIndexes + firstIndex;
+			for (int i = 0; i + 2 < numIndexes; i += 3) {
+				// BSP indices are relative to firstVert, so add firstVert to get absolute index
+				const int idx0 = firstVert + LittleLong(surfIndexes[i + 0]);
+				const int idx1 = firstVert + LittleLong(surfIndexes[i + 1]);
+				const int idx2 = firstVert + LittleLong(surfIndexes[i + 2]);
+				if (idx0 < 0 || idx0 >= vertexCount || idx1 < 0 || idx1 >= vertexCount || idx2 < 0 || idx2 >= vertexCount) {
+					continue;
+				}
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx0]));
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx1]));
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx2]));
+			}
 		}
 
 		const size_t addedVerts = worldVertexTemplate_.size() - startVertex;
