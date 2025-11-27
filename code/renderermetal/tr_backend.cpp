@@ -393,6 +393,98 @@ inline void ComputeTCModMatrix(const MetalTCMod& mod, float time, float outMatri
 } // end anonymous namespace for tcMod helpers
 
 //=============================================================================
+// DeformVertexes Helpers
+//=============================================================================
+
+namespace {
+
+// Apply deformVertexes wave to a set of vertices
+// This modifies vertex positions based on wave function, like GL2's RB_CalcDeformVertexes
+inline void ApplyDeformVertexesWave(
+	MetalPolyVertex* vertices, 
+	int vertexCount,
+	const MetalDeformInfo& deform,
+	float time)
+{
+	if (deform.type != MetalDeformType::Wave) {
+		return;
+	}
+	
+	const MetalWaveForm& wave = deform.wave;
+	const float spread = deform.spread;
+	
+	// If frequency is 0, all vertices get the same offset
+	if (wave.frequency == 0.0f) {
+		float scale = EvalWaveForm(wave, time);
+		for (int i = 0; i < vertexCount; ++i) {
+			MetalPolyVertex& v = vertices[i];
+			v.xyz[0] += v.normal[0] * scale;
+			v.xyz[1] += v.normal[1] * scale;
+			v.xyz[2] += v.normal[2] * scale;
+		}
+	} else {
+		// Each vertex gets a phase offset based on its position
+		// This creates the wave-like ripple effect
+		for (int i = 0; i < vertexCount; ++i) {
+			MetalPolyVertex& v = vertices[i];
+			
+			// Calculate position-based phase offset
+			// The spread parameter controls how "tight" the waves are
+			float posOffset = 0.0f;
+			if (spread != 0.0f) {
+				posOffset = (v.xyz[0] + v.xyz[1] + v.xyz[2]) / spread;
+			}
+			
+			// Create a modified wave with the position-based phase offset
+			MetalWaveForm modWave = wave;
+			modWave.phase = wave.phase + posOffset;
+			
+			float scale = EvalWaveForm(modWave, time);
+			
+			v.xyz[0] += v.normal[0] * scale;
+			v.xyz[1] += v.normal[1] * scale;
+			v.xyz[2] += v.normal[2] * scale;
+		}
+	}
+}
+
+// Apply deformVertexes bulge to a set of vertices
+// This creates a bulge effect based on texture coordinates
+inline void ApplyDeformVertexesBulge(
+	MetalPolyVertex* vertices,
+	int vertexCount,
+	const MetalDeformInfo& deform,
+	float time)
+{
+	if (deform.type != MetalDeformType::Bulge) {
+		return;
+	}
+	
+	const float bulgeWidth = deform.bulgeWidth;
+	const float bulgeHeight = deform.bulgeHeight;
+	const float bulgeSpeed = deform.bulgeSpeed;
+	
+	const float now = time * bulgeSpeed;
+	
+	for (int i = 0; i < vertexCount; ++i) {
+		MetalPolyVertex& v = vertices[i];
+		
+		// Calculate offset based on S texture coordinate and time
+		// GL2 uses: off = (FUNCTABLE_SIZE / (M_PI*2)) * (st[0] * bulgeWidth + now)
+		// Then: scale = sinTable[off & FUNCTABLE_MASK] * bulgeHeight
+		// We approximate with direct sin calculation
+		float off = v.st[0] * bulgeWidth + now;
+		float scale = std::sin(off) * bulgeHeight;
+		
+		v.xyz[0] += v.normal[0] * scale;
+		v.xyz[1] += v.normal[1] * scale;
+		v.xyz[2] += v.normal[2] * scale;
+	}
+}
+
+} // end anonymous namespace for deformVertexes helpers
+
+//=============================================================================
 // Metal Renderer Class
 //=============================================================================
 
@@ -1042,10 +1134,32 @@ void MetalRenderer::appendWorldGeometry() {
 	}
 
 	const size_t baseVertex = polyVertices_.size();
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+	
+	// Copy template vertices - we may modify them for deformVertexes
 	polyVertices_.insert(polyVertices_.end(), worldVertexTemplate_.begin(), worldVertexTemplate_.end());
+	
 	for (const ScenePolyPacket& templatePacket : worldPacketTemplate_) {
 		ScenePolyPacket packet = templatePacket;
 		packet.firstVertex += static_cast<int>(baseVertex);
+		
+		// Check if this shader has deformVertexes and apply it
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (shaderResource && shaderResource->hasScript && shaderResource->script.hasDeform) {
+			const MetalDeformInfo& deform = shaderResource->script.deform;
+			
+			if (deform.type == MetalDeformType::Wave || deform.type == MetalDeformType::Bulge) {
+				// Get pointer to the vertices for this packet
+				MetalPolyVertex* packetVerts = &polyVertices_[packet.firstVertex];
+				
+				if (deform.type == MetalDeformType::Wave) {
+					ApplyDeformVertexesWave(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+				} else if (deform.type == MetalDeformType::Bulge) {
+					ApplyDeformVertexesBulge(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+				}
+			}
+		}
+		
 		polyPackets_.push_back(packet);
 	}
 }
