@@ -12,6 +12,21 @@ struct SceneUniforms {
     float4 timeInfo;
 };
 
+// Texture coordinate modification parameters
+// Uses the same format as GL2: 4 pairs of vec4s for up to 4 tcMod stages
+// Each pair: [0] = (scaleX, shearX, translateX, turbAmplitude)
+//            [1] = (shearY, scaleY, translateY, turbPhase)
+struct TCModParams {
+    float4 texMatrix0;  // First tcMod transform row 0
+    float4 texMatrix1;  // First tcMod transform row 1
+    float4 texMatrix2;  // Second tcMod transform row 0
+    float4 texMatrix3;  // Second tcMod transform row 1
+    float4 texMatrix4;  // Third tcMod transform row 0
+    float4 texMatrix5;  // Third tcMod transform row 1
+    float4 texMatrix6;  // Fourth tcMod transform row 0
+    float4 texMatrix7;  // Fourth tcMod transform row 1
+};
+
 struct StageFragmentParams {
     float alphaRef;
     float alphaFunc;
@@ -35,8 +50,43 @@ struct SceneVSOut {
     uint primitiveID [[flat]];
 };
 
+// Apply texture coordinate modifications (tcMod)
+// This matches GL2's ModTexCoords function
+// Each pair of texMatrix vectors represents one tcMod stage:
+//   [even].xyz = row 0 of 2x3 matrix (scaleX, shearX, translateX)
+//   [odd].xyz = row 1 of 2x3 matrix (shearY, scaleY, translateY)
+//   [even].w = turbulence amplitude (0 if no turb)
+//   [odd].w = turbulence phase
+float2 ApplyTCMod(float2 st, float3 position, constant TCModParams& tcmod) {
+    float2 st2 = st;
+    float2 offsetPos = float2(position.x + position.z, position.y);
+    
+    // First tcMod
+    st2 = float2(st2.x * tcmod.texMatrix0.x + st2.y * tcmod.texMatrix0.y + tcmod.texMatrix0.z,
+                 st2.x * tcmod.texMatrix1.x + st2.y * tcmod.texMatrix1.y + tcmod.texMatrix1.z);
+    st2 += tcmod.texMatrix0.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(tcmod.texMatrix1.w * 2.0 * M_PI_F));
+    
+    // Second tcMod
+    st2 = float2(st2.x * tcmod.texMatrix2.x + st2.y * tcmod.texMatrix2.y + tcmod.texMatrix2.z,
+                 st2.x * tcmod.texMatrix3.x + st2.y * tcmod.texMatrix3.y + tcmod.texMatrix3.z);
+    st2 += tcmod.texMatrix2.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(tcmod.texMatrix3.w * 2.0 * M_PI_F));
+    
+    // Third tcMod
+    st2 = float2(st2.x * tcmod.texMatrix4.x + st2.y * tcmod.texMatrix4.y + tcmod.texMatrix4.z,
+                 st2.x * tcmod.texMatrix5.x + st2.y * tcmod.texMatrix5.y + tcmod.texMatrix5.z);
+    st2 += tcmod.texMatrix4.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(tcmod.texMatrix5.w * 2.0 * M_PI_F));
+    
+    // Fourth tcMod
+    st2 = float2(st2.x * tcmod.texMatrix6.x + st2.y * tcmod.texMatrix6.y + tcmod.texMatrix6.z,
+                 st2.x * tcmod.texMatrix7.x + st2.y * tcmod.texMatrix7.y + tcmod.texMatrix7.z);
+    st2 += tcmod.texMatrix6.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(tcmod.texMatrix7.w * 2.0 * M_PI_F));
+    
+    return st2;
+}
+
 vertex SceneVSOut vertex_scene_basic(VertexIn in [[stage_in]],
                                       constant SceneUniforms& uniforms [[buffer(1)]],
+                                      constant TCModParams& tcmod [[buffer(2)]],
                                       uint vid [[vertex_id]]) {
     SceneVSOut out;
     float4 worldPos = float4(in.position, 1.0);
@@ -46,7 +96,8 @@ vertex SceneVSOut vertex_scene_basic(VertexIn in [[stage_in]],
     float4 viewPos = uniforms.view * worldPos;
     out.position = uniforms.projection * viewPos;
 
-    out.texCoord = in.texCoord;
+    // Apply texture coordinate modifications
+    out.texCoord = ApplyTCMod(in.texCoord, in.position, tcmod);
     out.lightmapCoord = in.lightmapCoord;
     out.color = in.color;  // Already normalized by MTL::VertexFormatUChar4Normalized
     out.primitiveID = vid / 3;  // Triangle ID

@@ -984,7 +984,7 @@ static void parseTCMod(TokenStream &stream, StageBuilder &stage) {
     } else if (!Q_stricmp(mode.c_str(), "stretch")) {
         mod.type = MetalTCModType::Stretch;
         mod.wave = parseWaveForm(stream);
-    } else if (!Q_stricmp(mode.c_str(), "turbulent")) {
+    } else if (!Q_stricmp(mode.c_str(), "turb") || !Q_stricmp(mode.c_str(), "turbulent")) {
         mod.type = MetalTCModType::Turbulence;
         parseFloat(stream, mod.args[0], false);
         parseFloat(stream, mod.args[1], false);

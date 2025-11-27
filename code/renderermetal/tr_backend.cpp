@@ -266,6 +266,133 @@ inline void TessellateBezierPatch(const drawVert_t* controlPoints, int width, in
 } // end anonymous namespace for patch tessellation
 
 //=============================================================================
+// TCMod Computation Helpers
+//=============================================================================
+
+namespace {
+
+// Evaluate a wave function at a given time
+inline float EvalWaveForm(const MetalWaveForm& wave, float time) {
+	if (wave.frequency == 0.0f) {
+		return wave.base;
+	}
+	
+	float phase = wave.phase + time * wave.frequency;
+	float value = 0.0f;
+	
+	switch (wave.func) {
+		case MetalWaveFunc::Sin:
+			value = std::sin(phase * 2.0f * static_cast<float>(M_PI));
+			break;
+		case MetalWaveFunc::Triangle:
+			value = std::fabs(std::fmod(phase + 0.75f, 1.0f) - 0.5f) * 4.0f - 1.0f;
+			break;
+		case MetalWaveFunc::Square:
+			value = (std::fmod(phase, 1.0f) < 0.5f) ? 1.0f : -1.0f;
+			break;
+		case MetalWaveFunc::Sawtooth:
+			value = std::fmod(phase, 1.0f);
+			break;
+		case MetalWaveFunc::InverseSawtooth:
+			value = 1.0f - std::fmod(phase, 1.0f);
+			break;
+		case MetalWaveFunc::Noise:
+			// Simple pseudo-noise based on phase
+			value = std::sin(phase * 12.9898f) * 43758.5453f;
+			value = value - std::floor(value);
+			value = value * 2.0f - 1.0f;
+			break;
+		default:
+			break;
+	}
+	
+	return wave.base + value * wave.amplitude;
+}
+
+// Compute a 2x3 texture matrix for a single tcMod operation
+// Matrix format: [0]=scaleX, [1]=shearY, [2]=shearX, [3]=scaleY, [4]=translateX, [5]=translateY
+inline void ComputeTCModMatrix(const MetalTCMod& mod, float time, float outMatrix[6], float& turbAmp, float& turbPhase) {
+	// Initialize to identity
+	outMatrix[0] = 1.0f; outMatrix[2] = 0.0f; outMatrix[4] = 0.0f;
+	outMatrix[1] = 0.0f; outMatrix[3] = 1.0f; outMatrix[5] = 0.0f;
+	turbAmp = 0.0f;
+	turbPhase = 0.0f;
+	
+	switch (mod.type) {
+		case MetalTCModType::Scroll: {
+			// args[0] = sSpeed, args[1] = tSpeed
+			float scrollS = mod.args[0] * time;
+			float scrollT = mod.args[1] * time;
+			// Clamp to prevent precision issues
+			scrollS = scrollS - std::floor(scrollS);
+			scrollT = scrollT - std::floor(scrollT);
+			outMatrix[4] = scrollS;
+			outMatrix[5] = scrollT;
+			break;
+		}
+		case MetalTCModType::Scale: {
+			// args[0] = sScale, args[1] = tScale
+			outMatrix[0] = mod.args[0];
+			outMatrix[3] = mod.args[1];
+			break;
+		}
+		case MetalTCModType::Rotate: {
+			// args[0] = degsPerSecond
+			float degs = -mod.args[0] * time;
+			float rads = degs * static_cast<float>(M_PI) / 180.0f;
+			float sinVal = std::sin(rads);
+			float cosVal = std::cos(rads);
+			// Rotate around (0.5, 0.5)
+			outMatrix[0] = cosVal;
+			outMatrix[2] = -sinVal;
+			outMatrix[4] = 0.5f - 0.5f * cosVal + 0.5f * sinVal;
+			outMatrix[1] = sinVal;
+			outMatrix[3] = cosVal;
+			outMatrix[5] = 0.5f - 0.5f * sinVal - 0.5f * cosVal;
+			break;
+		}
+		case MetalTCModType::Stretch: {
+			// wave-based stretch
+			float stretchValue = EvalWaveForm(mod.wave, time);
+			if (stretchValue != 0.0f) {
+				float p = 1.0f / stretchValue;
+				outMatrix[0] = p;
+				outMatrix[3] = p;
+				outMatrix[4] = 0.5f - 0.5f * p;
+				outMatrix[5] = 0.5f - 0.5f * p;
+			}
+			break;
+		}
+		case MetalTCModType::Turbulence: {
+			// Turbulence params stored in args: [0]=base, [1]=amplitude, [2]=phase, [3]=frequency
+			// The actual sin() is applied in the shader based on position
+			// Note: base is unused in the shader, it just offsets the wave
+			turbAmp = mod.args[1];  // amplitude
+			turbPhase = mod.args[2] + time * mod.args[3];  // phase + time * frequency
+			break;
+		}
+		case MetalTCModType::Transform: {
+			// Direct 2x3 matrix: args[0-5]
+			outMatrix[0] = mod.args[0];
+			outMatrix[1] = mod.args[1];
+			outMatrix[2] = mod.args[2];
+			outMatrix[3] = mod.args[3];
+			outMatrix[4] = mod.args[4];
+			outMatrix[5] = mod.args[5];
+			break;
+		}
+		case MetalTCModType::EntityTranslate:
+			// Entity-based translation - would need entity context
+			// For now, treat as identity
+			break;
+		default:
+			break;
+	}
+}
+
+} // end anonymous namespace for tcMod helpers
+
+//=============================================================================
 // Metal Renderer Class
 //=============================================================================
 
@@ -365,6 +492,18 @@ private:
 		float viewOrigin[4] = {};
 		float clipInfo[4] = {};
 		float timeInfo[4] = {};
+	};
+
+	// Texture coordinate modification params (matches Metal shader TCModParams)
+	struct TCModParams {
+		float texMatrix0[4] = {1.0f, 0.0f, 0.0f, 0.0f};  // Identity: scaleX=1, shearX=0, translateX=0, turbAmp=0
+		float texMatrix1[4] = {0.0f, 1.0f, 0.0f, 0.0f};  // Identity: shearY=0, scaleY=1, translateY=0, turbPhase=0
+		float texMatrix2[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix3[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+		float texMatrix4[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix5[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+		float texMatrix6[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix7[4] = {0.0f, 1.0f, 0.0f, 0.0f};
 	};
 
 	struct SceneCamera {
@@ -587,6 +726,7 @@ private:
 	void updatePrimaryImageHandle(MetalShaderResource& resource);
 	bool assetExists(const char* path) const;
 	static MTL::BlendFactor ToMetalBlendFactor(MetalBlendFactor factor);
+	TCModParams computeTCModParams(const MetalShaderStageInfo* stageInfo, float timeSeconds) const;
 };
 
 //=============================================================================
@@ -2353,6 +2493,53 @@ void MetalRenderer::updatePrimaryImageHandle(MetalRenderer::MetalShaderResource&
 	}
 }
 
+MetalRenderer::TCModParams MetalRenderer::computeTCModParams(const MetalShaderStageInfo* stageInfo, float timeSeconds) const {
+	TCModParams params;  // Initialize to identity matrices
+	
+	if (!stageInfo || stageInfo->tcMods.empty()) {
+		return params;
+	}
+	
+	// Process up to 4 tcMod stages
+	const size_t numMods = std::min(stageInfo->tcMods.size(), static_cast<size_t>(4));
+	
+	for (size_t i = 0; i < numMods; ++i) {
+		const MetalTCMod& mod = stageInfo->tcMods[i];
+		float matrix[6];
+		float turbAmp, turbPhase;
+		
+		ComputeTCModMatrix(mod, timeSeconds, matrix, turbAmp, turbPhase);
+		
+		// Store in the appropriate slot
+		// Each tcMod uses 2 vec4s: [i*2] and [i*2+1]
+		// Format: [even].xyz = (scaleX, shearX, translateX), [even].w = turbAmp
+		//         [odd].xyz = (shearY, scaleY, translateY), [odd].w = turbPhase
+		float* destEven = nullptr;
+		float* destOdd = nullptr;
+		
+		switch (i) {
+			case 0: destEven = params.texMatrix0; destOdd = params.texMatrix1; break;
+			case 1: destEven = params.texMatrix2; destOdd = params.texMatrix3; break;
+			case 2: destEven = params.texMatrix4; destOdd = params.texMatrix5; break;
+			case 3: destEven = params.texMatrix6; destOdd = params.texMatrix7; break;
+		}
+		
+		if (destEven && destOdd) {
+			destEven[0] = matrix[0];  // scaleX
+			destEven[1] = matrix[2];  // shearX
+			destEven[2] = matrix[4];  // translateX
+			destEven[3] = turbAmp;
+			
+			destOdd[0] = matrix[1];   // shearY
+			destOdd[1] = matrix[3];   // scaleY
+			destOdd[2] = matrix[5];   // translateY
+			destOdd[3] = turbPhase;
+		}
+	}
+	
+	return params;
+}
+
 bool MetalRenderer::assetExists(const char* path) const {
 	if (!path || !path[0]) {
 		return false;
@@ -2679,6 +2866,10 @@ bool MetalRenderer::drawPolyPackets() {
 			}
 			const MetalShaderStageInfo* stageInfo = stageRuntime->stageInfo;
 			bindStageParams(buildStageParams(stageInfo));
+
+			// Compute and bind texture coordinate modifications
+			TCModParams tcModParams = computeTCModParams(stageInfo, sceneTimeSeconds);
+			currentRenderEncoder_->setVertexBytes(&tcModParams, sizeof(TCModParams), 2);
 
 			StagePipelineEntry* pipelineEntry = getStagePipeline(stageRuntime->pipelineKey);
 			if (!pipelineEntry || !pipelineEntry->pipeline || !pipelineEntry->depthState) {
