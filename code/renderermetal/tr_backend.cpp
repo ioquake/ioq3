@@ -35,6 +35,10 @@ struct StageFragmentParams {
 	float alphaFunc = 0.0f;
 	float alphaTestEnabled = 0.0f;
 	float texCoordSelector = 0.0f;
+	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
+	float padding1 = 0.0f;
+	float padding2 = 0.0f;
+	float padding3 = 0.0f;
 };
 
 // Match Metal's PolyVertex structure EXACTLY with packed layout
@@ -3347,6 +3351,21 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 		const bool useAlternateCoords = stageInfo->tcGen.type == MetalTCGen::Lightmap;
 		params.texCoordSelector = useAlternateCoords ? 1.0f : 0.0f;
+		
+		// Set rgbGen type for shader
+		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting
+		switch (stageInfo->rgbGen.type) {
+			case MetalRGBGen::Identity:
+				params.rgbGenType = 1.0f;
+				break;
+			case MetalRGBGen::IdentityLighting:
+				params.rgbGenType = 2.0f;
+				break;
+			default:
+				params.rgbGenType = 0.0f;  // Use vertex color
+				break;
+		}
+		
 		const int alphaFunc = stageInfo->alphaFunc;
 		if (alphaFunc == 0) {
 			return params;

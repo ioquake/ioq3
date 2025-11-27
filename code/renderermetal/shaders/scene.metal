@@ -44,6 +44,10 @@ struct StageFragmentParams {
     float alphaFunc;
     float alphaTestEnabled;
     float texCoordSelector;
+    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
+    float padding1;
+    float padding2;
+    float padding3;
 };
 
 struct VertexIn {
@@ -131,7 +135,17 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
                                       sampler samp [[sampler(0)]],
                                       constant StageFragmentParams& stage [[buffer(0)]]) {
     const float2 uv = (stage.texCoordSelector > 0.5f) ? in.lightmapCoord : in.texCoord;
-    float4 color = tex.sample(samp, uv) * in.color;
+    float4 texColor = tex.sample(samp, uv);
+    
+    // Apply rgbGen: determine vertex color to use based on rgbGen type
+    // 0 = Vertex (use in.color), 1 = Identity (white), 2 = IdentityLighting (white)
+    float4 vertexColor = in.color;
+    if (stage.rgbGenType > 0.5f) {
+        // rgbGen identity or identityLighting - use white
+        vertexColor = float4(1.0, 1.0, 1.0, 1.0);
+    }
+    
+    float4 color = texColor * vertexColor;
     if (stage.alphaTestEnabled > 0.5f) {
         const float alpha = color.a;
         const int func = int(stage.alphaFunc + 0.5f);
