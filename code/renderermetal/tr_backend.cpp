@@ -756,6 +756,12 @@ private:
 	int depthTextureHeight_ = 0;
 	std::unordered_map<MetalShaderResource::MetalPipelineKey, StagePipelineEntry, MetalPipelineKeyHash> stagePipelineCache_;
 
+	// Dynamic lighting resources
+	MetalPtr<MTL::Function> dlightVertexFunction_;
+	MetalPtr<MTL::Function> dlightFragmentFunction_;
+	MetalPtr<MTL::RenderPipelineState> dlightPipeline_;
+	MetalPtr<MTL::Texture> dlightTexture_;  // Radial falloff texture
+
 
 	// Current frame cinematic texture (not owned, points into cinematicSlots_)
 	MTL::Texture* frameCinematicTexture_ = nullptr;
@@ -836,6 +842,8 @@ private:
 	bool createPipeline(MTL::Texture* drawableTexture);
 	bool create2DPipeline();
 	bool ensureDepthTexture(int width, int height);
+	bool ensureDlightResources();
+	void createDlightTexture();
 	void processPendingUploads();
 	void fillConfigDefaults(int width, int height, qboolean fullscreen);
 	void publishConfig();
@@ -923,6 +931,10 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	fogVertexFunction_.reset();
 	fogFragmentFunction_.reset();
 	fogPipeline_.reset();
+	dlightVertexFunction_.reset();
+	dlightFragmentFunction_.reset();
+	dlightPipeline_.reset();
+	dlightTexture_.reset();
 	depthTexture_.reset();
 	depthTextureWidth_ = depthTextureHeight_ = 0;
 	stagePipelineCache_.clear();
@@ -4841,6 +4853,128 @@ static void Metal_DebugPoly_f() {
 	const float size = (argc > 2) ? static_cast<float>(std::atof(ri.Cmd_Argv(2))) : 256.0f;
 	const float distance = (argc > 3) ? static_cast<float>(std::atof(ri.Cmd_Argv(3))) : 256.0f;
 	g_renderer.configureDebugPoly(true, shaderName, size, distance);
+}
+
+//=============================================================================
+// DYNAMIC LIGHTING
+//=============================================================================
+
+void MetalRenderer::createDlightTexture() {
+	if (!device_) return;
+
+	// Create radial falloff texture for dynamic lights
+	// Matches tr_image.c R_CreateDlightImage() from OpenGL renderer
+	constexpr int DLIGHT_SIZE = 16;
+	byte data[DLIGHT_SIZE][DLIGHT_SIZE][4];
+
+	for (int x = 0; x < DLIGHT_SIZE; x++) {
+		for (int y = 0; y < DLIGHT_SIZE; y++) {
+			// Calculate distance from center
+			float dx = (x - DLIGHT_SIZE/2 + 0.5f) / (DLIGHT_SIZE/2.0f);
+			float dy = (y - DLIGHT_SIZE/2 + 0.5f) / (DLIGHT_SIZE/2.0f);
+			float d = sqrt(dx*dx + dy*dy);
+
+			// Radial falloff
+			float intensity = 1.0f - d;
+			if (intensity < 0.0f) intensity = 0.0f;
+			intensity = intensity * intensity;  // Quadratic falloff
+
+			byte b = static_cast<byte>(intensity * 255.0f);
+			data[y][x][0] = b;
+			data[y][x][1] = b;
+			data[y][x][2] = b;
+			data[y][x][3] = 255;
+		}
+	}
+
+	MTL::TextureDescriptor* desc = MTL::TextureDescriptor::alloc()->init();
+	desc->setWidth(DLIGHT_SIZE);
+	desc->setHeight(DLIGHT_SIZE);
+	desc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+	desc->setTextureType(MTL::TextureType2D);
+	desc->setStorageMode(MTL::StorageModeShared);
+	desc->setUsage(MTL::TextureUsageShaderRead);
+
+	dlightTexture_.reset(device_->newTexture(desc));
+	desc->release();
+
+	if (dlightTexture_) {
+		MTL::Region region(0, 0, DLIGHT_SIZE, DLIGHT_SIZE);
+		dlightTexture_->replaceRegion(region, 0, &data[0][0][0], DLIGHT_SIZE * 4);
+	}
+}
+
+bool MetalRenderer::ensureDlightResources() {
+	if (dlightPipeline_) {
+		return true; // Already initialized
+	}
+
+	if (!device_ || !sceneLibrary_) {
+		return false;
+	}
+
+	// Load dlight shader functions
+	NS::String* dlightVertName = NS::String::string("vertex_dlight", NS::UTF8StringEncoding);
+	NS::String* dlightFragName = NS::String::string("fragment_dlight", NS::UTF8StringEncoding);
+
+	dlightVertexFunction_.reset(sceneLibrary_->newFunction(dlightVertName));
+	dlightFragmentFunction_.reset(sceneLibrary_->newFunction(dlightFragName));
+
+	if (!dlightVertexFunction_ || !dlightFragmentFunction_) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to load dlight shader functions\n");
+		}
+		return false;
+	}
+
+	// Create dlight pipeline
+	MTL::RenderPipelineDescriptor* pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
+	pipelineDesc->setVertexFunction(dlightVertexFunction_.get());
+	pipelineDesc->setFragmentFunction(dlightFragmentFunction_.get());
+
+	// Use the same vertex descriptor as scene rendering
+	if (sceneVertexDescriptor_) {
+		pipelineDesc->setVertexDescriptor(sceneVertexDescriptor_.get());
+	}
+
+	// Color attachment
+	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pipelineDesc->colorAttachments()->object(0);
+	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+
+	// Blend mode for additive or multiplicative dlights
+	// Additive: ONE + ONE, Multiplicative: DST_COLOR + ONE
+	colorAttachment->setBlendingEnabled(true);
+	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+	colorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setDestinationAlphaBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
+
+	// Depth attachment
+	pipelineDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	NS::Error* error = nullptr;
+	dlightPipeline_.reset(device_->newRenderPipelineState(pipelineDesc, &error));
+	pipelineDesc->release();
+
+	if (!dlightPipeline_) {
+		if (ri_.Printf && error) {
+			NS::String* errDesc = error->localizedDescription();
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create dlight pipeline: %s\n",
+			           errDesc ? errDesc->utf8String() : "unknown error");
+		}
+		return false;
+	}
+
+	// Create dlight texture
+	createDlightTexture();
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_DEVELOPER, "Metal: Dlight resources initialized\n");
+	}
+
+	return true;
 }
 
 bool MetalBackend_Initialize(refimport_t imports) {
