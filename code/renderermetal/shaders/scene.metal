@@ -45,7 +45,7 @@ struct StageFragmentParams {
     float alphaTestEnabled;
     float texCoordSelector;
     float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
-    float padding1;
+    float tcGenType;      // 0 = Texture, 1 = Lightmap, 2 = Environment
     float padding2;
     float padding3;
 };
@@ -62,6 +62,7 @@ struct SceneVSOut {
     float4 position [[position]];
     float2 texCoord;
     float2 lightmapCoord;
+    float2 envTexCoord;   // Pre-computed environment map texture coordinates
     float4 color;
     uint primitiveID [[flat]];
 };
@@ -100,6 +101,24 @@ float2 ApplyTCMod(float2 st, float3 position, constant TCModParams& tcmod) {
     return st2;
 }
 
+// Compute environment map texture coordinates
+// This matches OpenGL's RB_CalcEnvironmentTexCoords
+float2 CalcEnvironmentTexCoords(float3 position, float3 normal, float3 viewOrigin) {
+    // Calculate viewer direction from vertex to eye
+    float3 viewer = normalize(viewOrigin - position);
+    
+    // Calculate reflection vector: R = 2 * (N . V) * N - V
+    float d = dot(normal, viewer);
+    float3 reflected = normal * 2.0 * d - viewer;
+    
+    // Generate texture coordinates from reflection vector
+    // Use Y and Z components to create a spherical mapping
+    float s = 0.5 + reflected.y * 0.5;
+    float t = 0.5 - reflected.z * 0.5;
+    
+    return float2(s, t);
+}
+
 vertex SceneVSOut vertex_scene_basic(VertexIn in [[stage_in]],
                                       constant SceneUniforms& uniforms [[buffer(1)]],
                                       constant TCModParams& tcmod [[buffer(2)]],
@@ -115,6 +134,10 @@ vertex SceneVSOut vertex_scene_basic(VertexIn in [[stage_in]],
     // Apply texture coordinate modifications
     out.texCoord = ApplyTCMod(in.texCoord, in.position, tcmod);
     out.lightmapCoord = in.lightmapCoord;
+    
+    // Pre-compute environment map texture coordinates
+    out.envTexCoord = CalcEnvironmentTexCoords(in.position, in.normal, uniforms.viewOrigin.xyz);
+    
     out.color = in.color;  // Already normalized by MTL::VertexFormatUChar4Normalized
     out.primitiveID = vid / 3;  // Triangle ID
     return out;
@@ -134,7 +157,20 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
                                       texture2d<float> tex [[texture(0)]],
                                       sampler samp [[sampler(0)]],
                                       constant StageFragmentParams& stage [[buffer(0)]]) {
-    const float2 uv = (stage.texCoordSelector > 0.5f) ? in.lightmapCoord : in.texCoord;
+    // Select texture coordinates based on tcGenType
+    // 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
+    float2 uv;
+    if (stage.tcGenType > 1.5f) {
+        // tcGen environment - use pre-computed environment map coords
+        uv = in.envTexCoord;
+    } else if (stage.tcGenType > 0.5f) {
+        // tcGen lightmap
+        uv = in.lightmapCoord;
+    } else {
+        // tcGen texture (default)
+        uv = in.texCoord;
+    }
+    
     float4 texColor = tex.sample(samp, uv);
     
     // Apply rgbGen: determine vertex color to use based on rgbGen type

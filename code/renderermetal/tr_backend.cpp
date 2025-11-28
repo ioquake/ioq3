@@ -34,9 +34,9 @@ struct StageFragmentParams {
 	float alphaRef = 0.0f;
 	float alphaFunc = 0.0f;
 	float alphaTestEnabled = 0.0f;
-	float texCoordSelector = 0.0f;
+	float texCoordSelector = 0.0f;  // Legacy - now use tcGenType instead
 	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
-	float padding1 = 0.0f;
+	float tcGenType = 0.0f;   // 0 = Texture, 1 = Lightmap, 2 = Environment
 	float padding2 = 0.0f;
 	float padding3 = 0.0f;
 };
@@ -3420,8 +3420,23 @@ bool MetalRenderer::drawPolyPackets() {
 		if (!stageInfo) {
 			return params;
 		}
-		const bool useAlternateCoords = stageInfo->tcGen.type == MetalTCGen::Lightmap;
-		params.texCoordSelector = useAlternateCoords ? 1.0f : 0.0f;
+		
+		// Set tcGen type for shader
+		// 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
+		switch (stageInfo->tcGen.type) {
+			case MetalTCGen::Lightmap:
+				params.tcGenType = 1.0f;
+				params.texCoordSelector = 1.0f;  // Legacy compatibility
+				break;
+			case MetalTCGen::Environment:
+				params.tcGenType = 2.0f;
+				params.texCoordSelector = 0.0f;
+				break;
+			default:
+				params.tcGenType = 0.0f;
+				params.texCoordSelector = 0.0f;
+				break;
+		}
 		
 		// Set rgbGen type for shader
 		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting
