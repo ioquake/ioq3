@@ -22,6 +22,7 @@ struct SceneUniforms {
     float fogTcScale;          // Texture coordinate scale
     float fogHasSurface;       // Whether fog has a visible surface plane
     float fogEnabled;          // Enable/disable fog rendering
+    float overBrightBits;      // r_overBrightBits value
 };
 
 // Texture coordinate modification parameters
@@ -44,9 +45,21 @@ struct StageFragmentParams {
     float alphaFunc;
     float alphaTestEnabled;
     float texCoordSelector;
-    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
+    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse
     float tcGenType;      // 0 = Texture, 1 = Lightmap, 2 = Environment
+    float overBrightBits; // Per-stage overbright bits
+    float padding3;
+};
+
+// Entity lighting parameters - for CGEN_LIGHTING_DIFFUSE
+struct EntityLightingParams {
+    float3 ambientLight;    // Ambient light color (0-255 scale)
+    float padding0;
+    float3 directedLight;   // Directional light color (0-255 scale)
+    float padding1;
+    float3 lightDir;        // Normalized light direction in world space
     float padding2;
+    float3 modelLightDir;   // Light direction in model space (for normals)
     float padding3;
 };
 
@@ -64,6 +77,8 @@ struct SceneVSOut {
     float2 lightmapCoord;
     float2 envTexCoord;   // Pre-computed environment map texture coordinates
     float4 color;
+    float3 worldPosition; // World-space position for lighting
+    float3 normal;        // World-space normal for lighting
     uint primitiveID [[flat]];
 };
 
@@ -134,11 +149,13 @@ vertex SceneVSOut vertex_scene_basic(VertexIn in [[stage_in]],
     // Apply texture coordinate modifications
     out.texCoord = ApplyTCMod(in.texCoord, in.position, tcmod);
     out.lightmapCoord = in.lightmapCoord;
-    
+
     // Pre-compute environment map texture coordinates
     out.envTexCoord = CalcEnvironmentTexCoords(in.position, in.normal, uniforms.viewOrigin.xyz);
-    
+
     out.color = in.color;  // Already normalized by MTL::VertexFormatUChar4Normalized
+    out.worldPosition = in.position;
+    out.normal = in.normal;
     out.primitiveID = vid / 3;  // Triangle ID
     return out;
 }
@@ -156,7 +173,9 @@ float3 hashColor(uint id) {
 fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
                                       texture2d<float> tex [[texture(0)]],
                                       sampler samp [[sampler(0)]],
-                                      constant StageFragmentParams& stage [[buffer(0)]]) {
+                                      constant StageFragmentParams& stage [[buffer(0)]],
+                                      constant SceneUniforms& uniforms [[buffer(1)]],
+                                      constant EntityLightingParams& lighting [[buffer(2)]]) {
     // Select texture coordinates based on tcGenType
     // 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
     float2 uv;
@@ -170,18 +189,48 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
         // tcGen texture (default)
         uv = in.texCoord;
     }
-    
+
     float4 texColor = tex.sample(samp, uv);
-    
+
     // Apply rgbGen: determine vertex color to use based on rgbGen type
-    // 0 = Vertex (use in.color), 1 = Identity (white), 2 = IdentityLighting (white)
+    // 0 = Vertex (use in.color), 1 = Identity (white), 2 = IdentityLighting (white), 3 = LightingDiffuse
     float4 vertexColor = in.color;
-    if (stage.rgbGenType > 0.5f) {
-        // rgbGen identity or identityLighting - use white
+    bool applyOverbright = false;
+
+    if (stage.rgbGenType > 2.5f) {
+        // rgbGen lightingDiffuse - entity lighting (CGEN_LIGHTING_DIFFUSE)
+        // Matches OpenGL2: color = ambientLight + N·L * directedLight
+        float3 ambient = lighting.ambientLight / 255.0;
+        float3 directed = lighting.directedLight / 255.0;
+
+        // Calculate N·L (normal dot light direction)
+        float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir));
+
+        // Combine ambient and directional lighting
+        float3 litColor = ambient + NdotL * directed;
+
+        vertexColor = float4(litColor, in.color.a);
+        applyOverbright = true;
+    } else if (stage.rgbGenType > 1.5f) {
+        // rgbGen identityLighting - use white, NO overbright (for pre-lit surfaces)
         vertexColor = float4(1.0, 1.0, 1.0, 1.0);
+        applyOverbright = false;
+    } else if (stage.rgbGenType > 0.5f) {
+        // rgbGen identity - use white WITH overbright
+        vertexColor = float4(1.0, 1.0, 1.0, 1.0);
+        applyOverbright = true;
+    } else {
+        // rgbGen vertex - use vertex colors WITH overbright
+        applyOverbright = true;
     }
-    
+
     float4 color = texColor * vertexColor;
+
+    // Apply overbright bits scaling (per-stage) for Identity and Vertex modes
+    if (applyOverbright && stage.overBrightBits > 0.0) {
+        color.rgb *= exp2(stage.overBrightBits);
+    }
+
     if (stage.alphaTestEnabled > 0.5f) {
         const float alpha = color.a;
         const int func = int(stage.alphaFunc + 0.5f);
