@@ -72,8 +72,8 @@ const char* RemapShaderName(const char* name) {
 } // namespace
 
 // Global refimport_t required by renderercommon image loaders
-// This will be set by TextureManager constructor
-refimport_t ri;
+// Defined in tr_backend.cpp, declared in tr_local.h
+extern "C" refimport_t ri;
 
 TextureManager::TextureManager(MTL::Device* device, refimport_t* rimp)
 	: device_(device), ri_(rimp)

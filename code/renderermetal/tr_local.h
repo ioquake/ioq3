@@ -24,11 +24,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef TR_LOCAL_H
 #define TR_LOCAL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qfiles.h"
 #include "../qcommon/qcommon.h"
 #include "../renderercommon/tr_public.h"
 #include "../renderercommon/tr_types.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 // Function table size for sine/cosine lookups
 #define FUNCTABLE_SIZE		1024
@@ -74,6 +82,10 @@ typedef struct {
 // RENDERER IMPORTS
 //=============================================================================
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern	refimport_t		ri;
 
 // Console variables
@@ -81,6 +93,10 @@ extern cvar_t	*r_ambientScale;
 extern cvar_t	*r_directedScale;
 extern cvar_t	*r_debugLight;
 extern cvar_t	*r_dlightMode;
+
+#ifdef __cplusplus
+}
+#endif
 
 //=============================================================================
 // LIGHTING FUNCTIONS

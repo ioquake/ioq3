@@ -19,9 +19,9 @@ extern "C" {
 
 extern "C" {
 	glconfig_t glConfig = {};
-	extern refimport_t ri;
+	refimport_t ri;
 
-	// Lighting console variables
+	// Lighting console variables (defined here, declared in tr_local.h)
 	cvar_t* r_ambientScale = nullptr;
 	cvar_t* r_directedScale = nullptr;
 	cvar_t* r_debugLight = nullptr;
@@ -1633,6 +1633,84 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 			packet.lightmapHandle = 0;
 		}
 		worldPacketTemplate_.push_back(packet);
+	}
+
+	// Load lightGrid for entity lighting
+	// First parse entities to get gridSize, then load the grid data
+	{
+		vec3_t gridSize = {64.0f, 64.0f, 128.0f}; // Default grid size
+		vec3_t gridOrigin{};
+		int gridBounds[3] = {0, 0, 0};
+
+		// Parse entities lump to find worldspawn gridsize
+		int entitiesLen = 0;
+		const char* entitiesData = reinterpret_cast<const char*>(getLumpRange(LUMP_ENTITIES, entitiesLen, 1));
+		if (entitiesData && entitiesLen > 0) {
+			// Simple parser to find "gridsize" key in worldspawn
+			const char* p = entitiesData;
+			const char* end = entitiesData + entitiesLen;
+			while (p < end && *p) {
+				// Skip whitespace
+				while (p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
+				if (p >= end) break;
+
+				// Look for "gridsize" token
+				if (strncmp(p, "\"gridsize\"", 10) == 0) {
+					p += 10;
+					// Skip to value
+					while (p < end && *p != '"') p++;
+					if (p < end && *p == '"') {
+						p++;
+						const char* valueStart = p;
+						while (p < end && *p != '"') p++;
+						if (p > valueStart) {
+							char valueStr[64];
+							size_t valueLen = std::min(size_t(p - valueStart), sizeof(valueStr) - 1);
+							memcpy(valueStr, valueStart, valueLen);
+							valueStr[valueLen] = '\0';
+							sscanf(valueStr, "%f %f %f", &gridSize[0], &gridSize[1], &gridSize[2]);
+							break;
+						}
+					}
+				}
+				// Skip to next line
+				while (p < end && *p != '\n') p++;
+			}
+		}
+
+		// Load lightGrid lump
+		int lightGridLen = 0;
+		const byte* lightGridData = getLumpRange(LUMP_LIGHTGRID, lightGridLen, 1);
+
+		if (lightGridData && lightGridLen > 0) {
+			// Calculate grid bounds from world bounds
+			// Get world bounds from first bmodel (the world itself)
+			vec3_t worldMins, worldMaxs;
+			if (brushes && brushCount > 0) {
+				// For simplicity, use a large default if we can't get bounds
+				VectorSet(worldMins, -4096, -4096, -4096);
+				VectorSet(worldMaxs, 4096, 4096, 4096);
+			}
+
+			// Calculate grid origin and bounds
+			for (int i = 0; i < 3; i++) {
+				gridOrigin[i] = gridSize[i] * ceil(worldMins[i] / gridSize[i]);
+				float maxs = gridSize[i] * floor(worldMaxs[i] / gridSize[i]);
+				gridBounds[i] = (int)((maxs - gridOrigin[i]) / gridSize[i]) + 1;
+			}
+
+			int numGridPoints = gridBounds[0] * gridBounds[1] * gridBounds[2];
+			int expectedSize = numGridPoints * 8; // 8 bytes per grid point
+
+			if (lightGridLen == expectedSize) {
+				// Valid lightGrid data - pass to lighting system
+				R_LoadLightGrid(lightGridData, lightGridLen, nullptr, 0,
+				                gridOrigin, gridSize, gridBounds);
+			} else if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: lightGrid size mismatch (got %d, expected %d)\n",
+				           lightGridLen, expectedSize);
+			}
+		}
 	}
 
 	ri_.FS_FreeFile(buffer);
