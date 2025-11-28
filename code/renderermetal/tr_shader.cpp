@@ -1062,11 +1062,12 @@ static void parseSkyParms(TokenStream &stream, ShaderBuilder &builder) {
     auto &info = builder.mutableInfo();
     info.isSky = true;
 
-    const std::string farBox = stream.next(false);
-    const std::string nearBox = stream.next(false);
-    const std::string heightToken = stream.next(false);
+    // skyparms <outerbox> <cloudheight> <innerbox>
+    const std::string farBox = stream.next(false);      // outerbox (e.g., "env/xnight2")
+    const std::string heightToken = stream.next(false); // cloudheight (number or "-")
+    const std::string nearBox = stream.next(false);     // innerbox (e.g., "-" or another prefix)
 
-    if (!heightToken.empty()) {
+    if (!heightToken.empty() && heightToken != "-") {
         info.cloudHeight = static_cast<float>(atof(heightToken.c_str()));
     }
 

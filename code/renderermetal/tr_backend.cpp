@@ -678,6 +678,11 @@ private:
 
 		std::vector<MetalShaderStageRuntime> stageRuntimes;
 		size_t primaryStageIndex = 0;
+		
+		// Skybox textures (6 faces: rt, lf, ft, bk, up, dn)
+		std::array<qhandle_t, 6> skyboxOuterHandles = {0, 0, 0, 0, 0, 0};
+		std::array<qhandle_t, 6> skyboxInnerHandles = {0, 0, 0, 0, 0, 0};
+		bool skyboxLoaded = false;
 	};
 
 	std::vector<SceneDrawPacket> drawPackets_;
@@ -788,6 +793,21 @@ private:
 	MetalPtr<MTL::Function> fogFragmentFunction_;
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
 
+	// Skybox and cloud sky dome rendering
+	bool skyboxRenderedThisFrame_ = false;
+	MetalPtr<MTL::Buffer> skyboxVertexBuffer_;
+	MetalPtr<MTL::DepthStencilState> skyboxDepthState_;
+	static constexpr size_t SKYBOX_VERTEX_COUNT = 36;  // 6 faces * 6 vertices per face (2 triangles)
+	
+	// Cloud sky dome data (like OpenGL's R_BuildCloudData)
+	static constexpr int SKY_SUBDIVISIONS = 8;
+	static constexpr int HALF_SKY_SUBDIVISIONS = SKY_SUBDIVISIONS / 2;
+	std::vector<MetalPolyVertex> cloudDomeVertices_;
+	std::vector<uint32_t> cloudDomeIndices_;
+	float cloudTexCoords_[6][SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1][2];  // Pre-computed cloud tex coords
+	bool cloudTexCoordsInitialized_ = false;
+	qhandle_t lastCloudSkyShader_ = 0;
+
 	bool worldLoaded_ = false;
 	std::string worldName_;
 	std::vector<MetalPolyVertex> worldVertexTemplate_;
@@ -834,6 +854,13 @@ private:
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
 	bool drawFogPasses();
+	bool ensureSkyboxResources();
+	void loadSkyboxTextures(MetalShaderResource& resource);
+	void buildSkyboxVertexBuffer();
+	bool drawSkybox(qhandle_t skyShader);
+	void initCloudSkyTexCoords(float cloudHeight);
+	void buildCloudSkyDome(qhandle_t skyShader);
+	bool drawCloudSky(qhandle_t skyShader);
 	void encodeEntityCommands(SceneDispatchSummary& summary);
 	void encodePolyCommands(SceneDispatchSummary& summary);
 	void encodeLightCommands(SceneDispatchSummary& summary);
@@ -2695,7 +2722,9 @@ void MetalRenderer::ensureScriptHasStages(MetalRenderer::MetalShaderResource& re
 		stage.depthWrite = script.forceOpaque ? true : false;
 		stage.depthWriteExplicit = true;
 		stage.alphaFunc = script.alphaFunc;
-		stage.rgbGen.type = script.forceOpaque ? MetalRGBGen::IdentityLighting : MetalRGBGen::Identity;
+		// For shaders without explicit stages, use vertex colors (from BSP lightmaps)
+		// NOT Identity/IdentityLighting which would force white
+		stage.rgbGen.type = MetalRGBGen::Vertex;
 		stage.alphaGen.type = MetalAlphaGen::Identity;
 		if (stage.imagePaths.empty()) {
 			stage.imagePaths.emplace_back("white");
@@ -2724,6 +2753,48 @@ void MetalRenderer::loadShaderImages(MetalRenderer::MetalShaderResource& resourc
 		}
 	}
 	updatePrimaryImageHandle(resource);
+	
+	// Load skybox textures if this is a sky shader
+	if (resource.hasScript && resource.script.isSky) {
+		loadSkyboxTextures(resource);
+	}
+}
+
+void MetalRenderer::loadSkyboxTextures(MetalRenderer::MetalShaderResource& resource) {
+	TextureManager* tm = ensureTextureManager();
+	if (!tm) {
+		return;
+	}
+	
+	resource.skyboxLoaded = false;
+	bool hasOuterbox = false;
+	
+	// Load outer skybox textures (6 faces)
+	for (size_t i = 0; i < 6; ++i) {
+		const std::string& path = resource.script.outerboxTextures[i];
+		if (!path.empty()) {
+			qhandle_t handle = tm->registerShader(path.c_str(), true);
+			resource.skyboxOuterHandles[i] = handle;
+			if (handle > 0) {
+				hasOuterbox = true;
+			}
+		}
+	}
+	
+	// Load inner skybox textures if present
+	for (size_t i = 0; i < 6; ++i) {
+		const std::string& path = resource.script.innerboxTextures[i];
+		if (!path.empty()) {
+			qhandle_t handle = tm->registerShader(path.c_str(), true);
+			resource.skyboxInnerHandles[i] = handle;
+		}
+	}
+	
+	resource.skyboxLoaded = hasOuterbox;
+	
+	if (hasOuterbox && ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: Loaded skybox textures for '%s'\n", resource.name.c_str());
+	}
 }
 
 void MetalRenderer::buildShaderStageRuntime(MetalRenderer::MetalShaderResource& resource) {
@@ -3461,12 +3532,85 @@ bool MetalRenderer::drawPolyPackets() {
 		       shaderResource->script.hasFogParms && 
 		       !shaderResource->stageRuntimes.empty();
 	};
+	
+	// Check if shader is a sky shader with skybox (cubemap)
+	auto isSkyboxPacket = [this](const ScenePolyPacket& packet) -> bool {
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (!shaderResource) {
+			return false;
+		}
+		return shaderResource->hasScript && 
+		       shaderResource->script.isSky && 
+		       shaderResource->skyboxLoaded;
+	};
+	
+	// Check if shader is a cloud-only sky (isSky=true but no skybox textures)
+	auto isCloudSkyPacket = [this](const ScenePolyPacket& packet) -> bool {
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (!shaderResource) {
+			return false;
+		}
+		return shaderResource->hasScript && 
+		       shaderResource->script.isSky && 
+		       !shaderResource->skyboxLoaded;
+	};
+	
+	// Reset skybox rendered flag
+	skyboxRenderedThisFrame_ = false;
+
+	// Pass 0: Draw skybox for sky surfaces that have cubemap textures
+	for (const ScenePolyPacket& packet : polyPackets_) {
+		if (isSkyboxPacket(packet)) {
+			if (!skyboxRenderedThisFrame_) {
+				drawSkybox(packet.shader);
+				// Reset state after skybox rendering - MUST rebind vertex buffer
+				// because skybox uses setVertexBytes which overrides the binding
+				currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+				currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+				boundPipeline = nullptr;
+				boundDepthState = nullptr;
+				boundImageHandle = -1;
+				boundTexture = nullptr;
+				hasFragmentParams = false;
+			}
+		}
+	}
+	
+	// Pass 0b: Draw cloud sky dome for cloud-only sky surfaces
+	for (const ScenePolyPacket& packet : polyPackets_) {
+		if (isCloudSkyPacket(packet)) {
+			if (!skyboxRenderedThisFrame_) {
+				drawCloudSky(packet.shader);
+				// Reset state after cloud sky rendering - MUST rebind vertex buffer
+				// because cloud sky uses setVertexBytes which overrides the binding
+				currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+				currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+				boundPipeline = nullptr;
+				boundDepthState = nullptr;
+				boundImageHandle = -1;
+				boundTexture = nullptr;
+				hasFragmentParams = false;
+			}
+			break;  // Only need one sky shader
+		}
+	}
 
 	// Pass 1: Draw all non-fog-surface packets
+	// Skip sky surfaces entirely - they're now drawn as sky dome/skybox
 	for (const ScenePolyPacket& packet : polyPackets_) {
-		if (!hasFogSurfaceStages(packet)) {
-			drawPacket(packet);
+		// Skip fog surfaces (drawn in pass 2)
+		if (hasFogSurfaceStages(packet)) {
+			continue;
 		}
+		// Skip skybox surfaces (already drawn as skybox)
+		if (isSkyboxPacket(packet)) {
+			continue;
+		}
+		// Skip cloud sky surfaces (already drawn as cloud dome)
+		if (isCloudSkyPacket(packet)) {
+			continue;
+		}
+		drawPacket(packet);
 	}
 	
 	// Pass 2: Draw fog surface packets (they use filter blend which multiplies destination)
@@ -3477,6 +3621,617 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 	}
 
+	return true;
+}
+
+// ============================================================================
+// Skybox Rendering
+// ============================================================================
+
+bool MetalRenderer::ensureSkyboxResources() {
+	// Create skybox depth state if not exists (always pass, no write)
+	if (!skyboxDepthState_) {
+		auto depthDesc = MetalPtr<MTL::DepthStencilDescriptor>(MTL::DepthStencilDescriptor::alloc()->init());
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLessEqual);
+		depthDesc->setDepthWriteEnabled(false);  // Don't write to depth buffer
+		skyboxDepthState_ = MetalPtr<MTL::DepthStencilState>(device_->newDepthStencilState(depthDesc.get()));
+		if (!skyboxDepthState_) {
+			if (ri_.Printf) ri_.Printf(PRINT_WARNING, "Metal: Failed to create skybox depth state\n");
+			return false;
+		}
+	}
+	
+	// Build skybox vertex buffer if not exists
+	if (!skyboxVertexBuffer_.get()) {
+		buildSkyboxVertexBuffer();
+	}
+	
+	return skyboxVertexBuffer_.get() != nullptr;
+}
+
+void MetalRenderer::buildSkyboxVertexBuffer() {
+	// Create a unit cube centered at origin (-1 to 1 on each axis)
+	// We'll scale and translate it to the camera position in the shader
+	// Order: rt(+X), lf(-X), ft(+Y), bk(-Y), up(+Z), dn(-Z)
+	// Note: Quake uses Z-up coordinate system
+	
+	struct SkyboxVertex {
+		float position[3];
+		float texCoord[2];
+	};
+	
+	// Build 6 faces, each with 2 triangles (6 vertices)
+	// Each face is a quad from -1 to 1 on two axes, with the third axis at ±1
+	std::vector<SkyboxVertex> vertices;
+	vertices.reserve(SKYBOX_VERTEX_COUNT);
+	
+	// Right face (+X) - looking from inside the box toward +X
+	// When looking at +X, we see: top=+Z, right=-Y, bottom=-Z, left=+Y
+	auto addQuad = [&vertices](
+		float p0[3], float p1[3], float p2[3], float p3[3]) {
+		// Two triangles: p0-p1-p2 and p0-p2-p3
+		// Texture coords: p0=(0,0), p1=(1,0), p2=(1,1), p3=(0,1)
+		vertices.push_back({{p0[0], p0[1], p0[2]}, {0.0f, 0.0f}});
+		vertices.push_back({{p1[0], p1[1], p1[2]}, {1.0f, 0.0f}});
+		vertices.push_back({{p2[0], p2[1], p2[2]}, {1.0f, 1.0f}});
+		
+		vertices.push_back({{p0[0], p0[1], p0[2]}, {0.0f, 0.0f}});
+		vertices.push_back({{p2[0], p2[1], p2[2]}, {1.0f, 1.0f}});
+		vertices.push_back({{p3[0], p3[1], p3[2]}, {0.0f, 1.0f}});
+	};
+	
+	const float S = 1.0f;  // Half-size of the skybox cube
+	
+	// Face 0: Right (+X) - rt
+	{
+		float p0[] = {S, S, -S};   // top-left (looking from inside)
+		float p1[] = {S, -S, -S};  // top-right
+		float p2[] = {S, -S, S};   // bottom-right
+		float p3[] = {S, S, S};    // bottom-left
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Face 1: Left (-X) - lf
+	{
+		float p0[] = {-S, -S, -S};
+		float p1[] = {-S, S, -S};
+		float p2[] = {-S, S, S};
+		float p3[] = {-S, -S, S};
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Face 2: Front (+Y) - ft
+	{
+		float p0[] = {S, S, -S};
+		float p1[] = {-S, S, -S};
+		float p2[] = {-S, S, S};
+		float p3[] = {S, S, S};
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Face 3: Back (-Y) - bk
+	{
+		float p0[] = {-S, -S, -S};
+		float p1[] = {S, -S, -S};
+		float p2[] = {S, -S, S};
+		float p3[] = {-S, -S, S};
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Face 4: Up (+Z) - up
+	{
+		float p0[] = {-S, S, S};
+		float p1[] = {-S, -S, S};
+		float p2[] = {S, -S, S};
+		float p3[] = {S, S, S};
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Face 5: Down (-Z) - dn
+	{
+		float p0[] = {-S, -S, -S};
+		float p1[] = {-S, S, -S};
+		float p2[] = {S, S, -S};
+		float p3[] = {S, -S, -S};
+		addQuad(p0, p1, p2, p3);
+	}
+	
+	// Create GPU buffer
+	size_t bufferSize = vertices.size() * sizeof(SkyboxVertex);
+	skyboxVertexBuffer_ = MetalPtr<MTL::Buffer>(
+		device_->newBuffer(vertices.data(), bufferSize, MTL::ResourceStorageModeShared));
+	
+	if (skyboxVertexBuffer_ && ri_.Printf) {
+		ri_.Printf(PRINT_DEVELOPER, "Metal: Created skybox vertex buffer (%zu vertices, %zu bytes)\n",
+			vertices.size(), bufferSize);
+	}
+}
+
+bool MetalRenderer::drawSkybox(qhandle_t skyShader) {
+	if (skyboxRenderedThisFrame_) {
+		return true;  // Only render skybox once per frame
+	}
+	
+	MetalShaderResource* resource = getShaderResource(skyShader);
+	if (!resource || !resource->hasScript || !resource->script.isSky || !resource->skyboxLoaded) {
+		return false;
+	}
+	
+	if (!ensureSkyboxResources()) {
+		return false;
+	}
+	
+	if (!currentRenderEncoder_ || !sceneUniformBuffer_) {
+		return false;
+	}
+	
+	TextureManager* texManager = ensureTextureManager();
+	if (!texManager) {
+		return false;
+	}
+	
+	// Get a simple opaque pipeline for skybox rendering
+	// We can reuse the scene pipeline with appropriate settings
+	MetalShaderResource::MetalPipelineKey skyKey;
+	skyKey.blendMode = MetalShaderBlendMode::Opaque;
+	skyKey.srcBlend = MetalBlendFactor::One;
+	skyKey.dstBlend = MetalBlendFactor::Zero;
+	skyKey.depthWrite = false;  // Don't write to depth
+	skyKey.depthTest = true;    // Still test depth (skybox at max depth)
+	skyKey.alphaTest = false;
+	skyKey.depthWriteExplicit = true;
+	
+	StagePipelineEntry* pipelineEntry = getStagePipeline(skyKey);
+	if (!pipelineEntry || !pipelineEntry->pipeline) {
+		if (ri_.Printf) ri_.Printf(PRINT_WARNING, "Metal: No pipeline for skybox\n");
+		return false;
+	}
+	
+	// Set pipeline and depth state
+	MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipelineEntry->pipeline.get());
+	currentRenderEncoder_->setDepthStencilState(skyboxDepthState_.get());
+	currentRenderEncoder_->setCullMode(MTL::CullModeBack);  // Cull back faces (we're inside the box)
+	
+	// Bind skybox vertex buffer - need to use the standard vertex layout
+	// The skybox vertices need to be converted to MetalPolyVertex format
+	// For now, let's create the vertices on the fly and use the poly vertex buffer
+	
+	// Actually, let's use a different approach - generate skybox vertices in poly format
+	// and add them to the vertex buffer
+	
+	// For simplicity, let's draw each face separately with its texture
+	// This is less efficient but easier to implement correctly
+	
+	const float boxSize = sceneCamera_.zFar / 1.75f;  // Match OpenGL calculation
+	const float* viewOrigin = sceneCamera_.viewOrigin;
+	
+	// Create temporary vertices for each face
+	std::vector<MetalPolyVertex> faceVerts(6);  // 2 triangles = 6 verts per face
+	
+	auto makeFaceVerts = [&](int faceIndex, 
+		const float v0[3], const float v1[3], const float v2[3], const float v3[3]) {
+		// v0=top-left, v1=top-right, v2=bottom-right, v3=bottom-left
+		// Triangle 1: v0, v1, v2
+		// Triangle 2: v0, v2, v3
+		(void)faceIndex;  // Not used currently
+		auto setVert = [&](int idx, const float pos[3], float s, float t) {
+			faceVerts[idx].xyz[0] = viewOrigin[0] + pos[0] * boxSize;
+			faceVerts[idx].xyz[1] = viewOrigin[1] + pos[1] * boxSize;
+			faceVerts[idx].xyz[2] = viewOrigin[2] + pos[2] * boxSize;
+			faceVerts[idx].st[0] = s;
+			faceVerts[idx].st[1] = t;
+			faceVerts[idx].lightmap[0] = 0;
+			faceVerts[idx].lightmap[1] = 0;
+			faceVerts[idx].modulate[0] = 255;
+			faceVerts[idx].modulate[1] = 255;
+			faceVerts[idx].modulate[2] = 255;
+			faceVerts[idx].modulate[3] = 255;
+			faceVerts[idx].normal[0] = 0;
+			faceVerts[idx].normal[1] = 0;
+			faceVerts[idx].normal[2] = 1.0f;
+		};
+		
+		setVert(0, v0, 0.0f, 0.0f);
+		setVert(1, v1, 1.0f, 0.0f);
+		setVert(2, v2, 1.0f, 1.0f);
+		setVert(3, v0, 0.0f, 0.0f);
+		setVert(4, v2, 1.0f, 1.0f);
+		setVert(5, v3, 0.0f, 1.0f);
+	};
+	
+	// Upload face vertices and draw each face
+	const float S = 1.0f;
+	
+	// Face definitions matching the skybox texture order (rt, lf, ft, bk, up, dn)
+	struct FaceDef {
+		float v0[3], v1[3], v2[3], v3[3];
+	};
+	
+	FaceDef faces[6] = {
+		// Right (+X)
+		{{S, S, -S}, {S, -S, -S}, {S, -S, S}, {S, S, S}},
+		// Left (-X)
+		{{-S, -S, -S}, {-S, S, -S}, {-S, S, S}, {-S, -S, S}},
+		// Front (+Y)
+		{{S, S, -S}, {-S, S, -S}, {-S, S, S}, {S, S, S}},
+		// Back (-Y)
+		{{-S, -S, -S}, {S, -S, -S}, {S, -S, S}, {-S, -S, S}},
+		// Up (+Z)
+		{{-S, S, S}, {-S, -S, S}, {S, -S, S}, {S, S, S}},
+		// Down (-Z)
+		{{-S, -S, -S}, {-S, S, -S}, {S, S, -S}, {S, -S, -S}},
+	};
+	
+	// Set up fragment params for skybox (use vertex colors as-is)
+	StageFragmentParams fragParams{};
+	fragParams.texCoordSelector = 0.0f;
+	fragParams.rgbGenType = 0.0f;  // Use vertex color (white)
+	currentRenderEncoder_->setFragmentBytes(&fragParams, sizeof(StageFragmentParams), 0);
+	
+	// No texture coordinate modifications for skybox (identity matrix)
+	TCModParams tcModParams{};  // Default constructor sets identity matrices
+	currentRenderEncoder_->setVertexBytes(&tcModParams, sizeof(TCModParams), 2);
+	
+	// Bind the scene uniform buffer
+	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+	
+	// Draw each face with its texture
+	for (int faceIdx = 0; faceIdx < 6; ++faceIdx) {
+		qhandle_t texHandle = resource->skyboxOuterHandles[faceIdx];
+		if (texHandle <= 0) {
+			continue;  // Skip faces without textures
+		}
+		
+		MTL::Texture* texture = texManager->getTexture(texHandle);
+		if (!texture) {
+			continue;
+		}
+		
+		// Generate vertices for this face
+		makeFaceVerts(faceIdx, faces[faceIdx].v0, faces[faceIdx].v1, 
+			faces[faceIdx].v2, faces[faceIdx].v3);
+		
+		// Upload vertices directly
+		currentRenderEncoder_->setVertexBytes(faceVerts.data(), 
+			faceVerts.size() * sizeof(MetalPolyVertex), 0);
+		
+		// Bind texture
+		MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, texture);
+		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sceneSampler_.get());
+		
+		// Draw face
+		currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangle, 
+			NS::UInteger(0), NS::UInteger(6));
+	}
+	
+	skyboxRenderedThisFrame_ = true;
+	
+	if (ri_.Printf) {
+		static int logCounter = 0;
+		if (logCounter++ % 300 == 0) {
+			ri_.Printf(PRINT_ALL, "Metal: Drew skybox for shader '%s'\n", resource->name.c_str());
+		}
+	}
+	
+	return true;
+}
+
+// ============================================================================
+// Cloud Sky Dome Rendering (for skies without cubemap textures)
+// ============================================================================
+
+// Initialize cloud sky texture coordinates based on cloud height
+// This is called once when a sky shader is first used
+// Adapted from OpenGL's R_InitSkyTexCoords
+void MetalRenderer::initCloudSkyTexCoords(float cloudHeight) {
+	if (cloudTexCoordsInitialized_) {
+		return;
+	}
+	
+	constexpr float radiusWorld = 4096.0f;
+	constexpr float zFarInit = 1024.0f;  // Initial zFar for MakeSkyVec-like calculation
+	const float boxSize = zFarInit / 1.75f;
+	
+	// st_to_vec mapping from OpenGL (axis -> vector component mapping)
+	static const int st_to_vec[6][3] = {
+		{3, -1, 2},
+		{-3, 1, 2},
+		{1, 3, 2},
+		{-1, -3, 2},
+		{-2, -1, 3},  // up
+		{2, -1, -3}   // down
+	};
+	
+	for (int i = 0; i < 6; ++i) {
+		for (int t = 0; t <= SKY_SUBDIVISIONS; ++t) {
+			for (int s = 0; s <= SKY_SUBDIVISIONS; ++s) {
+				// Compute normalized sky vector (like MakeSkyVec)
+				float sParam = (static_cast<float>(s - HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS);
+				float tParam = (static_cast<float>(t - HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS);
+				
+				float b[3];
+				b[0] = sParam * boxSize;
+				b[1] = tParam * boxSize;
+				b[2] = boxSize;
+				
+				float skyVec[3];
+				for (int j = 0; j < 3; ++j) {
+					int k = st_to_vec[i][j];
+					if (k < 0) {
+						skyVec[j] = -b[-k - 1];
+					} else {
+						skyVec[j] = b[k - 1];
+					}
+				}
+				
+				// Normalize skyVec for cloud intersection calculation
+				float len = std::sqrt(skyVec[0]*skyVec[0] + skyVec[1]*skyVec[1] + skyVec[2]*skyVec[2]);
+				if (len > 0.001f) {
+					skyVec[0] /= len;
+					skyVec[1] /= len;
+					skyVec[2] /= len;
+				}
+				
+				// Compute parametric value 'p' that intersects with cloud layer
+				// This is a simplified version of OpenGL's calculation
+				float dot = skyVec[0]*skyVec[0] + skyVec[1]*skyVec[1] + skyVec[2]*skyVec[2];
+				float p = (1.0f / (2.0f * dot)) *
+					(-2.0f * skyVec[2] * radiusWorld +
+					 2.0f * std::sqrt(
+						skyVec[2] * skyVec[2] * radiusWorld * radiusWorld +
+						2.0f * skyVec[0] * skyVec[0] * radiusWorld * cloudHeight +
+						skyVec[0] * skyVec[0] * cloudHeight * cloudHeight +
+						2.0f * skyVec[1] * skyVec[1] * radiusWorld * cloudHeight +
+						skyVec[1] * skyVec[1] * cloudHeight * cloudHeight +
+						2.0f * skyVec[2] * skyVec[2] * radiusWorld * cloudHeight +
+						skyVec[2] * skyVec[2] * cloudHeight * cloudHeight));
+				
+				// Compute intersection point based on p
+				float v[3];
+				v[0] = skyVec[0] * p;
+				v[1] = skyVec[1] * p;
+				v[2] = skyVec[2] * p + radiusWorld;
+				
+				// Normalize v for texture coord calculation
+				len = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+				if (len > 0.001f) {
+					v[0] /= len;
+					v[1] /= len;
+					v[2] /= len;
+				}
+				
+				// acos gives angles for texture coordinates
+				cloudTexCoords_[i][t][s][0] = std::acos(v[0]);
+				cloudTexCoords_[i][t][s][1] = std::acos(v[1]);
+			}
+		}
+	}
+	
+	cloudTexCoordsInitialized_ = true;
+}
+
+// Build cloud sky dome geometry for a sky shader
+// Generates a dome that covers the visible sky area, using pre-computed texture coordinates
+void MetalRenderer::buildCloudSkyDome(qhandle_t skyShader) {
+	MetalShaderResource* resource = getShaderResource(skyShader);
+	if (!resource || !resource->hasScript || !resource->script.isSky) {
+		return;
+	}
+	
+	// Initialize cloud texture coordinates if not done
+	float cloudHeight = resource->script.cloudHeight;
+	if (cloudHeight <= 0.0f) {
+		cloudHeight = 512.0f;  // Default cloud height
+	}
+	initCloudSkyTexCoords(cloudHeight);
+	
+	// Clear previous dome data
+	cloudDomeVertices_.clear();
+	cloudDomeIndices_.clear();
+	
+	const float boxSize = sceneCamera_.zFar / 1.75f;
+	const float* viewOrigin = sceneCamera_.viewOrigin;
+	
+	// st_to_vec mapping from OpenGL
+	static const int st_to_vec[6][3] = {
+		{3, -1, 2},
+		{-3, 1, 2},
+		{1, 3, 2},
+		{-1, -3, 2},
+		{-2, -1, 3},  // up
+		{2, -1, -3}   // down
+	};
+	
+	// Generate vertices for all 6 faces of the sky dome
+	// We skip face 5 (down) since we never look straight down at clouds
+	for (int face = 0; face < 6; ++face) {
+		// Skip down face
+		if (face == 5) continue;
+		
+		uint32_t vertexStart = static_cast<uint32_t>(cloudDomeVertices_.size());
+		
+		// Generate grid of vertices for this face
+		for (int t = 0; t <= SKY_SUBDIVISIONS; ++t) {
+			for (int s = 0; s <= SKY_SUBDIVISIONS; ++s) {
+				// Compute sky position (like MakeSkyVec)
+				float sParam = (static_cast<float>(s - HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS);
+				float tParam = (static_cast<float>(t - HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS);
+				
+				float b[3];
+				b[0] = sParam * boxSize;
+				b[1] = tParam * boxSize;
+				b[2] = boxSize;
+				
+				float xyz[3];
+				for (int j = 0; j < 3; ++j) {
+					int k = st_to_vec[face][j];
+					if (k < 0) {
+						xyz[j] = -b[-k - 1];
+					} else {
+						xyz[j] = b[k - 1];
+					}
+				}
+				
+				MetalPolyVertex vert{};
+				vert.xyz[0] = viewOrigin[0] + xyz[0];
+				vert.xyz[1] = viewOrigin[1] + xyz[1];
+				vert.xyz[2] = viewOrigin[2] + xyz[2];
+				vert.st[0] = cloudTexCoords_[face][t][s][0];
+				vert.st[1] = cloudTexCoords_[face][t][s][1];
+				vert.lightmap[0] = 0.0f;
+				vert.lightmap[1] = 0.0f;
+				vert.normal[0] = 0.0f;
+				vert.normal[1] = 0.0f;
+				vert.normal[2] = 1.0f;
+				vert.modulate[0] = 255;
+				vert.modulate[1] = 255;
+				vert.modulate[2] = 255;
+				vert.modulate[3] = 255;
+				
+				cloudDomeVertices_.push_back(vert);
+			}
+		}
+		
+		// Generate indices for this face (grid of quads -> triangles)
+		int width = SKY_SUBDIVISIONS + 1;
+		for (int t = 0; t < SKY_SUBDIVISIONS; ++t) {
+			for (int s = 0; s < SKY_SUBDIVISIONS; ++s) {
+				uint32_t idx00 = vertexStart + t * width + s;
+				uint32_t idx10 = vertexStart + t * width + s + 1;
+				uint32_t idx01 = vertexStart + (t + 1) * width + s;
+				uint32_t idx11 = vertexStart + (t + 1) * width + s + 1;
+				
+				// Two triangles per quad
+				cloudDomeIndices_.push_back(idx00);
+				cloudDomeIndices_.push_back(idx10);
+				cloudDomeIndices_.push_back(idx11);
+				
+				cloudDomeIndices_.push_back(idx00);
+				cloudDomeIndices_.push_back(idx11);
+				cloudDomeIndices_.push_back(idx01);
+			}
+		}
+	}
+	
+	lastCloudSkyShader_ = skyShader;
+}
+
+// Draw cloud sky dome with shader stages
+bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
+	if (skyboxRenderedThisFrame_) {
+		return true;  // Already drew sky this frame
+	}
+	
+	MetalShaderResource* resource = getShaderResource(skyShader);
+	if (!resource || !resource->hasScript || !resource->script.isSky) {
+		return false;
+	}
+	
+	// Build cloud dome if needed
+	if (lastCloudSkyShader_ != skyShader || cloudDomeVertices_.empty()) {
+		buildCloudSkyDome(skyShader);
+	}
+	
+	if (cloudDomeVertices_.empty()) {
+		return false;
+	}
+	
+	if (!currentRenderEncoder_ || !sceneUniformBuffer_) {
+		return false;
+	}
+	
+	TextureManager* texManager = ensureTextureManager();
+	if (!texManager) {
+		return false;
+	}
+	
+	// Ensure we have stages to draw
+	if (resource->stageRuntimes.empty()) {
+		ensureScriptHasStages(*resource);
+		loadShaderImages(*resource);
+		buildShaderStageRuntime(*resource);
+	}
+	
+	if (resource->stageRuntimes.empty()) {
+		return false;  // No stages to draw
+	}
+	
+	// Ensure depth state exists
+	if (!skyboxDepthState_) {
+		ensureSkyboxResources();
+	}
+	
+	// Draw each stage of the cloud shader
+	float timeSeconds = static_cast<float>(ri_.Milliseconds()) / 1000.0f;
+	
+	for (size_t stageIdx = 0; stageIdx < resource->stageRuntimes.size(); ++stageIdx) {
+		const auto& stageRuntime = resource->stageRuntimes[stageIdx];
+		
+		// Get pipeline for this stage
+		StagePipelineEntry* pipelineEntry = getStagePipeline(stageRuntime.pipelineKey);
+		if (!pipelineEntry || !pipelineEntry->pipeline) {
+			continue;
+		}
+		
+		// Bind pipeline
+		MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipelineEntry->pipeline.get());
+		
+		// Use sky-appropriate depth state (test but don't write, always at far plane)
+		currentRenderEncoder_->setDepthStencilState(skyboxDepthState_.get());
+		currentRenderEncoder_->setCullMode(MTL::CullModeNone);  // Draw both sides
+		
+		// Get texture for this stage
+		qhandle_t imageHandle = selectStageImage(*resource, &stageRuntime, timeSeconds, 0);
+		MTL::Texture* texture = nullptr;
+		if (imageHandle > 0) {
+			texture = texManager->getTexture(imageHandle);
+		}
+		if (!texture) {
+			texture = texManager->getTexture(1);  // Default texture
+		}
+		if (!texture) {
+			continue;
+		}
+		
+		// Set up fragment params
+		StageFragmentParams fragParams{};
+		fragParams.texCoordSelector = 0.0f;  // Use base texcoords
+		fragParams.rgbGenType = 1.0f;  // Identity (white)
+		fragParams.alphaTestEnabled = stageRuntime.pipelineKey.alphaTest ? 1.0f : 0.0f;
+		currentRenderEncoder_->setFragmentBytes(&fragParams, sizeof(StageFragmentParams), 0);
+		
+		// Set up TCMod params from stage - use existing helper function
+		TCModParams tcModParams = computeTCModParams(stageRuntime.stageInfo, timeSeconds);
+		currentRenderEncoder_->setVertexBytes(&tcModParams, sizeof(TCModParams), 2);
+		
+		// Bind scene uniforms
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+		
+		// Upload dome vertices directly
+		currentRenderEncoder_->setVertexBytes(cloudDomeVertices_.data(), 
+			cloudDomeVertices_.size() * sizeof(MetalPolyVertex), 0);
+		
+		// Bind texture
+		MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, texture);
+		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sceneSampler_.get());
+		
+		// Draw using indices (or draw directly if small enough)
+		if (cloudDomeIndices_.size() <= 65536) {
+			// Upload indices and draw
+			auto indexBuffer = device_->newBuffer(cloudDomeIndices_.data(), 
+				cloudDomeIndices_.size() * sizeof(uint32_t), MTL::ResourceStorageModeShared);
+			if (indexBuffer) {
+				currentRenderEncoder_->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle,
+					NS::UInteger(cloudDomeIndices_.size()),
+					MTL::IndexTypeUInt32,
+					indexBuffer, 0);
+				indexBuffer->release();
+			}
+		}
+	}
+	
+	skyboxRenderedThisFrame_ = true;
+	
 	return true;
 }
 
