@@ -11,6 +11,7 @@ Metal renderer with RAII and modern C++ practices
 #include "tr_capabilities.h"
 #include "tr_scene.h"
 #include "tr_extramath.h"
+#include "tr_local.h"
 
 extern "C" {
 #include "../qcommon/qfiles.h"
@@ -19,6 +20,12 @@ extern "C" {
 extern "C" {
 	glconfig_t glConfig = {};
 	extern refimport_t ri;
+
+	// Lighting console variables
+	cvar_t* r_ambientScale = nullptr;
+	cvar_t* r_directedScale = nullptr;
+	cvar_t* r_debugLight = nullptr;
+	cvar_t* r_dlightMode = nullptr;
 }
 
 static void Metal_GfxInfo_f();
@@ -37,7 +44,7 @@ struct StageFragmentParams {
 	float texCoordSelector = 0.0f;  // Legacy - now use tcGenType instead
 	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
 	float tcGenType = 0.0f;   // 0 = Texture, 1 = Lightmap, 2 = Environment
-	float padding2 = 0.0f;
+	float overBrightBits = 0.0f;
 	float padding3 = 0.0f;
 };
 
@@ -72,6 +79,8 @@ inline MetalPolyVertex ConvertDrawVert(const drawVert_t& src) {
 	dst.normal[0] = src.normal[0];
 	dst.normal[1] = src.normal[1];
 	dst.normal[2] = src.normal[2];
+	// Vertex colors are already normalized (0-1 range)
+	// No overbright scaling needed here - it's handled in the shader/blending
 	dst.modulate[0] = src.color[0];
 	dst.modulate[1] = src.color[1];
 	dst.modulate[2] = src.color[2];
@@ -601,6 +610,7 @@ private:
 		float fogTcScale = 0.0f;          // Texture coordinate scale
 		float fogHasSurface = 0.0f;       // Whether fog has a visible surface plane
 		float fogEnabled = 0.0f;          // Enable/disable fog rendering
+		float overBrightBits = 0.0f;      // r_overBrightBits value
 	};
 
 	// Texture coordinate modification params (matches Metal shader TCModParams)
@@ -709,6 +719,8 @@ private:
 	cvar_t* r_stereoSeparation_ = nullptr;
 	cvar_t* r_metalLogCalls_ = nullptr;
 	cvar_t* r_swapInterval_ = nullptr;
+	cvar_t* r_mapOverBrightBits_ = nullptr;
+	cvar_t* r_overBrightBits_ = nullptr;
 	MetalPtr<MTL::Buffer> sceneUniformBuffer_;
 	size_t sceneUniformBufferSize_ = 0;
 	MetalPtr<MTL::Buffer> polyVertexBuffer_;
@@ -888,26 +900,15 @@ private:
 // Implementation
 //=============================================================================
 
-bool MetalRenderer::initialize(refimport_t imports) {
-	ri_ = imports;
-	ri = imports;
-	registerConsoleCommands();
-	r_znear_ = ri_.Cvar_Get("r_znear", "4", CVAR_CHEAT);
-	if (ri_.Cvar_CheckRange) {
-		ri_.Cvar_CheckRange(r_znear_, 0.001f, 200.0f, qfalse);
-	}
-	r_zproj_ = ri_.Cvar_Get("r_zproj", "64", CVAR_ARCHIVE);
-	r_stereoSeparation_ = ri_.Cvar_Get("r_stereoSeparation", "64", CVAR_ARCHIVE);
-	r_metalLogCalls_ = ri_.Cvar_Get("r_metalLogCalls", "0", CVAR_TEMP);
-	r_swapInterval_ = ri_.Cvar_Get("r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	resetShaderCaches();
-	// TextureManager will be created when device is available
-	return true;
-}
+
 
 void MetalRenderer::shutdown(qboolean destroyWindow) {
 	unloadWorldMap();
 	unregisterConsoleCommands();
+
+	// Shutdown lighting system
+	R_ShutdownLightingSystem();
+
 	// RAII handles Metal object cleanup automatically
 	textureManager_.reset();
 	sampler2D_.reset();
@@ -1332,12 +1333,37 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		worldLightmapHandles_.reserve(lightmapCount);
 		const int pixelCount = kBspLightmapWidth * kBspLightmapHeight;
 		std::vector<byte> rgba(static_cast<size_t>(pixelCount) * 4u);
+
+		// Calculate overbright shift
+		int overBrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+		if (overBrightBits < 0) overBrightBits = 0;
+		if (overBrightBits > 4) overBrightBits = 4;
+		const int shift = overBrightBits;
+
 		for (int lm = 0; lm < lightmapCount; ++lm) {
 			const byte* src = lightmapData + static_cast<size_t>(lm) * kBspLightmapBytes;
 			for (int pix = 0; pix < pixelCount; ++pix) {
-				rgba[static_cast<size_t>(pix) * 4 + 0] = src[static_cast<size_t>(pix) * 3 + 0];
-				rgba[static_cast<size_t>(pix) * 4 + 1] = src[static_cast<size_t>(pix) * 3 + 1];
-				rgba[static_cast<size_t>(pix) * 4 + 2] = src[static_cast<size_t>(pix) * 3 + 2];
+				int r = src[static_cast<size_t>(pix) * 3 + 0];
+				int g = src[static_cast<size_t>(pix) * 3 + 1];
+				int b = src[static_cast<size_t>(pix) * 3 + 2];
+
+				// Apply overbright scaling
+				r <<= shift;
+				g <<= shift;
+				b <<= shift;
+
+				// Normalize if overflowing to preserve color
+				int max = (r > g) ? r : g;
+				max = (max > b) ? max : b;
+				if (max > 255) {
+					r = r * 255 / max;
+					g = g * 255 / max;
+					b = b * 255 / max;
+				}
+
+				rgba[static_cast<size_t>(pix) * 4 + 0] = static_cast<byte>(r);
+				rgba[static_cast<size_t>(pix) * 4 + 1] = static_cast<byte>(g);
+				rgba[static_cast<size_t>(pix) * 4 + 2] = static_cast<byte>(b);
 				rgba[static_cast<size_t>(pix) * 4 + 3] = 255;
 			}
 			char texName[MAX_QPATH];
@@ -1421,7 +1447,6 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 						
 						planeNum = LittleLong(brushSides[firstSide + 5].planeNum);
 						if (planeNum >= 0 && planeNum < planeCount)
-							fog.bounds[1][2] = planes[planeNum].dist;
 
 						if (ri_.Printf) {
 							ri_.Printf(PRINT_ALL, "Metal: Fog %d bounds: min(%.1f, %.1f, %.1f) max(%.1f, %.1f, %.1f)\n",
@@ -1599,6 +1624,14 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		packet.primitive = MTL::PrimitiveTypeTriangle;
 		// Store fog index for this surface (add 1 to match OpenGL convention: 0 = no fog)
 		packet.fogIndex = LittleLong(ds.fogNum) + 1;
+
+		// Store lightmap handle
+		int lightmapNum = LittleLong(ds.lightmapNum);
+		if (lightmapNum >= 0 && lightmapNum < static_cast<int>(worldLightmapHandles_.size())) {
+			packet.lightmapHandle = worldLightmapHandles_[lightmapNum];
+		} else {
+			packet.lightmapHandle = 0;
+		}
 		worldPacketTemplate_.push_back(packet);
 	}
 
@@ -2588,6 +2621,13 @@ bool MetalRenderer::uploadSceneUniforms() {
 			sceneCamera_.viewOrigin[0], sceneCamera_.viewOrigin[1], sceneCamera_.viewOrigin[2]);
 	}
 
+	// Set overbright bits
+	if (r_overBrightBits_) {
+		sceneUniforms_.overBrightBits = static_cast<float>(r_overBrightBits_->integer);
+	} else {
+		sceneUniforms_.overBrightBits = 0.0f;
+	}
+
 	std::memcpy(sceneUniformBuffer_->contents(), &sceneUniforms_, sizeof(SceneUniforms));
 	return true;
 }
@@ -2933,7 +2973,12 @@ qhandle_t MetalRenderer::selectStageImage(MetalRenderer::MetalShaderResource& re
 			if (lightmapHandle > 0) {
 				return lightmapHandle;
 			}
-			// Fall through to shader image fallback when lightmap is missing
+			// If lightmap is missing but stage expects one, use white image
+			// to avoid sampling wrong texture (e.g. primary shader image)
+			// This fixes the orange tint issue where lightmap stages were sampling the lava texture
+			if (textureManager_) {
+				return textureManager_->registerShader("white", false);
+			}
 		}
 		const size_t frameCount = runtime->stageImageHandles.size();
 		if (frameCount > 0) {
@@ -3415,8 +3460,9 @@ bool MetalRenderer::drawPolyPackets() {
 			hasFragmentParams = true;
 		}
 	};
-	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo) {
+	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo, float overBrightBits) {
 		StageFragmentParams params{};
+		params.overBrightBits = overBrightBits;
 		if (!stageInfo) {
 			return params;
 		}
@@ -3496,7 +3542,17 @@ bool MetalRenderer::drawPolyPackets() {
 				continue;
 			}
 			const MetalShaderStageInfo* stageInfo = stageRuntime->stageInfo;
-			bindStageParams(buildStageParams(stageInfo));
+			
+			// Match OpenGL2's ComputeShaderColors (tr_shade.c:572-579)
+			// Disable overbright for stages using DST_COLOR or SRC_COLOR blending
+			bool isBlend = (stageRuntime->pipelineKey.srcBlend == MetalBlendFactor::DstColor) ||
+			               (stageRuntime->pipelineKey.srcBlend == MetalBlendFactor::OneMinusDstColor) ||
+			               (stageRuntime->pipelineKey.dstBlend == MetalBlendFactor::SrcColor) ||
+			               (stageRuntime->pipelineKey.dstBlend == MetalBlendFactor::OneMinusSrcColor);
+			
+			float stageOverBright = isBlend ? 0.0f : sceneUniforms_.overBrightBits;
+			
+			bindStageParams(buildStageParams(stageInfo, stageOverBright));
 
 			// Compute and bind texture coordinate modifications
 			TCModParams tcModParams = computeTCModParams(stageInfo, sceneTimeSeconds);
@@ -3881,6 +3937,7 @@ bool MetalRenderer::drawSkybox(qhandle_t skyShader) {
 	StageFragmentParams fragParams{};
 	fragParams.texCoordSelector = 0.0f;
 	fragParams.rgbGenType = 0.0f;  // Use vertex color (white)
+	fragParams.overBrightBits = sceneUniforms_.overBrightBits;
 	currentRenderEncoder_->setFragmentBytes(&fragParams, sizeof(StageFragmentParams), 0);
 	
 	// No texture coordinate modifications for skybox (identity matrix)
@@ -4217,6 +4274,15 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 		fragParams.texCoordSelector = 0.0f;  // Use base texcoords
 		fragParams.rgbGenType = 1.0f;  // Identity (white)
 		fragParams.alphaTestEnabled = stageRuntime.pipelineKey.alphaTest ? 1.0f : 0.0f;
+		
+		// Apply overbright unless blending multiplies by destination
+		float stageOverBright = sceneUniforms_.overBrightBits;
+		if (stageRuntime.pipelineKey.srcBlend == MetalBlendFactor::DstColor ||
+			stageRuntime.pipelineKey.dstBlend == MetalBlendFactor::SrcColor) {
+			stageOverBright = 0.0f;
+		}
+		fragParams.overBrightBits = stageOverBright;
+		
 		currentRenderEncoder_->setFragmentBytes(&fragParams, sizeof(StageFragmentParams), 0);
 		
 		// Set up TCMod params from stage - use existing helper function
@@ -4289,7 +4355,7 @@ bool MetalRenderer::drawFogPasses() {
 	// Bind vertex buffer
 	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
 
-	int totalFoggedPackets = 0;
+	// int totalFoggedPackets = 0;
 	const float* viewOrigin = sceneCamera_.viewOrigin;
 
 	// Process each fog volume
@@ -4352,7 +4418,7 @@ bool MetalRenderer::drawFogPasses() {
 			currentRenderEncoder_->drawPrimitives(packet.primitive,
 			                                       static_cast<NS::UInteger>(packet.firstVertex),
 			                                       static_cast<NS::UInteger>(packet.vertexCount));
-			totalFoggedPackets++;
+			// totalFoggedPackets++;
 		}
 	}
 
@@ -4778,4 +4844,36 @@ void MetalBackend_EndRegistration() {
 
 void Metal_LogRendererCall(const char* name) {
 	g_renderer.logRendererCall(name);
+}
+
+bool MetalRenderer::initialize(refimport_t imports) {
+	ri_ = imports;
+	ri = imports;
+	registerConsoleCommands();
+	r_znear_ = ri_.Cvar_Get("r_znear", "4", CVAR_CHEAT);
+	if (ri_.Cvar_CheckRange) {
+		ri_.Cvar_CheckRange(r_znear_, 0.001f, 200.0f, qfalse);
+	}
+	r_zproj_ = ri_.Cvar_Get("r_zproj", "64", CVAR_ARCHIVE);
+	r_stereoSeparation_ = ri_.Cvar_Get("r_stereoSeparation", "64", CVAR_ARCHIVE);
+	r_metalLogCalls_ = ri_.Cvar_Get("r_metalLogCalls", "0", CVAR_TEMP);
+	r_swapInterval_ = ri_.Cvar_Get("r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapOverBrightBits_ = ri_.Cvar_Get("r_mapOverBrightBits", "2", CVAR_ARCHIVE | CVAR_LATCH);
+	r_overBrightBits_ = ri_.Cvar_Get("r_overBrightBits", "1", CVAR_ARCHIVE | CVAR_LATCH);
+
+	// Lighting console variables (matching OpenGL2 renderer)
+	r_ambientScale = ri_.Cvar_Get("r_ambientScale", "0.6", CVAR_CHEAT);
+	r_directedScale = ri_.Cvar_Get("r_directedScale", "1", CVAR_CHEAT);
+	r_debugLight = ri_.Cvar_Get("r_debugLight", "0", CVAR_TEMP);
+	r_dlightMode = ri_.Cvar_Get("r_dlightMode", "0", CVAR_ARCHIVE | CVAR_LATCH);
+
+	// Note: We use hardcoded identityLight = 0.5 in ConvertDrawVert for overbright rendering
+	// This corresponds to r_overBrightBits=1 (the default value)
+
+	// Initialize lighting system
+	R_InitLightingSystem();
+
+	resetShaderCaches();
+	// TextureManager will be created when device is available
+	return true;
 }

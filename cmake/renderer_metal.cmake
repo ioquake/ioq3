@@ -19,6 +19,7 @@ set(RENDERER_METAL_SOURCES
     ${SOURCE_DIR}/renderermetal/tr_scene.cpp
     ${SOURCE_DIR}/renderermetal/tr_shader.cpp
     ${SOURCE_DIR}/renderermetal/tr_texture.cpp
+    ${SOURCE_DIR}/renderermetal/tr_light.cpp
     ${SOURCE_DIR}/sdl/sdl_metal.cpp
 )
 

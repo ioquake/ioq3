@@ -100,11 +100,9 @@ struct StageBuilder {
 
     void finalizeDefaults() {
         if (!rgbGenExplicit) {
-            const bool treatAsOpaque = !info.blendFuncExplicit ||
-                info.srcBlendFactor == MetalBlendFactor::One ||
-                info.srcBlendFactor == MetalBlendFactor::SrcAlpha;
-            info.rgbGen.type = treatAsOpaque ? MetalRGBGen::IdentityLighting
-                                             : MetalRGBGen::Identity;
+            // Default to vertex colors which contain BSP's baked lighting
+            // This ensures shader surfaces match non-shader surface lighting
+            info.rgbGen.type = MetalRGBGen::Vertex;
         }
 
         if (!alphaGenExplicit) {
@@ -520,6 +518,11 @@ private:
     }
 
     void convertStandaloneLightmapsIfNeeded() {
+        // Disabled to match OpenGL2 parity - GL2 doesn't convert tcGen for lightmap stages
+        // This was causing lightmap stages to sample with diffuse texture coordinates
+        // instead of lightmap coordinates, resulting in incorrect colors (orange tint)
+        return;
+        
         if (info_.hasDeform) {
             return;
         }
@@ -623,7 +626,7 @@ private:
 
     std::string name_;
     MetalShaderScriptInfo info_;
-    bool allowLightmapCollapse_ = true;
+    bool allowLightmapCollapse_ = false;  // Disabled to match OpenGL2 parity - GL2 doesn't collapse lightmap stages
     bool discardStages_ = false;
     bool abortRemainingStages_ = false;
     bool firstStageUsesBlend_ = false;

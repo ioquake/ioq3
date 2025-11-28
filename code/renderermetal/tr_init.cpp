@@ -7,6 +7,7 @@ higher level engine code can treat renderers consistently.
 
 #include "tr_backend.h"
 #include "tr_scene.h"
+#include "tr_local.h"
 
 extern "C" {
 #include "../qcommon/qcommon.h"
@@ -78,19 +79,7 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 	g_refExport.ClearScene = RE_ClearScene;
 	g_refExport.AddRefEntityToScene = RE_AddRefEntityToScene;
 	g_refExport.AddPolyToScene = RE_AddPolyToScene;
-	g_refExport.LightForPoint = [](vec3_t, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
-		Metal_LogRendererCall("re.LightForPoint");
-		if (ambientLight) {
-			VectorClear(ambientLight);
-		}
-		if (directedLight) {
-			VectorClear(directedLight);
-		}
-		if (lightDir) {
-			VectorClear(lightDir);
-		}
-		return 0;
-	};
+	g_refExport.LightForPoint = R_LightForPoint;
 	g_refExport.AddLightToScene = RE_AddLightToScene;
 	g_refExport.AddAdditiveLightToScene = RE_AddAdditiveLightToScene;
 	g_refExport.RenderScene = RE_RenderScene;
