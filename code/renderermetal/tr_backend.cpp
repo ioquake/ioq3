@@ -625,6 +625,18 @@ private:
 		float texMatrix7[4] = {0.0f, 1.0f, 0.0f, 0.0f};
 	};
 
+	// Entity lighting parameters - matches scene.metal EntityLightingParams
+	struct EntityLightingParams {
+		float ambientLight[3] = {150.0f, 150.0f, 150.0f};
+		float padding0 = 0.0f;
+		float directedLight[3] = {150.0f, 150.0f, 150.0f};
+		float padding1 = 0.0f;
+		float lightDir[3] = {0.0f, 0.0f, 1.0f};
+		float padding2 = 0.0f;
+		float modelLightDir[3] = {0.0f, 0.0f, 1.0f};
+		float padding3 = 0.0f;
+	};
+
 	struct SceneCamera {
 		refdef_t refdef{};
 		mat4_t viewMatrix{};
