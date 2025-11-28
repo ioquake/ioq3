@@ -4026,7 +4026,7 @@ void MetalRenderer::initCloudSkyTexCoords(float cloudHeight) {
 }
 
 // Build cloud sky dome geometry for a sky shader
-// Generates a dome that covers the visible sky area, using pre-computed texture coordinates
+// Generates a 5-face box dome (like OpenGL) using precomputed cloud texture coordinates
 void MetalRenderer::buildCloudSkyDome(qhandle_t skyShader) {
 	MetalShaderResource* resource = getShaderResource(skyShader);
 	if (!resource || !resource->hasScript || !resource->script.isSky) {
@@ -4043,6 +4043,11 @@ void MetalRenderer::buildCloudSkyDome(qhandle_t skyShader) {
 	// Clear previous dome data
 	cloudDomeVertices_.clear();
 	cloudDomeIndices_.clear();
+	
+	// Safety check for valid camera state
+	if (sceneCamera_.zFar <= 0.0f) {
+		return;  // Camera not set up yet
+	}
 	
 	const float boxSize = sceneCamera_.zFar / 1.75f;
 	const float* viewOrigin = sceneCamera_.viewOrigin;
@@ -4142,10 +4147,9 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 		return false;
 	}
 	
-	// Build cloud dome if needed
-	if (lastCloudSkyShader_ != skyShader || cloudDomeVertices_.empty()) {
-		buildCloudSkyDome(skyShader);
-	}
+	// Build cloud dome if needed - rebuild every frame since view position changes
+	// The dome is centered on the viewer, so it must move with the camera
+	buildCloudSkyDome(skyShader);
 	
 	if (cloudDomeVertices_.empty()) {
 		return false;
@@ -4222,15 +4226,19 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 		// Bind scene uniforms
 		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
 		
-		// Upload dome vertices directly
-		currentRenderEncoder_->setVertexBytes(cloudDomeVertices_.data(), 
-			cloudDomeVertices_.size() * sizeof(MetalPolyVertex), 0);
+		// Create vertex buffer for dome vertices (can't use setVertexBytes - too large)
+		auto vertexBuffer = device_->newBuffer(cloudDomeVertices_.data(), 
+			cloudDomeVertices_.size() * sizeof(MetalPolyVertex), MTL::ResourceStorageModeShared);
+		if (!vertexBuffer) {
+			continue;
+		}
+		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
 		
 		// Bind texture
 		MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, texture);
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sceneSampler_.get());
 		
-		// Draw using indices (or draw directly if small enough)
+		// Draw using indices
 		if (cloudDomeIndices_.size() <= 65536) {
 			// Upload indices and draw
 			auto indexBuffer = device_->newBuffer(cloudDomeIndices_.data(), 
@@ -4243,6 +4251,7 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 				indexBuffer->release();
 			}
 		}
+		vertexBuffer->release();
 	}
 	
 	skyboxRenderedThisFrame_ = true;
