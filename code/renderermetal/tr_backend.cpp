@@ -3650,13 +3650,13 @@ bool MetalRenderer::drawPolyPackets() {
 			hasFragmentParams = true;
 		}
 	};
-	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo, float overBrightBits) {
+	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo, float overBrightBits, qhandle_t lightmapHandle) {
 		StageFragmentParams params{};
 		params.overBrightBits = overBrightBits;
 		if (!stageInfo) {
 			return params;
 		}
-		
+
 		// Set tcGen type for shader
 		// 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
 		switch (stageInfo->tcGen.type) {
@@ -3673,10 +3673,18 @@ bool MetalRenderer::drawPolyPackets() {
 				params.texCoordSelector = 0.0f;
 				break;
 		}
-		
+
 		// Set rgbGen type for shader
 		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting, 3 = LightingDiffuse
-		switch (stageInfo->rgbGen.type) {
+		// IMPORTANT: For world surfaces with lightmaps, override lightingDiffuse → vertex
+		// This matches OpenGL2's behavior where surfaces with lightmaps use CGEN_EXACT_VERTEX
+		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
+		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0) {
+			// Surface has a lightmap - use vertex colors (lightmap data) instead of entity lighting
+			effectiveRgbGen = MetalRGBGen::Vertex;
+		}
+
+		switch (effectiveRgbGen) {
 			case MetalRGBGen::Identity:
 				params.rgbGenType = 1.0f;
 				break;
@@ -3744,8 +3752,8 @@ bool MetalRenderer::drawPolyPackets() {
 			               (stageRuntime->pipelineKey.dstBlend == MetalBlendFactor::OneMinusSrcColor);
 			
 			float stageOverBright = isBlend ? 0.0f : sceneUniforms_.overBrightBits;
-			
-			bindStageParams(buildStageParams(stageInfo, stageOverBright));
+
+			bindStageParams(buildStageParams(stageInfo, stageOverBright, packet.lightmapHandle));
 
 			// Compute and bind texture coordinate modifications
 			TCModParams tcModParams = computeTCModParams(stageInfo, sceneTimeSeconds);
