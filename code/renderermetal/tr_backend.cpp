@@ -286,6 +286,7 @@ extern "C" {
 #include <cstdint>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -783,8 +784,38 @@ private:
 		float lightDir[3] = {0.0f, 0.0f, 1.0f};
 		float padding2 = 0.0f;
 		float modelLightDir[3] = {0.0f, 0.0f, 1.0f};
-		float padding3 = 0.0f;
+		float overBrightBits = 1.0f;  // 1 << overbrightBits = overbright multiplier
 	};
+
+	struct ModelFogParams {
+		float fogColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+		float fogDistanceVector[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		float fogDepthVector[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		float fogEyeT = 0.0f;
+		float fogTcScale = 0.0f;
+		float fogEnabled = 0.0f;
+		float fogHasSurface = 0.0f;
+	};
+
+	static_assert(sizeof(ModelFogParams) % 16 == 0, "ModelFogParams must be 16-byte aligned");
+
+	// Model stage parameters - matches scene.metal ModelStageParams
+	// Includes tcMod matrices for animated texture effects
+	struct ModelStageParams {
+		float tcGenType = 0.0f;  // 0 = Texture, 1 = Lightmap, 2 = Environment
+		float padding[3] = {0.0f, 0.0f, 0.0f};
+		// TCMod matrices (same format as TCModParams)
+		float texMatrix0[4] = {1.0f, 0.0f, 0.0f, 0.0f};  // Identity: scaleX=1, shearX=0, translateX=0, turbAmp=0
+		float texMatrix1[4] = {0.0f, 1.0f, 0.0f, 0.0f};  // Identity: shearY=0, scaleY=1, translateY=0, turbPhase=0
+		float texMatrix2[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix3[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+		float texMatrix4[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix5[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+		float texMatrix6[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		float texMatrix7[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+	};
+
+	static_assert(sizeof(ModelStageParams) % 16 == 0, "ModelStageParams must be 16-byte aligned");
 
 	struct SceneCamera {
 		refdef_t refdef{};
@@ -798,6 +829,8 @@ private:
 		float zFar = 0.0f;
 		float zProj = 0.0f;
 		float stereoSeparation = 0.0f;
+		float frustumPlanes[6][4]{};
+		bool frustumValid = false;
 		bool valid = false;
 	};
 
@@ -875,6 +908,8 @@ private:
 	std::array<CinematicSlot, 8> cinematicSlots_;
 	PendingCinematic pendingCinematic_;
 
+	cvar_t* r_lodBias_ = nullptr;
+	cvar_t* r_lodScale_ = nullptr;
 	cvar_t* r_znear_ = nullptr;
 	cvar_t* r_zproj_ = nullptr;
 	cvar_t* r_stereoSeparation_ = nullptr;
@@ -973,11 +1008,27 @@ private:
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
 
 	// Model rendering (MD3)
-	MetalPtr<MTL::RenderPipelineState> modelPipeline_;
+	MetalPtr<MTL::RenderPipelineState> modelPipeline_;           // Standard alpha blend
+	MetalPtr<MTL::RenderPipelineState> modelPipelineAdditive_;   // Additive blend (GL_ONE, GL_ONE)
 	MetalPtr<MTL::Function> modelVertexFunction_;
 	MetalPtr<MTL::Function> modelFragmentFunction_;
 	MetalPtr<MTL::VertexDescriptor> modelVertexDescriptor_;
 	MetalPtr<MTL::DepthStencilState> modelDepthState_;
+	MetalPtr<MTL::DepthStencilState> modelDepthStateNoWrite_;    // For additive surfaces (no depth write)
+	
+	// Model stage pipeline cache for multi-pass rendering
+	struct ModelStagePipelineEntry {
+		MetalShaderResource::MetalPipelineKey key;
+		MetalPtr<MTL::RenderPipelineState> pipeline;
+		MetalPtr<MTL::DepthStencilState> depthState;
+
+		ModelStagePipelineEntry() = default;
+		ModelStagePipelineEntry(ModelStagePipelineEntry&&) = default;
+		ModelStagePipelineEntry& operator=(ModelStagePipelineEntry&&) = default;
+		ModelStagePipelineEntry(const ModelStagePipelineEntry&) = delete;
+		ModelStagePipelineEntry& operator=(const ModelStagePipelineEntry&) = delete;
+	};
+	std::unordered_map<MetalShaderResource::MetalPipelineKey, ModelStagePipelineEntry, MetalPipelineKeyHash> modelStagePipelineCache_;
 
 	// Skybox and cloud sky dome rendering
 	bool skyboxRenderedThisFrame_ = false;
@@ -1039,15 +1090,19 @@ private:
 	bool ensureSceneShaderResources();
 	bool ensureFogPipeline();
 	bool ensureModelPipeline();
-	void renderModel(const refEntity_t& ent, const refdef_t& refdef);
+	enum class CullResult { Out, In, Clip };
+	void renderModel(const refEntity_t& ent, MetalModel& model, MetalModelLOD& lodData,
+	                int fogIndex, CullResult cullState);
 	void renderModelSurface(const refEntity_t& ent, MetalModelSurface& surface,
-	                        const float* mvpMatrix, float vertexLerp,
+	                        const float* mvpMatrix, const float* modelMatrix, float vertexLerp,
+	                        const ModelFogParams& fogParams,
 	                        const vec3_t ambientLight, const vec3_t directedLight, const vec3_t lightDir);
 	MTL::Buffer* createModelVertexBuffer(const refEntity_t& ent, MetalModelSurface& surface);
 	void calculateEntityTransform(const refEntity_t& ent, float* matrix);
 	void setupEntityLighting(const refEntity_t& ent, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 	void multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result);
 	StagePipelineEntry* getStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
+	ModelStagePipelineEntry* getModelStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
 	bool drawModelEntities();
@@ -1060,6 +1115,15 @@ private:
 	void initCloudSkyTexCoords(float cloudHeight);
 	void buildCloudSkyDome(qhandle_t skyShader);
 	bool drawCloudSky(qhandle_t skyShader);
+	void buildFrustumPlanes(SceneCamera& camera);
+	float projectRadius(float radius, const vec3_t location) const;
+	CullResult cullBoundingSphere(const vec3_t center, float radius) const;
+	void transformModelPoint(const refEntity_t& ent, const float point[3], vec3_t out) const;
+	CullResult cullBoundingBox(const float mins[3], const float maxs[3], const refEntity_t& ent) const;
+	CullResult cullModel(const MetalModelLOD& lod, const refEntity_t& ent) const;
+	int computeModelLod(const MetalModel& model, const refEntity_t& ent) const;
+	int computeModelFogIndex(const MetalModelLOD& lod, const refEntity_t& ent) const;
+	ModelFogParams buildModelFogParams(int fogIndex) const;
 	void encodeEntityCommands(SceneDispatchSummary& summary);
 	void encodePolyCommands(SceneDispatchSummary& summary);
 	void encodeLightCommands(SceneDispatchSummary& summary);
@@ -2244,10 +2308,25 @@ qhandle_t MetalRenderer::registerShader(const char* name, bool mipmap) {
 	if (MetalShaderScriptGetInfo(normalized, info)) {
 		resource.hasScript = true;
 		resource.script = info;
+		// Debug: Log when shader script is found with blend info
+		if (ri_.Printf && !info.stages.empty()) {
+			const auto& firstStage = info.stages[0];
+			ri_.Printf(PRINT_DEVELOPER, "SHADER_SCRIPT: '%s' found script, stages=%zu, stage0_src=%d dst=%d\n",
+			          normalized.c_str(), info.stages.size(),
+			          static_cast<int>(firstStage.srcBlendFactor),
+			          static_cast<int>(firstStage.dstBlendFactor));
+		}
 	} else {
 		resource.hasScript = false;
 		resource.script.imagePaths.push_back(normalized);
 		resource.script.forceOpaque = qtrue;
+		// Debug: Log when NO shader script is found for known problematic shaders
+		if (ri_.Printf && (normalized.find("plasma") != std::string::npos ||
+		                    normalized.find("shard") != std::string::npos ||
+		                    normalized.find("ammo") != std::string::npos)) {
+			ri_.Printf(PRINT_ALL, "^1NO_SCRIPT: '%s' (from raw '%s') - using default opaque\n",
+			          normalized.c_str(), name);
+		}
 	}
 
 	if (resource.script.imagePaths.empty()) {
@@ -2338,12 +2417,13 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 					const std::string& shaderName = surface.shaderNames[i];
 					if (!shaderName.empty()) {
 						qhandle_t shaderHandle = registerShader(shaderName.c_str(), true);
-						surface.shaderIndexes[i] = shaderHandle;
+					surface.shaderIndexes[i] = shaderHandle;
 
-						if (ri_.Printf && shaderHandle > 0) {
-							ri_.Printf(PRINT_DEVELOPER, "Metal: Registered shader '%s' (handle %d) for model '%s' surface %d\n",
-							          shaderName.c_str(), shaderHandle, name, surf);
-						}
+					if (ri_.Printf && shaderHandle > 0 && shaderHandle < shaderResources_.size()) {
+						const MetalShaderResource& res = shaderResources_[shaderHandle];
+						ri_.Printf(PRINT_ALL, "MD3: Registered shader '%s' -> handle %d, primaryImage %d for model '%s' surf %d\n",
+						          shaderName.c_str(), shaderHandle, res.primaryImageHandle, name, surf);
+					}
 					}
 				}
 			}
@@ -2430,34 +2510,33 @@ qhandle_t MetalRenderer::registerSkin(const char* name) {
 	char surfName[MAX_QPATH];
 
 	while (text_p && *text_p) {
-		// Parse the shader name FIRST (as CommaParse seems to be reading them in reverse)
+		// Get surface name FIRST (matches OpenGL2 tr_image.c:3249-3250)
 		char* token = CommaParse(&text_p);
+		Q_strncpyz(surfName, token, sizeof(surfName));
 
 		if (!token[0]) {
 			break;
 		}
 
-		// Skip if this looks like a tag
-		if (strstr(token, "tag_")) {
-			// Skip the surface name too
-			CommaParse(&text_p);
-			continue;
-		}
-
-		// Save the shader name
-		char shaderName[MAX_QPATH];
-		Q_strncpyz(shaderName, token, sizeof(shaderName));
+		// Lowercase the surface name so skin compares are faster
+		Q_strlwr(surfName);
 
 		// Skip comma
 		if (*text_p == ',') {
 			text_p++;
 		}
 
-		// Now get the surface name
-		token = CommaParse(&text_p);
-		Q_strncpyz(surfName, token, sizeof(surfName));
+		// Skip if this looks like a tag (after reading surface name)
+		if (strstr(surfName, "tag_")) {
+			continue;
+		}
 
-		// Lowercase the surface name so skin compares are faster
+		// Parse the shader name SECOND (matches OpenGL2 tr_image.c:3267)
+		token = CommaParse(&text_p);
+		char shaderName[MAX_QPATH];
+		Q_strncpyz(shaderName, token, sizeof(shaderName));
+
+		// Note: surfName is already lowercased above
 		Q_strlwr(surfName);
 
 		if (skin.numSurfaces < MAX_SKIN_SURFACES) {
@@ -2878,12 +2957,13 @@ void MetalRenderer::processScene(const MetalSceneState& scene) {
 	polyVertexBufferDirty_ = true;
 	lightBufferDirty_ = true;
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_DEVELOPER, "MetalScene: processed %d entities, %d polys, %d lights\n",
-		           sceneStats_.entities,
-		           sceneStats_.polys,
-		           sceneStats_.lights);
-	}
+	// Debug logging disabled - too noisy
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_DEVELOPER, "MetalScene: processed %d entities, %d polys, %d lights\n",
+	// 	           sceneStats_.entities,
+	// 	           sceneStats_.polys,
+	// 	           sceneStats_.lights);
+	// }
 }
 
 void MetalRenderer::processEntities(const MetalSceneState& scene) {
@@ -2898,20 +2978,16 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 	// 	          firstEntity, firstEntity + numEntities, numEntities);
 	// }
 
-	int modelCount = 0;
 	for (int i = 0; i < numEntities; ++i) {
 		const int entityIndex = firstEntity + i;
 		SceneDrawPacket packet;
 		packet.entity = scene.entities[entityIndex];
 		drawPackets_.push_back(packet);
 
-		if (packet.entity.reType == RT_MODEL) {
-			modelCount++;
-			// if (ri_.Printf) {
-			// 	ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
-			// 	          entityIndex, packet.entity.hModel, packet.entity.renderfx);
-			// }
-		}
+		// if (packet.entity.reType == RT_MODEL && ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
+		// 	          entityIndex, packet.entity.hModel, packet.entity.renderfx);
+		// }
 	}
 	sceneStats_.entities = static_cast<int>(drawPackets_.size());
 
@@ -3038,17 +3114,18 @@ void MetalRenderer::renderScenePackets() {
 	}
 	sceneDispatchSummary_ = summary;
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_DEVELOPER,
-		          "MetalScene: dispatch %d entities (%d model, %d sprite, %d beam), %d polys (%d verts), %d lights\n",
-		          summary.totalEntities,
-		          summary.modelEntities,
-		          summary.spriteEntities,
-		          summary.beamEntities,
-		          summary.polySurfaces,
-		          summary.polyVertices,
-		          summary.dynamicLights);
-	}
+	// Debug logging disabled - too noisy
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_DEVELOPER,
+	// 	          "MetalScene: dispatch %d entities (%d model, %d sprite, %d beam), %d polys (%d verts), %d lights\n",
+	// 	          summary.totalEntities,
+	// 	          summary.modelEntities,
+	// 	          summary.spriteEntities,
+	// 	          summary.beamEntities,
+	// 	          summary.polySurfaces,
+	// 	          summary.polyVertices,
+	// 	          summary.dynamicLights);
+	// }
 
 	sceneDispatched_ = true;
 }
@@ -3344,6 +3421,7 @@ void MetalRenderer::resetShaderCaches() {
 
 void MetalRenderer::resetStagePipelineCache() {
 	stagePipelineCache_.clear();
+	modelStagePipelineCache_.clear();
 }
 
 void MetalRenderer::ensureScriptHasStages(MetalRenderer::MetalShaderResource& resource) {
@@ -4042,10 +4120,16 @@ bool MetalRenderer::ensureModelPipeline() {
 	pd->setFragmentFunction(modelFragmentFunction_.get());
 	pd->setVertexDescriptor(modelVertexDescriptor_.get());
 
-	// Color attachment - no blending for opaque models (for now)
+	// Color attachment - enable alpha blending for transparent model surfaces
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
 	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
-	colorAttachment->setBlendingEnabled(false);
+	colorAttachment->setBlendingEnabled(true);
+	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	colorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+	colorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	colorAttachment->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	colorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
 
 	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
 
@@ -4075,6 +4159,47 @@ bool MetalRenderer::ensureModelPipeline() {
 
 		if (ri_.Printf && modelDepthState_) {
 			ri_.Printf(PRINT_ALL, "Metal: Created model depth stencil state\n");
+		}
+	}
+
+	// Create model depth stencil state with no depth write (for additive surfaces)
+	if (!modelDepthStateNoWrite_) {
+		MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+		depthDesc->setDepthWriteEnabled(false);  // Additive surfaces don't write depth
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
+		modelDepthStateNoWrite_.reset(device_->newDepthStencilState(depthDesc));
+		depthDesc->release();
+	}
+
+	// Create additive model pipeline (GL_ONE, GL_ONE blend mode)
+	if (!modelPipelineAdditive_) {
+		NS::Error* addError = nullptr;
+		MTL::RenderPipelineDescriptor* addPd = MTL::RenderPipelineDescriptor::alloc()->init();
+		addPd->setVertexFunction(modelVertexFunction_.get());
+		addPd->setFragmentFunction(modelFragmentFunction_.get());
+		addPd->setVertexDescriptor(modelVertexDescriptor_.get());
+
+		MTL::RenderPipelineColorAttachmentDescriptor* addColorAttachment = addPd->colorAttachments()->object(0);
+		addColorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+		addColorAttachment->setBlendingEnabled(true);
+		addColorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorOne);
+		addColorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
+		addColorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+		addColorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+		addColorAttachment->setDestinationAlphaBlendFactor(MTL::BlendFactorOne);
+		addColorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
+
+		addPd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+		modelPipelineAdditive_.reset(device_->newRenderPipelineState(addPd, &addError));
+		addPd->release();
+
+		if (!modelPipelineAdditive_ && addError && ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create additive model pipeline: %s\n",
+				addError->localizedDescription()->utf8String());
+			addError->release();
+		} else if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "Metal: Created additive model rendering pipeline\n");
 		}
 	}
 
@@ -4137,6 +4262,74 @@ MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(const MetalRe
 	}
 
 	auto [insertedIt, _] = stagePipelineCache_.emplace(key, std::move(entry));
+	return &insertedIt->second;
+}
+
+MetalRenderer::ModelStagePipelineEntry* MetalRenderer::getModelStagePipeline(const MetalRenderer::MetalShaderResource::MetalPipelineKey& key) {
+	// Ensure model pipeline resources are available
+	if (!ensureModelPipeline()) {
+		return nullptr;
+	}
+
+	auto it = modelStagePipelineCache_.find(key);
+	if (it != modelStagePipelineCache_.end()) {
+		return &it->second;
+	}
+
+	ModelStagePipelineEntry entry;
+	entry.key = key;
+
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+	pd->setVertexDescriptor(modelVertexDescriptor_.get());
+	pd->setVertexFunction(modelVertexFunction_.get());
+	pd->setFragmentFunction(modelFragmentFunction_.get());
+	
+	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
+	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	const bool enableBlend = !(key.srcBlend == MetalBlendFactor::One && key.dstBlend == MetalBlendFactor::Zero);
+	colorAttachment->setBlendingEnabled(enableBlend);
+	colorAttachment->setSourceRGBBlendFactor(ToMetalBlendFactor(key.srcBlend));
+	colorAttachment->setSourceAlphaBlendFactor(ToMetalBlendFactor(key.srcBlend));
+	colorAttachment->setDestinationRGBBlendFactor(ToMetalBlendFactor(key.dstBlend));
+	colorAttachment->setDestinationAlphaBlendFactor(ToMetalBlendFactor(key.dstBlend));
+	colorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+	colorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	NS::Error* error = nullptr;
+	entry.pipeline.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+	if (!entry.pipeline) {
+		if (ri_.Printf) {
+			const char* msg = error ? error->localizedDescription()->utf8String() : "unknown";
+			ri_.Printf(PRINT_WARNING, "Metal: failed to build model stage pipeline (%s)\n", msg);
+		}
+		if (error) {
+			error->release();
+		}
+		return nullptr;
+	}
+	if (error) {
+		error->release();
+	}
+
+	// Determine depth write based on blend mode
+	// Opaque (One, Zero) writes depth, blended surfaces don't
+	bool depthWrite = !enableBlend;
+	if (key.depthWriteExplicit) {
+		depthWrite = key.depthWrite;
+	}
+
+	MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+	depthDesc->setDepthWriteEnabled(depthWrite);
+	depthDesc->setDepthCompareFunction(key.depthTest ? MTL::CompareFunctionLessEqual : MTL::CompareFunctionAlways);
+	entry.depthState.reset(device_->newDepthStencilState(depthDesc));
+	depthDesc->release();
+	if (!entry.depthState) {
+		return nullptr;
+	}
+
+	auto [insertedIt, _] = modelStagePipelineCache_.emplace(key, std::move(entry));
 	return &insertedIt->second;
 }
 
@@ -5328,14 +5521,27 @@ void MetalRenderer::setupEntityLighting(const refEntity_t& ent, vec3_t ambientLi
 	// Sample the light grid at the entity's position
 	R_LightForPoint(lightOrigin, ambientLight, directedLight, lightDir);
 
+	// Apply bonus minimum light (matches R_SetupEntityLighting in tr_light.cpp)
+	// This ensures all entities have some minimum visibility
+	// identityLight = 0.5 for overbrightBits=1, so bonus is 0.5 * 32 = 16
+	const float identityLight = R_GetIdentityLight();
+	ambientLight[0] += identityLight * 32.0f;
+	ambientLight[1] += identityLight * 32.0f;
+	ambientLight[2] += identityLight * 32.0f;
+
+	// Clamp ambient light to 0-255 range
+	for (int i = 0; i < 3; i++) {
+		if (ambientLight[i] > 255.0f) ambientLight[i] = 255.0f;
+	}
+
 	// DEBUG: Log lighting values
 	static int logCount = 0;
-	// if (ri_.Printf && logCount++ < 3) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: Entity lighting - ambient=(%.1f,%.1f,%.1f), directed=(%.1f,%.1f,%.1f), dir=(%.2f,%.2f,%.2f)\n",
-	// 	          ambientLight[0], ambientLight[1], ambientLight[2],
-	// 	          directedLight[0], directedLight[1], directedLight[2],
-	// 	          lightDir[0], lightDir[1], lightDir[2]);
-	// }
+	if (ri_.Printf && logCount++ < 10) {
+		ri_.Printf(PRINT_ALL, "^3LIGHTING: ambient=(%.1f,%.1f,%.1f), directed=(%.1f,%.1f,%.1f), dir=(%.2f,%.2f,%.2f)\n",
+		          ambientLight[0], ambientLight[1], ambientLight[2],
+		          directedLight[0], directedLight[1], directedLight[2],
+		          lightDir[0], lightDir[1], lightDir[2]);
+	}
 }
 
 void MetalRenderer::multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result) {
@@ -5397,104 +5603,39 @@ void MetalRenderer::renderModelSurface(
 	const refEntity_t& ent,
 	MetalModelSurface& surface,
 	const float* mvpMatrix,
+	const float* modelMatrix,
 	float vertexLerp,
+	const ModelFogParams& fogParams,
 	const vec3_t ambientLight,
 	const vec3_t directedLight,
 	const vec3_t lightDir)
 {
-	// DEBUG: Log surface rendering start
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface called - encoder=%p, pipeline=%p, depthState=%p\n",
-	// 	          currentRenderEncoder_, modelPipeline_.get(), modelDepthState_.get());
-	// }
-
 	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_) {
-		// if (ri_.Printf) {
-		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - missing required state, returning\n");
-		// }
 		return;
 	}
 
-	// Build interleaved vertex buffer
-	MTL::Buffer* vertexBuffer = createModelVertexBuffer(ent, surface);
-	if (!vertexBuffer) {
-		// if (ri_.Printf) {
-		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - failed to create vertex buffer\n");
-		// }
-		return;
-	}
-
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - vertex buffer created, numIndexes=%d\n",
-	// 	          surface.numIndexes);
-	// }
-
-	// Set pipeline state
-	currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
-	currentRenderEncoder_->setDepthStencilState(modelDepthState_.get());
-	currentRenderEncoder_->setCullMode(MTL::CullModeBack);
-
-	// Set model uniforms (buffer index 1)
-	struct ModelUniforms {
-		float mvpMatrix[16];
-		float vertexLerp;
-		float padding[3];
-	};
-
-	ModelUniforms uniforms;
-	std::memcpy(uniforms.mvpMatrix, mvpMatrix, sizeof(float) * 16);
-	uniforms.vertexLerp = vertexLerp;
-	uniforms.padding[0] = uniforms.padding[1] = uniforms.padding[2] = 0.0f;
-
-	currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
-
-	// Set scene uniforms (buffer index 2) - for view origin in shader
-	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
-
-	// Set entity lighting parameters (fragment buffer index 0)
-	struct EntityLightingParams {
-		float ambientLight[3];
-		float padding1;
-		float directedLight[3];
-		float padding2;
-		float lightDir[3];
-		float padding3;
-	};
-
-	EntityLightingParams lighting;
-	// Normalize lighting from 0-255 range to 0-1 range (matches OpenGL2 tr_shade.c:1314-1318)
-	VectorScale(ambientLight, 1.0f / 255.0f, lighting.ambientLight);
-	VectorScale(directedLight, 1.0f / 255.0f, lighting.directedLight);
-	VectorCopy(lightDir, lighting.lightDir);
-	lighting.padding1 = lighting.padding2 = lighting.padding3 = 0.0f;
-
-	currentRenderEncoder_->setFragmentBytes(&lighting, sizeof(EntityLightingParams), 0);
+	// Get scene time for tcMod animations
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
 
 	// Determine shader to use (matches OpenGL2 tr_mesh.c:357-383)
 	// Priority: customShader > customSkin > surface.shaderIndexes > default
 	qhandle_t shaderHandle = 0;
-	const char* shaderSource = "none";
 
 	// 1. Check for customShader first
 	if (ent.customShader) {
 		shaderHandle = ent.customShader;
-		shaderSource = "customShader";
 	}
 	// 2. Check for customSkin with surface name match
 	else if (ent.customSkin > 0) {
 		MetalSkin* skin = getSkinByHandle(ent.customSkin);
 		if (skin) {
-			// Match the surface name to something in the skin file
-			// Surface names should be lowercase for comparison
 			char surfaceName[MAX_QPATH];
 			Q_strncpyz(surfaceName, surface.name, sizeof(surfaceName));
 			Q_strlwr(surfaceName);
 
 			for (int j = 0; j < skin->numSurfaces; ++j) {
-				// The names have both been lowercased
 				if (strcmp(skin->surfaces[j].name, surfaceName) == 0) {
 					shaderHandle = skin->surfaces[j].shader;
-					shaderSource = "customSkin";
 					break;
 				}
 			}
@@ -5504,108 +5645,222 @@ void MetalRenderer::renderModelSurface(
 	// 3. Fall back to surface.shaderIndexes if no customShader/customSkin
 	if (shaderHandle == 0 && !surface.shaderIndexes.empty()) {
 		shaderHandle = surface.shaderIndexes[0];
-		shaderSource = "shaderIndexes";
+	}
+	
+	// 4. Final fallback: use white shader
+	if (shaderHandle == 0) {
+		shaderHandle = registerShader("white", true);
 	}
 
-	// TARGETED DEBUG: Log shader selection for first few frames
-	static int surfaceLogCount = 0;
-	if (surfaceLogCount++ < 20 && ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "^5SURFACE_SHADER: surface='%s' shader=%d from=%s customSkin=%d\n",
-		          surface.name, shaderHandle, shaderSource, ent.customSkin);
+	// Get shader resource
+	const MetalShaderResource* shaderRes = nullptr;
+	if (shaderHandle > 0 && static_cast<size_t>(shaderHandle) < shaderResources_.size()) {
+		shaderRes = &shaderResources_[shaderHandle];
 	}
 
-	// Bind texture based on determined shader
-	bool textureFound = false;
-	if (shaderHandle > 0) {
-		MetalShaderResource* shaderRes = getShaderResource(shaderHandle);
-		if (shaderRes && shaderRes->primaryImageHandle > 0) {
-			TextureManager* texMgr = ensureTextureManager();
-			if (texMgr) {
-				MTL::Texture* tex = texMgr->getTexture(shaderRes->primaryImageHandle);
+	// Build interleaved vertex buffer (shared across all passes)
+	MTL::Buffer* vertexBuffer = createModelVertexBuffer(ent, surface);
+	if (!vertexBuffer) {
+		return;
+	}
+
+	// Set up common model uniforms (shared across all passes)
+	struct ModelUniforms {
+		float mvpMatrix[16];
+		float modelMatrix[16];
+		float vertexLerp;
+		float padding[3];
+	};
+
+	ModelUniforms uniforms{};
+	std::memcpy(uniforms.mvpMatrix, mvpMatrix, sizeof(float) * 16);
+	std::memcpy(uniforms.modelMatrix, modelMatrix, sizeof(float) * 16);
+	uniforms.vertexLerp = vertexLerp;
+	uniforms.padding[0] = uniforms.padding[1] = uniforms.padding[2] = 0.0f;
+
+	// Set up entity lighting parameters (shared across all passes)
+	EntityLightingParams lightingParams{};
+	VectorScale(ambientLight, 1.0f / 255.0f, lightingParams.ambientLight);
+	VectorScale(directedLight, 1.0f / 255.0f, lightingParams.directedLight);
+	vec3_t normalizedLightDir;
+	VectorNormalize2(lightDir, normalizedLightDir);
+	VectorCopy(normalizedLightDir, lightingParams.lightDir);
+
+	vec3_t axis0, axis1, axis2;
+	VectorCopy(ent.axis[0], axis0);
+	VectorCopy(ent.axis[1], axis1);
+	VectorCopy(ent.axis[2], axis2);
+	if (ent.nonNormalizedAxes) {
+		const float axisLength = VectorLength(axis0);
+		const float invLength = (axisLength > 0.0f) ? (1.0f / axisLength) : 1.0f;
+		VectorScale(axis0, invLength, axis0);
+		VectorScale(axis1, invLength, axis1);
+		VectorScale(axis2, invLength, axis2);
+	}
+	lightingParams.modelLightDir[0] = DotProduct(normalizedLightDir, axis0);
+	lightingParams.modelLightDir[1] = DotProduct(normalizedLightDir, axis1);
+	lightingParams.modelLightDir[2] = DotProduct(normalizedLightDir, axis2);
+	lightingParams.padding0 = lightingParams.padding1 = lightingParams.padding2 = 0.0f;
+	lightingParams.overBrightBits = static_cast<float>(r_overBrightBits_ ? r_overBrightBits_->integer : 1);
+
+	// Q3 models use counter-clockwise winding for front faces (OpenGL convention)
+	currentRenderEncoder_->setCullMode(MTL::CullModeFront);
+
+	// Get texture manager
+	TextureManager* texMgr = ensureTextureManager();
+
+	// ====== MULTI-PASS MODEL RENDERING ======
+	// Render each shader stage as a separate pass
+	
+	const size_t numStages = (shaderRes && !shaderRes->stageRuntimes.empty()) 
+	                          ? shaderRes->stageRuntimes.size() : 0;
+	
+	if (numStages > 0) {
+		// Multi-pass rendering for shader with script stages
+		for (size_t stageIndex = 0; stageIndex < numStages; stageIndex++) {
+			const auto& stageRuntime = shaderRes->stageRuntimes[stageIndex];
+			const auto& pipelineKey = stageRuntime.pipelineKey;
+			
+			// Get or create pipeline for this stage's blend mode
+			ModelStagePipelineEntry* stagePipeline = getModelStagePipeline(pipelineKey);
+			if (!stagePipeline || !stagePipeline->pipeline) {
+				continue;  // Skip this stage if pipeline creation failed
+			}
+			
+			// Set pipeline and depth state for this stage
+			currentRenderEncoder_->setRenderPipelineState(stagePipeline->pipeline.get());
+			currentRenderEncoder_->setDepthStencilState(stagePipeline->depthState.get());
+			
+			// Set vertex buffer and uniforms for each pass
+			currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+			currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+			currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+			
+			// Set up per-stage parameters (tcGen type and tcMod transforms)
+			ModelStageParams stageParams{};
+			if (stageRuntime.stageInfo) {
+				switch (stageRuntime.stageInfo->tcGen.type) {
+					case MetalTCGen::Lightmap:
+						stageParams.tcGenType = 1.0f;
+						break;
+					case MetalTCGen::Environment:
+						stageParams.tcGenType = 2.0f;
+						break;
+					default:
+						stageParams.tcGenType = 0.0f;  // Texture
+						break;
+				}
+				
+				// Compute tcMod transforms for this stage
+				TCModParams tcModParams = computeTCModParams(stageRuntime.stageInfo, sceneTimeSeconds);
+				std::memcpy(stageParams.texMatrix0, tcModParams.texMatrix0, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix1, tcModParams.texMatrix1, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix2, tcModParams.texMatrix2, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix3, tcModParams.texMatrix3, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix4, tcModParams.texMatrix4, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix5, tcModParams.texMatrix5, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix6, tcModParams.texMatrix6, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix7, tcModParams.texMatrix7, sizeof(float) * 4);
+			}
+			
+			// Set fragment uniforms
+			currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+			currentRenderEncoder_->setFragmentBytes(&fogParams, sizeof(ModelFogParams), 1);
+			currentRenderEncoder_->setFragmentBytes(&stageParams, sizeof(ModelStageParams), 2);
+			
+			// Bind texture for this stage
+			qhandle_t textureHandle = stageRuntime.primaryStageImage;
+			if (textureHandle == 0 && shaderRes->primaryImageHandle > 0) {
+				textureHandle = shaderRes->primaryImageHandle;
+			}
+			
+			if (textureHandle > 0 && texMgr) {
+				MTL::Texture* tex = texMgr->getTexture(textureHandle);
 				if (tex) {
 					currentRenderEncoder_->setFragmentTexture(tex, 0);
-					// Bind sampler
 					if (sceneSampler_) {
 						currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
 					}
-					textureFound = true;
+				}
+			}
+			
+			// Draw for this stage
+			if (surface.indexBuffer) {
+				MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+				currentRenderEncoder_->drawIndexedPrimitives(
+					MTL::PrimitiveTypeTriangle,
+					surface.numIndexes,
+					MTL::IndexTypeUInt32,
+					indexBuffer,
+					0
+				);
+			}
+		}
+	} else {
+		// Single-pass fallback for shaders without script stages
+		// Use the default model pipeline with alpha blending
+		currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
+		currentRenderEncoder_->setDepthStencilState(modelDepthState_.get());
+		
+		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+		currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+		
+		// Default stage params (tcGen texture)
+		ModelStageParams stageParams{};
+		
+		currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+		currentRenderEncoder_->setFragmentBytes(&fogParams, sizeof(ModelFogParams), 1);
+		currentRenderEncoder_->setFragmentBytes(&stageParams, sizeof(ModelStageParams), 2);
+		
+		// Bind primary texture
+		qhandle_t textureHandle = shaderRes ? shaderRes->primaryImageHandle : 0;
+		if (textureHandle > 0 && texMgr) {
+			MTL::Texture* tex = texMgr->getTexture(textureHandle);
+			if (tex) {
+				currentRenderEncoder_->setFragmentTexture(tex, 0);
+				if (sceneSampler_) {
+					currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
 				}
 			}
 		}
-	}
-
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - surface='%s', shaderHandle=%d, texture bound=%d\n",
-	// 	          surface.name, shaderHandle, textureFound);
-	// }
-
-	// Set vertex buffer
-	currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
-
-	// Draw indexed primitives
-	if (surface.indexBuffer) {
-		MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
-		currentRenderEncoder_->drawIndexedPrimitives(
-			MTL::PrimitiveTypeTriangle,
-			surface.numIndexes,
-			MTL::IndexTypeUInt32,
-			indexBuffer,
-			0
-		);
-		// if (ri_.Printf) {
-		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - draw call MADE with %d indexes\n",
-		// 	          surface.numIndexes);
-		// }
-	} else {
-		// if (ri_.Printf) {
-		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - NO index buffer, draw call SKIPPED\n");
-		// }
+		
+		// Draw
+		if (surface.indexBuffer) {
+			MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+			currentRenderEncoder_->drawIndexedPrimitives(
+				MTL::PrimitiveTypeTriangle,
+				surface.numIndexes,
+				MTL::IndexTypeUInt32,
+				indexBuffer,
+				0
+			);
+		}
 	}
 
 	vertexBuffer->release();
 }
 
-void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) {
-	// Validate model handle
-	if (ent.hModel <= 0 || static_cast<size_t>(ent.hModel) >= models_.size()) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - invalid hModel=%d (models_.size=%zu)\n",
-			          ent.hModel, models_.size());
-		}
+void MetalRenderer::renderModel(const refEntity_t& ent, MetalModel& model, MetalModelLOD& lodData,
+	int fogIndex, CullResult cullState) {
+	if (cullState == CullResult::Out) {
 		return;
 	}
 
-	MetalModel* model = models_[ent.hModel];
-	if (!model || model->type == MetalModelType::BAD) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - model null or BAD for hModel=%d\n", ent.hModel);
-		}
-		return;
-	}
+	const bool fullyVisible = (cullState == CullResult::In);
+	(void)fullyVisible; // Placeholder until clip handling is wired in
 
-	// For now, just use LOD 0
-	int lod = 0;
-	if (lod >= model->numLods || !model->lods[lod]) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - invalid LOD for model '%s' (lod=%d, numLods=%d)\n",
-			          model->name, lod, model->numLods);
-		}
-		return;
-	}
-
-	MetalModelLOD* lodData = model->lods[lod];
-
-	// TARGETED DEBUG: Log every model being rendered with key info
-	static int frameCount = 0;
-	static int lastFrameLogged = -1;
-	if (frameCount != lastFrameLogged && frameCount++ < 5) {
-		lastFrameLogged = frameCount;
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "^2MODEL_RENDER: '%s' hModel=%d customSkin=%d customShader=%d numSurfaces=%d renderfx=0x%x\n",
-			          model->name, ent.hModel, ent.customSkin, ent.customShader,
-			          lodData->numSurfaces, ent.renderfx);
-		}
-	}
+	// Debug logging for model rendering (commented out - enable for troubleshooting)
+	// static int frameCount = 0;
+	// static int lastFrameLogged = -1;
+	// if (frameCount != lastFrameLogged && frameCount++ < 5) {
+	// 	lastFrameLogged = frameCount;
+	// 	if (ri_.Printf) {
+	// 		ri_.Printf(PRINT_ALL, "^2MODEL_RENDER: '%s' hModel=%d customSkin=%d customShader=%d numSurfaces=%d renderfx=0x%x\n",
+	// 		          model.name, ent.hModel, ent.customSkin, ent.customShader,
+	// 		          lodData.numSurfaces, ent.renderfx);
+	// 	}
+	// }
 
 	// Calculate entity transform matrix
 	float modelMatrix[16];
@@ -5615,6 +5870,8 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 	float mvpMatrix[16];
 	multiplyMatrices4x4(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, modelMatrix, mvpMatrix);
 
+	const ModelFogParams fogParams = buildModelFogParams(fogIndex);
+
 	// Set up entity lighting
 	vec3_t ambientLight, directedLight, lightDir;
 	setupEntityLighting(ent, ambientLight, directedLight, lightDir);
@@ -5623,12 +5880,12 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 	float vertexLerp = 1.0f - ent.backlerp;
 
 	// Render each surface
-	for (int i = 0; i < lodData->numSurfaces; i++) {
+	for (int i = 0; i < lodData.numSurfaces; i++) {
 		// if (ri_.Printf) {
 		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModel - rendering surface %d/%d\n", i, lodData->numSurfaces);
 		// }
-		renderModelSurface(ent, lodData->surfaces[i], mvpMatrix, vertexLerp,
-		                   ambientLight, directedLight, lightDir);
+		renderModelSurface(ent, lodData.surfaces[i], mvpMatrix, modelMatrix, vertexLerp,
+		                   fogParams, ambientLight, directedLight, lightDir);
 	}
 }
 
@@ -5661,54 +5918,49 @@ bool MetalRenderer::drawModelEntities() {
 		return false;
 	}
 
-	// DEBUG: Count how many models we have
-	int modelCount = 0;
-	int thirdPersonCount = 0;
-	int renderedCount = 0;
-
 	// Render all model entities
 	for (const SceneDrawPacket& packet : drawPackets_) {
-		if (packet.entity.reType == RT_MODEL) {
-			modelCount++;
-
-			// Don't render third-person models in first-person view
-			// (similar to OpenGL2's personalModel check in tr_mesh.c:296-297)
-			// personalModel = (renderfx & RF_THIRD_PERSON) && !isPortal
-			// If personalModel is true, we skip rendering
-			bool isThirdPerson = (packet.entity.renderfx & RF_THIRD_PERSON) != 0;
-			// TODO: Check for portal/mirror views when implemented
-			// For now, assume we're never in a portal view
-			// bool isPortalView = false;
-
-			// Don't render third-person models in first-person view (matching OpenGL2 tr_mesh.c:296-297)
-			// This prevents the player from seeing their own body in first-person
-			bool personalModel = isThirdPerson; // && !isPortalView when portals are implemented
-
-			if (isThirdPerson) {
-				thirdPersonCount++;
-			}
-
-			if (!personalModel) {
-				// if (ri_.Printf) {
-				// 	ri_.Printf(PRINT_ALL, "DEBUG: Rendering model - hModel=%d, renderfx=0x%x, isThirdPerson=%d\n",
-				// 	          packet.entity.hModel, packet.entity.renderfx, isThirdPerson);
-				// }
-				renderModel(packet.entity, sceneCamera_.refdef);
-				renderedCount++;
-			} else {
-				// if (ri_.Printf) {
-				// 	ri_.Printf(PRINT_ALL, "DEBUG: Skipping personalModel - hModel=%d, renderfx=0x%x\n",
-				// 	          packet.entity.hModel, packet.entity.renderfx);
-				// }
-			}
+		const refEntity_t& ent = packet.entity;
+		if (ent.reType != RT_MODEL) {
+			continue;
 		}
-	}
 
-	// DEBUG: Summary
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities summary - total packets=%zu, models=%d, thirdPerson=%d, rendered=%d\n",
-	// 	          drawPackets_.size(), modelCount, thirdPersonCount, renderedCount);
-	// }
+		// Don't render third-person models in first-person view
+		bool isThirdPerson = (ent.renderfx & RF_THIRD_PERSON) != 0;
+		bool personalModel = isThirdPerson; // TODO: exclude portal views when implemented
+		if (personalModel) {
+			continue;
+		}
+
+		// Resolve model handle
+		if (ent.hModel <= 0 || static_cast<size_t>(ent.hModel) >= models_.size()) {
+			continue;
+		}
+		MetalModel* model = models_[ent.hModel];
+		if (!model || model->type == MetalModelType::BAD) {
+			continue;
+		}
+
+		int lod = computeModelLod(*model, ent);
+		if (lod < 0) {
+			lod = 0;
+		}
+		if (lod >= model->numLods || !model->lods[lod]) {
+			continue;
+		}
+		MetalModelLOD* lodData = model->lods[lod];
+		if (!lodData) {
+			continue;
+		}
+
+		const CullResult cullState = cullModel(*lodData, ent);
+		if (cullState == CullResult::Out) {
+			continue;
+		}
+
+		const int fogIndex = computeModelFogIndex(*lodData, ent);
+		renderModel(ent, *model, *lodData, fogIndex, cullState);
+	}
 
 	return true;
 }
@@ -5753,6 +6005,7 @@ void MetalRenderer::encodeLightCommands(SceneDispatchSummary& summary) {
 
 void MetalRenderer::updateCamera(const MetalSceneState& scene) {
 	sceneCamera_.valid = false;
+	sceneCamera_.frustumValid = false;
 	if (!scene.refdefValid) {
 		return;
 	}
@@ -5781,6 +6034,7 @@ void MetalRenderer::updateCamera(const MetalSceneState& scene) {
 
 	Mat4Multiply(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, sceneCamera_.viewProjectionMatrix);
 	Mat4SimpleInverse(sceneCamera_.viewMatrix, sceneCamera_.inverseViewMatrix);
+	buildFrustumPlanes(sceneCamera_);
 	
 	sceneCamera_.valid = true;
 }
@@ -5828,6 +6082,350 @@ void MetalRenderer::buildProjectionMatrix(SceneCamera& camera) {
 	float depth = zFar - zNear;
 	camera.projectionMatrix[10] = -zFar / depth;
 	camera.projectionMatrix[14] = -zFar * zNear / depth;
+}
+
+void MetalRenderer::buildFrustumPlanes(SceneCamera& camera) {
+	// Extract frustum planes from combined view-projection matrix (column-major order)
+	const float* m = camera.viewProjectionMatrix;
+	auto setPlane = [&](int index, float a, float b, float c, float d) {
+		float length = std::sqrt(a * a + b * b + c * c);
+		if (length <= 0.0f) {
+			camera.frustumPlanes[index][0] = camera.frustumPlanes[index][1] =
+			camera.frustumPlanes[index][2] = camera.frustumPlanes[index][3] = 0.0f;
+			return;
+		}
+		float invLen = 1.0f / length;
+		camera.frustumPlanes[index][0] = a * invLen;
+		camera.frustumPlanes[index][1] = b * invLen;
+		camera.frustumPlanes[index][2] = c * invLen;
+		camera.frustumPlanes[index][3] = d * invLen;
+	};
+
+	setPlane(0, m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]); // Left
+	setPlane(1, m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]); // Right
+	setPlane(2, m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]); // Bottom
+	setPlane(3, m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]); // Top
+	setPlane(4, m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]); // Near
+	setPlane(5, m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]); // Far
+
+	camera.frustumValid = true;
+}
+
+float MetalRenderer::projectRadius(float radius, const vec3_t location) const {
+	if (!sceneCamera_.valid) {
+		return 0.0f;
+	}
+
+	const vec3_t& axis = sceneCamera_.viewAxis[0];
+	const vec3_t& origin = sceneCamera_.viewOrigin;
+	const float c = DotProduct(axis, origin);
+	const float dist = DotProduct(axis, location) - c;
+	if (dist <= 0.0f) {
+		return 0.0f;
+	}
+
+	vec3_t p;
+	p[0] = 0.0f;
+	p[1] = std::fabs(radius);
+	p[2] = -dist;
+
+	const float* proj = sceneCamera_.projectionMatrix;
+	float projected[4];
+	projected[0] = p[0] * proj[0]  + p[1] * proj[4]  + p[2] * proj[8]  + proj[12];
+	projected[1] = p[0] * proj[1]  + p[1] * proj[5]  + p[2] * proj[9]  + proj[13];
+	projected[2] = p[0] * proj[2]  + p[1] * proj[6]  + p[2] * proj[10] + proj[14];
+	projected[3] = p[0] * proj[3]  + p[1] * proj[7]  + p[2] * proj[11] + proj[15];
+
+	if (projected[3] == 0.0f) {
+		return 0.0f;
+	}
+
+	float pr = projected[1] / projected[3];
+	if (pr > 1.0f) {
+		pr = 1.0f;
+	}
+	if (pr < 0.0f) {
+		pr = 0.0f;
+	}
+	return pr;
+}
+
+MetalRenderer::CullResult MetalRenderer::cullBoundingSphere(const vec3_t center, float radius) const {
+	if (!sceneCamera_.frustumValid) {
+		return CullResult::In;
+	}
+
+	bool clipped = false;
+	const bool useFarPlane = !(sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL);
+	const int numPlanes = useFarPlane ? 6 : 5;
+
+	for (int i = 0; i < numPlanes; ++i) {
+		const float* plane = sceneCamera_.frustumPlanes[i];
+		const float dist = plane[0] * center[0] + plane[1] * center[1] + plane[2] * center[2] + plane[3];
+		if (dist <= -radius) {
+			return CullResult::Out;
+		}
+		if (dist < radius) {
+			clipped = true;
+		}
+	}
+
+	return clipped ? CullResult::Clip : CullResult::In;
+}
+
+void MetalRenderer::transformModelPoint(const refEntity_t& ent, const float point[3], vec3_t out) const {
+	out[0] = point[0] * ent.axis[0][0] + point[1] * ent.axis[1][0] + point[2] * ent.axis[2][0] + ent.origin[0];
+	out[1] = point[0] * ent.axis[0][1] + point[1] * ent.axis[1][1] + point[2] * ent.axis[2][1] + ent.origin[1];
+	out[2] = point[0] * ent.axis[0][2] + point[1] * ent.axis[1][2] + point[2] * ent.axis[2][2] + ent.origin[2];
+}
+
+MetalRenderer::CullResult MetalRenderer::cullBoundingBox(const float mins[3], const float maxs[3], const refEntity_t& ent) const {
+	if (!sceneCamera_.frustumValid) {
+		return CullResult::In;
+	}
+
+	vec3_t worldMins;
+	vec3_t worldMaxs;
+	ClearBounds(worldMins, worldMaxs);
+
+	for (int i = 0; i < 8; ++i) {
+		vec3_t local;
+		local[0] = (i & 1) ? maxs[0] : mins[0];
+		local[1] = (i & 2) ? maxs[1] : mins[1];
+		local[2] = (i & 4) ? maxs[2] : mins[2];
+		vec3_t world;
+		transformModelPoint(ent, local, world);
+		AddPointToBounds(world, worldMins, worldMaxs);
+	}
+
+	bool clipped = false;
+	const bool useFarPlane = !(sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL);
+	const int numPlanes = useFarPlane ? 6 : 5;
+
+	for (int i = 0; i < numPlanes; ++i) {
+		const float* plane = sceneCamera_.frustumPlanes[i];
+		vec3_t positive;
+		positive[0] = (plane[0] >= 0.0f) ? worldMaxs[0] : worldMins[0];
+		positive[1] = (plane[1] >= 0.0f) ? worldMaxs[1] : worldMins[1];
+		positive[2] = (plane[2] >= 0.0f) ? worldMaxs[2] : worldMins[2];
+		const float dist = plane[0] * positive[0] + plane[1] * positive[1] + plane[2] * positive[2] + plane[3];
+		if (dist < 0.0f) {
+			return CullResult::Out;
+		}
+
+		vec3_t negative;
+		negative[0] = (plane[0] >= 0.0f) ? worldMins[0] : worldMaxs[0];
+		negative[1] = (plane[1] >= 0.0f) ? worldMins[1] : worldMaxs[1];
+		negative[2] = (plane[2] >= 0.0f) ? worldMins[2] : worldMaxs[2];
+		const float negDist = plane[0] * negative[0] + plane[1] * negative[1] + plane[2] * negative[2] + plane[3];
+		if (negDist < 0.0f) {
+			clipped = true;
+		}
+	}
+
+	return clipped ? CullResult::Clip : CullResult::In;
+}
+
+MetalRenderer::CullResult MetalRenderer::cullModel(const MetalModelLOD& lod, const refEntity_t& ent) const {
+	if (lod.numFrames <= 0 || lod.frames.empty()) {
+		return CullResult::In;
+	}
+
+	const int numFrames = lod.numFrames;
+	const int newFrameIndex = std::clamp(ent.frame, 0, numFrames - 1);
+	const int oldFrameIndex = std::clamp(ent.oldframe, 0, numFrames - 1);
+	const MetalModelFrame& newFrame = lod.frames[newFrameIndex];
+	const MetalModelFrame& oldFrame = lod.frames[oldFrameIndex];
+
+	if (!ent.nonNormalizedAxes) {
+		vec3_t newCenter;
+		transformModelPoint(ent, newFrame.localOrigin, newCenter);
+		if (ent.frame == ent.oldframe) {
+			const CullResult sphereCull = cullBoundingSphere(newCenter, newFrame.radius);
+			if (sphereCull != CullResult::Clip) {
+				return sphereCull;
+			}
+		} else {
+			const CullResult sphereCullNew = cullBoundingSphere(newCenter, newFrame.radius);
+			CullResult sphereCullOld;
+			if (newFrameIndex == oldFrameIndex) {
+				sphereCullOld = sphereCullNew;
+			} else {
+				vec3_t oldCenter;
+				transformModelPoint(ent, oldFrame.localOrigin, oldCenter);
+				sphereCullOld = cullBoundingSphere(oldCenter, oldFrame.radius);
+			}
+
+			if (sphereCullNew == sphereCullOld) {
+				if (sphereCullNew == CullResult::Out) {
+					return CullResult::Out;
+				}
+				if (sphereCullNew == CullResult::In) {
+					return CullResult::In;
+				}
+			}
+		}
+	}
+
+	vec3_t mergedMins;
+	vec3_t mergedMaxs;
+	for (int i = 0; i < 3; ++i) {
+		mergedMins[i] = std::min(oldFrame.bounds[0][i], newFrame.bounds[0][i]);
+		mergedMaxs[i] = std::max(oldFrame.bounds[1][i], newFrame.bounds[1][i]);
+	}
+
+	return cullBoundingBox(mergedMins, mergedMaxs, ent);
+}
+
+int MetalRenderer::computeModelLod(const MetalModel& model, const refEntity_t& ent) const {
+	if (model.numLods <= 1 || !model.lods[0]) {
+		return 0;
+	}
+
+	const MetalModelLOD* baseLod = model.lods[0];
+	if (!baseLod || baseLod->numFrames <= 0 || baseLod->frames.empty()) {
+		return 0;
+	}
+
+	const int numFrames = baseLod->numFrames;
+	int frameIndex = ent.frame;
+	if (frameIndex < 0 || frameIndex >= numFrames) {
+		frameIndex = 0;
+	}
+	const MetalModelFrame& frame = baseLod->frames[frameIndex];
+
+	const float radius = frame.radius;
+	float projectedRadius = projectRadius(radius, ent.origin);
+	float flod;
+	if (projectedRadius != 0.0f) {
+		float lodscale = r_lodScale_ ? r_lodScale_->value : 1.0f;
+		if (lodscale > 20.0f) lodscale = 20.0f;
+		if (lodscale < 0.0f) lodscale = 0.0f;
+		flod = 1.0f - projectedRadius * lodscale;
+	} else {
+		flod = 0.0f;
+	}
+
+	flod *= static_cast<float>(model.numLods);
+	int lod = static_cast<int>(flod);
+	if (lod < 0) {
+		lod = 0;
+	} else if (lod >= model.numLods) {
+		lod = model.numLods - 1;
+	}
+
+	if (r_lodBias_) {
+		lod += r_lodBias_->integer;
+		if (lod < 0) {
+			lod = 0;
+		} else if (lod >= model.numLods) {
+			lod = model.numLods - 1;
+		}
+	}
+
+	return lod;
+}
+
+int MetalRenderer::computeModelFogIndex(const MetalModelLOD& lod, const refEntity_t& ent) const {
+	if (sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL) {
+		return 0;
+	}
+	if (worldFogs_.empty() || lod.frames.empty() || lod.numFrames <= 0) {
+		return 0;
+	}
+
+	const int frameIndex = std::clamp(ent.frame, 0, lod.numFrames - 1);
+	const MetalModelFrame& frame = lod.frames[frameIndex];
+
+	vec3_t worldOrigin;
+	transformModelPoint(ent, frame.localOrigin, worldOrigin);
+
+	for (size_t i = 0; i < worldFogs_.size(); ++i) {
+		const FogVolume& fog = worldFogs_[i];
+		bool inside = true;
+		for (int axis = 0; axis < 3; ++axis) {
+			if (worldOrigin[axis] - frame.radius >= fog.bounds[1][axis]) {
+				inside = false;
+				break;
+			}
+			if (worldOrigin[axis] + frame.radius <= fog.bounds[0][axis]) {
+				inside = false;
+				break;
+			}
+		}
+		if (inside) {
+			return static_cast<int>(i) + 1; // Fog indices are 1-based
+		}
+	}
+
+	return 0;
+}
+
+MetalRenderer::ModelFogParams MetalRenderer::buildModelFogParams(int fogIndex) const {
+	ModelFogParams params;
+	params.fogColor[0] = 0.0f;
+	params.fogColor[1] = 0.0f;
+	params.fogColor[2] = 0.0f;
+	params.fogColor[3] = 1.0f;
+	params.fogDistanceVector[0] = 0.0f;
+	params.fogDistanceVector[1] = 0.0f;
+	params.fogDistanceVector[2] = 0.0f;
+	params.fogDistanceVector[3] = 0.0f;
+	params.fogDepthVector[0] = 0.0f;
+	params.fogDepthVector[1] = 0.0f;
+	params.fogDepthVector[2] = 0.0f;
+	params.fogDepthVector[3] = 0.0f;
+	params.fogEyeT = 0.0f;
+	params.fogTcScale = 0.0f;
+	params.fogEnabled = 0.0f;
+	params.fogHasSurface = 0.0f;
+
+	if (fogIndex <= 0 || !sceneCamera_.valid) {
+		return params;
+	}
+
+	const size_t fogIdx = static_cast<size_t>(fogIndex - 1);
+	if (fogIdx >= worldFogs_.size()) {
+		return params;
+	}
+
+	const FogVolume& fog = worldFogs_[fogIdx];
+	params.fogColor[0] = std::clamp(fog.fogColor[0], 0.0f, 1.0f);
+	params.fogColor[1] = std::clamp(fog.fogColor[1], 0.0f, 1.0f);
+	params.fogColor[2] = std::clamp(fog.fogColor[2], 0.0f, 1.0f);
+	params.fogColor[3] = 1.0f;
+
+	params.fogDistanceVector[0] = fog.surface[0] * fog.tcScale;
+	params.fogDistanceVector[1] = fog.surface[1] * fog.tcScale;
+	params.fogDistanceVector[2] = fog.surface[2] * fog.tcScale;
+	const float viewDot = sceneCamera_.viewOrigin[0] * fog.surface[0] +
+	                      sceneCamera_.viewOrigin[1] * fog.surface[1] +
+	                      sceneCamera_.viewOrigin[2] * fog.surface[2];
+	params.fogDistanceVector[3] = -viewDot * fog.tcScale;
+	params.fogDistanceVector[3] += 1.0f / 512.0f;
+
+	params.fogTcScale = fog.tcScale;
+	params.fogHasSurface = fog.hasSurface ? 1.0f : 0.0f;
+
+	if (fog.hasSurface) {
+		params.fogDepthVector[0] = fog.surface[0];
+		params.fogDepthVector[1] = fog.surface[1];
+		params.fogDepthVector[2] = fog.surface[2];
+		params.fogDepthVector[3] = -fog.surface[3];
+		params.fogEyeT = sceneCamera_.viewOrigin[0] * params.fogDepthVector[0] +
+		                 sceneCamera_.viewOrigin[1] * params.fogDepthVector[1] +
+		                 sceneCamera_.viewOrigin[2] * params.fogDepthVector[2] +
+		                 params.fogDepthVector[3];
+	} else {
+		params.fogDepthVector[0] = 0.0f;
+		params.fogDepthVector[1] = 0.0f;
+		params.fogDepthVector[2] = 0.0f;
+		params.fogDepthVector[3] = 0.0f;
+		params.fogEyeT = 1.0f;
+	}
+	params.fogEnabled = 1.0f;
+
+	return params;
 }
 
 float MetalRenderer::computeStereoOffset(stereoFrame_t frame, float zProj) const {
@@ -6268,6 +6866,8 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	ri_ = imports;
 	ri = imports;
 	registerConsoleCommands();
+	r_lodBias_ = ri_.Cvar_Get("r_lodbias", "0", CVAR_ARCHIVE);
+	r_lodScale_ = ri_.Cvar_Get("r_lodscale", "5", CVAR_CHEAT);
 	r_znear_ = ri_.Cvar_Get("r_znear", "4", CVAR_CHEAT);
 	if (ri_.Cvar_CheckRange) {
 		ri_.Cvar_CheckRange(r_znear_, 0.001f, 200.0f, qfalse);
@@ -6285,11 +6885,22 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	r_debugLight = ri_.Cvar_Get("r_debugLight", "0", CVAR_TEMP);
 	r_dlightMode = ri_.Cvar_Get("r_dlightMode", "0", CVAR_ARCHIVE | CVAR_LATCH);
 
-	// Note: We use hardcoded identityLight = 0.5 in ConvertDrawVert for overbright rendering
-	// This corresponds to r_overBrightBits=1 (the default value)
-
 	// Initialize lighting system
 	R_InitLightingSystem();
+
+	// Set identity light based on overbright bits
+	// Matches OpenGL2: tr.identityLight = 1.0f / ( 1 << tr.overbrightBits )
+	{
+		int overbrightBits = r_overBrightBits_ ? r_overBrightBits_->integer : 1;
+		int mapOverbrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+		
+		// Clamp overbright bits like OpenGL2 does
+		if (overbrightBits > 2) overbrightBits = 2;
+		if (overbrightBits < 0) overbrightBits = 0;
+		if (overbrightBits > mapOverbrightBits) overbrightBits = mapOverbrightBits;
+		
+		R_SetIdentityLight(overbrightBits);
+	}
 
 	resetShaderCaches();
 	// TextureManager will be created when device is available

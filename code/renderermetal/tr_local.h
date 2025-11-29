@@ -106,6 +106,13 @@ extern cvar_t	*r_dlightMode;
 void R_InitLightingSystem(void);
 void R_ShutdownLightingSystem(void);
 
+// Set identity light value based on overbright bits (call after cvar init)
+// identityLight = 1.0 / (1 << overbrightBits) for overbright rendering
+void R_SetIdentityLight(int overbrightBits);
+
+// Get current identity light value
+float R_GetIdentityLight(void);
+
 // Load light grid data from BSP
 void R_LoadLightGrid(const byte* gridData, int gridDataSize,
                      const uint16_t* grid16Data, int grid16DataSize,

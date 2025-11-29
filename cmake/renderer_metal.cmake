@@ -74,6 +74,16 @@ add_custom_command(
 # Create custom target for Metal shaders
 add_custom_target(metal_shaders ALL DEPENDS ${METALLIB_FILE})
 
+# Copy metallib to app bundle whenever shaders are built
+# This runs as part of metal_shaders target, not renderer_metal POST_BUILD
+# so it happens even when only shaders change
+add_custom_command(TARGET metal_shaders POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/Release/ioquake3.app/Contents/Resources
+    COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB_FILE} ${CMAKE_BINARY_DIR}/Release/ioquake3.app/Contents/Resources/default.metallib
+    COMMENT "Copying default.metallib to app bundle Resources (shader target)"
+    VERBATIM
+)
+
 if(USE_RENDERER_DLOPEN)
     list(APPEND RENDERER_METAL_BINARY_SOURCES ${DYNAMIC_RENDERER_SOURCES})
 
@@ -90,7 +100,7 @@ if(USE_RENDERER_DLOPEN)
 
     set_output_dirs(${RENDERER_METAL_BINARY})
     
-    # Copy metallib to app bundle Resources directory (where Metal looks for it)
+    # Also copy metallib as part of renderer build (redundant but ensures it's there)
     add_custom_command(TARGET ${RENDERER_METAL_BINARY} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_BUNDLE_CONTENT_DIR:ioquake3>/Resources
         COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB_FILE} $<TARGET_BUNDLE_CONTENT_DIR:ioquake3>/Resources/default.metallib

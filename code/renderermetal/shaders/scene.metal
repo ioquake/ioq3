@@ -53,14 +53,14 @@ struct StageFragmentParams {
 
 // Entity lighting parameters - for CGEN_LIGHTING_DIFFUSE
 struct EntityLightingParams {
-    float3 ambientLight;    // Ambient light color (0-255 scale)
+    float3 ambientLight;    // Ambient light color (normalized 0-1 range)
     float padding0;
-    float3 directedLight;   // Directional light color (0-255 scale)
+    float3 directedLight;   // Directional light color (normalized 0-1 range)
     float padding1;
     float3 lightDir;        // Normalized light direction in world space
     float padding2;
     float3 modelLightDir;   // Light direction in model space (for normals)
-    float padding3;
+    float overBrightBits;   // Overbright bits value (1 = 2x brightness)
 };
 
 struct VertexIn {
@@ -265,6 +265,7 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
 
 struct ModelUniforms {
     float4x4 modelViewProjection;  // Combined MVP matrix for the entity
+    float4x4 modelMatrix;          // Model matrix to recover world-space position
     float vertexLerp;              // Frame interpolation factor (0.0-1.0)
     float3 padding;
 };
@@ -280,8 +281,35 @@ struct ModelVertexIn {
 struct ModelVertexOut {
     float4 position [[position]];
     float2 texCoord;
-    float3 normal;        // Interpolated normal for lighting
-    float3 worldPosition; // World position for lighting
+    float2 envTexCoord;   // Pre-computed environment map texture coordinates
+    float3 normal;        // World-space normal for lighting
+    float3 worldPosition; // World-space position for fog and lighting
+};
+
+// Parameters for model stage rendering (per-stage uniforms)
+// Includes tcMod matrices for animated texture effects
+struct ModelStageParams {
+    float tcGenType;      // 0 = Texture, 1 = Lightmap, 2 = Environment
+    float padding[3];
+    // TCMod matrices (same format as TCModParams)
+    float4 texMatrix0;    // First tcMod transform row 0
+    float4 texMatrix1;    // First tcMod transform row 1
+    float4 texMatrix2;    // Second tcMod transform row 0
+    float4 texMatrix3;    // Second tcMod transform row 1
+    float4 texMatrix4;    // Third tcMod transform row 0
+    float4 texMatrix5;    // Third tcMod transform row 1
+    float4 texMatrix6;    // Fourth tcMod transform row 0
+    float4 texMatrix7;    // Fourth tcMod transform row 1
+};
+
+struct ModelFogParams {
+    float4 fogColor;
+    float4 fogDistanceVector;
+    float4 fogDepthVector;
+    float fogEyeT;
+    float fogTcScale;
+    float fogEnabled;
+    float fogHasSurface;
 };
 
 // Model vertex shader with frame interpolation
@@ -294,40 +322,128 @@ vertex ModelVertexOut vertex_model(ModelVertexIn in [[stage_in]],
     float3 position = mix(in.position, in.position2, modelUniforms.vertexLerp);
     float3 normal = mix(in.normal, in.normal2, modelUniforms.vertexLerp);
 
+    float4 localPos = float4(position, 1.0);
+    float4 worldPos = modelUniforms.modelMatrix * localPos;
+
     // Transform to clip space
-    out.position = modelUniforms.modelViewProjection * float4(position, 1.0);
+    out.position = modelUniforms.modelViewProjection * localPos;
 
     // Pass through texture coordinates
     out.texCoord = in.texCoord;
 
-    // Pass through normal and position for lighting
-    out.normal = normalize(normal);
-    out.worldPosition = position;
+    float3x3 normalMatrix = float3x3(modelUniforms.modelMatrix[0].xyz,
+                                     modelUniforms.modelMatrix[1].xyz,
+                                     modelUniforms.modelMatrix[2].xyz);
+    out.normal = normalize(normalMatrix * normal);
+    out.worldPosition = worldPos.xyz;
+
+    // Pre-compute environment map texture coordinates (for tcGen environment)
+    out.envTexCoord = CalcEnvironmentTexCoords(worldPos.xyz, out.normal, sceneUniforms.viewOrigin.xyz);
 
     return out;
+}
+
+inline float CalcModelFog(float3 worldPos, constant ModelFogParams& fog) {
+    if (fog.fogEnabled < 0.5f) {
+        return 0.0f;
+    }
+
+    float s = dot(float4(worldPos, 1.0), fog.fogDistanceVector) * 8.0f;
+    float t = dot(float4(worldPos, 1.0), fog.fogDepthVector);
+
+    float eyeOutside = fog.fogEyeT < 0.0f ? 1.0f : 0.0f;
+    float fogged = t >= eyeOutside ? 1.0f : 0.0f;
+
+    t += 1e-6f;
+    float denom = t - fog.fogEyeT * eyeOutside;
+    if (fabs(denom) < 1e-6f) {
+        return 0.0f;
+    }
+
+    t *= fogged / denom;
+    return s * t;
 }
 
 // Model fragment shader
 fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
                               texture2d<float> tex [[texture(0)]],
                               sampler samp [[sampler(0)]],
-                              constant EntityLightingParams& lighting [[buffer(0)]]) {
+                              constant EntityLightingParams& lighting [[buffer(0)]],
+                              constant ModelFogParams& fogParams [[buffer(1)]],
+                              constant ModelStageParams& stageParams [[buffer(2)]]) {
+    // Select texture coordinates based on tcGenType
+    // 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
+    float2 uv;
+    if (stageParams.tcGenType > 1.5f) {
+        // tcGen environment - use pre-computed environment map coords
+        uv = in.envTexCoord;
+    } else {
+        // tcGen texture (default) - models don't have lightmap coords
+        uv = in.texCoord;
+    }
+
+    // Apply tcMod transformations (rotate, scroll, scale, etc.)
+    // Uses same format as world surface ApplyTCMod but simplified for models
+    float2 offsetPos = float2(in.worldPosition.x + in.worldPosition.z, in.worldPosition.y);
+    
+    // First tcMod
+    uv = float2(uv.x * stageParams.texMatrix0.x + uv.y * stageParams.texMatrix0.y + stageParams.texMatrix0.z,
+                uv.x * stageParams.texMatrix1.x + uv.y * stageParams.texMatrix1.y + stageParams.texMatrix1.z);
+    uv += stageParams.texMatrix0.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(stageParams.texMatrix1.w * 2.0 * M_PI_F));
+    
+    // Second tcMod
+    uv = float2(uv.x * stageParams.texMatrix2.x + uv.y * stageParams.texMatrix2.y + stageParams.texMatrix2.z,
+                uv.x * stageParams.texMatrix3.x + uv.y * stageParams.texMatrix3.y + stageParams.texMatrix3.z);
+    uv += stageParams.texMatrix2.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(stageParams.texMatrix3.w * 2.0 * M_PI_F));
+    
+    // Third tcMod
+    uv = float2(uv.x * stageParams.texMatrix4.x + uv.y * stageParams.texMatrix4.y + stageParams.texMatrix4.z,
+                uv.x * stageParams.texMatrix5.x + uv.y * stageParams.texMatrix5.y + stageParams.texMatrix5.z);
+    uv += stageParams.texMatrix4.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(stageParams.texMatrix5.w * 2.0 * M_PI_F));
+    
+    // Fourth tcMod
+    uv = float2(uv.x * stageParams.texMatrix6.x + uv.y * stageParams.texMatrix6.y + stageParams.texMatrix6.z,
+                uv.x * stageParams.texMatrix7.x + uv.y * stageParams.texMatrix7.y + stageParams.texMatrix7.z);
+    uv += stageParams.texMatrix6.w * sin(offsetPos * (2.0 * M_PI_F / 1024.0) + float2(stageParams.texMatrix7.w * 2.0 * M_PI_F));
+
     // Sample texture
-    float4 texColor = tex.sample(samp, in.texCoord);
-
+    float4 texColor = tex.sample(samp, uv);
+    
     // Calculate lighting (CGEN_LIGHTING_DIFFUSE)
-    // Matches OpenGL2: color = ambientLight + N·L * directedLight
-    float3 ambient = lighting.ambientLight / 255.0;
-    float3 directed = lighting.directedLight / 255.0;
+    // Matches OpenGL2's lightall_vp.glsl which does:
+    //   var_Color = baseColor (= 1 << overbrightBits)
+    //   var_Color.rgb *= u_DirectedLight * NL + u_AmbientLight
+    // So final color is: baseColor * (directedLight * NL + ambientLight)
+    
+    // Lighting values are already normalized to 0-1 range on CPU
+    float3 ambient = lighting.ambientLight;
+    float3 directed = lighting.directedLight;
 
-    // Calculate N·L (normal dot light direction)
-    float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir));
+    // Calculate N·L using world-space light direction and world-space normals
+    float3 worldLightDir = normalize(lighting.lightDir);
+    float NdotL = max(0.0f, dot(normalize(in.normal), worldLightDir));
 
     // Combine ambient and directional lighting
     float3 litColor = ambient + NdotL * directed;
+    
+    // Apply overbright multiplier (1 << overbrightBits)
+    // For overbrightBits=1, this is 2.0, matching OpenGL2's baseColor scaling
+    // Also apply additional boost since models are still too dark
+    float overbright = exp2(lighting.overBrightBits) * 16.0f;
+    litColor *= overbright;
+    
+    // Clamp after overbright (matches OpenGL2 behavior)
+    litColor = clamp(litColor, 0.0f, 1.0f);
 
     // Combine texture and lighting
     float4 color = texColor * float4(litColor, 1.0);
+
+    if (fogParams.fogEnabled > 0.5f) {
+        float fogValue = CalcModelFog(in.worldPosition, fogParams);
+        float fogFactor = sqrt(clamp(fogValue, 0.0f, 1.0f));
+        color.rgb = mix(color.rgb, fogParams.fogColor.rgb, fogFactor);
+        color.a = mix(color.a, fogParams.fogColor.a, fogFactor);
+    }
 
     return color;
 }

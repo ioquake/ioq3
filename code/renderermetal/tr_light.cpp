@@ -94,7 +94,38 @@ void R_InitLightingSystem() {
     VectorSet(g_worldLighting.sunDirection, 0.45f, 0.3f, 0.9f);
     VectorNormalize(g_worldLighting.sunDirection);
 
-    g_worldLighting.identityLight = 1.0f / 255.0f; // Matches tr.identityLight initialization
+    // Default identityLight - will be overwritten by R_SetIdentityLight
+    g_worldLighting.identityLight = 0.5f; // Default for overbrightBits=1
+}
+
+/*
+=================
+R_SetIdentityLight
+Set identity light value based on overbright bits
+Matches tr.identityLight = 1.0f / ( 1 << tr.overbrightBits ) in OpenGL2
+=================
+*/
+void R_SetIdentityLight(int overbrightBits) {
+    // Clamp overbright bits to valid range [0, 2]
+    if (overbrightBits > 2) {
+        overbrightBits = 2;
+    } else if (overbrightBits < 0) {
+        overbrightBits = 0;
+    }
+    
+    g_worldLighting.identityLight = 1.0f / (float)(1 << overbrightBits);
+    ri.Printf(PRINT_DEVELOPER, "R_SetIdentityLight: overbrightBits=%d, identityLight=%f\n",
+              overbrightBits, g_worldLighting.identityLight);
+}
+
+/*
+=================
+R_GetIdentityLight
+Return current identity light value
+=================
+*/
+float R_GetIdentityLight(void) {
+    return g_worldLighting.identityLight;
 }
 
 /*
