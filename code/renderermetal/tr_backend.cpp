@@ -48,6 +48,20 @@ struct StageFragmentParams {
 	float padding3 = 0.0f;
 };
 
+// Dynamic light uniforms - matches dlight.metal DlightUniforms
+struct alignas(16) DlightUniforms {
+	float modelViewProjection[16] = {};
+	float dlightInfo[4] = {};  // xyz = light position, w = 1/radius
+	float color[4] = {};       // rgba = light color
+	int32_t deformGen = 0;
+	float deformParams[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	float time = 0.0f;
+	float vertexLerp = 0.0f;
+	float padding[2] = {0.0f, 0.0f};
+};
+
+static_assert(sizeof(DlightUniforms) % 16 == 0, "DlightUniforms must be 16-byte aligned");
+
 // Match Metal's PolyVertex structure EXACTLY with packed layout
 // Metal shader uses packed_float3 which has no padding
 struct __attribute__((packed)) MetalPolyVertex {
@@ -885,6 +899,7 @@ private:
 	StagePipelineEntry* getStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
+	bool drawDynamicLights();
 	bool drawFogPasses();
 	bool ensureSkyboxResources();
 	void loadSkyboxTextures(MetalShaderResource& resource);
@@ -2530,7 +2545,11 @@ void MetalRenderer::renderScenePackets() {
 	if (!drawPolyPackets()) {
 		return;
 	}
-	// Draw fog passes after normal rendering
+	// Draw dynamic lights after normal rendering
+	if (!drawDynamicLights()) {
+		return;
+	}
+	// Draw fog passes after dynamic lights
 	if (!drawFogPasses()) {
 		return;
 	}
@@ -4424,6 +4443,113 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 	
 	skyboxRenderedThisFrame_ = true;
 	
+	return true;
+}
+
+bool MetalRenderer::drawDynamicLights() {
+	// Check if we have lights to render
+	if (lightPackets_.empty()) {
+		return true;  // No lights
+	}
+
+	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+		return true;  // No geometry to light
+	}
+
+	if (polyPackets_.empty()) {
+		return true;  // No surfaces to light
+	}
+
+	// Ensure dlight resources are initialized
+	if (!ensureDlightResources() || !dlightPipeline_ || !dlightTexture_) {
+		return true;  // Can't render without pipeline
+	}
+
+	// Set dlight pipeline and resources
+	currentRenderEncoder_->setRenderPipelineState(dlightPipeline_.get());
+	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
+	currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+
+	// Create uniform buffer for dlight uniforms
+	DlightUniforms uniforms{};
+
+	// Use scene camera matrices for MVP calculation
+	// viewProjection is already computed in sceneUniforms_
+	for (int i = 0; i < 16; ++i) {
+		uniforms.modelViewProjection[i] = sceneUniforms_.viewProjection[i];
+	}
+
+	int lightsRendered = 0;
+	int surfacesLit = 0;
+
+	// Render each dynamic light
+	for (const SceneLightPacket& lightPacket : lightPackets_) {
+		const MetalSceneLight& light = lightPacket.light;
+
+		// Skip if light has no intensity
+		if (light.intensity <= 0.0f) {
+			continue;
+		}
+
+		// Calculate light radius from intensity
+		// intensity is already the radius in Quake 3
+		const float radius = light.intensity;
+		if (radius <= 0.0f) {
+			continue;
+		}
+
+		// Setup dlight uniforms
+		uniforms.dlightInfo[0] = light.origin[0];
+		uniforms.dlightInfo[1] = light.origin[1];
+		uniforms.dlightInfo[2] = light.origin[2];
+		uniforms.dlightInfo[3] = 1.0f / radius;  // Inverse radius for shader
+
+		// Light color
+		uniforms.color[0] = light.color[0];
+		uniforms.color[1] = light.color[1];
+		uniforms.color[2] = light.color[2];
+		uniforms.color[3] = 1.0f;  // Alpha
+
+		// No deforms for now
+		uniforms.deformGen = 0;
+		uniforms.time = sceneUniforms_.timeInfo[0];
+		uniforms.vertexLerp = 0.0f;
+
+		// Upload uniforms for this light
+		currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(DlightUniforms), 1);
+
+		// Draw all surfaces that are within the light's radius
+		for (const ScenePolyPacket& packet : polyPackets_) {
+			// Simple culling: check if surface bounding sphere intersects light
+			// For now, just draw all surfaces (we'll add proper culling later)
+
+			// Skip if no vertices
+			if (packet.vertexCount <= 0) {
+				continue;
+			}
+
+			// Draw the surface with dlight applied
+			currentRenderEncoder_->drawPrimitives(
+				packet.primitive,
+				NS::UInteger(packet.firstVertex),
+				NS::UInteger(packet.vertexCount)
+			);
+
+			++surfacesLit;
+		}
+
+		++lightsRendered;
+	}
+
+	if (ri_.Printf && lightsRendered > 0) {
+		static int frameCount = 0;
+		if (frameCount++ % 60 == 0) {
+			ri_.Printf(PRINT_DEVELOPER, "Metal: drawDynamicLights - %d lights, %d surfaces\n",
+			          lightsRendered, surfacesLit);
+		}
+	}
+
 	return true;
 }
 
