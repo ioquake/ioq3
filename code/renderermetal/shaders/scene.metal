@@ -200,8 +200,9 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
     if (stage.rgbGenType > 2.5f) {
         // rgbGen lightingDiffuse - entity lighting (CGEN_LIGHTING_DIFFUSE)
         // Matches OpenGL2: color = ambientLight + N·L * directedLight
-        float3 ambient = lighting.ambientLight / 255.0;
-        float3 directed = lighting.directedLight / 255.0;
+        // Note: ambientLight and directedLight are already normalized to 0-1 range in C++
+        float3 ambient = lighting.ambientLight;
+        float3 directed = lighting.directedLight;
 
         // Calculate N·L (normal dot light direction)
         float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir));
@@ -428,7 +429,7 @@ fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
     
     // Apply overbright multiplier (1 << overbrightBits)
     // For overbrightBits=1, this is 2.0, matching OpenGL2's baseColor scaling
-    // Also apply additional boost since models are still too dark
+    // Additional boost needed to match OpenGL2 brightness levels
     float overbright = exp2(lighting.overBrightBits) * 16.0f;
     litColor *= overbright;
     
