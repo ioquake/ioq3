@@ -1053,6 +1053,8 @@ private:
 	std::vector<int> worldSurfaceToPacket_;  // Maps BSP surface index to packet index (-1 if skipped)
 	std::vector<MetalBrushModel> brushModels_;  // Brush models (inline BSP models)
 	int numWorldSurfaces_ = 0;  // Number of surfaces in model 0 (the world itself)
+	int numWorldPackets_ = 0;   // Number of packets that belong to the world (vs brush models)
+	size_t worldVertexBaseOffset_ = 0;  // Offset into polyVertices_ where world geometry starts
 	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
 	std::vector<MetalSkin> registeredSkins_;  // Skin storage (index 0 is reserved)
@@ -1473,12 +1475,18 @@ void MetalRenderer::appendWorldGeometry() {
 	}
 
 	const size_t baseVertex = polyVertices_.size();
+	worldVertexBaseOffset_ = baseVertex;  // Save for brush model rendering
 	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
 	
 	// Copy template vertices - we may modify them for deformVertexes
 	polyVertices_.insert(polyVertices_.end(), worldVertexTemplate_.begin(), worldVertexTemplate_.end());
 	
-	for (const ScenePolyPacket& templatePacket : worldPacketTemplate_) {
+	// Only append world packets (model 0), not brush model packets
+	// Brush model surfaces are rendered via renderBrushModel with entity transforms
+	const int packetLimit = (numWorldPackets_ > 0) ? numWorldPackets_ : static_cast<int>(worldPacketTemplate_.size());
+	
+	for (int i = 0; i < packetLimit; ++i) {
+		const ScenePolyPacket& templatePacket = worldPacketTemplate_[i];
 		ScenePolyPacket packet = templatePacket;
 		packet.firstVertex += static_cast<int>(baseVertex);
 		
@@ -1800,10 +1808,76 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	worldSurfaceToPacket_.clear();
 	brushModels_.clear();
 	numWorldSurfaces_ = 0;
+	numWorldPackets_ = 0;
+	
+	// Load brush models FIRST to determine numWorldSurfaces_
+	// This tells us which surfaces belong to the static world vs movers
+	{
+		int modelsLen = 0;
+		const dmodel_t* bspModels = reinterpret_cast<const dmodel_t*>(getLumpRange(LUMP_MODELS, modelsLen, sizeof(dmodel_t)));
+		if (bspModels && modelsLen >= 1) {
+			brushModels_.resize(modelsLen);
+			
+			for (int i = 0; i < modelsLen; i++) {
+				const dmodel_t& dm = bspModels[i];
+				MetalBrushModel& bm = brushModels_[i];
+				
+				// Copy bounds
+				for (int j = 0; j < 3; j++) {
+					bm.bounds[0][j] = LittleFloat(dm.mins[j]);
+					bm.bounds[1][j] = LittleFloat(dm.maxs[j]);
+				}
+				
+				// Store surface range (these are BSP surface indices)
+				bm.firstSurface = LittleLong(dm.firstSurface);
+				bm.numSurfaces = LittleLong(dm.numSurfaces);
+				
+				if (i == 0) {
+					// Model 0 is the world itself - record how many surfaces it has
+					// Only surfaces 0 to numWorldSurfaces_-1 should be rendered as static world
+					numWorldSurfaces_ = bm.numSurfaces;
+				}
+				
+				// Register the brush model as a model handle (for inline models like *1, *2, etc.)
+				if (i > 0) {
+					char modelName[16];
+					Com_sprintf(modelName, sizeof(modelName), "*%d", i);
+					
+					// Allocate a new model entry
+					const qhandle_t handle = static_cast<qhandle_t>(models_.size());
+					MetalModel* model = MetalModel_Alloc(handle);
+					std::strncpy(model->name, modelName, sizeof(model->name) - 1);
+					model->name[sizeof(model->name) - 1] = '\0';
+					model->type = MetalModelType::BRUSH;
+					model->bmodel = &brushModels_[i];
+					
+					models_.push_back(model);
+					modelLookup_[std::string(modelName)] = handle;
+					
+					if (ri_.Printf) {
+						ri_.Printf(PRINT_ALL, "Metal: Registered brush model '%s' handle=%d firstSurf=%d numSurf=%d\n",
+						          modelName, handle, bm.firstSurface, bm.numSurfaces);
+					}
+				}
+			}
+			
+			if (ri_.Printf && modelsLen > 1) {
+				ri_.Printf(PRINT_ALL, "Metal: Loaded %d brush models (doors, platforms, movers)\n", modelsLen - 1);
+			}
+		}
+	}
+	
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: World has %d surfaces, model 0 has %d surfaces (brush models use surfaces %d+)\n",
+		          surfaceCount, numWorldSurfaces_, numWorldSurfaces_);
+	}
+	
 	worldVertexTemplate_.reserve(static_cast<size_t>(vertexCount) * 2);
 	worldPacketTemplate_.reserve(static_cast<size_t>(surfaceCount));
 	worldSurfaceToPacket_.resize(surfaceCount, -1);  // -1 means surface was skipped
 
+	// Load ALL surfaces into the template (world + brush models)
+	// Brush model surfaces need to be in the template so renderBrushModel can find them
 	for (int surfaceIndex = 0; surfaceIndex < surfaceCount; ++surfaceIndex) {
 		const dsurface_t& ds = surfaces[surfaceIndex];
 		const int surfaceType = LittleLong(ds.surfaceType);
@@ -1923,56 +1997,17 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		// Record mapping from BSP surface index to packet index
 		worldSurfaceToPacket_[surfaceIndex] = static_cast<int>(worldPacketTemplate_.size());
 		worldPacketTemplate_.push_back(packet);
-	}
-
-	// Load brush models (inline BSP models for doors, platforms, etc.)
-	{
-		int modelsLen = 0;
-		const dmodel_t* bspModels = reinterpret_cast<const dmodel_t*>(getLumpRange(LUMP_MODELS, modelsLen, sizeof(dmodel_t)));
-		if (bspModels && modelsLen >= 1) {
-			brushModels_.resize(modelsLen);
-			
-			for (int i = 0; i < modelsLen; i++) {
-				const dmodel_t& dm = bspModels[i];
-				MetalBrushModel& bm = brushModels_[i];
-				
-				// Copy bounds
-				for (int j = 0; j < 3; j++) {
-					bm.bounds[0][j] = LittleFloat(dm.mins[j]);
-					bm.bounds[1][j] = LittleFloat(dm.maxs[j]);
-				}
-				
-				// Store surface range (these are BSP surface indices)
-				bm.firstSurface = LittleLong(dm.firstSurface);
-				bm.numSurfaces = LittleLong(dm.numSurfaces);
-				
-				if (i == 0) {
-					// Model 0 is the world itself - record how many surfaces it has
-					numWorldSurfaces_ = bm.numSurfaces;
-				}
-				
-				// Register the brush model as a model handle (for inline models like *1, *2, etc.)
-				if (i > 0) {
-					char modelName[16];
-					Com_sprintf(modelName, sizeof(modelName), "*%d", i);
-					
-					// Allocate a new model entry
-					const qhandle_t handle = static_cast<qhandle_t>(models_.size());
-					MetalModel* model = MetalModel_Alloc(handle);
-					std::strncpy(model->name, modelName, sizeof(model->name) - 1);
-					model->name[sizeof(model->name) - 1] = '\0';
-					model->type = MetalModelType::BRUSH;
-					model->bmodel = &brushModels_[i];
-					
-					models_.push_back(model);
-					modelLookup_[std::string(modelName)] = handle;
-				}
-			}
-			
-			if (ri_.Printf && modelsLen > 1) {
-				ri_.Printf(PRINT_ALL, "Metal: Loaded %d brush models (doors, platforms, movers)\n", modelsLen - 1);
-			}
+		
+		// Track how many packets belong to the static world (model 0)
+		// World surfaces are 0 to numWorldSurfaces_-1
+		if (surfaceIndex < numWorldSurfaces_) {
+			numWorldPackets_ = static_cast<int>(worldPacketTemplate_.size());
 		}
+	}
+	
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: Created %d world packets, %zu total packets (brush models use packets %d+)\n",
+		          numWorldPackets_, worldPacketTemplate_.size(), numWorldPackets_);
 	}
 
 	// Load lightGrid for entity lighting
@@ -2103,6 +2138,7 @@ void MetalRenderer::unloadWorldMap() {
 	worldSurfaceToPacket_.clear();
 	brushModels_.clear();
 	numWorldSurfaces_ = 0;
+	numWorldPackets_ = 0;
 	worldFogs_.clear();
 	
 	// Remove brush models from model registry
@@ -5987,13 +6023,22 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 	float modelMatrix[16];
 	calculateEntityTransform(ent, modelMatrix);
 	
-	// Create a modified uniform buffer with the model matrix applied to view-projection
-	float brushViewProjection[16];
-	Mat4Multiply(sceneCamera_.viewProjectionMatrix, modelMatrix, brushViewProjection);
-	
 	// Build modified uniforms for brush model rendering
+	// The shader uses: projection * view * worldPos
+	// We need to include the model matrix so it becomes: projection * view * model * localPos
+	// This is equivalent to: projection * (view * model) * localPos
+	// So we combine view with model: newView = view * model
 	SceneUniforms brushUniforms;
 	std::memcpy(&brushUniforms, sceneUniformBuffer_->contents(), sizeof(SceneUniforms));
+	
+	// Multiply the view matrix by the model matrix
+	float brushView[16];
+	Mat4Multiply(brushUniforms.view, modelMatrix, brushView);
+	std::memcpy(brushUniforms.view, brushView, sizeof(brushView));
+	
+	// Also update viewProjection for consistency
+	float brushViewProjection[16];
+	Mat4Multiply(brushUniforms.projection, brushView, brushViewProjection);
 	std::memcpy(brushUniforms.viewProjection, brushViewProjection, sizeof(brushViewProjection));
 	
 	// Create temporary uniform buffer for this brush model
@@ -6187,8 +6232,10 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 				boundImageHandle = desiredHandle;
 			}
 			
+			// Add the world vertex base offset to get the correct position in polyVertices_
+			NS::UInteger adjustedFirstVertex = static_cast<NS::UInteger>(packet.firstVertex) + worldVertexBaseOffset_;
 			currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangle,
-				static_cast<NS::UInteger>(packet.firstVertex),
+				adjustedFirstVertex,
 				static_cast<NS::UInteger>(packet.vertexCount));
 		}
 	}
