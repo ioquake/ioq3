@@ -1401,10 +1401,14 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		std::vector<byte> rgba(static_cast<size_t>(pixelCount) * 4u);
 
 		// Calculate overbright shift
-		int overBrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+		// Must match OpenGL2's R_ColorShiftLightingBytes: shift = mapOverBrightBits - overBrightBits
+		int mapOverBrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+		int overBrightBits = r_overBrightBits_ ? r_overBrightBits_->integer : 1;
+		if (mapOverBrightBits < 0) mapOverBrightBits = 0;
+		if (mapOverBrightBits > 4) mapOverBrightBits = 4;
 		if (overBrightBits < 0) overBrightBits = 0;
 		if (overBrightBits > 4) overBrightBits = 4;
-		const int shift = overBrightBits;
+		const int shift = mapOverBrightBits - overBrightBits;  // CRITICAL: Must subtract, not use mapOverBrightBits directly!
 
 		for (int lm = 0; lm < lightmapCount; ++lm) {
 			const byte* src = lightmapData + static_cast<size_t>(lm) * kBspLightmapBytes;
@@ -1762,7 +1766,7 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 			int modelsLen = 0;
 			const dmodel_t* models = reinterpret_cast<const dmodel_t*>(getLumpRange(LUMP_MODELS, modelsLen, sizeof(dmodel_t)));
 
-			if (models && modelsLen >= static_cast<int>(sizeof(dmodel_t))) {
+			if (models && modelsLen >= 1) {
 				// First model is always the world
 				VectorCopy(models[0].mins, worldMins);
 				VectorCopy(models[0].maxs, worldMaxs);
@@ -3679,8 +3683,10 @@ bool MetalRenderer::drawPolyPackets() {
 		// IMPORTANT: For world surfaces with lightmaps, override lightingDiffuse → vertex
 		// This matches OpenGL2's behavior where surfaces with lightmaps use CGEN_EXACT_VERTEX
 		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
-		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0) {
-			// Surface has a lightmap - use vertex colors (lightmap data) instead of entity lighting
+		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0 && !stageInfo->usesLightmap) {
+			// Surface has a lightmap AND this stage doesn't use $lightmap texture
+			// Use vertex colors (lightmap data) instead of entity lighting
+			// Stages using $lightmap texture should keep their rgbGen (usually identity)
 			effectiveRgbGen = MetalRGBGen::Vertex;
 		}
 
