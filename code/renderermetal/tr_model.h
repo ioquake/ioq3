@@ -23,9 +23,17 @@ extern "C" {
 // Model types
 enum class MetalModelType {
 	BAD,
+	BRUSH,  // BSP brush model (doors, platforms, movers)
 	MD3,
 	MDR,
 	IQM
+};
+
+// Brush model data (inline BSP model)
+struct MetalBrushModel {
+	float bounds[2][3];     // Bounding box
+	int firstSurface;       // First surface in worldPacketTemplate_
+	int numSurfaces;        // Number of surfaces
 };
 
 // Model frame bounds and origin
@@ -108,9 +116,10 @@ struct MetalModel {
 	int index;                      // Model handle
 	int numLods;                    // Number of LOD levels
 
-	MetalModelLOD* lods[MD3_MAX_LODS];  // LOD data
+	MetalModelLOD* lods[MD3_MAX_LODS];  // LOD data (for MD3/MDR/IQM)
+	MetalBrushModel* bmodel;        // Brush model data (for BRUSH type)
 
-	MetalModel() : type(MetalModelType::BAD), index(0), numLods(0) {
+	MetalModel() : type(MetalModelType::BAD), index(0), numLods(0), bmodel(nullptr) {
 		name[0] = '\0';
 		for (int i = 0; i < MD3_MAX_LODS; i++) {
 			lods[i] = nullptr;

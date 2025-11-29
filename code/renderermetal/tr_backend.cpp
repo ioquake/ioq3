@@ -1050,6 +1050,9 @@ private:
 	std::vector<MetalPolyVertex> worldVertexTemplate_;
 	std::vector<ScenePolyPacket> worldPacketTemplate_;
 	std::vector<qhandle_t> worldLightmapHandles_;
+	std::vector<int> worldSurfaceToPacket_;  // Maps BSP surface index to packet index (-1 if skipped)
+	std::vector<MetalBrushModel> brushModels_;  // Brush models (inline BSP models)
+	int numWorldSurfaces_ = 0;  // Number of surfaces in model 0 (the world itself)
 	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
 	std::vector<MetalSkin> registeredSkins_;  // Skin storage (index 0 is reserved)
@@ -1093,6 +1096,7 @@ private:
 	enum class CullResult { Out, In, Clip };
 	void renderModel(const refEntity_t& ent, MetalModel& model, MetalModelLOD& lodData,
 	                int fogIndex, CullResult cullState);
+	void renderBrushModel(const refEntity_t& ent, MetalBrushModel& bmodel);
 	void renderModelSurface(const refEntity_t& ent, MetalModelSurface& surface,
 	                        const float* mvpMatrix, const float* modelMatrix, float vertexLerp,
 	                        const ModelFogParams& fogParams,
@@ -1793,8 +1797,12 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
+	worldSurfaceToPacket_.clear();
+	brushModels_.clear();
+	numWorldSurfaces_ = 0;
 	worldVertexTemplate_.reserve(static_cast<size_t>(vertexCount) * 2);
 	worldPacketTemplate_.reserve(static_cast<size_t>(surfaceCount));
+	worldSurfaceToPacket_.resize(surfaceCount, -1);  // -1 means surface was skipped
 
 	for (int surfaceIndex = 0; surfaceIndex < surfaceCount; ++surfaceIndex) {
 		const dsurface_t& ds = surfaces[surfaceIndex];
@@ -1912,7 +1920,59 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		} else {
 			packet.lightmapHandle = 0;
 		}
+		// Record mapping from BSP surface index to packet index
+		worldSurfaceToPacket_[surfaceIndex] = static_cast<int>(worldPacketTemplate_.size());
 		worldPacketTemplate_.push_back(packet);
+	}
+
+	// Load brush models (inline BSP models for doors, platforms, etc.)
+	{
+		int modelsLen = 0;
+		const dmodel_t* bspModels = reinterpret_cast<const dmodel_t*>(getLumpRange(LUMP_MODELS, modelsLen, sizeof(dmodel_t)));
+		if (bspModels && modelsLen >= 1) {
+			brushModels_.resize(modelsLen);
+			
+			for (int i = 0; i < modelsLen; i++) {
+				const dmodel_t& dm = bspModels[i];
+				MetalBrushModel& bm = brushModels_[i];
+				
+				// Copy bounds
+				for (int j = 0; j < 3; j++) {
+					bm.bounds[0][j] = LittleFloat(dm.mins[j]);
+					bm.bounds[1][j] = LittleFloat(dm.maxs[j]);
+				}
+				
+				// Store surface range (these are BSP surface indices)
+				bm.firstSurface = LittleLong(dm.firstSurface);
+				bm.numSurfaces = LittleLong(dm.numSurfaces);
+				
+				if (i == 0) {
+					// Model 0 is the world itself - record how many surfaces it has
+					numWorldSurfaces_ = bm.numSurfaces;
+				}
+				
+				// Register the brush model as a model handle (for inline models like *1, *2, etc.)
+				if (i > 0) {
+					char modelName[16];
+					Com_sprintf(modelName, sizeof(modelName), "*%d", i);
+					
+					// Allocate a new model entry
+					const qhandle_t handle = static_cast<qhandle_t>(models_.size());
+					MetalModel* model = MetalModel_Alloc(handle);
+					std::strncpy(model->name, modelName, sizeof(model->name) - 1);
+					model->name[sizeof(model->name) - 1] = '\0';
+					model->type = MetalModelType::BRUSH;
+					model->bmodel = &brushModels_[i];
+					
+					models_.push_back(model);
+					modelLookup_[std::string(modelName)] = handle;
+				}
+			}
+			
+			if (ri_.Printf && modelsLen > 1) {
+				ri_.Printf(PRINT_ALL, "Metal: Loaded %d brush models (doors, platforms, movers)\n", modelsLen - 1);
+			}
+		}
 	}
 
 	// Load lightGrid for entity lighting
@@ -2040,7 +2100,20 @@ void MetalRenderer::unloadWorldMap() {
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
 	worldLightmapHandles_.clear();
+	worldSurfaceToPacket_.clear();
+	brushModels_.clear();
+	numWorldSurfaces_ = 0;
 	worldFogs_.clear();
+	
+	// Remove brush models from model registry
+	// They become invalid when the world is unloaded
+	for (auto it = modelLookup_.begin(); it != modelLookup_.end(); ) {
+		if (!it->first.empty() && it->first[0] == '*') {
+			it = modelLookup_.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 bool MetalRenderer::initializeWindow(int& width, int& height, qboolean& fullscreen) {
@@ -2362,6 +2435,15 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 			return 0;  // Failed load cached
 		}
 		return it->second;
+	}
+
+	// Handle inline brush models (names like "*1", "*2", etc.)
+	// These should have been registered during world load
+	if (name[0] == '*') {
+		// Inline model not found - this means the world isn't loaded yet
+		// or the model index is invalid
+		ri_.Printf(PRINT_DEVELOPER, "Metal: Inline model '%s' not found (world may not be loaded)\n", name);
+		return 0;
 	}
 
 	// Allocate a new model
@@ -5889,6 +5971,231 @@ void MetalRenderer::renderModel(const refEntity_t& ent, MetalModel& model, Metal
 	}
 }
 
+void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bmodel) {
+	// Brush models render world surfaces with the entity's transform applied
+	// They use the same rendering path as world surfaces but with a model matrix
+	
+	if (!currentRenderEncoder_ || !sceneCamera_.valid) {
+		return;
+	}
+	
+	if (!ensureSceneShaderResources()) {
+		return;
+	}
+	
+	// Calculate the entity transform matrix
+	float modelMatrix[16];
+	calculateEntityTransform(ent, modelMatrix);
+	
+	// Create a modified uniform buffer with the model matrix applied to view-projection
+	float brushViewProjection[16];
+	Mat4Multiply(sceneCamera_.viewProjectionMatrix, modelMatrix, brushViewProjection);
+	
+	// Build modified uniforms for brush model rendering
+	SceneUniforms brushUniforms;
+	std::memcpy(&brushUniforms, sceneUniformBuffer_->contents(), sizeof(SceneUniforms));
+	std::memcpy(brushUniforms.viewProjection, brushViewProjection, sizeof(brushViewProjection));
+	
+	// Create temporary uniform buffer for this brush model
+	MTL::Buffer* brushUniformBuffer = device_->newBuffer(&brushUniforms, sizeof(SceneUniforms), MTL::ResourceStorageModeShared);
+	if (!brushUniformBuffer) {
+		return;
+	}
+	
+	// Find packet indices for this brush model's surfaces
+	std::vector<int> packetIndices;
+	for (int i = 0; i < bmodel.numSurfaces; i++) {
+		int bspSurfaceIndex = bmodel.firstSurface + i;
+		if (bspSurfaceIndex >= 0 && bspSurfaceIndex < static_cast<int>(worldSurfaceToPacket_.size())) {
+			int packetIndex = worldSurfaceToPacket_[bspSurfaceIndex];
+			if (packetIndex >= 0) {
+				packetIndices.push_back(packetIndex);
+			}
+		}
+	}
+	
+	if (packetIndices.empty()) {
+		brushUniformBuffer->release();
+		return;
+	}
+	
+	// Set up vertex buffer (same as world rendering)
+	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	currentRenderEncoder_->setVertexBuffer(brushUniformBuffer, 0, 1);
+	
+	// Setup entity lighting for brush model
+	EntityLightingParams lightingParams{};
+	vec3_t ambientLight, directedLight, lightDir;
+	setupEntityLighting(ent, ambientLight, directedLight, lightDir);
+	lightingParams.ambientLight[0] = ambientLight[0];
+	lightingParams.ambientLight[1] = ambientLight[1];
+	lightingParams.ambientLight[2] = ambientLight[2];
+	lightingParams.directedLight[0] = directedLight[0];
+	lightingParams.directedLight[1] = directedLight[1];
+	lightingParams.directedLight[2] = directedLight[2];
+	lightingParams.lightDir[0] = lightDir[0];
+	lightingParams.lightDir[1] = lightDir[1];
+	lightingParams.lightDir[2] = lightDir[2];
+	currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 2);
+	
+	TextureManager* texManager = ensureTextureManager();
+	if (!texManager) {
+		brushUniformBuffer->release();
+		return;
+	}
+	MTL::Texture* defaultTexture = texManager->getTexture(0);
+	if (!defaultTexture) {
+		brushUniformBuffer->release();
+		return;
+	}
+	MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sceneSampler_.get());
+	
+	MTL::RenderPipelineState* boundPipeline = nullptr;
+	MTL::DepthStencilState* boundDepthState = nullptr;
+	qhandle_t boundImageHandle = -1;
+	MTL::Texture* boundTexture = nullptr;
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+	StageFragmentParams lastFragmentParams{};
+	bool hasFragmentParams = false;
+	
+	auto bindStageParams = [&](const StageFragmentParams& params) {
+		if (!hasFragmentParams || std::memcmp(&params, &lastFragmentParams, sizeof(StageFragmentParams)) != 0) {
+			currentRenderEncoder_->setFragmentBytes(&params, sizeof(StageFragmentParams), 0);
+			lastFragmentParams = params;
+			hasFragmentParams = true;
+		}
+	};
+	
+	auto buildStageParamsLocal = [&](const MetalShaderStageInfo* stageInfo, float overBrightBits, qhandle_t lightmapHandle) {
+		StageFragmentParams params{};
+		params.overBrightBits = overBrightBits;
+		if (!stageInfo) {
+			return params;
+		}
+
+		// Set tcGen type
+		switch (stageInfo->tcGen.type) {
+			case MetalTCGen::Lightmap:
+				params.tcGenType = 1.0f;
+				params.texCoordSelector = 1.0f;
+				break;
+			case MetalTCGen::Environment:
+				params.tcGenType = 2.0f;
+				params.texCoordSelector = 0.0f;
+				break;
+			default:
+				params.tcGenType = 0.0f;
+				params.texCoordSelector = 0.0f;
+				break;
+		}
+
+		// Set rgbGen type - use vertex colors for lightmapped surfaces
+		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
+		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0 && !stageInfo->usesLightmap) {
+			effectiveRgbGen = MetalRGBGen::Vertex;
+		}
+		
+		switch (effectiveRgbGen) {
+			case MetalRGBGen::Identity:
+				params.rgbGenType = 1.0f;
+				break;
+			case MetalRGBGen::IdentityLighting:
+				params.rgbGenType = 2.0f;
+				break;
+			case MetalRGBGen::LightingDiffuse:
+				params.rgbGenType = 3.0f;
+				break;
+			default:
+				params.rgbGenType = 0.0f;
+				break;
+		}
+		
+		return params;
+	};
+	
+	// Render each brush model surface (matching drawPolyPackets logic)
+	for (int packetIndex : packetIndices) {
+		const ScenePolyPacket& packet = worldPacketTemplate_[packetIndex];
+		
+		if (packet.vertexCount <= 0) {
+			continue;
+		}
+		
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (!shaderResource) {
+			shaderResource = getShaderResource(0);
+		}
+		if (!shaderResource || shaderResource->stageRuntimes.empty()) {
+			continue;
+		}
+		
+		// Skip sky surfaces on brush models
+		if (shaderResource->hasScript && shaderResource->script.isSky) {
+			continue;
+		}
+		
+		// Render each stage using stageRuntimes (not stageInfo directly)
+		const size_t stageCount = shaderResource->stageRuntimes.size();
+		for (size_t stageIndex = 0; stageIndex < stageCount; ++stageIndex) {
+			const auto* stageRuntime = getShaderStageRuntime(*shaderResource, stageIndex);
+			if (!stageRuntime) {
+				continue;
+			}
+			const MetalShaderStageInfo* stageInfo = stageRuntime->stageInfo;
+			
+			// Match OpenGL2's ComputeShaderColors - disable overbright for blend stages
+			bool isBlend = (stageRuntime->pipelineKey.srcBlend == MetalBlendFactor::DstColor) ||
+			               (stageRuntime->pipelineKey.srcBlend == MetalBlendFactor::OneMinusDstColor) ||
+			               (stageRuntime->pipelineKey.dstBlend == MetalBlendFactor::SrcColor) ||
+			               (stageRuntime->pipelineKey.dstBlend == MetalBlendFactor::OneMinusSrcColor);
+			
+			float stageOverBright = isBlend ? 0.0f : (r_overBrightBits_ ? static_cast<float>(r_overBrightBits_->integer) : 1.0f);
+
+			bindStageParams(buildStageParamsLocal(stageInfo, stageOverBright, packet.lightmapHandle));
+
+			// Compute and bind texture coordinate modifications
+			TCModParams tcModParams = computeTCModParams(stageInfo, sceneTimeSeconds);
+			currentRenderEncoder_->setVertexBytes(&tcModParams, sizeof(TCModParams), 2);
+
+			StagePipelineEntry* pipelineEntry = getStagePipeline(stageRuntime->pipelineKey);
+			if (!pipelineEntry || !pipelineEntry->pipeline || !pipelineEntry->depthState) {
+				continue;
+			}
+
+			if (pipelineEntry->pipeline.get() != boundPipeline) {
+				MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipelineEntry->pipeline.get());
+				boundPipeline = pipelineEntry->pipeline.get();
+			}
+			if (pipelineEntry->depthState.get() != boundDepthState) {
+				currentRenderEncoder_->setDepthStencilState(pipelineEntry->depthState.get());
+				boundDepthState = pipelineEntry->depthState.get();
+			}
+
+			qhandle_t desiredHandle = selectStageImage(*shaderResource, stageRuntime, sceneTimeSeconds, packet.lightmapHandle);
+			if (desiredHandle < 0) {
+				desiredHandle = 0;
+			}
+
+			if (!boundTexture || desiredHandle != boundImageHandle) {
+				MTL::Texture* packetTexture = texManager->getTexture(desiredHandle);
+				if (!packetTexture) {
+					packetTexture = defaultTexture;
+					desiredHandle = 0;
+				}
+				MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, packetTexture);
+				boundTexture = packetTexture;
+				boundImageHandle = desiredHandle;
+			}
+			
+			currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangle,
+				static_cast<NS::UInteger>(packet.firstVertex),
+				static_cast<NS::UInteger>(packet.vertexCount));
+		}
+	}
+	
+	brushUniformBuffer->release();
+}
+
 bool MetalRenderer::drawModelEntities() {
 	// DEBUG: Log entry to drawModelEntities
 	// if (ri_.Printf) {
@@ -5941,6 +6248,15 @@ bool MetalRenderer::drawModelEntities() {
 			continue;
 		}
 
+		// Handle brush models (doors, platforms, movers)
+		if (model->type == MetalModelType::BRUSH) {
+			if (model->bmodel) {
+				renderBrushModel(ent, *model->bmodel);
+			}
+			continue;
+		}
+
+		// Handle regular models (MD3, etc.)
 		int lod = computeModelLod(*model, ent);
 		if (lod < 0) {
 			lod = 0;
