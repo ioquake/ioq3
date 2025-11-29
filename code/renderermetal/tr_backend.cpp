@@ -2215,6 +2215,31 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 				ri_.Printf(PRINT_WARNING, "Metal: Failed to create GPU buffers for model '%s'\n", name);
 			}
 		}
+
+		// Register shaders for all surfaces in all LODs
+		// This matches OpenGL2's approach where shaders are registered during model load
+		for (int lod = 0; lod < model->numLods; lod++) {
+			MetalModelLOD* lodData = model->lods[lod];
+			if (!lodData) continue;
+
+			for (int surf = 0; surf < lodData->numSurfaces; surf++) {
+				MetalModelSurface& surface = lodData->surfaces[surf];
+
+				// Register each shader name and store the handle
+				for (size_t i = 0; i < surface.shaderNames.size(); i++) {
+					const std::string& shaderName = surface.shaderNames[i];
+					if (!shaderName.empty()) {
+						qhandle_t shaderHandle = registerShader(shaderName.c_str(), true);
+						surface.shaderIndexes[i] = shaderHandle;
+
+						if (ri_.Printf && shaderHandle > 0) {
+							ri_.Printf(PRINT_DEVELOPER, "Metal: Registered shader '%s' (handle %d) for model '%s' surface %d\n",
+							          shaderName.c_str(), shaderHandle, name, surf);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return result;
@@ -2558,12 +2583,31 @@ void MetalRenderer::processScene(const MetalSceneState& scene) {
 }
 
 void MetalRenderer::processEntities(const MetalSceneState& scene) {
+	// DEBUG: Log entity processing
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: processEntities called with %d entities\n", scene.numEntities);
+	}
+
+	int modelCount = 0;
 	for (int i = 0; i < scene.numEntities; ++i) {
 		SceneDrawPacket packet;
 		packet.entity = scene.entities[i];
 		drawPackets_.push_back(packet);
+
+		if (packet.entity.reType == RT_MODEL) {
+			modelCount++;
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
+				          i, packet.entity.hModel, packet.entity.renderfx);
+			}
+		}
 	}
 	sceneStats_.entities = static_cast<int>(drawPackets_.size());
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: processEntities added %d entities to drawPackets (%d are models)\n",
+		          scene.numEntities, modelCount);
+	}
 }
 
 void MetalRenderer::processPolys(const MetalSceneState& scene) {
@@ -5038,14 +5082,31 @@ void MetalRenderer::renderModelSurface(
 	const vec3_t directedLight,
 	const vec3_t lightDir)
 {
+	// DEBUG: Log surface rendering start
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface called - encoder=%p, pipeline=%p, depthState=%p\n",
+		          currentRenderEncoder_, modelPipeline_.get(), modelDepthState_.get());
+	}
+
 	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - missing required state, returning\n");
+		}
 		return;
 	}
 
 	// Build interleaved vertex buffer
 	MTL::Buffer* vertexBuffer = createModelVertexBuffer(ent, surface);
 	if (!vertexBuffer) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - failed to create vertex buffer\n");
+		}
 		return;
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - vertex buffer created, numIndexes=%d\n",
+		          surface.numIndexes);
 	}
 
 	// Set pipeline state
@@ -5089,6 +5150,7 @@ void MetalRenderer::renderModelSurface(
 	currentRenderEncoder_->setFragmentBytes(&lighting, sizeof(EntityLightingParams), 0);
 
 	// Bind texture
+	bool textureFound = false;
 	if (!surface.shaderIndexes.empty() && surface.shaderIndexes[0] > 0) {
 		MetalShaderResource* shaderRes = getShaderResource(surface.shaderIndexes[0]);
 		if (shaderRes && shaderRes->primaryImageHandle > 0) {
@@ -5101,9 +5163,15 @@ void MetalRenderer::renderModelSurface(
 					if (sceneSampler_) {
 						currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
 					}
+					textureFound = true;
 				}
 			}
 		}
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - texture bound=%d, shaderIndex=%d\n",
+		          textureFound, !surface.shaderIndexes.empty() ? surface.shaderIndexes[0] : 0);
 	}
 
 	// Set vertex buffer
@@ -5119,29 +5187,59 @@ void MetalRenderer::renderModelSurface(
 			indexBuffer,
 			0
 		);
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - draw call MADE with %d indexes\n",
+			          surface.numIndexes);
+		}
+	} else {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - NO index buffer, draw call SKIPPED\n");
+		}
 	}
 
 	vertexBuffer->release();
 }
 
 void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) {
+	// DEBUG: Log renderModel call
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: renderModel called - hModel=%d\n", ent.hModel);
+	}
+
 	// Validate model handle
 	if (ent.hModel <= 0 || static_cast<size_t>(ent.hModel) >= models_.size()) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - invalid model handle (hModel=%d, models_.size=%zu)\n",
+			          ent.hModel, models_.size());
+		}
 		return;
 	}
 
 	MetalModel* model = models_[ent.hModel];
 	if (!model || model->type == MetalModelType::BAD) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - model is null or BAD (model=%p, type=%d)\n",
+			          model, model ? static_cast<int>(model->type) : -1);
+		}
 		return;
 	}
 
 	// For now, just use LOD 0
 	int lod = 0;
 	if (lod >= model->numLods || !model->lods[lod]) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - invalid LOD (lod=%d, numLods=%d)\n",
+			          lod, model->numLods);
+		}
 		return;
 	}
 
 	MetalModelLOD* lodData = model->lods[lod];
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: renderModel - valid model, numSurfaces=%d, pipeline=%p\n",
+		          lodData->numSurfaces, modelPipeline_.get());
+	}
 
 	// Calculate entity transform matrix
 	float modelMatrix[16];
@@ -5160,17 +5258,32 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 
 	// Render each surface
 	for (int i = 0; i < lodData->numSurfaces; i++) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - rendering surface %d/%d\n", i, lodData->numSurfaces);
+		}
 		renderModelSurface(ent, lodData->surfaces[i], mvpMatrix, vertexLerp,
 		                   ambientLight, directedLight, lightDir);
 	}
 }
 
 bool MetalRenderer::drawModelEntities() {
+	// DEBUG: Log entry to drawModelEntities
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities called - drawPackets size=%zu\n", drawPackets_.size());
+	}
+
 	if (drawPackets_.empty()) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - no draw packets, returning true\n");
+		}
 		return true;
 	}
 
 	if (!currentRenderEncoder_ || !sceneCamera_.valid) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - encoder or camera invalid (encoder=%p, camera.valid=%d)\n",
+			          currentRenderEncoder_, sceneCamera_.valid);
+		}
 		return false;
 	}
 
@@ -5182,9 +5295,16 @@ bool MetalRenderer::drawModelEntities() {
 		return false;
 	}
 
+	// DEBUG: Count how many models we have
+	int modelCount = 0;
+	int thirdPersonCount = 0;
+	int renderedCount = 0;
+
 	// Render all model entities
 	for (const SceneDrawPacket& packet : drawPackets_) {
 		if (packet.entity.reType == RT_MODEL) {
+			modelCount++;
+
 			// Don't render third-person models in first-person view
 			// (similar to OpenGL2's personalModel check in tr_mesh.c:296-297)
 			// personalModel = (renderfx & RF_THIRD_PERSON) && !isPortal
@@ -5196,10 +5316,30 @@ bool MetalRenderer::drawModelEntities() {
 
 			bool personalModel = isThirdPerson && !isPortalView;
 
+			if (isThirdPerson) {
+				thirdPersonCount++;
+			}
+
 			if (!personalModel) {
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL, "DEBUG: Rendering model - hModel=%d, renderfx=0x%x, isThirdPerson=%d\n",
+					          packet.entity.hModel, packet.entity.renderfx, isThirdPerson);
+				}
 				renderModel(packet.entity, sceneCamera_.refdef);
+				renderedCount++;
+			} else {
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL, "DEBUG: Skipping personalModel - hModel=%d, renderfx=0x%x\n",
+					          packet.entity.hModel, packet.entity.renderfx);
+				}
 			}
 		}
+	}
+
+	// DEBUG: Summary
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities summary - total packets=%zu, models=%d, thirdPerson=%d, rendered=%d\n",
+		          drawPackets_.size(), modelCount, thirdPersonCount, renderedCount);
 	}
 
 	return true;

@@ -97,6 +97,12 @@ void RE_AddRefEntityToScene(const refEntity_t* re) {
 		return;
 	}
 
+	// DEBUG: Log entity being added
+	if (ri.Printf && re->reType == RT_MODEL) {
+		ri.Printf(PRINT_ALL, "DEBUG: Adding entity to scene - type=%d, hModel=%d, renderfx=0x%x\n",
+		          re->reType, re->hModel, re->renderfx);
+	}
+
 	CopyRefEntity(state.entities[state.numEntities++], re);
 }
 
