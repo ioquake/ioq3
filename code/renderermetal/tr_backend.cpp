@@ -2583,22 +2583,29 @@ void MetalRenderer::processScene(const MetalSceneState& scene) {
 }
 
 void MetalRenderer::processEntities(const MetalSceneState& scene) {
+	// Process only the entities from the world scene (saved by RE_RenderScene)
+	// Ignore UI scene entities (those were discarded)
+	const int firstEntity = scene.worldSceneFirstEntity;
+	const int numEntities = scene.worldSceneNumEntities;
+
 	// DEBUG: Log entity processing
 	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: processEntities called with %d entities\n", scene.numEntities);
+		ri_.Printf(PRINT_ALL, "DEBUG: processEntities called - worldScene range [%d, %d) = %d entities\n",
+		          firstEntity, firstEntity + numEntities, numEntities);
 	}
 
 	int modelCount = 0;
-	for (int i = 0; i < scene.numEntities; ++i) {
+	for (int i = 0; i < numEntities; ++i) {
+		const int entityIndex = firstEntity + i;
 		SceneDrawPacket packet;
-		packet.entity = scene.entities[i];
+		packet.entity = scene.entities[entityIndex];
 		drawPackets_.push_back(packet);
 
 		if (packet.entity.reType == RT_MODEL) {
 			modelCount++;
 			if (ri_.Printf) {
 				ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
-				          i, packet.entity.hModel, packet.entity.renderfx);
+				          entityIndex, packet.entity.hModel, packet.entity.renderfx);
 			}
 		}
 	}
@@ -2606,7 +2613,7 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 
 	if (ri_.Printf) {
 		ri_.Printf(PRINT_ALL, "DEBUG: processEntities added %d entities to drawPackets (%d are models)\n",
-		          scene.numEntities, modelCount);
+		          numEntities, modelCount);
 	}
 }
 

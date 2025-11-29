@@ -16,10 +16,18 @@ struct SceneStore {
 SceneStore g_sceneStore;
 
 void ResetSceneCounts(MetalSceneState& state) {
+	// Reset to the beginning of the frame
+	// (called by BeginFrame, not ClearScene)
 	state.numEntities = 0;
 	state.numPolys = 0;
 	state.numPolyVerts = 0;
 	state.numLights = 0;
+	state.firstSceneEntity = 0;
+	state.firstScenePoly = 0;
+	state.firstScenePolyVert = 0;
+	state.firstSceneLight = 0;
+	state.worldSceneFirstEntity = 0;
+	state.worldSceneNumEntities = 0;
 	// NOTE: Do NOT reset refdefValid here - it's set by RE_RenderScene
 	// and should persist until the scene is processed
 }
@@ -80,7 +88,19 @@ const MetalSceneState& MetalScene_GetState() {
 
 void RE_ClearScene(void) {
 	Metal_LogRendererCall("re.ClearScene");
-	ResetSceneCounts(g_sceneStore.state);
+	MetalSceneState& state = g_sceneStore.state;
+
+	if (ri.Printf) {
+		ri.Printf(PRINT_ALL, "DEBUG: ClearScene called - numEntities=%d (marking boundary, not clearing)\n",
+		          state.numEntities);
+	}
+
+	// Like OpenGL2: Mark where the NEXT scene starts, but DON'T clear existing entities
+	// This allows entities to accumulate across multiple scenes within a frame
+	state.firstSceneEntity = state.numEntities;
+	state.firstScenePoly = state.numPolys;
+	state.firstScenePolyVert = state.numPolyVerts;
+	state.firstSceneLight = state.numLights;
 }
 
 void RE_AddRefEntityToScene(const refEntity_t* re) {
@@ -150,10 +170,29 @@ void RE_RenderScene(const refdef_t* fd) {
 		return;
 	}
 
+	// DEBUG: Log scene rendering
+	if (ri.Printf) {
+		ri.Printf(PRINT_ALL, "DEBUG: RenderScene called - numEntities=%d, firstSceneEntity=%d, rdflags=0x%x, NOWORLDMODEL=%d\n",
+		          state.numEntities, state.firstSceneEntity, fd->rdflags, (fd->rdflags & RDF_NOWORLDMODEL) ? 1 : 0);
+	}
+
 	// Only use the 3D world scene refdef, not UI/player config scenes
 	// RDF_NOWORLDMODEL is set for UI scenes (player config, etc)
 	if (fd->rdflags & RDF_NOWORLDMODEL) {
+		if (ri.Printf) {
+			ri.Printf(PRINT_ALL, "DEBUG: RenderScene - DISCARDING UI scene (firstScene=%d, num=%d)\n",
+			          state.firstSceneEntity, state.numEntities - state.firstSceneEntity);
+		}
 		return;
+	}
+
+	// Save the world scene's entity range
+	state.worldSceneFirstEntity = state.firstSceneEntity;
+	state.worldSceneNumEntities = state.numEntities - state.firstSceneEntity;
+
+	if (ri.Printf) {
+		ri.Printf(PRINT_ALL, "DEBUG: RenderScene - ACCEPTING world scene (firstEntity=%d, numEntities=%d)\n",
+		          state.worldSceneFirstEntity, state.worldSceneNumEntities);
 	}
 
 	state.refdef = *fd;

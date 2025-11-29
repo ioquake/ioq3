@@ -35,6 +35,18 @@ struct MetalSceneState {
     int numPolyVerts = 0;
     int numLights = 0;
 
+    // Scene boundary markers (like OpenGL2's r_firstSceneEntity, etc.)
+    // These mark where the current scene starts within the accumulated entities
+    int firstSceneEntity = 0;
+    int firstScenePoly = 0;
+    int firstScenePolyVert = 0;
+    int firstSceneLight = 0;
+
+    // Saved range for the world scene (when RDF_NOWORLDMODEL is NOT set)
+    // processEntities will use these to know which entities to render
+    int worldSceneFirstEntity = 0;
+    int worldSceneNumEntities = 0;
+
     std::array<refEntity_t, MAX_REFENTITIES> entities{};
     std::array<MetalScenePolyRange, METAL_MAX_SCENE_POLYS> polys{};
     std::array<polyVert_t, METAL_MAX_SCENE_POLYVERTS> polyVerts{};
