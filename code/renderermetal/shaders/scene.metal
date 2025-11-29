@@ -220,13 +220,16 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
         vertexColor = float4(1.0, 1.0, 1.0, 1.0);
         applyOverbright = true;
     } else {
-        // rgbGen vertex - use vertex colors WITH overbright
-        applyOverbright = true;
+        // rgbGen vertex - use vertex colors WITHOUT additional overbright
+        // Vertex colors already have overbright baked in via ColorShiftLightingBytes
+        // This matches OpenGL2's generic_fp.glsl which just does "color.rgb * var_Color.rgb"
+        applyOverbright = false;
     }
 
     float4 color = texColor * vertexColor;
 
-    // Apply overbright bits scaling (per-stage) for Identity and Vertex modes
+    // Apply overbright bits scaling (per-stage) for Identity and LightingDiffuse modes only
+    // Do NOT apply for Vertex mode - vertex colors already have overbright baked in!
     if (applyOverbright && stage.overBrightBits > 0.0) {
         color.rgb *= exp2(stage.overBrightBits);
     }
