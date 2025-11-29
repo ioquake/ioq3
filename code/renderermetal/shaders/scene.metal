@@ -45,10 +45,10 @@ struct StageFragmentParams {
     float alphaFunc;
     float alphaTestEnabled;
     float texCoordSelector;
-    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse
+    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
     float tcGenType;      // 0 = Texture, 1 = Lightmap, 2 = Environment
     float overBrightBits; // Per-stage overbright bits
-    float padding3;
+    float waveColorScale; // For rgbGen wave - computed wave value
 };
 
 // Entity lighting parameters - for CGEN_LIGHTING_DIFFUSE
@@ -194,7 +194,11 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
     float4 vertexColor = in.color;
     bool applyOverbright = false;
 
-    if (stage.rgbGenType > 2.5f) {
+    if (stage.rgbGenType > 3.5f) {
+        // rgbGen wave - use pre-computed wave color scale
+        vertexColor = float4(stage.waveColorScale, stage.waveColorScale, stage.waveColorScale, 1.0);
+        applyOverbright = true;
+    } else if (stage.rgbGenType > 2.5f) {
         // rgbGen lightingDiffuse - entity lighting (CGEN_LIGHTING_DIFFUSE)
         // Matches OpenGL2: color = ambientLight + N·L * directedLight
         // Note: ambientLight and directedLight are already normalized to 0-1 range in C++

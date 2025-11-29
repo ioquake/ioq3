@@ -43,10 +43,10 @@ struct StageFragmentParams {
 	float alphaFunc = 0.0f;
 	float alphaTestEnabled = 0.0f;
 	float texCoordSelector = 0.0f;  // Legacy - now use tcGenType instead
-	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting
+	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
 	float tcGenType = 0.0f;   // 0 = Texture, 1 = Lightmap, 2 = Environment
 	float overBrightBits = 0.0f;
-	float padding3 = 0.0f;
+	float waveColorScale = 1.0f;  // For rgbGen wave - computed wave value
 };
 
 // Dynamic light uniforms - matches dlight.metal DlightUniforms
@@ -4528,7 +4528,7 @@ bool MetalRenderer::drawPolyPackets() {
 			hasFragmentParams = true;
 		}
 	};
-	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo, float overBrightBits, qhandle_t lightmapHandle) {
+	auto buildStageParams = [](const MetalShaderStageInfo* stageInfo, float overBrightBits, qhandle_t lightmapHandle, float timeSeconds) {
 		StageFragmentParams params{};
 		params.overBrightBits = overBrightBits;
 		if (!stageInfo) {
@@ -4553,7 +4553,7 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 
 		// Set rgbGen type for shader
-		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting, 3 = LightingDiffuse
+		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
 		// IMPORTANT: For world surfaces with lightmaps, override lightingDiffuse → vertex
 		// This matches OpenGL2's behavior where surfaces with lightmaps use CGEN_EXACT_VERTEX
 		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
@@ -4573,6 +4573,14 @@ bool MetalRenderer::drawPolyPackets() {
 				break;
 			case MetalRGBGen::LightingDiffuse:
 				params.rgbGenType = 3.0f;
+				break;
+			case MetalRGBGen::Wave:
+				params.rgbGenType = 4.0f;
+				// Evaluate the wave function to get color scale
+				params.waveColorScale = EvalWaveForm(stageInfo->rgbGen.wave, timeSeconds);
+				// Clamp to 0-1 range (matches GL2 behavior for clamped wave)
+				if (params.waveColorScale < 0.0f) params.waveColorScale = 0.0f;
+				if (params.waveColorScale > 1.0f) params.waveColorScale = 1.0f;
 				break;
 			default:
 				params.rgbGenType = 0.0f;  // Use vertex color
@@ -4633,7 +4641,7 @@ bool MetalRenderer::drawPolyPackets() {
 			
 			float stageOverBright = isBlend ? 0.0f : sceneUniforms_.overBrightBits;
 
-			bindStageParams(buildStageParams(stageInfo, stageOverBright, packet.lightmapHandle));
+			bindStageParams(buildStageParams(stageInfo, stageOverBright, packet.lightmapHandle, sceneTimeSeconds));
 
 			// Compute and bind texture coordinate modifications
 			TCModParams tcModParams = computeTCModParams(stageInfo, sceneTimeSeconds);
