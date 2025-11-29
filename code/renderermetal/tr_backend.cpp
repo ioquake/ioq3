@@ -12,6 +12,7 @@ Metal renderer with RAII and modern C++ practices
 #include "tr_scene.h"
 #include "tr_extramath.h"
 #include "tr_local.h"
+#include "tr_model.h"
 
 extern "C" {
 #include "../qcommon/qfiles.h"
@@ -884,7 +885,7 @@ private:
 	std::vector<MetalPolyVertex> worldVertexTemplate_;
 	std::vector<ScenePolyPacket> worldPacketTemplate_;
 	std::vector<qhandle_t> worldLightmapHandles_;
-	std::vector<std::string> registeredModels_;
+	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
 	std::vector<std::string> registeredSkins_;
 	std::unordered_map<std::string, qhandle_t> skinLookup_;
@@ -970,6 +971,15 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 
 	// Shutdown lighting system
 	R_ShutdownLightingSystem();
+
+	// Free all loaded models
+	for (MetalModel* model : models_) {
+		if (model) {
+			MetalModel_Free(model);
+		}
+	}
+	models_.clear();
+	modelLookup_.clear();
 
 	// RAII handles Metal object cleanup automatically
 	textureManager_.reset();
@@ -2127,31 +2137,60 @@ qhandle_t MetalRenderer::registerShader(const char* name, bool mipmap) {
 
 qhandle_t MetalRenderer::registerModel(const char* name) {
 	if (!name || !name[0]) {
+		ri_.Printf(PRINT_ALL, "MetalRenderer::registerModel: NULL name\n");
 		return 0;
 	}
 
+	if (strlen(name) >= MAX_QPATH) {
+		ri_.Printf(PRINT_ALL, "Model name exceeds MAX_QPATH\n");
+		return 0;
+	}
+
+	// Search currently loaded models
 	const std::string key(name);
 	auto it = modelLookup_.find(key);
 	if (it != modelLookup_.end()) {
+		MetalModel* mod = models_[it->second];
+		if (mod->type == MetalModelType::BAD) {
+			return 0;  // Failed load cached
+		}
 		return it->second;
 	}
 
-	if (!assetExists(name)) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_WARNING, "Metal: model '%s' missing (stub register)\n", name);
-		}
-		return 0;
-	}
+	// Allocate a new model
+	const qhandle_t handle = static_cast<qhandle_t>(models_.size());
+	MetalModel* model = MetalModel_Alloc(handle);
+	std::strncpy(model->name, name, sizeof(model->name) - 1);
+	model->name[sizeof(model->name) - 1] = '\0';
 
-	const qhandle_t handle = static_cast<qhandle_t>(registeredModels_.size() + 1);
-	registeredModels_.push_back(key);
+	models_.push_back(model);
 	modelLookup_[key] = handle;
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_DEVELOPER, "Metal: registered model '%s' as handle %d (placeholder)\n", name, handle);
+	// Determine model type by extension
+	const char* ext = strrchr(name, '.');
+	qhandle_t result = 0;
+
+	if (ext && !Q_stricmp(ext, ".md3")) {
+		// Load MD3 model
+		result = MetalModel_RegisterMD3(name, model, ri_);
+	} else {
+		// Try MD3 as default if no extension
+		char namebuf[MAX_QPATH];
+		Com_sprintf(namebuf, sizeof(namebuf), "%s.md3", name);
+		result = MetalModel_RegisterMD3(namebuf, model, ri_);
+
+		if (!result) {
+			// Try other formats in the future (MDR, IQM)
+			ri_.Printf(PRINT_WARNING, "MetalRenderer::registerModel: couldn't load %s\n", name);
+			model->type = MetalModelType::BAD;
+		}
 	}
 
-	return handle;
+	if (result) {
+		ri_.Printf(PRINT_DEVELOPER, "Metal: loaded model '%s' as handle %d\n", name, handle);
+	}
+
+	return result;
 }
 
 qhandle_t MetalRenderer::registerSkin(const char* name) {
@@ -5028,7 +5067,7 @@ void MetalRenderer::beginRegistration(glconfig_t* configOut) {
 		int width = 1280;
 		int height = 720;
 		qboolean fullscreen = qfalse;
-		
+
 		if (!initializeWindow(width, height, fullscreen)) {
 			ri_.Error(ERR_FATAL, "Metal renderer failed to create SDL window");
 			return;
@@ -5036,6 +5075,13 @@ void MetalRenderer::beginRegistration(glconfig_t* configOut) {
 	}
 
 	resetShaderCaches();
+
+	// Initialize model system - allocate BAD model at index 0
+	if (models_.empty()) {
+		MetalModel* badModel = MetalModel_Alloc(0);
+		badModel->type = MetalModelType::BAD;
+		models_.push_back(badModel);
+	}
 
 	if (configOut) {
 		*configOut = config_;
