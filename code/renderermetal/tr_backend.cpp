@@ -3557,6 +3557,21 @@ bool MetalRenderer::drawPolyPackets() {
 	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
 	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
 
+	// Setup default entity lighting for world surfaces
+	// World surfaces use lightmaps, so entity lighting provides fallback/ambient
+	EntityLightingParams defaultLighting{};
+	// Use identity lighting (white) - surfaces will be lit by lightmaps
+	defaultLighting.ambientLight[0] = 255.0f;
+	defaultLighting.ambientLight[1] = 255.0f;
+	defaultLighting.ambientLight[2] = 255.0f;
+	defaultLighting.directedLight[0] = 0.0f;
+	defaultLighting.directedLight[1] = 0.0f;
+	defaultLighting.directedLight[2] = 0.0f;
+	defaultLighting.lightDir[0] = 0.0f;
+	defaultLighting.lightDir[1] = 0.0f;
+	defaultLighting.lightDir[2] = 1.0f;
+	currentRenderEncoder_->setFragmentBytes(&defaultLighting, sizeof(EntityLightingParams), 2);
+
 	TextureManager* texManager = ensureTextureManager();
 	if (!texManager) {
 		return false;
@@ -3606,13 +3621,16 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 		
 		// Set rgbGen type for shader
-		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting
+		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting, 3 = LightingDiffuse
 		switch (stageInfo->rgbGen.type) {
 			case MetalRGBGen::Identity:
 				params.rgbGenType = 1.0f;
 				break;
 			case MetalRGBGen::IdentityLighting:
 				params.rgbGenType = 2.0f;
+				break;
+			case MetalRGBGen::LightingDiffuse:
+				params.rgbGenType = 3.0f;
 				break;
 			default:
 				params.rgbGenType = 0.0f;  // Use vertex color
