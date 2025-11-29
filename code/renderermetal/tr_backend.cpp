@@ -939,7 +939,8 @@ private:
 	};
 
 
-	MetalPtr<MTL::SamplerState> sceneSampler_;
+	MetalPtr<MTL::SamplerState> sceneSampler_;       // Repeat mode
+	MetalPtr<MTL::SamplerState> sceneClampSampler_;  // Clamp-to-edge mode for clampmap
 	MetalPtr<MTL::Library> sceneLibrary_;
 	MetalPtr<MTL::Function> sceneVertexFunction_;
 	MetalPtr<MTL::Function> sceneFragmentFunction_;
@@ -4079,7 +4080,18 @@ bool MetalRenderer::ensureSceneShaderResources() {
 		sampDesc->release();
 	}
 
+	if (!sceneClampSampler_) {
+		MTL::SamplerDescriptor* sampDesc = MTL::SamplerDescriptor::alloc()->init();
+		sampDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
+		sampDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
+		sampDesc->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
+		sampDesc->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
+		sceneClampSampler_.reset(device_->newSamplerState(sampDesc));
+		sampDesc->release();
+	}
+
 	return sceneSampler_.get() != nullptr &&
+	       sceneClampSampler_.get() != nullptr &&
 	       sceneVertexDescriptor_.get() != nullptr &&
 	       sceneVertexFunction_.get() != nullptr &&
 	       sceneFragmentFunction_.get() != nullptr;
@@ -4656,6 +4668,12 @@ bool MetalRenderer::drawPolyPackets() {
 				boundTexture = packetTexture;
 				boundImageHandle = desiredHandle;
 			}
+			
+			// Use clamp sampler if shader stage specifies clampmap
+			bool useClamp = stageInfo && stageInfo->clampMap;
+			MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
+			MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
+			
 			currentRenderEncoder_->drawPrimitives(packet.primitive,
 			                                   static_cast<NS::UInteger>(packet.firstVertex),
 			                                   static_cast<NS::UInteger>(packet.vertexCount));
@@ -5902,7 +5920,11 @@ void MetalRenderer::renderModelSurface(
 				MTL::Texture* tex = texMgr->getTexture(textureHandle);
 				if (tex) {
 					currentRenderEncoder_->setFragmentTexture(tex, 0);
-					if (sceneSampler_) {
+					// Use clamp sampler if shader stage specifies clampmap
+					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
+					if (useClamp && sceneClampSampler_) {
+						currentRenderEncoder_->setFragmentSamplerState(sceneClampSampler_.get(), 0);
+					} else if (sceneSampler_) {
 						currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
 					}
 				}

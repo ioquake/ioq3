@@ -149,6 +149,7 @@ struct MetalShaderStageInfo {
     bool usesLightmap = false;
     bool usesWhiteImage = false;
     bool isStandaloneLightmapPass = false;
+    bool clampMap = false;  // Use clamp-to-edge instead of repeat
     float animFrequency = 0.0f;
     MetalRGBGenConfig rgbGen;
     MetalAlphaGenConfig alphaGen;

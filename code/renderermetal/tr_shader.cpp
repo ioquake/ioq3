@@ -1218,8 +1218,11 @@ static void parseFogParms(TokenStream &stream, ShaderBuilder &builder) {
         }
 
         void handleStageDirective(const std::string &token, StageBuilder &stage) {
-            if (!Q_stricmp(token.c_str(), "map") || !Q_stricmp(token.c_str(), "clampmap")) {
+            if (!Q_stricmp(token.c_str(), "map")) {
                 parseImageToken(stream_.next(false), stage);
+            } else if (!Q_stricmp(token.c_str(), "clampmap")) {
+                parseImageToken(stream_.next(false), stage);
+                stage.info.clampMap = true;
             } else if (!Q_stricmp(token.c_str(), "animmap")) {
                 parseAnimMap(stream_, stage);
             } else if (!Q_stricmp(token.c_str(), "blendfunc")) {
