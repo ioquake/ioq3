@@ -59,22 +59,8 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 		Metal_LogRendererCall("re.MarkFragments");
 		return 0;
 	};
-	g_refExport.LerpTag = [](orientation_t* tag, qhandle_t, int, int, float, const char*) {
-		Metal_LogRendererCall("re.LerpTag");
-		if (tag) {
-			Com_Memset(tag, 0, sizeof(*tag));
-		}
-		return 0;
-	};
-	g_refExport.ModelBounds = [](qhandle_t, vec3_t mins, vec3_t maxs) {
-		Metal_LogRendererCall("re.ModelBounds");
-		if (mins) {
-			VectorClear(mins);
-		}
-		if (maxs) {
-			VectorClear(maxs);
-		}
-	};
+	g_refExport.LerpTag = MetalBackend_LerpTag;
+	g_refExport.ModelBounds = MetalBackend_ModelBounds;
 
 	g_refExport.ClearScene = RE_ClearScene;
 	g_refExport.AddRefEntityToScene = RE_AddRefEntityToScene;

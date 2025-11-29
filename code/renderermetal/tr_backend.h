@@ -20,6 +20,8 @@ void MetalBackend_DrawStretchPic(float x, float y, float w, float h, float s1, f
 void MetalBackend_LoadWorld(const char* name);
 void MetalBackend_SetWorldVisData(const byte* vis);
 void MetalBackend_EndRegistration();
+int MetalBackend_LerpTag(orientation_t* tag, qhandle_t handle, int startFrame, int endFrame, float frac, const char* tagName);
+void MetalBackend_ModelBounds(qhandle_t handle, vec3_t mins, vec3_t maxs);
 
 // Debug / instrumentation helpers
 void Metal_LogRendererCall(const char* name);

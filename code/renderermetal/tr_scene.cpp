@@ -90,10 +90,10 @@ void RE_ClearScene(void) {
 	Metal_LogRendererCall("re.ClearScene");
 	MetalSceneState& state = g_sceneStore.state;
 
-	if (ri.Printf) {
-		ri.Printf(PRINT_ALL, "DEBUG: ClearScene called - numEntities=%d (marking boundary, not clearing)\n",
-		          state.numEntities);
-	}
+	// if (ri.Printf) {
+	// 	ri.Printf(PRINT_ALL, "DEBUG: ClearScene called - numEntities=%d (marking boundary, not clearing)\n",
+	// 	          state.numEntities);
+	// }
 
 	// Like OpenGL2: Mark where the NEXT scene starts, but DON'T clear existing entities
 	// This allows entities to accumulate across multiple scenes within a frame
@@ -118,10 +118,10 @@ void RE_AddRefEntityToScene(const refEntity_t* re) {
 	}
 
 	// DEBUG: Log entity being added
-	if (ri.Printf && re->reType == RT_MODEL) {
-		ri.Printf(PRINT_ALL, "DEBUG: Adding entity to scene - type=%d, hModel=%d, renderfx=0x%x\n",
-		          re->reType, re->hModel, re->renderfx);
-	}
+	// if (ri.Printf && re->reType == RT_MODEL) {
+	// 	ri.Printf(PRINT_ALL, "DEBUG: Adding entity to scene - type=%d, hModel=%d, renderfx=0x%x\n",
+	// 	          re->reType, re->hModel, re->renderfx);
+	// }
 
 	CopyRefEntity(state.entities[state.numEntities++], re);
 }
@@ -171,18 +171,18 @@ void RE_RenderScene(const refdef_t* fd) {
 	}
 
 	// DEBUG: Log scene rendering
-	if (ri.Printf) {
-		ri.Printf(PRINT_ALL, "DEBUG: RenderScene called - numEntities=%d, firstSceneEntity=%d, rdflags=0x%x, NOWORLDMODEL=%d\n",
-		          state.numEntities, state.firstSceneEntity, fd->rdflags, (fd->rdflags & RDF_NOWORLDMODEL) ? 1 : 0);
-	}
+	// if (ri.Printf) {
+	// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene called - numEntities=%d, firstSceneEntity=%d, rdflags=0x%x, NOWORLDMODEL=%d\n",
+	// 	          state.numEntities, state.firstSceneEntity, fd->rdflags, (fd->rdflags & RDF_NOWORLDMODEL) ? 1 : 0);
+	// }
 
 	// Only use the 3D world scene refdef, not UI/player config scenes
 	// RDF_NOWORLDMODEL is set for UI scenes (player config, etc)
 	if (fd->rdflags & RDF_NOWORLDMODEL) {
-		if (ri.Printf) {
-			ri.Printf(PRINT_ALL, "DEBUG: RenderScene - DISCARDING UI scene (firstScene=%d, num=%d)\n",
-			          state.firstSceneEntity, state.numEntities - state.firstSceneEntity);
-		}
+		// if (ri.Printf) {
+		// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene - DISCARDING UI scene (firstScene=%d, num=%d)\n",
+		// 	          state.firstSceneEntity, state.numEntities - state.firstSceneEntity);
+		// }
 		return;
 	}
 
@@ -190,10 +190,10 @@ void RE_RenderScene(const refdef_t* fd) {
 	state.worldSceneFirstEntity = state.firstSceneEntity;
 	state.worldSceneNumEntities = state.numEntities - state.firstSceneEntity;
 
-	if (ri.Printf) {
-		ri.Printf(PRINT_ALL, "DEBUG: RenderScene - ACCEPTING world scene (firstEntity=%d, numEntities=%d)\n",
-		          state.worldSceneFirstEntity, state.worldSceneNumEntities);
-	}
+	// if (ri.Printf) {
+	// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene - ACCEPTING world scene (firstEntity=%d, numEntities=%d)\n",
+	// 	          state.worldSceneFirstEntity, state.worldSceneNumEntities);
+	// }
 
 	state.refdef = *fd;
 	state.refdefValid = qtrue;

@@ -78,6 +78,110 @@ struct __attribute__((packed)) MetalPolyVertex {
 
 // Verify structure matches Metal shader expectations
 static_assert(sizeof(MetalPolyVertex) == 44, "MetalPolyVertex must be exactly 44 bytes to match Metal shader");
+
+// Skin system data structures (matches OpenGL2 tr_local.h:792-801)
+constexpr int MAX_SKIN_SURFACES = 256;
+
+struct MetalSkinSurface {
+	char name[MAX_QPATH];
+	qhandle_t shader;
+
+	MetalSkinSurface() : name{}, shader(0) {}
+};
+
+struct MetalSkin {
+	char name[MAX_QPATH];
+	int numSurfaces;
+	std::vector<MetalSkinSurface> surfaces;
+
+	MetalSkin() : name{}, numSurfaces(0) {}
+};
+
+// Helper function for parsing comma-separated skin files (matches OpenGL2 CommaParse)
+static char* CommaParse(char** data_p) {
+	static char com_token[MAX_TOKEN_CHARS];
+	int c = 0, len;
+	char* data;
+
+	data = *data_p;
+	len = 0;
+	com_token[0] = 0;
+
+	// make sure incoming data is valid
+	if (!data) {
+		*data_p = NULL;
+		return com_token;
+	}
+
+	while (1) {
+		// skip whitespace
+		while ((c = *data) <= ' ') {
+			if (!c) {
+				break;
+			}
+			data++;
+		}
+
+		c = *data;
+
+		// skip double slash comments
+		if (c == '/' && data[1] == '/') {
+			data += 2;
+			while (*data && *data != '\n') {
+				data++;
+			}
+		}
+		// skip /* */ comments
+		else if (c == '/' && data[1] == '*') {
+			data += 2;
+			while (*data && (*data != '*' || data[1] != '/')) {
+				data++;
+			}
+			if (*data) {
+				data += 2;
+			}
+		}
+		else {
+			break;
+		}
+	}
+
+	if (c == 0) {
+		return com_token;
+	}
+
+	// handle quoted strings
+	if (c == '\"') {
+		data++;
+		while (1) {
+			c = *data++;
+			if (c == '\"' || !c) {
+				com_token[len] = 0;
+				*data_p = data;
+				return com_token;
+			}
+			if (len < MAX_TOKEN_CHARS - 1) {
+				com_token[len] = c;
+				len++;
+			}
+		}
+	}
+
+	// parse a regular word
+	do {
+		if (len < MAX_TOKEN_CHARS - 1) {
+			com_token[len] = c;
+			len++;
+		}
+		data++;
+		c = *data;
+	} while (c > 32 && c != ',');
+
+	com_token[len] = 0;
+
+	*data_p = data;
+	return com_token;
+}
 }
 
 namespace {
@@ -574,6 +678,9 @@ public:
 	qhandle_t registerSkin(const char* name);
 	void setColor(const float* rgba);
 	void drawStretchPic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t shader);
+	
+	int lerpTag(orientation_t* tag, qhandle_t handle, int startFrame, int endFrame, float frac, const char* tagName);
+	void modelBounds(qhandle_t handle, vec3_t mins, vec3_t maxs);
 
 	const glconfig_t& config() const { return config_; }
 	bool callLoggingEnabled() const;
@@ -894,7 +1001,7 @@ private:
 	std::vector<qhandle_t> worldLightmapHandles_;
 	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
-	std::vector<std::string> registeredSkins_;
+	std::vector<MetalSkin> registeredSkins_;  // Skin storage (index 0 is reserved)
 	std::unordered_map<std::string, qhandle_t> skinLookup_;
 	std::vector<MetalShaderResource> shaderResources_;
 	std::unordered_map<std::string, qhandle_t> shaderLookup_;
@@ -972,6 +1079,7 @@ private:
 	qhandle_t resolveImageHandle(MetalShaderResource& resource, size_t imageIndex);
 	void updatePrimaryImageHandle(MetalShaderResource& resource);
 	bool assetExists(const char* path) const;
+	MetalSkin* getSkinByHandle(qhandle_t handle);
 	static MTL::BlendFactor ToMetalBlendFactor(MetalBlendFactor factor);
 	TCModParams computeTCModParams(const MetalShaderStageInfo* stageInfo, float timeSeconds) const;
 };
@@ -2245,33 +2353,229 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 	return result;
 }
 
+// Get skin by handle (matches OpenGL2's R_GetSkinByHandle)
+MetalSkin* MetalRenderer::getSkinByHandle(qhandle_t handle) {
+	if (handle < 1 || handle > static_cast<qhandle_t>(registeredSkins_.size())) {
+		return nullptr;
+	}
+	return &registeredSkins_[handle - 1];
+}
+
+// Full skin system implementation (matches OpenGL2 RE_RegisterSkin in tr_image.c:3182-3296)
 qhandle_t MetalRenderer::registerSkin(const char* name) {
 	if (!name || !name[0]) {
-		return 0;
-	}
-
-	const std::string key(name);
-	auto it = skinLookup_.find(key);
-	if (it != skinLookup_.end()) {
-		return it->second;
-	}
-
-	if (!assetExists(name)) {
 		if (ri_.Printf) {
-			ri_.Printf(PRINT_WARNING, "Metal: skin '%s' missing (stub register)\n", name);
+			ri_.Printf(PRINT_DEVELOPER, "Metal: Empty name passed to registerSkin\n");
 		}
 		return 0;
 	}
 
+	if (strlen(name) >= MAX_QPATH) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_DEVELOPER, "Metal: Skin name exceeds MAX_QPATH\n");
+		}
+		return 0;
+	}
+
+	// Check if skin is already loaded
+	const std::string key(name);
+	auto it = skinLookup_.find(key);
+	if (it != skinLookup_.end()) {
+		qhandle_t handle = it->second;
+		MetalSkin* skin = getSkinByHandle(handle);
+		if (skin && skin->numSurfaces == 0) {
+			return 0;  // default skin
+		}
+		return handle;
+	}
+
+	// Allocate a new skin
 	const qhandle_t handle = static_cast<qhandle_t>(registeredSkins_.size() + 1);
-	registeredSkins_.push_back(key);
+	registeredSkins_.emplace_back();
+	MetalSkin& skin = registeredSkins_.back();
+	Q_strncpyz(skin.name, name, sizeof(skin.name));
+	skin.numSurfaces = 0;
 	skinLookup_[key] = handle;
 
+	// If not a .skin file, load as a single shader
+	const char* ext = name + strlen(name) - 5;
+	if (strlen(name) < 5 || strcmp(ext, ".skin") != 0) {
+		skin.numSurfaces = 1;
+		skin.surfaces.resize(1);
+		skin.surfaces[0].shader = registerShader(name, qtrue);
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_DEVELOPER, "Metal: registered non-skin shader '%s' as skin handle %d\n", name, handle);
+		}
+		return handle;
+	}
+
+	// Load and parse the skin file
+	union {
+		char* c;
+		void* v;
+	} text;
+
+	ri_.FS_ReadFile(name, &text.v);
+	if (!text.c) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: skin file '%s' not found\n", name);
+		}
+		return 0;
+	}
+
+	// Parse skin file with temporary array (like OpenGL2)
+	MetalSkinSurface parseSurfaces[MAX_SKIN_SURFACES];
+	int totalSurfaces = 0;
+	char* text_p = text.c;
+	char surfName[MAX_QPATH];
+
+	while (text_p && *text_p) {
+		// Parse the shader name FIRST (as CommaParse seems to be reading them in reverse)
+		char* token = CommaParse(&text_p);
+
+		if (!token[0]) {
+			break;
+		}
+
+		// Skip if this looks like a tag
+		if (strstr(token, "tag_")) {
+			// Skip the surface name too
+			CommaParse(&text_p);
+			continue;
+		}
+
+		// Save the shader name
+		char shaderName[MAX_QPATH];
+		Q_strncpyz(shaderName, token, sizeof(shaderName));
+
+		// Skip comma
+		if (*text_p == ',') {
+			text_p++;
+		}
+
+		// Now get the surface name
+		token = CommaParse(&text_p);
+		Q_strncpyz(surfName, token, sizeof(surfName));
+
+		// Lowercase the surface name so skin compares are faster
+		Q_strlwr(surfName);
+
+		if (skin.numSurfaces < MAX_SKIN_SURFACES) {
+			MetalSkinSurface& surf = parseSurfaces[skin.numSurfaces];
+			Q_strncpyz(surf.name, surfName, sizeof(surf.name));
+			surf.shader = registerShader(shaderName, qtrue);
+			skin.numSurfaces++;
+
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_DEVELOPER, "Metal: skin '%s' surface '%s' -> shader '%s' (handle %d)\n",
+				          name, surfName, shaderName, surf.shader);
+			}
+		}
+
+		totalSurfaces++;
+	}
+
+	ri_.FS_FreeFile(text.v);
+
+	if (totalSurfaces > MAX_SKIN_SURFACES) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "WARNING: Ignoring excess surfaces (found %d, max is %d) in skin '%s'!\n",
+			          totalSurfaces, MAX_SKIN_SURFACES, name);
+		}
+	}
+
+	// Never let a skin have 0 shaders
+	if (skin.numSurfaces == 0) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: skin '%s' has no surfaces, using default\n", name);
+		}
+		return 0;  // use default skin
+	}
+
+	// Copy surfaces to skin
+	skin.surfaces.resize(skin.numSurfaces);
+	for (int i = 0; i < skin.numSurfaces; ++i) {
+		skin.surfaces[i] = parseSurfaces[i];
+	}
+
 	if (ri_.Printf) {
-		ri_.Printf(PRINT_DEVELOPER, "Metal: registered skin '%s' as handle %d (placeholder)\n", name, handle);
+		ri_.Printf(PRINT_DEVELOPER, "Metal: registered skin '%s' with %d surfaces as handle %d\n",
+		          name, skin.numSurfaces, handle);
 	}
 
 	return handle;
+}
+
+int MetalRenderer::lerpTag(orientation_t* tag, qhandle_t handle, int startFrame, int endFrame, float frac, const char* tagName) {
+	// Validate model handle
+	if (handle <= 0 || static_cast<size_t>(handle) >= models_.size()) {
+		return 0;
+	}
+
+	MetalModel* model = models_[handle];
+	if (!model || model->type != MetalModelType::MD3) {
+		return 0;
+	}
+
+	// For now, just use LOD 0
+	if (!model->lods[0]) {
+		return 0;
+	}
+
+	MetalModelLOD* lodData = model->lods[0];
+
+	// Clamp frame numbers
+	if (startFrame < 0) startFrame = 0;
+	if (startFrame >= lodData->numFrames) startFrame = lodData->numFrames - 1;
+	if (endFrame < 0) endFrame = 0;
+	if (endFrame >= lodData->numFrames) endFrame = lodData->numFrames - 1;
+
+	// Find the tag index
+	int tagIndex = -1;
+	for (int i = 0; i < lodData->numTags; i++) {
+		if (!strcmp(lodData->tagNames[i].name, tagName)) {
+			tagIndex = i;
+			break;
+		}
+	}
+
+	if (tagIndex < 0) {
+		return 0;
+	}
+
+	// Get tags for start and end frames
+	const MetalModelTag& startTag = lodData->tags[startFrame * lodData->numTags + tagIndex];
+	const MetalModelTag& endTag = lodData->tags[endFrame * lodData->numTags + tagIndex];
+
+	// Interpolate origin
+	tag->origin[0] = startTag.origin[0] + frac * (endTag.origin[0] - startTag.origin[0]);
+	tag->origin[1] = startTag.origin[1] + frac * (endTag.origin[1] - startTag.origin[1]);
+	tag->origin[2] = startTag.origin[2] + frac * (endTag.origin[2] - startTag.origin[2]);
+
+	// Interpolate axis
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			tag->axis[i][j] = startTag.axis[i][j] + frac * (endTag.axis[i][j] - startTag.axis[i][j]);
+		}
+	}
+	
+	// Normalize axis
+	VectorNormalize(tag->axis[0]);
+	VectorNormalize(tag->axis[1]);
+	VectorNormalize(tag->axis[2]);
+
+	return 1;
+}
+
+void MetalRenderer::modelBounds(qhandle_t handle, vec3_t mins, vec3_t maxs) {
+	if (handle <= 0 || static_cast<size_t>(handle) >= models_.size()) {
+		VectorClear(mins);
+		VectorClear(maxs);
+		return;
+	}
+
+	MetalModel* model = models_[handle];
+	MetalModel_Bounds(model, mins, maxs);
 }
 
 void MetalRenderer::setColor(const float* rgba) {
@@ -2589,10 +2893,10 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 	const int numEntities = scene.worldSceneNumEntities;
 
 	// DEBUG: Log entity processing
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: processEntities called - worldScene range [%d, %d) = %d entities\n",
-		          firstEntity, firstEntity + numEntities, numEntities);
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: processEntities called - worldScene range [%d, %d) = %d entities\n",
+	// 	          firstEntity, firstEntity + numEntities, numEntities);
+	// }
 
 	int modelCount = 0;
 	for (int i = 0; i < numEntities; ++i) {
@@ -2603,18 +2907,18 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 
 		if (packet.entity.reType == RT_MODEL) {
 			modelCount++;
-			if (ri_.Printf) {
-				ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
-				          entityIndex, packet.entity.hModel, packet.entity.renderfx);
-			}
+			// if (ri_.Printf) {
+			// 	ri_.Printf(PRINT_ALL, "DEBUG: Entity %d - type=RT_MODEL, hModel=%d, renderfx=0x%x\n",
+			// 	          entityIndex, packet.entity.hModel, packet.entity.renderfx);
+			// }
 		}
 	}
 	sceneStats_.entities = static_cast<int>(drawPackets_.size());
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: processEntities added %d entities to drawPackets (%d are models)\n",
-		          numEntities, modelCount);
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: processEntities added %d entities to drawPackets (%d are models)\n",
+	// 	          numEntities, modelCount);
+	// }
 }
 
 void MetalRenderer::processPolys(const MetalSceneState& scene) {
@@ -5023,6 +5327,15 @@ void MetalRenderer::setupEntityLighting(const refEntity_t& ent, vec3_t ambientLi
 
 	// Sample the light grid at the entity's position
 	R_LightForPoint(lightOrigin, ambientLight, directedLight, lightDir);
+
+	// DEBUG: Log lighting values
+	static int logCount = 0;
+	// if (ri_.Printf && logCount++ < 3) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: Entity lighting - ambient=(%.1f,%.1f,%.1f), directed=(%.1f,%.1f,%.1f), dir=(%.2f,%.2f,%.2f)\n",
+	// 	          ambientLight[0], ambientLight[1], ambientLight[2],
+	// 	          directedLight[0], directedLight[1], directedLight[2],
+	// 	          lightDir[0], lightDir[1], lightDir[2]);
+	// }
 }
 
 void MetalRenderer::multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result) {
@@ -5090,31 +5403,31 @@ void MetalRenderer::renderModelSurface(
 	const vec3_t lightDir)
 {
 	// DEBUG: Log surface rendering start
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface called - encoder=%p, pipeline=%p, depthState=%p\n",
-		          currentRenderEncoder_, modelPipeline_.get(), modelDepthState_.get());
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface called - encoder=%p, pipeline=%p, depthState=%p\n",
+	// 	          currentRenderEncoder_, modelPipeline_.get(), modelDepthState_.get());
+	// }
 
 	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - missing required state, returning\n");
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - missing required state, returning\n");
+		// }
 		return;
 	}
 
 	// Build interleaved vertex buffer
 	MTL::Buffer* vertexBuffer = createModelVertexBuffer(ent, surface);
 	if (!vertexBuffer) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - failed to create vertex buffer\n");
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - failed to create vertex buffer\n");
+		// }
 		return;
 	}
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - vertex buffer created, numIndexes=%d\n",
-		          surface.numIndexes);
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - vertex buffer created, numIndexes=%d\n",
+	// 	          surface.numIndexes);
+	// }
 
 	// Set pipeline state
 	currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
@@ -5149,17 +5462,62 @@ void MetalRenderer::renderModelSurface(
 	};
 
 	EntityLightingParams lighting;
-	VectorCopy(ambientLight, lighting.ambientLight);
-	VectorCopy(directedLight, lighting.directedLight);
+	// Normalize lighting from 0-255 range to 0-1 range (matches OpenGL2 tr_shade.c:1314-1318)
+	VectorScale(ambientLight, 1.0f / 255.0f, lighting.ambientLight);
+	VectorScale(directedLight, 1.0f / 255.0f, lighting.directedLight);
 	VectorCopy(lightDir, lighting.lightDir);
 	lighting.padding1 = lighting.padding2 = lighting.padding3 = 0.0f;
 
 	currentRenderEncoder_->setFragmentBytes(&lighting, sizeof(EntityLightingParams), 0);
 
-	// Bind texture
+	// Determine shader to use (matches OpenGL2 tr_mesh.c:357-383)
+	// Priority: customShader > customSkin > surface.shaderIndexes > default
+	qhandle_t shaderHandle = 0;
+	const char* shaderSource = "none";
+
+	// 1. Check for customShader first
+	if (ent.customShader) {
+		shaderHandle = ent.customShader;
+		shaderSource = "customShader";
+	}
+	// 2. Check for customSkin with surface name match
+	else if (ent.customSkin > 0) {
+		MetalSkin* skin = getSkinByHandle(ent.customSkin);
+		if (skin) {
+			// Match the surface name to something in the skin file
+			// Surface names should be lowercase for comparison
+			char surfaceName[MAX_QPATH];
+			Q_strncpyz(surfaceName, surface.name, sizeof(surfaceName));
+			Q_strlwr(surfaceName);
+
+			for (int j = 0; j < skin->numSurfaces; ++j) {
+				// The names have both been lowercased
+				if (strcmp(skin->surfaces[j].name, surfaceName) == 0) {
+					shaderHandle = skin->surfaces[j].shader;
+					shaderSource = "customSkin";
+					break;
+				}
+			}
+		}
+	}
+
+	// 3. Fall back to surface.shaderIndexes if no customShader/customSkin
+	if (shaderHandle == 0 && !surface.shaderIndexes.empty()) {
+		shaderHandle = surface.shaderIndexes[0];
+		shaderSource = "shaderIndexes";
+	}
+
+	// TARGETED DEBUG: Log shader selection for first few frames
+	static int surfaceLogCount = 0;
+	if (surfaceLogCount++ < 20 && ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "^5SURFACE_SHADER: surface='%s' shader=%d from=%s customSkin=%d\n",
+		          surface.name, shaderHandle, shaderSource, ent.customSkin);
+	}
+
+	// Bind texture based on determined shader
 	bool textureFound = false;
-	if (!surface.shaderIndexes.empty() && surface.shaderIndexes[0] > 0) {
-		MetalShaderResource* shaderRes = getShaderResource(surface.shaderIndexes[0]);
+	if (shaderHandle > 0) {
+		MetalShaderResource* shaderRes = getShaderResource(shaderHandle);
 		if (shaderRes && shaderRes->primaryImageHandle > 0) {
 			TextureManager* texMgr = ensureTextureManager();
 			if (texMgr) {
@@ -5176,10 +5534,10 @@ void MetalRenderer::renderModelSurface(
 		}
 	}
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - texture bound=%d, shaderIndex=%d\n",
-		          textureFound, !surface.shaderIndexes.empty() ? surface.shaderIndexes[0] : 0);
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - surface='%s', shaderHandle=%d, texture bound=%d\n",
+	// 	          surface.name, shaderHandle, textureFound);
+	// }
 
 	// Set vertex buffer
 	currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
@@ -5194,29 +5552,24 @@ void MetalRenderer::renderModelSurface(
 			indexBuffer,
 			0
 		);
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - draw call MADE with %d indexes\n",
-			          surface.numIndexes);
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - draw call MADE with %d indexes\n",
+		// 	          surface.numIndexes);
+		// }
 	} else {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - NO index buffer, draw call SKIPPED\n");
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModelSurface - NO index buffer, draw call SKIPPED\n");
+		// }
 	}
 
 	vertexBuffer->release();
 }
 
 void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) {
-	// DEBUG: Log renderModel call
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: renderModel called - hModel=%d\n", ent.hModel);
-	}
-
 	// Validate model handle
 	if (ent.hModel <= 0 || static_cast<size_t>(ent.hModel) >= models_.size()) {
 		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - invalid model handle (hModel=%d, models_.size=%zu)\n",
+			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - invalid hModel=%d (models_.size=%zu)\n",
 			          ent.hModel, models_.size());
 		}
 		return;
@@ -5225,8 +5578,7 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 	MetalModel* model = models_[ent.hModel];
 	if (!model || model->type == MetalModelType::BAD) {
 		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - model is null or BAD (model=%p, type=%d)\n",
-			          model, model ? static_cast<int>(model->type) : -1);
+			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - model null or BAD for hModel=%d\n", ent.hModel);
 		}
 		return;
 	}
@@ -5235,17 +5587,24 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 	int lod = 0;
 	if (lod >= model->numLods || !model->lods[lod]) {
 		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - invalid LOD (lod=%d, numLods=%d)\n",
-			          lod, model->numLods);
+			ri_.Printf(PRINT_ALL, "^3MODEL_RENDER: FAILED - invalid LOD for model '%s' (lod=%d, numLods=%d)\n",
+			          model->name, lod, model->numLods);
 		}
 		return;
 	}
 
 	MetalModelLOD* lodData = model->lods[lod];
 
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: renderModel - valid model, numSurfaces=%d, pipeline=%p\n",
-		          lodData->numSurfaces, modelPipeline_.get());
+	// TARGETED DEBUG: Log every model being rendered with key info
+	static int frameCount = 0;
+	static int lastFrameLogged = -1;
+	if (frameCount != lastFrameLogged && frameCount++ < 5) {
+		lastFrameLogged = frameCount;
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "^2MODEL_RENDER: '%s' hModel=%d customSkin=%d customShader=%d numSurfaces=%d renderfx=0x%x\n",
+			          model->name, ent.hModel, ent.customSkin, ent.customShader,
+			          lodData->numSurfaces, ent.renderfx);
+		}
 	}
 
 	// Calculate entity transform matrix
@@ -5265,9 +5624,9 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 
 	// Render each surface
 	for (int i = 0; i < lodData->numSurfaces; i++) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: renderModel - rendering surface %d/%d\n", i, lodData->numSurfaces);
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModel - rendering surface %d/%d\n", i, lodData->numSurfaces);
+		// }
 		renderModelSurface(ent, lodData->surfaces[i], mvpMatrix, vertexLerp,
 		                   ambientLight, directedLight, lightDir);
 	}
@@ -5275,22 +5634,22 @@ void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) 
 
 bool MetalRenderer::drawModelEntities() {
 	// DEBUG: Log entry to drawModelEntities
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities called - drawPackets size=%zu\n", drawPackets_.size());
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities called - drawPackets size=%zu\n", drawPackets_.size());
+	// }
 
 	if (drawPackets_.empty()) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - no draw packets, returning true\n");
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - no draw packets, returning true\n");
+		// }
 		return true;
 	}
 
 	if (!currentRenderEncoder_ || !sceneCamera_.valid) {
-		if (ri_.Printf) {
-			ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - encoder or camera invalid (encoder=%p, camera.valid=%d)\n",
-			          currentRenderEncoder_, sceneCamera_.valid);
-		}
+		// if (ri_.Printf) {
+		// 	ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities - encoder or camera invalid (encoder=%p, camera.valid=%d)\n",
+		// 	          currentRenderEncoder_, sceneCamera_.valid);
+		// }
 		return false;
 	}
 
@@ -5319,35 +5678,37 @@ bool MetalRenderer::drawModelEntities() {
 			bool isThirdPerson = (packet.entity.renderfx & RF_THIRD_PERSON) != 0;
 			// TODO: Check for portal/mirror views when implemented
 			// For now, assume we're never in a portal view
-			bool isPortalView = false;
+			// bool isPortalView = false;
 
-			bool personalModel = isThirdPerson && !isPortalView;
+			// Don't render third-person models in first-person view (matching OpenGL2 tr_mesh.c:296-297)
+			// This prevents the player from seeing their own body in first-person
+			bool personalModel = isThirdPerson; // && !isPortalView when portals are implemented
 
 			if (isThirdPerson) {
 				thirdPersonCount++;
 			}
 
 			if (!personalModel) {
-				if (ri_.Printf) {
-					ri_.Printf(PRINT_ALL, "DEBUG: Rendering model - hModel=%d, renderfx=0x%x, isThirdPerson=%d\n",
-					          packet.entity.hModel, packet.entity.renderfx, isThirdPerson);
-				}
+				// if (ri_.Printf) {
+				// 	ri_.Printf(PRINT_ALL, "DEBUG: Rendering model - hModel=%d, renderfx=0x%x, isThirdPerson=%d\n",
+				// 	          packet.entity.hModel, packet.entity.renderfx, isThirdPerson);
+				// }
 				renderModel(packet.entity, sceneCamera_.refdef);
 				renderedCount++;
 			} else {
-				if (ri_.Printf) {
-					ri_.Printf(PRINT_ALL, "DEBUG: Skipping personalModel - hModel=%d, renderfx=0x%x\n",
-					          packet.entity.hModel, packet.entity.renderfx);
-				}
+				// if (ri_.Printf) {
+				// 	ri_.Printf(PRINT_ALL, "DEBUG: Skipping personalModel - hModel=%d, renderfx=0x%x\n",
+				// 	          packet.entity.hModel, packet.entity.renderfx);
+				// }
 			}
 		}
 	}
 
 	// DEBUG: Summary
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities summary - total packets=%zu, models=%d, thirdPerson=%d, rendered=%d\n",
-		          drawPackets_.size(), modelCount, thirdPersonCount, renderedCount);
-	}
+	// if (ri_.Printf) {
+	// 	ri_.Printf(PRINT_ALL, "DEBUG: drawModelEntities summary - total packets=%zu, models=%d, thirdPerson=%d, rendered=%d\n",
+	// 	          drawPackets_.size(), modelCount, thirdPersonCount, renderedCount);
+	// }
 
 	return true;
 }
@@ -5863,6 +6224,16 @@ qhandle_t MetalBackend_RegisterModel(const char* name) {
 qhandle_t MetalBackend_RegisterSkin(const char* name) {
 	Metal_LogRendererCall("re.RegisterSkin");
 	return g_renderer.registerSkin(name);
+}
+
+int MetalBackend_LerpTag(orientation_t* tag, qhandle_t handle, int startFrame, int endFrame, float frac, const char* tagName) {
+	// Metal_LogRendererCall("re.LerpTag");
+	return g_renderer.lerpTag(tag, handle, startFrame, endFrame, frac, tagName);
+}
+
+void MetalBackend_ModelBounds(qhandle_t handle, vec3_t mins, vec3_t maxs) {
+	// Metal_LogRendererCall("re.ModelBounds");
+	g_renderer.modelBounds(handle, mins, maxs);
 }
 
 void MetalBackend_SetColor(const float* rgba) {
