@@ -80,7 +80,32 @@ static_assert(sizeof(MetalPolyVertex) == 44, "MetalPolyVertex must be exactly 44
 }
 
 namespace {
-inline MetalPolyVertex ConvertDrawVert(const drawVert_t& src) {
+// Apply overbright color shift to vertex colors (matches OpenGL2's R_ColorShiftLightingFloats)
+inline void ColorShiftLightingBytes(const byte in[4], byte out[4], int mapOverBrightBits, int overBrightBits) {
+	// Shift the color data based on overbright range
+	int shift = mapOverBrightBits - overBrightBits;
+
+	// Shift the data based on overbright range
+	int r = in[0] << shift;
+	int g = in[1] << shift;
+	int b = in[2] << shift;
+
+	// Normalize by color instead of saturating to white
+	if (shift > 0 && (r > 255 || g > 255 || b > 255)) {
+		int max = r > g ? r : g;
+		max = max > b ? max : b;
+		r = r * 255 / max;
+		g = g * 255 / max;
+		b = b * 255 / max;
+	}
+
+	out[0] = r > 255 ? 255 : (r < 0 ? 0 : r);
+	out[1] = g > 255 ? 255 : (g < 0 ? 0 : g);
+	out[2] = b > 255 ? 255 : (b < 0 ? 0 : b);
+	out[3] = in[3];
+}
+
+inline MetalPolyVertex ConvertDrawVert(const drawVert_t& src, int mapOverBrightBits, int overBrightBits) {
 	MetalPolyVertex dst{};
 	// Assume Little Endian platform and Little Endian BSP
 	dst.xyz[0] = src.xyz[0];
@@ -93,12 +118,13 @@ inline MetalPolyVertex ConvertDrawVert(const drawVert_t& src) {
 	dst.normal[0] = src.normal[0];
 	dst.normal[1] = src.normal[1];
 	dst.normal[2] = src.normal[2];
-	// Vertex colors are already normalized (0-1 range)
-	// No overbright scaling needed here - it's handled in the shader/blending
-	dst.modulate[0] = src.color[0];
-	dst.modulate[1] = src.color[1];
-	dst.modulate[2] = src.color[2];
-	dst.modulate[3] = src.color[3];
+	// Apply overbright color shift to vertex colors (lightmap data)
+	byte shiftedColor[4];
+	ColorShiftLightingBytes(src.color, shiftedColor, mapOverBrightBits, overBrightBits);
+	dst.modulate[0] = shiftedColor[0];
+	dst.modulate[1] = shiftedColor[1];
+	dst.modulate[2] = shiftedColor[2];
+	dst.modulate[3] = shiftedColor[3];
 	return dst;
 }
 
@@ -263,11 +289,12 @@ inline void TessellatePatch3x3(const MetalPolyVertex ctrl[3][3], int tessLevel,
 // Quake 3 patches have dimensions that are 2*n+1 (e.g., 3, 5, 7, 9...)
 // Each overlapping 3x3 section is a separate Bezier patch
 inline void TessellateBezierPatch(const drawVert_t* controlPoints, int width, int height,
-                                  std::vector<MetalPolyVertex>& outVerts, int tessLevel) {
+                                  std::vector<MetalPolyVertex>& outVerts, int tessLevel,
+                                  int mapOverBrightBits, int overBrightBits) {
 	// Convert all control points to our vertex format
 	std::vector<MetalPolyVertex> ctrl(static_cast<size_t>(width * height));
 	for (int i = 0; i < width * height; ++i) {
-		ctrl[static_cast<size_t>(i)] = ConvertDrawVert(controlPoints[i]);
+		ctrl[static_cast<size_t>(i)] = ConvertDrawVert(controlPoints[i], mapOverBrightBits, overBrightBits);
 	}
 	
 	// Number of patches in each direction
@@ -1550,6 +1577,14 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		return handle;
 	};
 
+	// Get overbright bits for vertex color shifting (matches OpenGL2)
+	int mapOverBrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+	int overBrightBits = r_overBrightBits_ ? r_overBrightBits_->integer : 1;
+	if (mapOverBrightBits < 0) mapOverBrightBits = 0;
+	if (mapOverBrightBits > 4) mapOverBrightBits = 4;
+	if (overBrightBits < 0) overBrightBits = 0;
+	if (overBrightBits > 4) overBrightBits = 4;
+
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
 	worldVertexTemplate_.reserve(static_cast<size_t>(vertexCount) * 2);
@@ -1608,7 +1643,7 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 
 			// Tessellate the patch into triangles
 			std::vector<MetalPolyVertex> patchVerts;
-			TessellateBezierPatch(&drawVerts[firstVert], patchWidth, patchHeight, patchVerts, PATCH_SUBDIVISIONS);
+			TessellateBezierPatch(&drawVerts[firstVert], patchWidth, patchHeight, patchVerts, PATCH_SUBDIVISIONS, mapOverBrightBits, overBrightBits);
 
 			// Add tessellated vertices to the world buffer
 			for (const auto& v : patchVerts) {
@@ -1633,9 +1668,9 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 				if (idx0 < 0 || idx0 >= vertexCount || idx1 < 0 || idx1 >= vertexCount || idx2 < 0 || idx2 >= vertexCount) {
 					continue;
 				}
-				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx0]));
-				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx1]));
-				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx2]));
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx0], mapOverBrightBits, overBrightBits));
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx1], mapOverBrightBits, overBrightBits));
+				worldVertexTemplate_.push_back(ConvertDrawVert(drawVerts[idx2], mapOverBrightBits, overBrightBits));
 			}
 		}
 
