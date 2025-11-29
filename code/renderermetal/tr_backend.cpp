@@ -776,15 +776,12 @@ private:
 	};
 
 	// Entity lighting parameters - matches scene.metal EntityLightingParams
-	struct EntityLightingParams {
-		float ambientLight[3] = {150.0f, 150.0f, 150.0f};
-		float padding0 = 0.0f;
-		float directedLight[3] = {150.0f, 150.0f, 150.0f};
-		float padding1 = 0.0f;
-		float lightDir[3] = {0.0f, 0.0f, 1.0f};
-		float padding2 = 0.0f;
-		float modelLightDir[3] = {0.0f, 0.0f, 1.0f};
-		float overBrightBits = 1.0f;  // 1 << overbrightBits = overbright multiplier
+	// Note: Metal's float3 is 16-byte aligned, so we use float4 for proper alignment
+	struct alignas(16) EntityLightingParams {
+		float ambientLight[4] = {150.0f, 150.0f, 150.0f, 0.0f};  // xyz = color, w = padding
+		float directedLight[4] = {150.0f, 150.0f, 150.0f, 0.0f}; // xyz = color, w = padding
+		float lightDir[4] = {0.0f, 0.0f, 1.0f, 0.0f};            // xyz = dir, w = padding
+		float modelLightDir[4] = {0.0f, 0.0f, 1.0f, 1.0f};       // xyz = dir, w = overBrightBits
 	};
 
 	struct ModelFogParams {
@@ -5799,10 +5796,13 @@ void MetalRenderer::renderModelSurface(
 	// Set up entity lighting parameters (shared across all passes)
 	EntityLightingParams lightingParams{};
 	VectorScale(ambientLight, 1.0f / 255.0f, lightingParams.ambientLight);
+	lightingParams.ambientLight[3] = 0.0f;
 	VectorScale(directedLight, 1.0f / 255.0f, lightingParams.directedLight);
+	lightingParams.directedLight[3] = 0.0f;
 	vec3_t normalizedLightDir;
 	VectorNormalize2(lightDir, normalizedLightDir);
 	VectorCopy(normalizedLightDir, lightingParams.lightDir);
+	lightingParams.lightDir[3] = 0.0f;
 
 	vec3_t axis0, axis1, axis2;
 	VectorCopy(ent.axis[0], axis0);
@@ -5818,8 +5818,14 @@ void MetalRenderer::renderModelSurface(
 	lightingParams.modelLightDir[0] = DotProduct(normalizedLightDir, axis0);
 	lightingParams.modelLightDir[1] = DotProduct(normalizedLightDir, axis1);
 	lightingParams.modelLightDir[2] = DotProduct(normalizedLightDir, axis2);
-	lightingParams.padding0 = lightingParams.padding1 = lightingParams.padding2 = 0.0f;
-	lightingParams.overBrightBits = static_cast<float>(r_overBrightBits_ ? r_overBrightBits_->integer : 1);
+	
+	// Compute clamped overbright bits matching OpenGL2's tr.overbrightBits
+	int overbrightBits = r_overBrightBits_ ? r_overBrightBits_->integer : 1;
+	int mapOverbrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+	if (overbrightBits > 2) overbrightBits = 2;
+	if (overbrightBits < 0) overbrightBits = 0;
+	if (overbrightBits > mapOverbrightBits) overbrightBits = mapOverbrightBits;
+	lightingParams.modelLightDir[3] = static_cast<float>(overbrightBits);
 
 	// Q3 models use counter-clockwise winding for front faces (OpenGL convention)
 	currentRenderEncoder_->setCullMode(MTL::CullModeFront);

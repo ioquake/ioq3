@@ -52,15 +52,12 @@ struct StageFragmentParams {
 };
 
 // Entity lighting parameters - for CGEN_LIGHTING_DIFFUSE
+// Layout must match C++ EntityLightingParams struct exactly
 struct EntityLightingParams {
-    float3 ambientLight;    // Ambient light color (normalized 0-1 range)
-    float padding0;
-    float3 directedLight;   // Directional light color (normalized 0-1 range)
-    float padding1;
-    float3 lightDir;        // Normalized light direction in world space
-    float padding2;
-    float3 modelLightDir;   // Light direction in model space (for normals)
-    float overBrightBits;   // Overbright bits value (1 = 2x brightness)
+    float4 ambientLight;    // xyz = color (0-1), w = padding
+    float4 directedLight;   // xyz = color (0-1), w = padding
+    float4 lightDir;        // xyz = world space dir, w = padding
+    float4 modelLightDir;   // xyz = model space dir, w = overBrightBits
 };
 
 struct VertexIn {
@@ -201,11 +198,11 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
         // rgbGen lightingDiffuse - entity lighting (CGEN_LIGHTING_DIFFUSE)
         // Matches OpenGL2: color = ambientLight + N·L * directedLight
         // Note: ambientLight and directedLight are already normalized to 0-1 range in C++
-        float3 ambient = lighting.ambientLight;
-        float3 directed = lighting.directedLight;
+        float3 ambient = lighting.ambientLight.xyz;
+        float3 directed = lighting.directedLight.xyz;
 
         // Calculate N·L (normal dot light direction)
-        float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir));
+        float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir.xyz));
 
         // Combine ambient and directional lighting
         float3 litColor = ambient + NdotL * directed;
@@ -283,8 +280,8 @@ struct ModelVertexOut {
     float4 position [[position]];
     float2 texCoord;
     float2 envTexCoord;   // Pre-computed environment map texture coordinates
-    float3 normal;        // World-space normal for lighting
-    float3 worldPosition; // World-space position for fog and lighting
+    float3 normal;        // Model-space normal for lighting (matches OpenGL)
+    float3 worldPosition; // World-space position for fog and env mapping
 };
 
 // Parameters for model stage rendering (per-stage uniforms)
@@ -332,10 +329,8 @@ vertex ModelVertexOut vertex_model(ModelVertexIn in [[stage_in]],
     // Pass through texture coordinates
     out.texCoord = in.texCoord;
 
-    float3x3 normalMatrix = float3x3(modelUniforms.modelMatrix[0].xyz,
-                                     modelUniforms.modelMatrix[1].xyz,
-                                     modelUniforms.modelMatrix[2].xyz);
-    out.normal = normalize(normalMatrix * normal);
+    // Keep normal in model space for lighting (matches OpenGL's u_ModelLightDir approach)
+    out.normal = normalize(normal);
     out.worldPosition = worldPos.xyz;
 
     // Pre-compute environment map texture coordinates (for tcGen environment)
@@ -411,34 +406,34 @@ fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
     float4 texColor = tex.sample(samp, uv);
     
     // Calculate lighting (CGEN_LIGHTING_DIFFUSE)
-    // Matches OpenGL2's lightall_vp.glsl which does:
-    //   var_Color = baseColor (= 1 << overbrightBits)
-    //   var_Color.rgb *= u_DirectedLight * NL + u_AmbientLight
-    // So final color is: baseColor * (directedLight * NL + ambientLight)
+    // Matches OpenGL2's lightall_vp.glsl with USE_LIGHT_VECTOR + USE_FAST_LIGHT (default):
+    //   var_Color = u_VertColor * attr_Color + u_BaseColor;  // baseColor = overbright (e.g. 2.0)
+    //   var_Color.rgb *= u_DirectedLight * (attenuation * NL) + u_AmbientLight;
+    // Fragment shader (lightall_fp.glsl USE_FAST_LIGHT path):
+    //   gl_FragColor.rgb = diffuse.rgb * lightColor;
     
     // Lighting values are already normalized to 0-1 range on CPU
-    float3 ambient = lighting.ambientLight;
-    float3 directed = lighting.directedLight;
+    float3 ambient = lighting.ambientLight.xyz;
+    float3 directed = lighting.directedLight.xyz;
+    float overBrightBits = lighting.modelLightDir.w;  // Stored in modelLightDir.w
 
-    // Calculate N·L using world-space light direction and world-space normals
-    float3 worldLightDir = normalize(lighting.lightDir);
-    float NdotL = max(0.0f, dot(normalize(in.normal), worldLightDir));
+    // Calculate N·L using model-space light direction and model-space normals
+    float3 modelLightDir = normalize(lighting.modelLightDir.xyz);
+    float NdotL = clamp(dot(normalize(in.normal), modelLightDir), 0.0f, 1.0f);
 
     // Combine ambient and directional lighting
-    float3 litColor = ambient + NdotL * directed;
+    float3 litColor = directed * NdotL + ambient;
     
-    // Apply overbright multiplier (1 << overbrightBits)
-    // For overbrightBits=1, this is 2.0, matching OpenGL2's baseColor scaling
-    // Additional boost needed to match OpenGL2 brightness levels
-    float overbright = exp2(lighting.overBrightBits) * 16.0f;
-    litColor *= overbright;
+    // Apply overbright scaling (matches lightall_vp.glsl: var_Color *= lighting)
+    // baseColor = 1 << overBrightBits (e.g., 2.0 for overBrightBits=1)
+    float overBrightScale = exp2(overBrightBits);
+    litColor *= overBrightScale;
     
-    // Clamp after overbright (matches OpenGL2 behavior)
-    litColor = clamp(litColor, 0.0f, 1.0f);
-
     // Combine texture and lighting
+    // HDR values > 1.0 are clamped at framebuffer output, matching OpenGL2 behavior
     float4 color = texColor * float4(litColor, 1.0);
 
+    // Apply fog
     if (fogParams.fogEnabled > 0.5f) {
         float fogValue = CalcModelFog(in.worldPosition, fogParams);
         float fogFactor = sqrt(clamp(fogValue, 0.0f, 1.0f));

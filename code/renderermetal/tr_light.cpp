@@ -343,13 +343,9 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent) {
         VectorScale(ent->directedLight, totalFactor, ent->directedLight);
     }
 
-    // Apply console variable scaling
-    if (r_ambientScale && r_ambientScale->value != 1.0f) {
-        VectorScale(ent->ambientLight, r_ambientScale->value, ent->ambientLight);
-    }
-    if (r_directedScale && r_directedScale->value != 1.0f) {
-        VectorScale(ent->directedLight, r_directedScale->value, ent->directedLight);
-    }
+    // Apply console variable scaling (matches OpenGL2)
+    VectorScale(ent->ambientLight, r_ambientScale->value, ent->ambientLight);
+    VectorScale(ent->directedLight, r_directedScale->value, ent->directedLight);
 
     VectorNormalize2(direction, ent->lightDir);
 }
