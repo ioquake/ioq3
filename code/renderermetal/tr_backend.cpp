@@ -1722,16 +1722,25 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		const byte* lightGridData = getLumpRange(LUMP_LIGHTGRID, lightGridLen, 1);
 
 		if (lightGridData && lightGridLen > 0) {
-			// Calculate grid bounds from world bounds
-			// Get world bounds from first bmodel (the world itself)
+			// Get world bounds from first bmodel (the world itself) in LUMP_MODELS
 			vec3_t worldMins, worldMaxs;
-			if (brushes && brushCount > 0) {
-				// For simplicity, use a large default if we can't get bounds
+			int modelsLen = 0;
+			const dmodel_t* models = reinterpret_cast<const dmodel_t*>(getLumpRange(LUMP_MODELS, modelsLen, sizeof(dmodel_t)));
+
+			if (models && modelsLen >= static_cast<int>(sizeof(dmodel_t))) {
+				// First model is always the world
+				VectorCopy(models[0].mins, worldMins);
+				VectorCopy(models[0].maxs, worldMaxs);
+			} else {
+				// Fallback to large default if we can't get bounds
 				VectorSet(worldMins, -4096, -4096, -4096);
 				VectorSet(worldMaxs, 4096, 4096, 4096);
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_WARNING, "Metal: Could not read LUMP_MODELS, using default world bounds\n");
+				}
 			}
 
-			// Calculate grid origin and bounds
+			// Calculate grid origin and bounds (same algorithm as OpenGL2 renderer)
 			for (int i = 0; i < 3; i++) {
 				gridOrigin[i] = gridSize[i] * ceil(worldMins[i] / gridSize[i]);
 				float maxs = gridSize[i] * floor(worldMaxs[i] / gridSize[i]);
@@ -1745,9 +1754,19 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 				// Valid lightGrid data - pass to lighting system
 				R_LoadLightGrid(lightGridData, lightGridLen, nullptr, 0,
 				                gridOrigin, gridSize, gridBounds);
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL, "^2Metal: lightGrid loaded successfully (%d points, bounds %dx%dx%d)\n",
+					           numGridPoints, gridBounds[0], gridBounds[1], gridBounds[2]);
+				}
 			} else if (ri_.Printf) {
-				ri_.Printf(PRINT_WARNING, "Metal: lightGrid size mismatch (got %d, expected %d)\n",
+				ri_.Printf(PRINT_ALL, "^3Metal: lightGrid size mismatch (got %d, expected %d)\n",
 				           lightGridLen, expectedSize);
+				ri_.Printf(PRINT_ALL, "^3  gridSize=(%.1f %.1f %.1f), gridBounds=(%d %d %d)\n",
+				           gridSize[0], gridSize[1], gridSize[2],
+				           gridBounds[0], gridBounds[1], gridBounds[2]);
+				ri_.Printf(PRINT_ALL, "^3  worldMins=(%.1f %.1f %.1f), worldMaxs=(%.1f %.1f %.1f)\n",
+				           worldMins[0], worldMins[1], worldMins[2],
+				           worldMaxs[0], worldMaxs[1], worldMaxs[2]);
 			}
 		}
 	}
