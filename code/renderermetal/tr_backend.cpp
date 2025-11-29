@@ -5185,7 +5185,20 @@ bool MetalRenderer::drawModelEntities() {
 	// Render all model entities
 	for (const SceneDrawPacket& packet : drawPackets_) {
 		if (packet.entity.reType == RT_MODEL) {
-			renderModel(packet.entity, sceneCamera_.refdef);
+			// Don't render third-person models in first-person view
+			// (similar to OpenGL2's personalModel check in tr_mesh.c:296-297)
+			// personalModel = (renderfx & RF_THIRD_PERSON) && !isPortal
+			// If personalModel is true, we skip rendering
+			bool isThirdPerson = (packet.entity.renderfx & RF_THIRD_PERSON) != 0;
+			// TODO: Check for portal/mirror views when implemented
+			// For now, assume we're never in a portal view
+			bool isPortalView = false;
+
+			bool personalModel = isThirdPerson && !isPortalView;
+
+			if (!personalModel) {
+				renderModel(packet.entity, sceneCamera_.refdef);
+			}
 		}
 	}
 
