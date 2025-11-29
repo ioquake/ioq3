@@ -865,6 +865,13 @@ private:
 	MetalPtr<MTL::Function> fogFragmentFunction_;
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
 
+	// Model rendering (MD3)
+	MetalPtr<MTL::RenderPipelineState> modelPipeline_;
+	MetalPtr<MTL::Function> modelVertexFunction_;
+	MetalPtr<MTL::Function> modelFragmentFunction_;
+	MetalPtr<MTL::VertexDescriptor> modelVertexDescriptor_;
+	MetalPtr<MTL::DepthStencilState> modelDepthState_;
+
 	// Skybox and cloud sky dome rendering
 	bool skyboxRenderedThisFrame_ = false;
 	MetalPtr<MTL::Buffer> skyboxVertexBuffer_;
@@ -924,9 +931,19 @@ private:
 	bool uploadLightBuffer();
 	bool ensureSceneShaderResources();
 	bool ensureFogPipeline();
+	bool ensureModelPipeline();
+	void renderModel(const refEntity_t& ent, const refdef_t& refdef);
+	void renderModelSurface(const refEntity_t& ent, MetalModelSurface& surface,
+	                        const float* mvpMatrix, float vertexLerp,
+	                        const vec3_t ambientLight, const vec3_t directedLight, const vec3_t lightDir);
+	MTL::Buffer* createModelVertexBuffer(const refEntity_t& ent, MetalModelSurface& surface);
+	void calculateEntityTransform(const refEntity_t& ent, float* matrix);
+	void setupEntityLighting(const refEntity_t& ent, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
+	void multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result);
 	StagePipelineEntry* getStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
+	bool drawModelEntities();
 	bool drawDynamicLights();
 	bool drawFogPasses();
 	bool ensureSkyboxResources();
@@ -975,6 +992,9 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	// Free all loaded models
 	for (MetalModel* model : models_) {
 		if (model) {
+			// Free GPU buffers first
+			MetalModel_FreeGPUBuffers(model);
+			// Then free the model itself
 			MetalModel_Free(model);
 		}
 	}
@@ -2188,6 +2208,13 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 
 	if (result) {
 		ri_.Printf(PRINT_DEVELOPER, "Metal: loaded model '%s' as handle %d\n", name, handle);
+
+		// Create GPU buffers for the model
+		if (device_) {
+			if (!MetalModel_CreateGPUBuffers(model, device_.get())) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to create GPU buffers for model '%s'\n", name);
+			}
+		}
 	}
 
 	return result;
@@ -2642,7 +2669,11 @@ void MetalRenderer::renderScenePackets() {
 	if (!drawPolyPackets()) {
 		return;
 	}
-	// Draw dynamic lights after normal rendering
+	// Draw model entities after world geometry
+	if (!drawModelEntities()) {
+		return;
+	}
+	// Draw dynamic lights after model rendering
 	if (!drawDynamicLights()) {
 		return;
 	}
@@ -3560,6 +3591,135 @@ bool MetalRenderer::ensureFogPipeline() {
 
 		if (ri_.Printf && fogDepthState_) {
 			ri_.Printf(PRINT_ALL, "Metal: Created fog depth stencil state\n");
+		}
+	}
+
+	return true;
+}
+
+bool MetalRenderer::ensureModelPipeline() {
+	if (modelPipeline_) {
+		return true;
+	}
+	if (!device_ || !depthTexture_) {
+		return false;
+	}
+
+	// Load shaders
+	if (!sceneLibrary_) {
+		sceneLibrary_.reset(device_->newDefaultLibrary());
+		if (!sceneLibrary_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to load default library for model pipeline\n");
+			}
+			return false;
+		}
+	}
+
+	if (!modelVertexFunction_) {
+		NS::String* vertName = NS::String::string("vertex_model", NS::UTF8StringEncoding);
+		modelVertexFunction_.reset(sceneLibrary_->newFunction(vertName));
+		if (!modelVertexFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to load vertex_model shader function\n");
+			}
+			return false;
+		}
+	}
+
+	if (!modelFragmentFunction_) {
+		NS::String* fragName = NS::String::string("fragment_model", NS::UTF8StringEncoding);
+		modelFragmentFunction_.reset(sceneLibrary_->newFunction(fragName));
+		if (!modelFragmentFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to load fragment_model shader function\n");
+			}
+			return false;
+		}
+	}
+
+	// Create vertex descriptor with 5 attributes
+	if (!modelVertexDescriptor_) {
+		modelVertexDescriptor_.reset(MTL::VertexDescriptor::alloc()->init());
+
+		// Attribute 0: position (old frame) - float3
+		MTL::VertexAttributeDescriptor* attr0 = modelVertexDescriptor_->attributes()->object(0);
+		attr0->setFormat(MTL::VertexFormatFloat3);
+		attr0->setOffset(0);
+		attr0->setBufferIndex(0);
+
+		// Attribute 1: normal (old frame) - float3
+		MTL::VertexAttributeDescriptor* attr1 = modelVertexDescriptor_->attributes()->object(1);
+		attr1->setFormat(MTL::VertexFormatFloat3);
+		attr1->setOffset(12);  // 3 floats * 4 bytes
+		attr1->setBufferIndex(0);
+
+		// Attribute 2: texcoord - float2
+		MTL::VertexAttributeDescriptor* attr2 = modelVertexDescriptor_->attributes()->object(2);
+		attr2->setFormat(MTL::VertexFormatFloat2);
+		attr2->setOffset(24);  // 6 floats * 4 bytes
+		attr2->setBufferIndex(0);
+
+		// Attribute 3: position (new frame) - float3
+		MTL::VertexAttributeDescriptor* attr3 = modelVertexDescriptor_->attributes()->object(3);
+		attr3->setFormat(MTL::VertexFormatFloat3);
+		attr3->setOffset(32);  // 8 floats * 4 bytes
+		attr3->setBufferIndex(0);
+
+		// Attribute 4: normal (new frame) - float3
+		MTL::VertexAttributeDescriptor* attr4 = modelVertexDescriptor_->attributes()->object(4);
+		attr4->setFormat(MTL::VertexFormatFloat3);
+		attr4->setOffset(44);  // 11 floats * 4 bytes
+		attr4->setBufferIndex(0);
+
+		// Layout 0: vertex buffer with stride = 14 floats * 4 bytes = 56 bytes
+		MTL::VertexBufferLayoutDescriptor* layout0 = modelVertexDescriptor_->layouts()->object(0);
+		layout0->setStride(56);
+		layout0->setStepRate(1);
+		layout0->setStepFunction(MTL::VertexStepFunctionPerVertex);
+	}
+
+	// Create pipeline state
+	NS::Error* error = nullptr;
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+
+	pd->setVertexFunction(modelVertexFunction_.get());
+	pd->setFragmentFunction(modelFragmentFunction_.get());
+	pd->setVertexDescriptor(modelVertexDescriptor_.get());
+
+	// Color attachment - no blending for opaque models (for now)
+	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
+	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setBlendingEnabled(false);
+
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	modelPipeline_.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+
+	if (!modelPipeline_) {
+		if (error && ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create model pipeline: %s\n",
+				error->localizedDescription()->utf8String());
+			error->release();
+		}
+		return false;
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: Created model rendering pipeline\n");
+	}
+
+	// Create model depth stencil state
+	if (!modelDepthState_) {
+		MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+		depthDesc->setDepthWriteEnabled(true);
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
+		modelDepthState_.reset(device_->newDepthStencilState(depthDesc));
+		depthDesc->release();
+
+		if (ri_.Printf && modelDepthState_) {
+			ri_.Printf(PRINT_ALL, "Metal: Created model depth stencil state\n");
 		}
 	}
 
@@ -4783,6 +4943,251 @@ bool MetalRenderer::drawFogPasses() {
 	// 		           totalFoggedPackets, worldFogs_.size());
 	// 	}
 	// }
+
+	return true;
+}
+
+//=============================================================================
+// Model Rendering (MD3)
+//=============================================================================
+
+void MetalRenderer::calculateEntityTransform(const refEntity_t& ent, float* matrix) {
+	// Build a column-major 4x4 transform matrix from entity axis and origin
+	// ent.axis is a 3x3 rotation matrix (row-major)
+	// ent.origin is the translation
+	matrix[0] = ent.axis[0][0];  matrix[4] = ent.axis[1][0];  matrix[8] = ent.axis[2][0];   matrix[12] = ent.origin[0];
+	matrix[1] = ent.axis[0][1];  matrix[5] = ent.axis[1][1];  matrix[9] = ent.axis[2][1];   matrix[13] = ent.origin[1];
+	matrix[2] = ent.axis[0][2];  matrix[6] = ent.axis[1][2];  matrix[10] = ent.axis[2][2];  matrix[14] = ent.origin[2];
+	matrix[3] = 0.0f;            matrix[7] = 0.0f;            matrix[11] = 0.0f;             matrix[15] = 1.0f;
+}
+
+void MetalRenderer::setupEntityLighting(const refEntity_t& ent, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
+	// Determine the lighting origin
+	vec3_t lightOrigin;
+	if (ent.renderfx & RF_LIGHTING_ORIGIN) {
+		VectorCopy(ent.lightingOrigin, lightOrigin);
+	} else {
+		VectorCopy(ent.origin, lightOrigin);
+	}
+
+	// Sample the light grid at the entity's position
+	R_LightForPoint(lightOrigin, ambientLight, directedLight, lightDir);
+}
+
+void MetalRenderer::multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result) {
+	// Multiply three 4x4 matrices: result = a * b * c (column-major)
+	// Use existing Mat4Multiply from tr_extramath.cpp
+	float temp[16];
+	Mat4Multiply(a, b, temp);
+	Mat4Multiply(temp, c, result);
+}
+
+MTL::Buffer* MetalRenderer::createModelVertexBuffer(const refEntity_t& ent, MetalModelSurface& surface) {
+	if (!device_) {
+		return nullptr;
+	}
+
+	// Clamp frame numbers to valid range
+	int oldFrame = ent.oldframe;
+	int newFrame = ent.frame;
+	if (oldFrame < 0) oldFrame = 0;
+	if (oldFrame >= surface.numFrames) oldFrame = surface.numFrames - 1;
+	if (newFrame < 0) newFrame = 0;
+	if (newFrame >= surface.numFrames) newFrame = surface.numFrames - 1;
+
+	// Build interleaved vertex data
+	// Layout: position(3), normal(3), texcoord(2), position2(3), normal2(3) = 14 floats per vertex
+	struct ModelVertex {
+		float position[3];
+		float normal[3];
+		float texcoord[2];
+		float position2[3];
+		float normal2[3];
+	};
+
+	std::vector<ModelVertex> vertices(surface.numVerts);
+
+	for (int i = 0; i < surface.numVerts; i++) {
+		ModelVertex& v = vertices[i];
+
+		// Old frame vertex data
+		const MetalModelVertex& oldVert = surface.vertices[oldFrame * surface.numVerts + i];
+		VectorCopy(oldVert.xyz, v.position);
+		VectorCopy(oldVert.normal, v.normal);
+
+		// Texture coordinates (same for all frames)
+		v.texcoord[0] = surface.texCoords[i].st[0];
+		v.texcoord[1] = surface.texCoords[i].st[1];
+
+		// New frame vertex data
+		const MetalModelVertex& newVert = surface.vertices[newFrame * surface.numVerts + i];
+		VectorCopy(newVert.xyz, v.position2);
+		VectorCopy(newVert.normal, v.normal2);
+	}
+
+	size_t bufferSize = vertices.size() * sizeof(ModelVertex);
+	return device_->newBuffer(vertices.data(), bufferSize, MTL::ResourceStorageModeShared);
+}
+
+void MetalRenderer::renderModelSurface(
+	const refEntity_t& ent,
+	MetalModelSurface& surface,
+	const float* mvpMatrix,
+	float vertexLerp,
+	const vec3_t ambientLight,
+	const vec3_t directedLight,
+	const vec3_t lightDir)
+{
+	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_) {
+		return;
+	}
+
+	// Build interleaved vertex buffer
+	MTL::Buffer* vertexBuffer = createModelVertexBuffer(ent, surface);
+	if (!vertexBuffer) {
+		return;
+	}
+
+	// Set pipeline state
+	currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
+	currentRenderEncoder_->setDepthStencilState(modelDepthState_.get());
+	currentRenderEncoder_->setCullMode(MTL::CullModeBack);
+
+	// Set model uniforms (buffer index 1)
+	struct ModelUniforms {
+		float mvpMatrix[16];
+		float vertexLerp;
+		float padding[3];
+	};
+
+	ModelUniforms uniforms;
+	std::memcpy(uniforms.mvpMatrix, mvpMatrix, sizeof(float) * 16);
+	uniforms.vertexLerp = vertexLerp;
+	uniforms.padding[0] = uniforms.padding[1] = uniforms.padding[2] = 0.0f;
+
+	currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+
+	// Set scene uniforms (buffer index 2) - for view origin in shader
+	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+
+	// Set entity lighting parameters (fragment buffer index 0)
+	struct EntityLightingParams {
+		float ambientLight[3];
+		float padding1;
+		float directedLight[3];
+		float padding2;
+		float lightDir[3];
+		float padding3;
+	};
+
+	EntityLightingParams lighting;
+	VectorCopy(ambientLight, lighting.ambientLight);
+	VectorCopy(directedLight, lighting.directedLight);
+	VectorCopy(lightDir, lighting.lightDir);
+	lighting.padding1 = lighting.padding2 = lighting.padding3 = 0.0f;
+
+	currentRenderEncoder_->setFragmentBytes(&lighting, sizeof(EntityLightingParams), 0);
+
+	// Bind texture
+	if (!surface.shaderIndexes.empty() && surface.shaderIndexes[0] > 0) {
+		MetalShaderResource* shaderRes = getShaderResource(surface.shaderIndexes[0]);
+		if (shaderRes && shaderRes->primaryImageHandle > 0) {
+			TextureManager* texMgr = ensureTextureManager();
+			if (texMgr) {
+				MTL::Texture* tex = texMgr->getTexture(shaderRes->primaryImageHandle);
+				if (tex) {
+					currentRenderEncoder_->setFragmentTexture(tex, 0);
+					// Bind sampler
+					if (sceneSampler_) {
+						currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
+					}
+				}
+			}
+		}
+	}
+
+	// Set vertex buffer
+	currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+
+	// Draw indexed primitives
+	if (surface.indexBuffer) {
+		MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+		currentRenderEncoder_->drawIndexedPrimitives(
+			MTL::PrimitiveTypeTriangle,
+			surface.numIndexes,
+			MTL::IndexTypeUInt32,
+			indexBuffer,
+			0
+		);
+	}
+
+	vertexBuffer->release();
+}
+
+void MetalRenderer::renderModel(const refEntity_t& ent, const refdef_t& refdef) {
+	// Validate model handle
+	if (ent.hModel <= 0 || static_cast<size_t>(ent.hModel) >= models_.size()) {
+		return;
+	}
+
+	MetalModel* model = models_[ent.hModel];
+	if (!model || model->type == MetalModelType::BAD) {
+		return;
+	}
+
+	// For now, just use LOD 0
+	int lod = 0;
+	if (lod >= model->numLods || !model->lods[lod]) {
+		return;
+	}
+
+	MetalModelLOD* lodData = model->lods[lod];
+
+	// Calculate entity transform matrix
+	float modelMatrix[16];
+	calculateEntityTransform(ent, modelMatrix);
+
+	// Calculate MVP matrix (projection * view * model)
+	float mvpMatrix[16];
+	multiplyMatrices4x4(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, modelMatrix, mvpMatrix);
+
+	// Set up entity lighting
+	vec3_t ambientLight, directedLight, lightDir;
+	setupEntityLighting(ent, ambientLight, directedLight, lightDir);
+
+	// Calculate vertex interpolation factor
+	float vertexLerp = 1.0f - ent.backlerp;
+
+	// Render each surface
+	for (int i = 0; i < lodData->numSurfaces; i++) {
+		renderModelSurface(ent, lodData->surfaces[i], mvpMatrix, vertexLerp,
+		                   ambientLight, directedLight, lightDir);
+	}
+}
+
+bool MetalRenderer::drawModelEntities() {
+	if (drawPackets_.empty()) {
+		return true;
+	}
+
+	if (!currentRenderEncoder_ || !sceneCamera_.valid) {
+		return false;
+	}
+
+	// Ensure model pipeline is created
+	if (!ensureModelPipeline() || !modelPipeline_) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Model pipeline not available\n");
+		}
+		return false;
+	}
+
+	// Render all model entities
+	for (const SceneDrawPacket& packet : drawPackets_) {
+		if (packet.entity.reType == RT_MODEL) {
+			renderModel(packet.entity, sceneCamera_.refdef);
+		}
+	}
 
 	return true;
 }

@@ -259,6 +259,80 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
 }
 
 //
+// MODEL RENDERING (MD3)
+// Matches OpenGL2 generic_vp.glsl with USE_VERTEX_ANIMATION
+//
+
+struct ModelUniforms {
+    float4x4 modelViewProjection;  // Combined MVP matrix for the entity
+    float vertexLerp;              // Frame interpolation factor (0.0-1.0)
+    float3 padding;
+};
+
+struct ModelVertexIn {
+    float3 position [[attribute(0)]];      // Old frame position
+    float3 normal [[attribute(1)]];        // Old frame normal
+    float2 texCoord [[attribute(2)]];      // Texture coordinates
+    float3 position2 [[attribute(3)]];     // New frame position
+    float3 normal2 [[attribute(4)]];       // New frame normal
+};
+
+struct ModelVertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+    float3 normal;        // Interpolated normal for lighting
+    float3 worldPosition; // World position for lighting
+};
+
+// Model vertex shader with frame interpolation
+vertex ModelVertexOut vertex_model(ModelVertexIn in [[stage_in]],
+                                   constant ModelUniforms& modelUniforms [[buffer(1)]],
+                                   constant SceneUniforms& sceneUniforms [[buffer(2)]]) {
+    ModelVertexOut out;
+
+    // Interpolate between old and new frame
+    float3 position = mix(in.position, in.position2, modelUniforms.vertexLerp);
+    float3 normal = mix(in.normal, in.normal2, modelUniforms.vertexLerp);
+
+    // Transform to clip space
+    out.position = modelUniforms.modelViewProjection * float4(position, 1.0);
+
+    // Pass through texture coordinates
+    out.texCoord = in.texCoord;
+
+    // Pass through normal and position for lighting
+    out.normal = normalize(normal);
+    out.worldPosition = position;
+
+    return out;
+}
+
+// Model fragment shader
+fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
+                              texture2d<float> tex [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant EntityLightingParams& lighting [[buffer(0)]]) {
+    // Sample texture
+    float4 texColor = tex.sample(samp, in.texCoord);
+
+    // Calculate lighting (CGEN_LIGHTING_DIFFUSE)
+    // Matches OpenGL2: color = ambientLight + N·L * directedLight
+    float3 ambient = lighting.ambientLight / 255.0;
+    float3 directed = lighting.directedLight / 255.0;
+
+    // Calculate N·L (normal dot light direction)
+    float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir));
+
+    // Combine ambient and directional lighting
+    float3 litColor = ambient + NdotL * directed;
+
+    // Combine texture and lighting
+    float4 color = texColor * float4(litColor, 1.0);
+
+    return color;
+}
+
+//
 // FOG RENDERING
 // Matches OpenGL2 fogpass_vp.glsl / fogpass_fp.glsl implementation
 //

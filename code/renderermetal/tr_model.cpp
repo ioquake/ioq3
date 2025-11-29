@@ -18,6 +18,8 @@ extern "C" {
 #include <cstring>
 #include <algorithm>
 
+#include <Metal/Metal.hpp>
+
 extern refimport_t ri;
 
 #define LL(x) x=LittleLong(x)
@@ -464,4 +466,109 @@ void MetalModel_Bounds(const MetalModel* model, float* mins, float* maxs) {
 
 	mins[0] = mins[1] = mins[2] = 0.0f;
 	maxs[0] = maxs[1] = maxs[2] = 0.0f;
+}
+
+// Create GPU buffers for a model surface (Metal implementation)
+// This must be called with a valid Metal device from the renderer
+qboolean MetalModel_CreateSurfaceBuffers(MetalModelSurface* surf, void* metalDevice) {
+	if (!surf || !metalDevice) {
+		return qfalse;
+	}
+
+	// Cast to Metal device (C++ interface)
+	MTL::Device* device = static_cast<MTL::Device*>(metalDevice);
+
+	// Create index buffer
+	if (surf->numIndexes > 0 && !surf->indexBuffer) {
+		size_t indexSize = surf->numIndexes * sizeof(unsigned int);
+		MTL::Buffer* indexBuf = device->newBuffer(indexSize, MTL::ResourceStorageModeShared);
+		if (!indexBuf) {
+			ri.Printf(PRINT_WARNING, "MetalModel: Failed to create index buffer for surface %s\n", surf->name);
+			return qfalse;
+		}
+
+		// Copy index data
+		std::memcpy(indexBuf->contents(), surf->indexes.data(), indexSize);
+		surf->indexBuffer = indexBuf;
+	}
+
+	// Note: We DON'T create vertex buffers here because we need to interleave data from multiple frames
+	// The vertex buffer will be created at render time with the specific frame data needed
+
+	return qtrue;
+}
+
+// Create GPU buffers for all surfaces in a model LOD
+qboolean MetalModel_CreateLODBuffers(MetalModelLOD* lod, void* metalDevice) {
+	if (!lod || !metalDevice) {
+		return qfalse;
+	}
+
+	for (int i = 0; i < lod->numSurfaces; i++) {
+		if (!MetalModel_CreateSurfaceBuffers(&lod->surfaces[i], metalDevice)) {
+			return qfalse;
+		}
+	}
+
+	return qtrue;
+}
+
+// Create GPU buffers for all LODs in a model
+qboolean MetalModel_CreateGPUBuffers(MetalModel* model, void* metalDevice) {
+	if (!model || !metalDevice || model->type == MetalModelType::BAD) {
+		return qfalse;
+	}
+
+	for (int lod = 0; lod < model->numLods; lod++) {
+		if (model->lods[lod]) {
+			if (!MetalModel_CreateLODBuffers(model->lods[lod], metalDevice)) {
+				return qfalse;
+			}
+		}
+	}
+
+	return qtrue;
+}
+
+// Free GPU buffers for a surface
+void MetalModel_FreeSurfaceBuffers(MetalModelSurface* surf) {
+	if (!surf) {
+		return;
+	}
+
+	if (surf->vertexBuffer) {
+		MTL::Buffer* buf = static_cast<MTL::Buffer*>(surf->vertexBuffer);
+		buf->release();
+		surf->vertexBuffer = nullptr;
+	}
+
+	if (surf->indexBuffer) {
+		MTL::Buffer* buf = static_cast<MTL::Buffer*>(surf->indexBuffer);
+		buf->release();
+		surf->indexBuffer = nullptr;
+	}
+}
+
+// Free GPU buffers for an LOD
+void MetalModel_FreeLODBuffers(MetalModelLOD* lod) {
+	if (!lod) {
+		return;
+	}
+
+	for (int i = 0; i < lod->numSurfaces; i++) {
+		MetalModel_FreeSurfaceBuffers(&lod->surfaces[i]);
+	}
+}
+
+// Free all GPU buffers for a model
+void MetalModel_FreeGPUBuffers(MetalModel* model) {
+	if (!model) {
+		return;
+	}
+
+	for (int lod = 0; lod < MD3_MAX_LODS; lod++) {
+		if (model->lods[lod]) {
+			MetalModel_FreeLODBuffers(model->lods[lod]);
+		}
+	}
 }

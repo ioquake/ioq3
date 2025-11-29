@@ -126,3 +126,11 @@ qhandle_t MetalModel_RegisterMD3(const char* name, MetalModel* model, refimport_
 MetalModel* MetalModel_Alloc(int index);
 void MetalModel_Free(MetalModel* model);
 void MetalModel_Bounds(const MetalModel* model, float* mins, float* maxs);
+
+// GPU buffer management functions
+qboolean MetalModel_CreateGPUBuffers(MetalModel* model, void* metalDevice);
+qboolean MetalModel_CreateLODBuffers(MetalModelLOD* lod, void* metalDevice);
+qboolean MetalModel_CreateSurfaceBuffers(MetalModelSurface* surf, void* metalDevice);
+void MetalModel_FreeGPUBuffers(MetalModel* model);
+void MetalModel_FreeLODBuffers(MetalModelLOD* lod);
+void MetalModel_FreeSurfaceBuffers(MetalModelSurface* surf);
