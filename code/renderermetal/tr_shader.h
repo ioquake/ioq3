@@ -198,6 +198,10 @@ struct MetalShaderScriptInfo {
     float cloudHeight = 0.0f;
     std::array<std::string, 6> outerboxTextures;
     std::array<std::string, 6> innerboxTextures;
+
+    // Portal/mirror support
+    bool isPortal = false;
+    float portalRange = 256.0f;  // Default portal range for culling
 };
 
 bool MetalShaderScriptLookup(const std::string &shaderName, std::string &outTexturePath);

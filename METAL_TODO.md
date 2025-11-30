@@ -127,13 +127,25 @@
 | 3 | 1.1 LOD selection | Low | 20 min | Performance | ✅ (already done) |
 | 4 | 2.1 Clip handling | Low | 15 min | Performance | ✅ (documented) |
 | 5 | 2.2 Dlight culling | Low | 30 min | Performance | ✅ |
-| 6 | 3.2 Mirror flip | Medium | 15 min | Visual | ❌ Blocked |
-| 7 | 3.1 Portal view exclusion | Medium | 20 min | Visual | ❌ Blocked |
+| 6 | 3.2 Mirror flip | Medium | 15 min | Visual | 🔄 In progress |
+| 7 | 3.1 Portal view exclusion | Medium | 20 min | Visual | 🔄 In progress |
 | 8 | **4.1 LightGrid loading** | **High** | **2-3 hrs** | **Critical** | ✅ (verified working) |
 | 9 | 4.2 LightGrid sampling | Medium | 1 hr | Visual | ✅ (already done) |
 | 10 | 5.1 Dlight deforms | Medium | 45 min | Visual | ✅ |
 
 **Legend:** ⬜ Not started | 🔄 In progress | ✅ Complete | ❌ Blocked
+
+### Portal System Sub-tasks
+
+| Sub-task | Description | Status |
+|----------|-------------|--------|
+| 3.0 | Add `isPortal` to shader parsing | ✅ |
+| 3.1 | Add `isPortal` to ScenePolyPacket | ✅ |
+| 3.2 | Portal surface detection | ✅ |
+| 3.3 | Portal texture creation | ✅ |
+| 3.4 | Mirror matrix calculation | ✅ |
+| 3.5 | Portal view rendering | ⬜ |
+| 3.6 | Apply portal texture to surface | ⬜ |
 
 ---
 

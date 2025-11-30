@@ -1202,6 +1202,9 @@ static void parseFogParms(TokenStream &stream, ShaderBuilder &builder) {
             } else if (!Q_stricmp(token.c_str(), "cloudparms")) {
                 builder.markLegacySkyDirective();
                 skipRestOfLine(stream_);
+            } else if (!Q_stricmp(token.c_str(), "portal")) {
+                // Portal shader - renders scene from portal's perspective
+                builder.mutableInfo().isPortal = true;
             } else if (!Q_stricmp(token.c_str(), "surfaceparm")) {
                 const std::string parm = stream_.next(false);
                 if (!Q_stricmp(parm.c_str(), "fog")) {

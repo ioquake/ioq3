@@ -733,6 +733,7 @@ private:
 		MTL::PrimitiveType primitive = MTL::PrimitiveTypeTriangle;
 		qhandle_t lightmapHandle = 0;
 		int fogIndex = 0;  // 0 = no fog, 1+ = fog volume index (1-based)
+		bool isPortal = false;  // True if this surface is a portal/mirror
 	};
 
 	struct SceneLightPacket {
@@ -1010,6 +1011,20 @@ private:
 	MetalPtr<MTL::Function> fogFragmentFunction_;
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
 
+	// Portal/Mirror rendering
+	struct PortalSurface {
+		int packetIndex = -1;       // Index into polyPackets_
+		float plane[4] = {};        // Plane equation (normal.xyz, dist)
+		float center[3] = {};       // Center of portal surface
+		bool isMirror = false;      // True if mirror (no camera entity), false if portal
+	};
+	std::vector<PortalSurface> portalSurfaces_;  // Detected portal surfaces this frame
+	MetalPtr<MTL::Texture> portalTexture_;       // Render target for portal view
+	MetalPtr<MTL::Texture> portalDepthTexture_;  // Depth buffer for portal rendering
+	int portalTextureWidth_ = 0;
+	int portalTextureHeight_ = 0;
+	bool isRenderingPortal_ = false;             // True if currently rendering portal view
+
 	// Model rendering (MD3)
 	MetalPtr<MTL::RenderPipelineState> modelPipeline_;           // Standard alpha blend
 	MetalPtr<MTL::RenderPipelineState> modelPipelineAdditive_;   // Additive blend (GL_ONE, GL_ONE)
@@ -1124,9 +1139,19 @@ private:
 	ModelStagePipelineEntry* getModelStagePipeline(const MetalShaderResource::MetalPipelineKey& key);
 	void resetStagePipelineCache();
 	bool drawPolyPackets();
+	bool drawPolyPacketsForPortal(int excludePacketIndex);  // Draw world, skip portal surface
 	bool drawModelEntities();
 	bool drawDynamicLights();
 	bool drawFogPasses();
+	// Portal/mirror rendering
+	void detectPortalSurfaces();
+	bool ensurePortalTexture(int width, int height);
+	void calculateMirrorMatrix(const PortalSurface& portal, float* viewMatrix, float* projMatrix);
+	void calculatePortalMatrix(const PortalSurface& portal, const refEntity_t& cameraEntity,
+	                           float* viewMatrix, float* projMatrix);
+	bool renderPortalView(const PortalSurface& portal);
+	bool renderPortalViews();
+	void resumeMainEncoder(MTL::RenderCommandEncoder* oldEncoder);
 	bool ensureSkyboxResources();
 	void loadSkyboxTextures(MetalShaderResource& resource);
 	void buildSkyboxVertexBuffer();
@@ -1505,17 +1530,25 @@ void MetalRenderer::appendWorldGeometry() {
 		
 		// Check if this shader has deformVertexes and apply it
 		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
-		if (shaderResource && shaderResource->hasScript && shaderResource->script.hasDeform) {
-			const MetalDeformInfo& deform = shaderResource->script.deform;
-			
-			if (deform.type == MetalDeformType::Wave || deform.type == MetalDeformType::Bulge) {
-				// Get pointer to the vertices for this packet
-				MetalPolyVertex* packetVerts = &polyVertices_[packet.firstVertex];
+		if (shaderResource && shaderResource->hasScript) {
+			// Check for portal/mirror shader
+			if (shaderResource->script.isPortal) {
+				packet.isPortal = true;
+			}
+
+			// Apply deformVertexes if present
+			if (shaderResource->script.hasDeform) {
+				const MetalDeformInfo& deform = shaderResource->script.deform;
 				
-				if (deform.type == MetalDeformType::Wave) {
-					ApplyDeformVertexesWave(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
-				} else if (deform.type == MetalDeformType::Bulge) {
-					ApplyDeformVertexesBulge(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+				if (deform.type == MetalDeformType::Wave || deform.type == MetalDeformType::Bulge) {
+					// Get pointer to the vertices for this packet
+					MetalPolyVertex* packetVerts = &polyVertices_[packet.firstVertex];
+					
+					if (deform.type == MetalDeformType::Wave) {
+						ApplyDeformVertexesWave(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+					} else if (deform.type == MetalDeformType::Bulge) {
+						ApplyDeformVertexesBulge(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+					}
 				}
 			}
 		}
@@ -3228,6 +3261,12 @@ void MetalRenderer::renderScenePackets() {
 	encodeEntityCommands(summary);
 	encodePolyCommands(summary);
 	encodeLightCommands(summary);
+
+	// Render portal/mirror views first (before main scene)
+	if (!renderPortalViews()) {
+		return;
+	}
+
 	if (!drawPolyPackets()) {
 		return;
 	}
@@ -4681,15 +4720,36 @@ bool MetalRenderer::drawPolyPackets() {
 				desiredHandle = 0;
 			}
 
-			if (!boundTexture || desiredHandle != boundImageHandle) {
-				MTL::Texture* packetTexture = texManager->getTexture(desiredHandle);
-				if (!packetTexture) {
-					packetTexture = defaultTexture;
-					desiredHandle = 0;
+			// For portal surfaces, use the rendered portal texture instead of shader texture
+			MTL::Texture* textureToUse = nullptr;
+			if (packet.isPortal && portalTexture_ && !portalSurfaces_.empty()) {
+				// Use portal texture for the first stage of portal surfaces
+				if (stageIndex == 0) {
+					textureToUse = portalTexture_.get();
 				}
-				MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, packetTexture);
-				boundTexture = packetTexture;
-				boundImageHandle = desiredHandle;
+			}
+
+			if (!textureToUse) {
+				// Normal texture binding
+				if (!boundTexture || desiredHandle != boundImageHandle) {
+					MTL::Texture* packetTexture = texManager->getTexture(desiredHandle);
+					if (!packetTexture) {
+						packetTexture = defaultTexture;
+						desiredHandle = 0;
+					}
+					textureToUse = packetTexture;
+					boundImageHandle = desiredHandle;
+				} else {
+					textureToUse = boundTexture;
+				}
+			} else {
+				// Portal texture - force rebind
+				boundImageHandle = -1;  // Invalidate cache
+			}
+
+			if (textureToUse != boundTexture) {
+				MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, textureToUse);
+				boundTexture = textureToUse;
 			}
 			
 			// Use clamp sampler if shader stage specifies clampmap
@@ -4800,6 +4860,157 @@ bool MetalRenderer::drawPolyPackets() {
 		if (hasFogSurfaceStages(packet)) {
 			drawPacket(packet);
 		}
+	}
+
+	return true;
+}
+
+bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
+	// Simplified version of drawPolyPackets for portal rendering
+	// Skips portal surfaces to avoid recursion
+	if (polyPackets_.empty()) {
+		return true;
+	}
+	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+		return true;
+	}
+	if (!sceneUniformBuffer_) {
+		return false;
+	}
+	if (!ensureSceneShaderResources()) {
+		return false;
+	}
+
+	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+
+	// Setup default entity lighting
+	EntityLightingParams defaultLighting{};
+	defaultLighting.ambientLight[0] = 255.0f;
+	defaultLighting.ambientLight[1] = 255.0f;
+	defaultLighting.ambientLight[2] = 255.0f;
+	defaultLighting.directedLight[0] = 0.0f;
+	defaultLighting.directedLight[1] = 0.0f;
+	defaultLighting.directedLight[2] = 0.0f;
+	defaultLighting.lightDir[0] = 0.0f;
+	defaultLighting.lightDir[1] = 0.0f;
+	defaultLighting.lightDir[2] = 1.0f;
+	currentRenderEncoder_->setFragmentBytes(&defaultLighting, sizeof(EntityLightingParams), 2);
+
+	TextureManager* texManager = ensureTextureManager();
+	if (!texManager) {
+		return false;
+	}
+	MTL::Texture* defaultTexture = texManager->getTexture(0);
+	if (!defaultTexture) {
+		return false;
+	}
+	MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sceneSampler_.get());
+
+	MTL::RenderPipelineState* boundPipeline = nullptr;
+	MTL::DepthStencilState* boundDepthState = nullptr;
+	qhandle_t boundImageHandle = -1;
+	MTL::Texture* boundTexture = nullptr;
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+
+	// Draw all non-portal, non-sky packets
+	for (int i = 0; i < static_cast<int>(polyPackets_.size()); ++i) {
+		const ScenePolyPacket& packet = polyPackets_[i];
+
+		// Skip the portal surface we're rendering for
+		if (i == excludePacketIndex) {
+			continue;
+		}
+
+		// Skip all portal surfaces to avoid recursion
+		if (packet.isPortal) {
+			continue;
+		}
+
+		// Skip sky surfaces
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (shaderResource && shaderResource->hasScript && shaderResource->script.isSky) {
+			continue;
+		}
+
+		// Skip invalid packets
+		if (packet.vertexCount <= 0) {
+			continue;
+		}
+		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
+		if (endVertex > polyVertexCountGPU_) {
+			continue;
+		}
+
+		// Draw the packet (simplified single-stage rendering)
+		if (!shaderResource) {
+			continue;
+		}
+
+		const MetalShaderResource::MetalShaderStageRuntime* stageRuntime = getPrimaryStageRuntime(*shaderResource);
+		if (!stageRuntime) {
+			continue;
+		}
+
+		StagePipelineEntry* pipelineEntry = getStagePipeline(stageRuntime->pipelineKey);
+		if (!pipelineEntry || !pipelineEntry->pipeline || !pipelineEntry->depthState) {
+			continue;
+		}
+
+		if (pipelineEntry->pipeline.get() != boundPipeline) {
+			MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipelineEntry->pipeline.get());
+			boundPipeline = pipelineEntry->pipeline.get();
+		}
+		if (pipelineEntry->depthState.get() != boundDepthState) {
+			currentRenderEncoder_->setDepthStencilState(pipelineEntry->depthState.get());
+			boundDepthState = pipelineEntry->depthState.get();
+		}
+
+		// Build stage params
+		StageFragmentParams params{};
+		params.overBrightBits = 1.0f;
+		if (stageRuntime->stageInfo) {
+			switch (stageRuntime->stageInfo->tcGen.type) {
+				case MetalTCGen::Lightmap:
+					params.tcGenType = 1.0f;
+					params.texCoordSelector = 1.0f;
+					break;
+				case MetalTCGen::Environment:
+					params.tcGenType = 2.0f;
+					break;
+				default:
+					params.tcGenType = 0.0f;
+					break;
+			}
+		}
+		currentRenderEncoder_->setFragmentBytes(&params, sizeof(StageFragmentParams), 0);
+
+		// Compute and bind TCMod params
+		TCModParams tcModParams = computeTCModParams(stageRuntime->stageInfo, sceneTimeSeconds);
+		currentRenderEncoder_->setVertexBytes(&tcModParams, sizeof(TCModParams), 2);
+
+		// Bind texture
+		qhandle_t desiredHandle = selectStageImage(*shaderResource, stageRuntime, sceneTimeSeconds, packet.lightmapHandle);
+		if (desiredHandle < 0) desiredHandle = 0;
+		if (!boundTexture || desiredHandle != boundImageHandle) {
+			MTL::Texture* packetTexture = texManager->getTexture(desiredHandle);
+			if (!packetTexture) {
+				packetTexture = defaultTexture;
+				desiredHandle = 0;
+			}
+			MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, packetTexture);
+			boundTexture = packetTexture;
+			boundImageHandle = desiredHandle;
+		}
+
+		// Use appropriate sampler
+		bool useClamp = stageRuntime->stageInfo && stageRuntime->stageInfo->clampMap;
+		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
+		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
+
+		currentRenderEncoder_->drawPrimitives(packet.primitive,
+		                                       static_cast<NS::UInteger>(packet.firstVertex),
+		                                       static_cast<NS::UInteger>(packet.vertexCount));
 	}
 
 	return true;
@@ -5726,6 +5937,392 @@ bool MetalRenderer::drawFogPasses() {
 	// }
 
 	return true;
+}
+
+//=============================================================================
+// Portal/Mirror Rendering
+//=============================================================================
+
+void MetalRenderer::detectPortalSurfaces() {
+	portalSurfaces_.clear();
+
+	// Don't recursively detect portals (avoid infinite loops)
+	if (isRenderingPortal_) {
+		return;
+	}
+
+	// Find all portal surfaces in the scene
+	for (size_t i = 0; i < polyPackets_.size(); ++i) {
+		const ScenePolyPacket& packet = polyPackets_[i];
+		if (!packet.isPortal || packet.vertexCount < 3) {
+			continue;
+		}
+
+		// Compute plane equation from first triangle
+		// Get vertices for this packet
+		if (packet.firstVertex < 0 || 
+		    static_cast<size_t>(packet.firstVertex + 2) >= polyVertices_.size()) {
+			continue;
+		}
+
+		const MetalPolyVertex& v0 = polyVertices_[packet.firstVertex];
+		const MetalPolyVertex& v1 = polyVertices_[packet.firstVertex + 1];
+		const MetalPolyVertex& v2 = polyVertices_[packet.firstVertex + 2];
+
+		// Compute edge vectors
+		float e1[3] = {v1.xyz[0] - v0.xyz[0], v1.xyz[1] - v0.xyz[1], v1.xyz[2] - v0.xyz[2]};
+		float e2[3] = {v2.xyz[0] - v0.xyz[0], v2.xyz[1] - v0.xyz[1], v2.xyz[2] - v0.xyz[2]};
+
+		// Cross product for normal
+		float normal[3] = {
+			e1[1] * e2[2] - e1[2] * e2[1],
+			e1[2] * e2[0] - e1[0] * e2[2],
+			e1[0] * e2[1] - e1[1] * e2[0]
+		};
+
+		// Normalize
+		float len = sqrtf(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2]);
+		if (len < 0.001f) {
+			continue;  // Degenerate triangle
+		}
+		normal[0] /= len;
+		normal[1] /= len;
+		normal[2] /= len;
+
+		// Compute center of surface (average all vertices)
+		float center[3] = {0.0f, 0.0f, 0.0f};
+		for (int j = 0; j < packet.vertexCount; ++j) {
+			const MetalPolyVertex& v = polyVertices_[packet.firstVertex + j];
+			center[0] += v.xyz[0];
+			center[1] += v.xyz[1];
+			center[2] += v.xyz[2];
+		}
+		center[0] /= static_cast<float>(packet.vertexCount);
+		center[1] /= static_cast<float>(packet.vertexCount);
+		center[2] /= static_cast<float>(packet.vertexCount);
+
+		// Compute plane distance
+		float dist = normal[0] * center[0] + normal[1] * center[1] + normal[2] * center[2];
+
+		// Check if portal is facing us (back-face cull)
+		float viewDir[3] = {
+			sceneCamera_.viewOrigin[0] - center[0],
+			sceneCamera_.viewOrigin[1] - center[1],
+			sceneCamera_.viewOrigin[2] - center[2]
+		};
+		float dot = normal[0] * viewDir[0] + normal[1] * viewDir[1] + normal[2] * viewDir[2];
+		if (dot < 0.0f) {
+			continue;  // Portal facing away from camera
+		}
+
+		// Create portal surface entry
+		PortalSurface portal;
+		portal.packetIndex = static_cast<int>(i);
+		portal.plane[0] = normal[0];
+		portal.plane[1] = normal[1];
+		portal.plane[2] = normal[2];
+		portal.plane[3] = dist;
+		portal.center[0] = center[0];
+		portal.center[1] = center[1];
+		portal.center[2] = center[2];
+		portal.isMirror = true;  // Default to mirror; we'll check for portal entities below
+
+		// TODO: Check for RT_PORTALSURFACE entities to determine if this is
+		// a true portal (with camera entity) or just a mirror.
+		// For now, treat all as mirrors.
+
+		portalSurfaces_.push_back(portal);
+
+		// Only process one portal per frame (matches GL2 behavior)
+		break;
+	}
+
+	if (!portalSurfaces_.empty() && ri_.Printf) {
+		static int logCounter = 0;
+		if (logCounter++ % 300 == 0) {
+			ri_.Printf(PRINT_DEVELOPER, "Metal: Detected %zu portal surfaces\n", portalSurfaces_.size());
+		}
+	}
+}
+
+bool MetalRenderer::ensurePortalTexture(int width, int height) {
+	// Check if existing texture is suitable
+	if (portalTexture_ && portalTextureWidth_ == width && portalTextureHeight_ == height) {
+		return true;
+	}
+
+	// Create color texture for portal rendering
+	MTL::TextureDescriptor* colorDesc = MTL::TextureDescriptor::texture2DDescriptor(
+		MTL::PixelFormatBGRA8Unorm,
+		static_cast<NS::UInteger>(width),
+		static_cast<NS::UInteger>(height),
+		false
+	);
+	colorDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+	colorDesc->setStorageMode(MTL::StorageModePrivate);
+
+	portalTexture_ = MetalPtr<MTL::Texture>(device_->newTexture(colorDesc));
+	if (!portalTexture_) {
+		ri_.Printf(PRINT_WARNING, "Metal: Failed to create portal color texture\n");
+		return false;
+	}
+
+	// Create depth texture for portal rendering
+	MTL::TextureDescriptor* depthDesc = MTL::TextureDescriptor::texture2DDescriptor(
+		MTL::PixelFormatDepth32Float,
+		static_cast<NS::UInteger>(width),
+		static_cast<NS::UInteger>(height),
+		false
+	);
+	depthDesc->setUsage(MTL::TextureUsageRenderTarget);
+	depthDesc->setStorageMode(MTL::StorageModePrivate);
+
+	portalDepthTexture_ = MetalPtr<MTL::Texture>(device_->newTexture(depthDesc));
+	if (!portalDepthTexture_) {
+		ri_.Printf(PRINT_WARNING, "Metal: Failed to create portal depth texture\n");
+		portalTexture_.reset();
+		return false;
+	}
+
+	portalTextureWidth_ = width;
+	portalTextureHeight_ = height;
+
+	ri_.Printf(PRINT_DEVELOPER, "Metal: Created portal render target %dx%d\n", width, height);
+	return true;
+}
+
+void MetalRenderer::calculateMirrorMatrix(const PortalSurface& portal, float* viewMatrix, float* projMatrix) {
+	// Mirror the view origin across the portal plane
+	// reflected = origin - 2 * (dot(origin, normal) - dist) * normal
+	const float* n = portal.plane;
+	const float d = portal.plane[3];
+	const float* origin = sceneCamera_.viewOrigin;
+
+	float dist = n[0] * origin[0] + n[1] * origin[1] + n[2] * origin[2] - d;
+	float mirroredOrigin[3] = {
+		origin[0] - 2.0f * dist * n[0],
+		origin[1] - 2.0f * dist * n[1],
+		origin[2] - 2.0f * dist * n[2]
+	};
+
+	// Mirror the view axis vectors
+	// reflected_axis = axis - 2 * dot(axis, normal) * normal
+	float mirroredAxis[3][3];
+	for (int i = 0; i < 3; ++i) {
+		const float* axis = sceneCamera_.viewAxis[i];
+		float dot = axis[0] * n[0] + axis[1] * n[1] + axis[2] * n[2];
+		mirroredAxis[i][0] = axis[0] - 2.0f * dot * n[0];
+		mirroredAxis[i][1] = axis[1] - 2.0f * dot * n[1];
+		mirroredAxis[i][2] = axis[2] - 2.0f * dot * n[2];
+	}
+
+	// Build view matrix from mirrored origin and axis
+	// View matrix = inverse of camera transform
+	// For a look-at style matrix:
+	// | Rx  Ux  -Fx  0 |   | 1 0 0 -Tx |
+	// | Ry  Uy  -Fy  0 | * | 0 1 0 -Ty |
+	// | Rz  Uz  -Fz  0 |   | 0 0 1 -Tz |
+	// | 0   0    0   1 |   | 0 0 0  1  |
+	//
+	// Where R=right(axis[1]), U=up(axis[2]), F=forward(axis[0]), T=position
+
+	float* R = mirroredAxis[1];  // right
+	float* U = mirroredAxis[2];  // up
+	float* F = mirroredAxis[0];  // forward
+
+	// Column-major
+	viewMatrix[0] = R[0];  viewMatrix[4] = R[1];  viewMatrix[8]  = R[2];   viewMatrix[12] = -(R[0]*mirroredOrigin[0] + R[1]*mirroredOrigin[1] + R[2]*mirroredOrigin[2]);
+	viewMatrix[1] = U[0];  viewMatrix[5] = U[1];  viewMatrix[9]  = U[2];   viewMatrix[13] = -(U[0]*mirroredOrigin[0] + U[1]*mirroredOrigin[1] + U[2]*mirroredOrigin[2]);
+	viewMatrix[2] = -F[0]; viewMatrix[6] = -F[1]; viewMatrix[10] = -F[2];  viewMatrix[14] = (F[0]*mirroredOrigin[0] + F[1]*mirroredOrigin[1] + F[2]*mirroredOrigin[2]);
+	viewMatrix[3] = 0.0f;  viewMatrix[7] = 0.0f;  viewMatrix[11] = 0.0f;   viewMatrix[15] = 1.0f;
+
+	// Use same projection as main camera
+	std::memcpy(projMatrix, sceneUniforms_.projection, sizeof(float) * 16);
+}
+
+void MetalRenderer::calculatePortalMatrix(const PortalSurface& portal, const refEntity_t& cameraEntity,
+                                          float* viewMatrix, float* projMatrix) {
+	// For true portals (not mirrors), the view is from the camera entity's position
+	// TODO: Implement full portal camera transformation
+	// For now, fall back to mirror behavior
+	calculateMirrorMatrix(portal, viewMatrix, projMatrix);
+}
+
+bool MetalRenderer::renderPortalView(const PortalSurface& portal) {
+	// Ensure portal texture exists
+	if (!ensurePortalTexture(config_.vidWidth, config_.vidHeight)) {
+		return false;
+	}
+
+	if (!currentCommandBuffer_ || !device_) {
+		return false;
+	}
+
+	// Save current render encoder - we'll need to resume after portal rendering
+	MTL::RenderCommandEncoder* mainEncoder = currentRenderEncoder_;
+	if (!mainEncoder) {
+		return false;
+	}
+
+	// End the main render encoder temporarily
+	mainEncoder->endEncoding();
+	MetalStateCache::Instance().resetEncoder(nullptr);
+
+	// Create render pass for portal texture
+	MTL::RenderPassDescriptor* portalRpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+	portalRpd->colorAttachments()->object(0)->setTexture(portalTexture_.get());
+	portalRpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+	portalRpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+	portalRpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+
+	if (portalDepthTexture_) {
+		portalRpd->depthAttachment()->setTexture(portalDepthTexture_.get());
+		portalRpd->depthAttachment()->setLoadAction(MTL::LoadActionClear);
+		portalRpd->depthAttachment()->setClearDepth(1.0);
+		portalRpd->depthAttachment()->setStoreAction(MTL::StoreActionDontCare);
+	}
+
+	MTL::RenderCommandEncoder* portalEncoder = currentCommandBuffer_->renderCommandEncoder(portalRpd);
+	portalRpd->release();
+
+	if (!portalEncoder) {
+		// Resume main encoder and return failure
+		resumeMainEncoder(mainEncoder);
+		return false;
+	}
+
+	// Set up portal encoder state
+	currentRenderEncoder_ = portalEncoder;
+	MetalStateCache::Instance().resetEncoder(portalEncoder);
+	portalEncoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
+	portalEncoder->setCullMode(MTL::CullModeNone);
+
+	// Calculate mirrored view matrix
+	float portalView[16];
+	float portalProj[16];
+	if (portal.isMirror) {
+		calculateMirrorMatrix(portal, portalView, portalProj);
+	} else {
+		// For true portals, we'd need to find the camera entity
+		// For now, use mirror matrix
+		calculateMirrorMatrix(portal, portalView, portalProj);
+	}
+
+	// Save original scene uniforms
+	SceneUniforms savedUniforms = sceneUniforms_;
+
+	// Update scene uniforms with portal view
+	std::memcpy(sceneUniforms_.view, portalView, sizeof(float) * 16);
+	std::memcpy(sceneUniforms_.projection, portalProj, sizeof(float) * 16);
+
+	// Compute viewProjection = projection * view
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			float sum = 0.0f;
+			for (int k = 0; k < 4; ++k) {
+				sum += portalProj[i + k * 4] * portalView[k + j * 4];
+			}
+			sceneUniforms_.viewProjection[i + j * 4] = sum;
+		}
+	}
+
+	// Upload updated uniforms
+	if (sceneUniformBuffer_) {
+		std::memcpy(sceneUniformBuffer_->contents(), &sceneUniforms_, sizeof(SceneUniforms));
+	}
+
+	// Configure viewport
+	configureSceneViewport(sceneCamera_.refdef);
+
+	// Upload vertex buffer for portal pass
+	if (polyVertexBuffer_) {
+		portalEncoder->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	}
+	if (sceneUniformBuffer_) {
+		portalEncoder->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+	}
+
+	// Draw world geometry (excluding portal surfaces)
+	drawPolyPacketsForPortal(portal.packetIndex);
+
+	// Draw model entities
+	drawModelEntities();
+
+	// End portal encoder
+	portalEncoder->endEncoding();
+	portalEncoder->release();
+
+	// Restore original uniforms
+	sceneUniforms_ = savedUniforms;
+	if (sceneUniformBuffer_) {
+		std::memcpy(sceneUniformBuffer_->contents(), &sceneUniforms_, sizeof(SceneUniforms));
+	}
+
+	// Resume main render encoder with fresh render pass
+	resumeMainEncoder(mainEncoder);
+
+	return true;
+}
+
+bool MetalRenderer::renderPortalViews() {
+	// Detect portal surfaces in the scene
+	detectPortalSurfaces();
+
+	if (portalSurfaces_.empty()) {
+		return true;  // No portals to render
+	}
+
+	// Render first portal (matches GL2 behavior - only one portal per frame)
+	if (!portalSurfaces_.empty()) {
+		isRenderingPortal_ = true;
+		bool result = renderPortalView(portalSurfaces_[0]);
+		isRenderingPortal_ = false;
+		return result;
+	}
+
+	return true;
+}
+
+void MetalRenderer::resumeMainEncoder(MTL::RenderCommandEncoder* oldEncoder) {
+	// The old encoder has been ended and released. We need to create a fresh one
+	// targeting the drawable again.
+	(void)oldEncoder;  // We don't reuse it
+
+	if (!currentCommandBuffer_ || !currentDrawable_) {
+		return;
+	}
+
+	// Create a new render pass targeting the drawable
+	MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+	rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+	// Use LoadActionLoad to preserve any previous drawing (like 2D elements)
+	rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+	rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+
+	if (depthTexture_) {
+		rpd->depthAttachment()->setTexture(depthTexture_.get());
+		// Clear depth for fresh scene rendering
+		rpd->depthAttachment()->setLoadAction(MTL::LoadActionClear);
+		rpd->depthAttachment()->setClearDepth(1.0);
+		rpd->depthAttachment()->setStoreAction(MTL::StoreActionDontCare);
+	}
+
+	currentRenderEncoder_ = currentCommandBuffer_->renderCommandEncoder(rpd);
+	rpd->release();
+
+	if (currentRenderEncoder_) {
+		MetalStateCache::Instance().resetEncoder(currentRenderEncoder_);
+		currentRenderEncoder_->setFrontFacingWinding(MTL::WindingCounterClockwise);
+		currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+
+		// Restore vertex buffers
+		if (polyVertexBuffer_) {
+			currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+		}
+		if (sceneUniformBuffer_) {
+			currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+		}
+	}
 }
 
 //=============================================================================
