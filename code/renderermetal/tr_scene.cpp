@@ -75,7 +75,7 @@ void MetalScene_BeginFrame() {
 }
 
 void MetalScene_EndFrame() {
-	// Placeholder for future book-keeping (GPU timing, etc.)
+	// Future: Add GPU timing capture when r_speeds is enabled
 }
 
 MetalSceneState& MetalScene_MutableState() {
