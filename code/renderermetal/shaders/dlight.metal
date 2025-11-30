@@ -31,9 +31,8 @@ struct DlightVertexIn {
     float3 position [[attribute(0)]];
     float2 texCoord [[attribute(1)]];
     float3 normal [[attribute(3)]];
-    // For vertex animation
-    float3 position2 [[attribute(5)]];
-    float3 normal2 [[attribute(6)]];
+    // Note: position2/normal2 removed - world geometry doesn't have vertex animation
+    // For animated models, we'd need a separate dlight pipeline with model vertex descriptor
 };
 
 struct DlightVSOut {
@@ -87,9 +86,10 @@ vertex DlightVSOut vertex_dlight(DlightVertexIn in [[stage_in]],
                                   constant DlightUniforms& uniforms [[buffer(1)]]) {
     DlightVSOut out;
 
-    // Vertex animation lerp if needed
-    float3 position = mix(in.position, in.position2, uniforms.vertexLerp);
-    float3 normal = mix(in.normal, in.normal2, uniforms.vertexLerp);
+    // Use position directly - world geometry doesn't have vertex animation
+    // For animated models, dlights would need to use the model rendering path
+    float3 position = in.position;
+    float3 normal = in.normal;
 
     // Apply deform if needed
     if (uniforms.deformGen != DGEN_NONE) {
