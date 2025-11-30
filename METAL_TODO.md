@@ -45,8 +45,8 @@
 ## Phase 3: Portal/Mirror Support
 
 ### 3.1 Portal View Exclusion
-- [ ] **Status:** Not started
-- **File:** `tr_backend.cpp:7187`
+- [ ] **Status:** Blocked (requires portal rendering)
+- **File:** `tr_backend.cpp`
 - **Current:** `personalModel = isThirdPerson` without checking portal views
 - **Fix:** Check if current view is a portal/mirror view
 - **Details:**
@@ -57,8 +57,8 @@
 - **BLOCKED:** Requires portal rendering system to be implemented first
 
 ### 3.2 Mirror Handling
-- [ ] **Status:** Not started  
-- **File:** `tr_backend.cpp:6394-6399`
+- [ ] **Status:** Blocked (requires portal rendering)
+- **File:** `tr_backend.cpp`
 - **Current:** Commented out
 - **Fix:** Uncomment and implement mirror axis flip
 - **Details:**
@@ -68,17 +68,38 @@
 - **Effort:** ~5 lines
 - **BLOCKED:** Requires portal/mirror rendering system to be implemented first
 
-### 3.3 Portal Rendering System (NEW - Large Feature)
-- [ ] **Status:** Not started
-- **Scope:** Major feature - multi-pass rendering through portals/mirrors
+### 3.3 Portal Rendering System
+- [ ] **Status:** KNOWN LIMITATION - Deferred
+- **Scope:** Major architectural change required
 - **Required for:** 3.1, 3.2
-- **Details:**
-  - Detect portal surfaces during scene traversal
-  - Set up new view frustum from portal perspective
-  - Render recursively through portal (with depth limit)
-  - Add `isPortal` and `isMirror` flags to SceneCamera
-  - Composite portal render into main scene
-- **Effort:** 200-400 lines, significant complexity
+
+**Current State:**
+Portal infrastructure is in place but disabled:
+- Portal surface detection works (via `isPortal` shader flag)
+- RT_PORTALSURFACE entity matching works
+- Mirror camera calculation works (R_MirrorPoint/R_MirrorVector from GL2)
+- Portal texture render target exists
+
+**Why It Doesn't Work:**
+The render-to-texture approach causes flickering due to Metal render encoder
+lifecycle issues. Switching encoders mid-frame (end main → render portal →
+resume main) creates synchronization problems.
+
+**GL2's Approach (Can't Directly Port):**
+GL2 calls `R_RenderView()` with mirrored camera, which **regenerates the entire
+scene** (visibility culling, draw surface generation) from the new viewpoint.
+Our Metal renderer batches all geometry during scene submission, before
+rendering begins. We can't regenerate the scene mid-render.
+
+**Possible Solutions (Future Work):**
+1. **Multi-view rendering:** Submit scene data for multiple cameras, render
+   portal views in a separate command buffer before main rendering.
+2. **Compute shader projection:** Use compute to project portal texture coords.
+3. **Deferred compositing:** Render portal to separate texture in a prior frame.
+4. **Re-architect scene submission:** Allow scene to be processed multiple
+   times with different view parameters.
+
+**Effort:** 500+ lines, significant architectural changes
 
 ---
 

@@ -647,6 +647,14 @@ inline void ApplyDeformVertexesBulge(
 	}
 }
 
+// Portal/Mirror orientation structure - used for GL2-style portal transformations
+// Surface orientation: origin is on the mirror plane, axis defines the coordinate system
+// Camera orientation: origin is where the reflected camera goes, axis is the reflected view
+struct PortalOrientation {
+	float origin[3] = {};
+	float axis[3][3] = {};  // axis[0]=forward/normal, axis[1]=right, axis[2]=up
+};
+
 } // end anonymous namespace for deformVertexes helpers
 
 //=============================================================================
@@ -1011,12 +1019,14 @@ private:
 	MetalPtr<MTL::Function> fogFragmentFunction_;
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
 
-	// Portal/Mirror rendering
+	// Portal/Mirror rendering - following GL2's approach exactly
 	struct PortalSurface {
 		int packetIndex = -1;       // Index into polyPackets_
 		float plane[4] = {};        // Plane equation (normal.xyz, dist)
 		float center[3] = {};       // Center of portal surface
-		bool isMirror = false;      // True if mirror (no camera entity), false if portal
+		bool isMirror = true;       // True if mirror (no camera entity), false if portal
+		PortalOrientation surface;  // Surface coordinate system (on the mirror)
+		PortalOrientation camera;   // Camera coordinate system (reflected)
 	};
 	std::vector<PortalSurface> portalSurfaces_;  // Detected portal surfaces this frame
 	MetalPtr<MTL::Texture> portalTexture_;       // Render target for portal view
@@ -4721,13 +4731,15 @@ bool MetalRenderer::drawPolyPackets() {
 			}
 
 			// For portal surfaces, use the rendered portal texture instead of shader texture
+			// NOTE: Portal texture requires screen-space UV projection (not implemented yet)
+			// For now, we skip portal texture application - the portal will show its base texture
 			MTL::Texture* textureToUse = nullptr;
-			if (packet.isPortal && portalTexture_ && !portalSurfaces_.empty()) {
-				// Use portal texture for the first stage of portal surfaces
-				if (stageIndex == 0) {
-					textureToUse = portalTexture_.get();
-				}
-			}
+			// Portal texture application disabled - needs projective texturing
+			// if (packet.isPortal && portalTexture_ && !portalSurfaces_.empty()) {
+			// 	if (stageIndex == 0) {
+			// 		textureToUse = portalTexture_.get();
+			// 	}
+			// }
 
 			if (!textureToUse) {
 				// Normal texture binding
@@ -5940,8 +5952,36 @@ bool MetalRenderer::drawFogPasses() {
 }
 
 //=============================================================================
-// Portal/Mirror Rendering
+// Portal/Mirror Rendering - Following GL2 tr_main.c exactly
 //=============================================================================
+
+// Helper: Compute perpendicular vector for portal axis (local version to avoid conflict)
+static void ComputePerpendicularVector(float* out, const float* in) {
+	int pos = 0;
+	float minelem = 1.0f;
+	// Find the smallest component
+	for (int i = 0; i < 3; ++i) {
+		float f = fabsf(in[i]);
+		if (f < minelem) {
+			pos = i;
+			minelem = f;
+		}
+	}
+	float tempvec[3] = {0, 0, 0};
+	tempvec[pos] = 1.0f;
+	
+	// Project and normalize
+	float d = in[0] * tempvec[0] + in[1] * tempvec[1] + in[2] * tempvec[2];
+	out[0] = tempvec[0] - d * in[0];
+	out[1] = tempvec[1] - d * in[1];
+	out[2] = tempvec[2] - d * in[2];
+	float len = sqrtf(out[0]*out[0] + out[1]*out[1] + out[2]*out[2]);
+	if (len > 0.0001f) {
+		out[0] /= len;
+		out[1] /= len;
+		out[2] /= len;
+	}
+}
 
 void MetalRenderer::detectPortalSurfaces() {
 	portalSurfaces_.clear();
@@ -5959,7 +5999,6 @@ void MetalRenderer::detectPortalSurfaces() {
 		}
 
 		// Compute plane equation from first triangle
-		// Get vertices for this packet
 		if (packet.firstVertex < 0 || 
 		    static_cast<size_t>(packet.firstVertex + 2) >= polyVertices_.size()) {
 			continue;
@@ -6025,11 +6064,85 @@ void MetalRenderer::detectPortalSurfaces() {
 		portal.center[0] = center[0];
 		portal.center[1] = center[1];
 		portal.center[2] = center[2];
-		portal.isMirror = true;  // Default to mirror; we'll check for portal entities below
+		portal.isMirror = true;
 
-		// TODO: Check for RT_PORTALSURFACE entities to determine if this is
-		// a true portal (with camera entity) or just a mirror.
-		// For now, treat all as mirrors.
+		// Build surface axis (like GL2's R_GetPortalOrientations)
+		// surface.axis[0] = plane normal
+		// surface.axis[1] = perpendicular to normal
+		// surface.axis[2] = cross product
+		portal.surface.axis[0][0] = normal[0];
+		portal.surface.axis[0][1] = normal[1];
+		portal.surface.axis[0][2] = normal[2];
+		ComputePerpendicularVector(portal.surface.axis[1], portal.surface.axis[0]);
+		// CrossProduct
+		portal.surface.axis[2][0] = portal.surface.axis[0][1] * portal.surface.axis[1][2] - portal.surface.axis[0][2] * portal.surface.axis[1][1];
+		portal.surface.axis[2][1] = portal.surface.axis[0][2] * portal.surface.axis[1][0] - portal.surface.axis[0][0] * portal.surface.axis[1][2];
+		portal.surface.axis[2][2] = portal.surface.axis[0][0] * portal.surface.axis[1][1] - portal.surface.axis[0][1] * portal.surface.axis[1][0];
+
+		// Search for RT_PORTALSURFACE entity that matches this plane
+		// This is exactly what GL2 does in R_GetPortalOrientations
+		bool foundPortalEntity = false;
+		for (const SceneDrawPacket& entPacket : drawPackets_) {
+			if (entPacket.entity.reType != RT_PORTALSURFACE) {
+				continue;
+			}
+
+			// Check distance from entity to plane (must be within 64 units)
+			float entityDist = normal[0] * entPacket.entity.origin[0] + 
+			                   normal[1] * entPacket.entity.origin[1] + 
+			                   normal[2] * entPacket.entity.origin[2] - dist;
+			if (entityDist > 64.0f || entityDist < -64.0f) {
+				continue;
+			}
+
+			// Found a matching portal entity!
+			foundPortalEntity = true;
+
+			// Check if it's a mirror: origin == oldorigin
+			bool isMirror = (entPacket.entity.oldorigin[0] == entPacket.entity.origin[0] &&
+			                 entPacket.entity.oldorigin[1] == entPacket.entity.origin[1] &&
+			                 entPacket.entity.oldorigin[2] == entPacket.entity.origin[2]);
+
+			if (isMirror) {
+				// Mirror setup - exactly like GL2
+				// surface.origin = normal * dist (point on the plane)
+				portal.surface.origin[0] = normal[0] * dist;
+				portal.surface.origin[1] = normal[1] * dist;
+				portal.surface.origin[2] = normal[2] * dist;
+
+				// camera.origin = same as surface (mirror is at the plane)
+				portal.camera.origin[0] = portal.surface.origin[0];
+				portal.camera.origin[1] = portal.surface.origin[1];
+				portal.camera.origin[2] = portal.surface.origin[2];
+
+				// camera.axis[0] = -surface.axis[0] (flip the normal)
+				portal.camera.axis[0][0] = -portal.surface.axis[0][0];
+				portal.camera.axis[0][1] = -portal.surface.axis[0][1];
+				portal.camera.axis[0][2] = -portal.surface.axis[0][2];
+				// camera.axis[1] = surface.axis[1] (keep right)
+				portal.camera.axis[1][0] = portal.surface.axis[1][0];
+				portal.camera.axis[1][1] = portal.surface.axis[1][1];
+				portal.camera.axis[1][2] = portal.surface.axis[1][2];
+				// camera.axis[2] = surface.axis[2] (keep up)
+				portal.camera.axis[2][0] = portal.surface.axis[2][0];
+				portal.camera.axis[2][1] = portal.surface.axis[2][1];
+				portal.camera.axis[2][2] = portal.surface.axis[2][2];
+
+				portal.isMirror = true;
+			} else {
+				// True portal - use entity's camera position
+				// Not yet fully implemented
+				portal.isMirror = false;
+			}
+
+			break;  // Use first matching entity
+		}
+
+		if (!foundPortalEntity) {
+			// No RT_PORTALSURFACE entity found - can't render this portal
+			// GL2 returns qfalse here and doesn't render
+			continue;
+		}
 
 		portalSurfaces_.push_back(portal);
 
@@ -6091,30 +6204,52 @@ bool MetalRenderer::ensurePortalTexture(int width, int height) {
 	return true;
 }
 
-void MetalRenderer::calculateMirrorMatrix(const PortalSurface& portal, float* viewMatrix, float* projMatrix) {
-	// Mirror the view origin across the portal plane
-	// reflected = origin - 2 * (dot(origin, normal) - dist) * normal
-	const float* n = portal.plane;
-	const float d = portal.plane[3];
-	const float* origin = sceneCamera_.viewOrigin;
-
-	float dist = n[0] * origin[0] + n[1] * origin[1] + n[2] * origin[2] - d;
-	float mirroredOrigin[3] = {
-		origin[0] - 2.0f * dist * n[0],
-		origin[1] - 2.0f * dist * n[1],
-		origin[2] - 2.0f * dist * n[2]
+// GL2's R_MirrorPoint: Transform a point through surface orientation to camera orientation
+static void R_MirrorPoint(const float* in, const PortalOrientation& surface, 
+                          const PortalOrientation& camera, float* out) {
+	// VectorSubtract(in, surface.origin, local)
+	float local[3] = {
+		in[0] - surface.origin[0],
+		in[1] - surface.origin[1],
+		in[2] - surface.origin[2]
 	};
 
-	// Mirror the view axis vectors
-	// reflected_axis = axis - 2 * dot(axis, normal) * normal
-	float mirroredAxis[3][3];
+	// Transform local to camera space
+	float transformed[3] = {0, 0, 0};
 	for (int i = 0; i < 3; ++i) {
-		const float* axis = sceneCamera_.viewAxis[i];
-		float dot = axis[0] * n[0] + axis[1] * n[1] + axis[2] * n[2];
-		mirroredAxis[i][0] = axis[0] - 2.0f * dot * n[0];
-		mirroredAxis[i][1] = axis[1] - 2.0f * dot * n[1];
-		mirroredAxis[i][2] = axis[2] - 2.0f * dot * n[2];
+		float d = local[0] * surface.axis[i][0] + local[1] * surface.axis[i][1] + local[2] * surface.axis[i][2];
+		transformed[0] += d * camera.axis[i][0];
+		transformed[1] += d * camera.axis[i][1];
+		transformed[2] += d * camera.axis[i][2];
 	}
+
+	// VectorAdd(transformed, camera.origin, out)
+	out[0] = transformed[0] + camera.origin[0];
+	out[1] = transformed[1] + camera.origin[1];
+	out[2] = transformed[2] + camera.origin[2];
+}
+
+// GL2's R_MirrorVector: Transform a vector (direction) through surface to camera orientation
+static void R_MirrorVector(const float* in, const PortalOrientation& surface,
+                           const PortalOrientation& camera, float* out) {
+	out[0] = out[1] = out[2] = 0;
+	for (int i = 0; i < 3; ++i) {
+		float d = in[0] * surface.axis[i][0] + in[1] * surface.axis[i][1] + in[2] * surface.axis[i][2];
+		out[0] += d * camera.axis[i][0];
+		out[1] += d * camera.axis[i][1];
+		out[2] += d * camera.axis[i][2];
+	}
+}
+
+void MetalRenderer::calculateMirrorMatrix(const PortalSurface& portal, float* viewMatrix, float* projMatrix) {
+	// Use GL2's approach: R_MirrorPoint for origin, R_MirrorVector for each axis
+	float newOrigin[3];
+	R_MirrorPoint(sceneCamera_.viewOrigin, portal.surface, portal.camera, newOrigin);
+
+	float newAxis[3][3];
+	R_MirrorVector(sceneCamera_.viewAxis[0], portal.surface, portal.camera, newAxis[0]);
+	R_MirrorVector(sceneCamera_.viewAxis[1], portal.surface, portal.camera, newAxis[1]);
+	R_MirrorVector(sceneCamera_.viewAxis[2], portal.surface, portal.camera, newAxis[2]);
 
 	// Build view matrix from mirrored origin and axis
 	// View matrix = inverse of camera transform
@@ -6126,14 +6261,14 @@ void MetalRenderer::calculateMirrorMatrix(const PortalSurface& portal, float* vi
 	//
 	// Where R=right(axis[1]), U=up(axis[2]), F=forward(axis[0]), T=position
 
-	float* R = mirroredAxis[1];  // right
-	float* U = mirroredAxis[2];  // up
-	float* F = mirroredAxis[0];  // forward
+	float* R = newAxis[1];  // right
+	float* U = newAxis[2];  // up
+	float* F = newAxis[0];  // forward
 
 	// Column-major
-	viewMatrix[0] = R[0];  viewMatrix[4] = R[1];  viewMatrix[8]  = R[2];   viewMatrix[12] = -(R[0]*mirroredOrigin[0] + R[1]*mirroredOrigin[1] + R[2]*mirroredOrigin[2]);
-	viewMatrix[1] = U[0];  viewMatrix[5] = U[1];  viewMatrix[9]  = U[2];   viewMatrix[13] = -(U[0]*mirroredOrigin[0] + U[1]*mirroredOrigin[1] + U[2]*mirroredOrigin[2]);
-	viewMatrix[2] = -F[0]; viewMatrix[6] = -F[1]; viewMatrix[10] = -F[2];  viewMatrix[14] = (F[0]*mirroredOrigin[0] + F[1]*mirroredOrigin[1] + F[2]*mirroredOrigin[2]);
+	viewMatrix[0] = R[0];  viewMatrix[4] = R[1];  viewMatrix[8]  = R[2];   viewMatrix[12] = -(R[0]*newOrigin[0] + R[1]*newOrigin[1] + R[2]*newOrigin[2]);
+	viewMatrix[1] = U[0];  viewMatrix[5] = U[1];  viewMatrix[9]  = U[2];   viewMatrix[13] = -(U[0]*newOrigin[0] + U[1]*newOrigin[1] + U[2]*newOrigin[2]);
+	viewMatrix[2] = -F[0]; viewMatrix[6] = -F[1]; viewMatrix[10] = -F[2];  viewMatrix[14] = (F[0]*newOrigin[0] + F[1]*newOrigin[1] + F[2]*newOrigin[2]);
 	viewMatrix[3] = 0.0f;  viewMatrix[7] = 0.0f;  viewMatrix[11] = 0.0f;   viewMatrix[15] = 1.0f;
 
 	// Use same projection as main camera
@@ -6265,21 +6400,25 @@ bool MetalRenderer::renderPortalView(const PortalSurface& portal) {
 }
 
 bool MetalRenderer::renderPortalViews() {
-	// Detect portal surfaces in the scene
-	detectPortalSurfaces();
-
-	if (portalSurfaces_.empty()) {
-		return true;  // No portals to render
-	}
-
-	// Render first portal (matches GL2 behavior - only one portal per frame)
-	if (!portalSurfaces_.empty()) {
-		isRenderingPortal_ = true;
-		bool result = renderPortalView(portalSurfaces_[0]);
-		isRenderingPortal_ = false;
-		return result;
-	}
-
+	// Portal/mirror rendering - GL2 approach
+	// 
+	// GL2 renders portal views by:
+	// 1. Detecting portal surfaces during draw surface sorting
+	// 2. Calling R_RenderView with mirrored camera (full scene re-generation)
+	// 3. The mirrored scene renders to the SAME framebuffer
+	// 4. Then the main scene renders on top
+	//
+	// Our Metal approach is different because we batch geometry during scene submission,
+	// not during rendering. We can't easily regenerate the scene from a different camera.
+	//
+	// For now, we skip portal rendering. The portal surface will show its base texture.
+	// A proper implementation would require either:
+	// - Re-architecting to support multiple render views per frame
+	// - Using compute shaders for portal texture projection
+	// - Deferred rendering with portal-aware compositing
+	//
+	// This is marked as a known limitation.
+	
 	return true;
 }
 
