@@ -3146,12 +3146,6 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 	const int firstEntity = scene.worldSceneFirstEntity;
 	const int numEntities = scene.worldSceneNumEntities;
 
-	// DEBUG: Log entity processing
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_ALL, "DEBUG: processEntities called - worldScene range [%d, %d) = %d entities\n",
-	// 	          firstEntity, firstEntity + numEntities, numEntities);
-	// }
-
 	for (int i = 0; i < numEntities; ++i) {
 		const int entityIndex = firstEntity + i;
 		SceneDrawPacket packet;
@@ -8594,10 +8588,6 @@ void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows
 	vp.znear = 0.0;
 	vp.zfar = 1.0;
 	currentRenderEncoder_->setViewport(vp);
-
-	if (ri_.Printf) {
-		ri_.Printf(PRINT_ALL, "Metal: Viewport x=%.1f y=%.1f w=%.1f h=%.1f\n", vp.originX, vp.originY, vp.width, vp.height);
-	}
 
 	// Draw cinematic quad
 	struct Uniforms {
