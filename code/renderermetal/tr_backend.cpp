@@ -5653,6 +5653,9 @@ bool MetalRenderer::drawCloudSky(qhandle_t skyShader) {
 }
 
 bool MetalRenderer::drawDynamicLights() {
+	// TEMPORARILY DISABLED to debug performance issue
+	return true;
+	
 	// Check if we have lights to render
 	if (lightPackets_.empty()) {
 		return true;  // No lights
@@ -5717,99 +5720,22 @@ bool MetalRenderer::drawDynamicLights() {
 		uniforms.color[2] = light.color[2];
 		uniforms.color[3] = 1.0f;  // Alpha
 
-		// Base time for deforms
+		// No deforms for now
+		uniforms.deformGen = 0;
 		uniforms.time = sceneUniforms_.timeInfo[0];
 		uniforms.vertexLerp = 0.0f;
 
-		// Track last deform state to avoid redundant uniform uploads
-		int32_t lastDeformGen = -1;
+		// Upload uniforms for this light
+		currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(DlightUniforms), 1);
 
 		// Draw all surfaces that are within the light's radius
 		for (const ScenePolyPacket& packet : polyPackets_) {
+			// Simple culling: check if surface bounding sphere intersects light
+			// For now, just draw all surfaces (we'll add proper culling later)
+
 			// Skip if no vertices
 			if (packet.vertexCount <= 0) {
 				continue;
-			}
-
-			// Cull surfaces outside light radius
-			// Use packet bounds to compute approximate center and radius
-			if (packet.vertexCount > 0 && packet.firstVertex < static_cast<int>(polyVertices_.size())) {
-				// Compute bounding sphere from first vertex as approximation
-				// (full bounds would require iterating all vertices)
-				const MetalPolyVertex& v = polyVertices_[packet.firstVertex];
-				float dx = v.xyz[0] - light.origin[0];
-				float dy = v.xyz[1] - light.origin[1];
-				float dz = v.xyz[2] - light.origin[2];
-				float distSq = dx*dx + dy*dy + dz*dz;
-				// Conservative culling: use 2x radius to account for surface extent
-				float cullRadius = radius * 2.0f;
-				if (distSq > cullRadius * cullRadius) {
-					continue;
-				}
-			}
-
-			// Compute deform parameters from packet's shader
-			// Match dlight.metal DGEN_* constants:
-			// DGEN_NONE=0, DGEN_WAVE_SIN=1, DGEN_WAVE_SQUARE=2, DGEN_WAVE_TRIANGLE=3,
-			// DGEN_WAVE_SAWTOOTH=4, DGEN_WAVE_INVERSE_SAWTOOTH=5, DGEN_BULGE=6
-			int32_t deformGen = 0;  // DGEN_NONE
-			float deformParams[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-
-			MetalShaderResource* shaderResource = getShaderResource(packet.shader);
-			if (shaderResource && shaderResource->hasScript && shaderResource->script.hasDeform) {
-				const MetalDeformInfo& deform = shaderResource->script.deform;
-
-				if (deform.type == MetalDeformType::Wave) {
-					// Map MetalWaveFunc to DGEN_WAVE_* constants
-					switch (deform.wave.func) {
-						case MetalWaveFunc::Sin:
-							deformGen = 1;  // DGEN_WAVE_SIN
-							break;
-						case MetalWaveFunc::Square:
-							deformGen = 2;  // DGEN_WAVE_SQUARE
-							break;
-						case MetalWaveFunc::Triangle:
-							deformGen = 3;  // DGEN_WAVE_TRIANGLE
-							break;
-						case MetalWaveFunc::Sawtooth:
-							deformGen = 4;  // DGEN_WAVE_SAWTOOTH
-							break;
-						case MetalWaveFunc::InverseSawtooth:
-							deformGen = 5;  // DGEN_WAVE_INVERSE_SAWTOOTH
-							break;
-						default:
-							deformGen = 0;  // DGEN_NONE
-							break;
-					}
-					if (deformGen != 0) {
-						deformParams[0] = deform.wave.base;
-						deformParams[1] = deform.wave.amplitude;
-						deformParams[2] = deform.wave.phase;
-						deformParams[3] = deform.wave.frequency;
-						deformParams[4] = deform.spread;
-					}
-				} else if (deform.type == MetalDeformType::Bulge) {
-					deformGen = 6;  // DGEN_BULGE
-					deformParams[0] = 0.0f;               // base (unused for bulge)
-					deformParams[1] = deform.bulgeHeight; // amplitude
-					deformParams[2] = deform.bulgeWidth;  // phase
-					deformParams[3] = deform.bulgeSpeed;  // frequency
-					deformParams[4] = 0.0f;               // spread (unused for bulge)
-				}
-			}
-
-			// Only upload uniforms if deform state changed (or first surface)
-			// For deforming surfaces, always upload since params may differ even with same deformGen
-			bool needUpload = (lastDeformGen == -1) ||  // First surface
-			                  (deformGen != lastDeformGen) ||  // deformGen changed
-			                  (deformGen != 0);  // Has deform (params might differ)
-			if (needUpload) {
-				uniforms.deformGen = deformGen;
-				for (int i = 0; i < 5; ++i) {
-					uniforms.deformParams[i] = deformParams[i];
-				}
-				currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(DlightUniforms), 1);
-				lastDeformGen = deformGen;
 			}
 
 			// Draw the surface with dlight applied
@@ -7971,29 +7897,9 @@ bool MetalRenderer::drawModelEntities() {
 	for (const SceneDrawPacket& packet : drawPackets_) {
 		const refEntity_t& ent = packet.entity;
 		
-		// Handle procedural entity types (sprites, beams, rails, lightning)
-		switch (ent.reType) {
-			case RT_SPRITE:
-				renderSprite(ent);
-				continue;
-			case RT_BEAM:
-				renderBeam(ent);
-				continue;
-			case RT_RAIL_CORE:
-				renderRailCore(ent);
-				continue;
-			case RT_RAIL_RINGS:
-				renderRailRings(ent);
-				continue;
-			case RT_LIGHTNING:
-				renderLightning(ent);
-				continue;
-			case RT_MODEL:
-				// Fall through to model rendering below
-				break;
-			default:
-				// Unknown entity type, skip
-				continue;
+		// TEMPORARILY DISABLED: Skip all non-model entity types to debug performance issue
+		if (ent.reType != RT_MODEL) {
+			continue;
 		}
 
 		// Don't render third-person models in first-person view
