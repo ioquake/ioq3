@@ -34,7 +34,7 @@ function(finish_macos_app)
     set(MACOS_APP_DEPLOYMENT_TARGET ${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(MACOS_APP_COPYRIGHT ${COPYRIGHT})
 
-    if(PROTOCOL_HANDLER_SCHEME)
+    if(PROTOCOL_HANDLER)
         set(MACOS_APP_PLIST_URL_TYPES
         "<key>CFBundleURLTypes</key>
         <array>
@@ -43,7 +43,7 @@ function(finish_macos_app)
                 <string>${MACOS_APP_BUNDLE_NAME}</string>
                 <key>CFBundleURLSchemes</key>
                 <array>
-                    <string>${PROTOCOL_HANDLER_SCHEME}</string>
+                    <string>${PROTOCOL_HANDLER}</string>
                 </array>
             </dict>
         </array>")
