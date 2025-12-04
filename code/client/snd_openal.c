@@ -2365,6 +2365,18 @@ S_AL_SoundList
 static
 void S_AL_SoundList( void )
 {
+	int		i;
+	alSfx_t	*sfx;
+	int		size, total;
+
+	total = 0;
+	for (sfx=knownSfx, i=0 ; i<numSfx ; i++, sfx++) {
+		size = sfx->info.samples;
+		total += size;
+		Com_Printf("%6i : %s[%s]\n", size,
+				sfx->filename, sfx->inMemory ? "resident " : "paged out");
+	}
+	Com_Printf ("Total resident: %i\n", total);
 }
 
 #ifdef USE_VOIP
