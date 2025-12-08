@@ -114,7 +114,7 @@ We also have a label called [new contributor](https://github.com/ioquake/ioq3/is
 
 ## On AI/LLM Contributions
 
- Do not submit code, pull request, issues, or other contributions that have been developed with the
+ Do not submit code, pull requests, issues, or other contributions that have been developed with the
  assistance of generative "AI" or other similar assistive tools (such as Microsoft Copilot, Anthropic
  Claude, ChatGPT, etc).
   
