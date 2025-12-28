@@ -76,28 +76,24 @@ prepare "https://github.com/kcat/openal-soft/archive/refs/tags/${OPENAL_VERSION}
     "" \
     "\./include/AL/.*\.h"
 
-prepare "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz" \
+prepare "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL3-${SDL_VERSION}.tar.gz" \
     "" \
     "\./include/.*\.h"
 
 TMPDIR=$(mktemp -d)
 cd ${TMPDIR}
 
-curl -sL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-devel-${SDL_VERSION}-mingw.tar.gz" | tar -xvz
-curl -sL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-devel-${SDL_VERSION}-VC.zip" \
-    -o temp.zip && unzip -o temp.zip && rm temp.zip
+curl -sL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL3-devel-${SDL_VERSION}-mingw.tar.gz" | tar -xvz
+curl -sL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL3-devel-${SDL_VERSION}-VC.zip" \
+     -o temp.zip && unzip -o temp.zip && rm temp.zip
 
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x86/SDL2.dll ${CODE}/libs/win32/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x86/SDL2.lib ${CODE}/libs/win32/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x86/SDL2main.lib ${CODE}/libs/win32/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/i686-w64-mingw32/lib/libSDL2.dll.a ${CODE}/libs/win32/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/i686-w64-mingw32/lib/libSDL2main.a ${CODE}/libs/win32/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/lib/x86/SDL3.dll ${CODE}/libs/win32/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/lib/x86/SDL3.lib ${CODE}/libs/win32/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/i686-w64-mingw32/lib/libSDL3.dll.a ${CODE}/libs/win32/
 
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x64/SDL2.dll ${CODE}/libs/win64/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x64/SDL2.lib ${CODE}/libs/win64/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/lib/x64/SDL2main.lib ${CODE}/libs/win64/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/x86_64-w64-mingw32/lib/libSDL2.dll.a ${CODE}/libs/win64/
-cp ${TMPDIR}/SDL2-${SDL_VERSION}/x86_64-w64-mingw32/lib/libSDL2main.a ${CODE}/libs/win64/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/lib/x64/SDL3.dll ${CODE}/libs/win64/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/lib/x64/SDL3.lib ${CODE}/libs/win64/
+cp ${TMPDIR}/SDL3-${SDL_VERSION}/x86_64-w64-mingw32/lib/libSDL3.dll.a ${CODE}/libs/win64/
 
 cd
 rm -r ${TMPDIR}

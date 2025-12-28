@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __QGL_H__
 
 #ifdef USE_INTERNAL_SDL_HEADERS
-#	include "SDL_opengl.h"
+#	include "SDL3/SDL_opengl.h"
 #else
-#	include <SDL_opengl.h>
+#	include <SDL3/SDL_opengl.h>
 #endif
 
 extern void (APIENTRYP qglActiveTextureARB) (GLenum texture);

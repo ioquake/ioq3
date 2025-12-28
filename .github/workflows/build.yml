@@ -25,8 +25,12 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install libsdl2-dev
+        curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+        tar zxf SDL3-3.2.20.tar.gz
+        cd SDL3-3.2.20
+        cmake -S . -B build
+        cmake --build build
+        sudo cmake --install build
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -137,10 +141,18 @@ jobs:
     - name: Install emsdk
       uses: mymindstorm/setup-emsdk@v13
       with:
-        version: 3.1.58
+        version: 4.0.11
+    - name: Install Dependencies
+      run: |
+        curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+        tar zxf SDL3-3.2.20.tar.gz
+        cd SDL3-3.2.20
+        emcmake cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$HOME/sdl3-emscripten-install
+        cmake --build build
+        sudo cmake --install build
     - name: Compile
       run: |
-        emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDL3_DIR="$HOME/sdl3-emscripten-install/lib/cmake/SDL3"
         cmake --build build
     - name: Upload
       uses: actions/upload-artifact@v4
@@ -153,6 +165,14 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
+    - name: Install SDL
+      run: |
+        curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+        tar zxf SDL3-3.2.20.tar.gz
+        cd SDL3-3.2.20
+        cmake -S . -B build
+        cmake --build build
+        sudo cmake --install build
     - name: Install Dependencies
       run: |
         sudo apt-get update
@@ -172,6 +192,14 @@ jobs:
         sudo dpkg --add-architecture i386
         sudo apt-get update
         sudo apt-get install gcc-multilib libsdl2-dev:i386
+    - name: Install SDL
+      run: |
+        curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+        tar zxf SDL3-3.2.20.tar.gz
+        cd SDL3-3.2.20
+        cmake -S . -B build -DCMAKE_C_FLAGS="-m32"
+        cmake --build build
+        sudo cmake --install build
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-m32 -msse -msse2"
@@ -185,7 +213,14 @@ jobs:
       uses: vmactions/freebsd-vm@v1
       with:
         prepare: |
-          pkg install -y cmake ninja devel/sdl20
+          pkg install -y cmake ninja
+          pkg install -y curl xorgproto libX11 libXext libXrandr libXcursor libXinerama libXi
+          curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+          tar zxf SDL3-3.2.20.tar.gz
+          cd SDL3-3.2.20
+          cmake -S . -B build
+          cmake --build build
+          cmake --install build
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
@@ -198,7 +233,14 @@ jobs:
       uses: vmactions/openbsd-vm@v1
       with:
         prepare: |
-          pkg_add cmake ninja sdl2
+          pkg_add cmake ninja
+          pkg_add curl
+          curl -LO https://github.com/libsdl-org/SDL/releases/download/release-3.2.20/SDL3-3.2.20.tar.gz
+          tar zxf SDL3-3.2.20.tar.gz
+          cd SDL3-3.2.20
+          cmake -S . -B build
+          cmake --build build
+          cmake --install build
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
