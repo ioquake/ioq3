@@ -435,13 +435,39 @@ void Sys_AnsiColorPrint( const char *msg )
 
 /*
 =================
+Sys_ReplaceNonPrintableChars
+=================
+*/
+void Sys_ReplaceNonPrintableChars(char *str)
+{
+	char *p;
+
+	for (p = str; *p != '\0'; p++)
+	{
+		if ( !isprint(*p) && *p != '\n' )
+		{
+			*p = '.';
+		}
+	}
+}
+
+/*
+=================
 Sys_Print
 =================
 */
 void Sys_Print( const char *msg )
 {
-	CON_LogWrite( msg );
-	CON_Print( msg );
+	char clean_msg[ MAXPRINTMSG ];
+
+	// Replace non-printable characters before we print the string
+	// Prevents abuse, e.g. players messing up the terminal by \say-ing
+	// escape sequences
+	Q_strncpyz(clean_msg, msg, sizeof(clean_msg));
+	Sys_ReplaceNonPrintableChars(clean_msg);
+
+	CON_LogWrite( clean_msg );
+	CON_Print( clean_msg );
 }
 
 /*
