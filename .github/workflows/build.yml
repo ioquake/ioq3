@@ -17,51 +17,6 @@ jobs:
         echo "VERSION: ${VERSION}"
         echo "result=${VERSION}" >> $GITHUB_OUTPUT
 
-  linux-legacy:
-    name: Linux (Legacy Makefile)
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsdl2-dev
-    - name: Compile
-      run: make release -j$(nproc)
-  windows-legacy:
-    name: Windows (Legacy Makefile)
-    runs-on: windows-2022
-    steps:
-    - uses: actions/checkout@v4
-    - name: Compile
-      run: |
-        make release -j $env:NUMBER_OF_PROCESSORS
-  macos-legacy:
-    name: macOS (Legacy Makefile)
-    runs-on: macos-13
-    steps:
-    - uses: actions/checkout@v4
-    - name: Compile
-      run: make release -j$(sysctl -n hw.logicalcpu)
-  emscripten-legacy:
-    name: Emscripten (Legacy Makefile)
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/checkout@v4
-      with:
-        repository: emscripten-core/emsdk
-        path: emsdk
-    - name: Install Dependencies
-      run: |
-        cd emsdk
-        ./emsdk install 4.0.18
-        ./emsdk activate 4.0.18
-    - name: Compile
-      run: |
-        source emsdk/emsdk_env.sh
-        emmake make release -j$(nproc)
-
   linux:
     name: Linux
     runs-on: ubuntu-22.04
