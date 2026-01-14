@@ -2083,6 +2083,8 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/fogpass_vp.o \
   $(B)/renderergl2/glsl/generic_fp.o \
   $(B)/renderergl2/glsl/generic_vp.o \
+  $(B)/renderergl2/glsl/greyscale_fp.o \
+  $(B)/renderergl2/glsl/greyscale_vp.o \
   $(B)/renderergl2/glsl/lightall_fp.o \
   $(B)/renderergl2/glsl/lightall_vp.o \
   $(B)/renderergl2/glsl/pshadow_fp.o \
