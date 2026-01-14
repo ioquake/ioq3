@@ -2042,6 +2042,7 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_image_jpg.o \
   $(B)/renderergl2/tr_image_pcx.o \
   $(B)/renderergl2/tr_image_png.o \
+  $(B)/renderergl2/tr_image_pvr.o \
   $(B)/renderergl2/tr_image_tga.o \
   $(B)/renderergl2/tr_image_dds.o \
   $(B)/renderergl2/tr_init.o \
@@ -2114,6 +2115,7 @@ Q3ROBJ = \
   $(B)/renderergl1/tr_image_jpg.o \
   $(B)/renderergl1/tr_image_pcx.o \
   $(B)/renderergl1/tr_image_png.o \
+  $(B)/renderergl1/tr_image_pvr.o \
   $(B)/renderergl1/tr_image_tga.o \
   $(B)/renderergl1/tr_init.o \
   $(B)/renderergl1/tr_light.o \
