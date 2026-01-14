@@ -95,6 +95,7 @@ if(NOT "$ENV{APPLE_CERTIFICATE_ID}" STREQUAL "")
 
             add_custom_command(TARGET ${TARGET} POST_BUILD
                 COMMAND codesign --force --deep --options runtime
+                    --entitlements ${CMAKE_SOURCE_DIR}/cmake/entitlements.plist
                     --sign "$ENV{APPLE_CERTIFICATE_ID}"
                     "$<TARGET_FILE:${TARGET}>"
                 COMMENT "Code Signing for macOS: $<TARGET_FILE_BASE_NAME:${TARGET}>")
