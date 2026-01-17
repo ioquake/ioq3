@@ -1615,64 +1615,49 @@ int FS_Seek( fileHandle_t f, long offset, int origin ) {
 	}
 
 	if (fsh[f].zipFile == qtrue) {
-		//FIXME: this is really, really crappy
-		//(but better than what was here before)
+		int		currentPosition = unztell(fsh[f].handleFiles.file.z);
+		long targetOffset;
+		long remainder;
 		byte	buffer[PK3_SEEK_BUFFER_SIZE];
-		int		remainder;
-		int		currentPosition = FS_FTell( f );
 
-		// change negative offsets into FS_SEEK_SET
-		if ( offset < 0 ) {
-			switch( origin ) {
-				case FS_SEEK_END:
-					remainder = fsh[f].zipFileLen + offset;
-					break;
-
-				case FS_SEEK_CUR:
-					remainder = currentPosition + offset;
-					break;
-
-				case FS_SEEK_SET:
-				default:
-					remainder = 0;
-					break;
-			}
-
-			if ( remainder < 0 ) {
-				remainder = 0;
-			}
-
-			origin = FS_SEEK_SET;
-		} else {
-			if ( origin == FS_SEEK_END ) {
-				remainder = fsh[f].zipFileLen - currentPosition + offset;
-			} else {
-				remainder = offset;
-			}
+		// Convert all to offsets from start.
+		switch (origin)
+		{
+		case FS_SEEK_SET:
+			targetOffset = offset;
+			break;
+		case FS_SEEK_CUR:
+			targetOffset = (long)currentPosition + offset;
+			break;
+		case FS_SEEK_END:
+			targetOffset = (long)fsh[f].zipFileLen + offset;
+			break;
+		default:
+			Com_Error(ERR_FATAL, "Bad origin in FS_Seek");
+			return -1;
 		}
+		targetOffset = MAX(0, MIN(targetOffset, fsh[f].zipFileLen));
 
-		switch( origin ) {
-			case FS_SEEK_SET:
-				if ( remainder == currentPosition ) {
-					return offset;
-				}
-				unzSetOffset(fsh[f].handleFiles.file.z, fsh[f].zipFilePos);
-				unzOpenCurrentFile(fsh[f].handleFiles.file.z);
-				//fallthrough
-
-			case FS_SEEK_END:
-			case FS_SEEK_CUR:
-				while( remainder > PK3_SEEK_BUFFER_SIZE ) {
-					FS_Read( buffer, PK3_SEEK_BUFFER_SIZE, f );
-					remainder -= PK3_SEEK_BUFFER_SIZE;
-				}
-				FS_Read( buffer, remainder, f );
-				return offset;
-
-			default:
-				Com_Error( ERR_FATAL, "Bad origin in FS_Seek" );
-				return -1;
+		if (targetOffset < currentPosition)
+		{
+			remainder = targetOffset;
+			unzSetOffset(fsh[f].handleFiles.file.z, fsh[f].zipFilePos);
+			unzOpenCurrentFile(fsh[f].handleFiles.file.z);
 		}
+		else
+		{
+			remainder = targetOffset - currentPosition;
+		}
+		int r;
+		while (remainder > 0) {
+			r = unzReadCurrentFile(fsh[f].handleFiles.file.z, buffer, MIN(remainder, PK3_SEEK_BUFFER_SIZE));
+			if (r < 0)
+			{
+				return r;
+			}
+			remainder -= r;
+		}
+		return 0;
 	} else {
 		FILE *file;
 		file = FS_FileForHandle(f);
