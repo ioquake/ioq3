@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #ifndef R_IMAGE_PROCESS_H_
-#define R_IMAHE_PROCESS_H_
+#define R_IMAGE_PROCESS_H_
 
 void GetScaledDimension(const unsigned int width, const unsigned int height, unsigned int * const outW, unsigned int * const outH, int isPicMip);
 

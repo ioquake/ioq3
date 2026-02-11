@@ -620,6 +620,7 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 	int i;
 	unsigned int pointOr = 0;
 	unsigned int pointAnd = (unsigned int)~0;
+	(void)pointOr; // accumulated but only pointAnd is checked
 
 	R_RotateForViewer(&tr.viewParms, &tr.or);
 

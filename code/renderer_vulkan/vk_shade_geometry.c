@@ -97,7 +97,7 @@ void set_modelview_matrix(const float mv[16])
 }
 
 
-const float * getptr_modelview_matrix()
+const float * getptr_modelview_matrix(void)
 {
     return s_modelview_matrix;
 }
@@ -261,8 +261,8 @@ void vk_createVertexBuffer(void)
     alloc_info.memoryTypeIndex = find_memory_type(memory_type_bits, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    ri.Printf(PRINT_DEVELOPER, " Allocate device memory for Vertex Buffer: %ld bytes. \n",
-            alloc_info.allocationSize);
+    ri.Printf(PRINT_DEVELOPER, " Allocate device memory for Vertex Buffer: %llu bytes. \n",
+            (unsigned long long)alloc_info.allocationSize);
 
     VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &shadingDat.vertex_buffer_memory));
 
@@ -313,8 +313,8 @@ void vk_createIndexBuffer(void)
     alloc_info.memoryTypeIndex = find_memory_type(memory_type_bits, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    ri.Printf(PRINT_DEVELOPER, " Allocate device memory for Index Buffer: %ld bytes. \n",
-            alloc_info.allocationSize);
+    ri.Printf(PRINT_DEVELOPER, " Allocate device memory for Index Buffer: %llu bytes. \n",
+            (unsigned long long)alloc_info.allocationSize);
 
     VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &shadingDat.index_buffer_memory));
     qvkBindBufferMemory(vk.device, shadingDat.index_buffer, shadingDat.index_buffer_memory, 0);
@@ -659,7 +659,7 @@ void vk_clearColorAttachments(const float* color)
     // VK_IMAGE_ASPECT_COLOR_BIT for color attachments,
     // VK_IMAGE_ASPECT_DEPTH_BIT for depth/stencil attachments with a depth
     // component, and VK_IMAGE_ASPECT_STENCIL_BIT for depth/stencil attachments
-    // with a stencil component. If the subpass¡¯s depth/stencil attachment
+    // with a stencil component. If the subpassï¿½ï¿½s depth/stencil attachment
     // is VK_ATTACHMENT_UNUSED, then the clear has no effect.
 
     attachments[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

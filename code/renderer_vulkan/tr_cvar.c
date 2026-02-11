@@ -104,6 +104,8 @@ cvar_t* r_mode;
 
 cvar_t* r_vkValidation;
 
+cvar_t* r_swapInterval;
+
 void R_Register( void ) 
 {
 	//
@@ -200,4 +202,6 @@ void R_Register( void )
 #else
     r_vkValidation = ri.Cvar_Get( "r_vkValidation", "1", CVAR_ARCHIVE | CVAR_LATCH );
 #endif
+
+    r_swapInterval = ri.Cvar_Get( "r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH );
 }
