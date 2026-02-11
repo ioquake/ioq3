@@ -28,11 +28,11 @@ graphics API path while maintaining compatibility with existing Quake 3 content.
   BUILDING
 -------------------------------------------------------------------------------
 
-The Vulkan renderer is enabled by default.  To disable it, pass
-`-DBUILD_RENDERER_VULKAN=OFF` to CMake.
+The Vulkan renderer is not built by default.  To enable it, pass
+`-DBUILD_RENDERER_VULKAN=ON` to CMake.
 
     mkdir build && cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_RENDERER_VULKAN=ON
     make renderer_vulkan
 
 This produces `renderer_vulkan_<arch>.so` (Linux), `renderer_vulkan_<arch>.dll`
