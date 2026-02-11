@@ -212,6 +212,21 @@ Cvars for image quality:
                               Requires vid_restart.
                                 1 - Default.
 
+Cvars for frame rate control:
+
+  * `r_swapInterval`         - VSync / swap interval control.
+                                0 - VSync off; present mode is
+                                    MAILBOX > IMMEDIATE > FIFO. (default)
+                                1 - VSync on; forces FIFO present mode,
+                                    locking the frame rate to the display
+                                    refresh rate.
+
+  NOTE: When VSync is off (`r_swapInterval 0`), the engine can produce very
+  high frame rates (1000+ fps) if `com_maxfps` is also set to 0.  This may
+  cause erratic frame timing that triggers "Connection Interrupted" messages
+  during online play.  To avoid this, set `com_maxfps` to a reasonable value
+  (e.g. 125 or 250) when playing with VSync disabled.
+
 Cvars for rendering features:
 
   * `r_dynamiclight`        - Enable dynamic lights.

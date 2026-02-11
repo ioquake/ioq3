@@ -962,6 +962,8 @@ const char * cvtResToStr(VkResult result)
             return "VK_RESULT_MAX_ENUM";
         case VK_ERROR_FRAGMENTATION_EXT:
             return "VK_ERROR_FRAGMENTATION_EXT";
+        default:
+            break;
     }
 
     return "UNKNOWN_ERROR";

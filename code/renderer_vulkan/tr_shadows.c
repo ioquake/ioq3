@@ -51,13 +51,13 @@ static	int			facing[SHADER_MAX_INDEXES/3];
 static vec4_t		extrudedEdges[SHADER_MAX_VERTEXES * 4];
 static int			numExtrudedEdges;
 
-static void R_AddEdgeDef( int i1, int i2, int facing ) {
+static void R_AddEdgeDef( int i1, int i2, int facingDir ) {
 	int		c = numEdgeDefs[ i1 ];
 	if ( c == MAX_EDGE_DEFS ) {
 		return;		// overflow
 	}
 	edgeDefs[ i1 ][ c ].i2 = i2;
-	edgeDefs[ i1 ][ c ].facing = facing;
+	edgeDefs[ i1 ][ c ].facing = facingDir;
 
 	numEdgeDefs[ i1 ]++;
 }

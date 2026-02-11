@@ -1,5 +1,5 @@
 #ifndef R_IMAGE_PROCESS_H_
-#define R_IMAHE_PROCESS_H_
+#define R_IMAGE_PROCESS_H_
 
 void GetScaledDimension(const unsigned int width, const unsigned int height, unsigned int * const outW, unsigned int * const outH, int isPicMip);
 

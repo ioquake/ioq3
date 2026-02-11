@@ -143,6 +143,7 @@ static	void R_LoadLightmaps( lump_t *l ) {
 	int			i, j;
 	float maxIntensity = 0;
 	double sumIntensity = 0;
+	(void)sumIntensity; // used for accumulation but never read
 
     len = l->filelen;
 	if ( !len ) {
@@ -267,11 +268,11 @@ static	void R_LoadVisibility( lump_t *l )
 
 static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum )
 {
-	shaderNum = LittleLong( shaderNum );
-	if ( shaderNum < 0 || shaderNum >= s_worldData.numShaders ) {
-		ri.Error( ERR_DROP, "ShaderForShaderNum: bad num %i", shaderNum );
+	int _shaderNum = LittleLong( shaderNum );
+	if ( _shaderNum < 0 || _shaderNum >= s_worldData.numShaders ) {
+		ri.Error( ERR_DROP, "ShaderForShaderNum: bad num %i", _shaderNum );
 	}
-	dshader_t* dsh = &s_worldData.shaders[ shaderNum ];
+	dshader_t* dsh = &s_worldData.shaders[ _shaderNum ];
 
 	if ( r_vertexLight->integer ) {
 		lightmapNum = LIGHTMAP_BY_VERTEX;
@@ -1225,7 +1226,7 @@ void R_MovePatchSurfacesToHunk(void) {
 		memcpy( hunkgrid->widthLodError, grid->widthLodError, grid->width * 4 );
 
 		hunkgrid->heightLodError = (float*) ri.Hunk_Alloc( grid->height * 4, h_low );
-		memcpy( grid->heightLodError, grid->heightLodError, grid->height * 4 );
+		memcpy( hunkgrid->heightLodError, grid->heightLodError, grid->height * 4 );
 
 		R_FreeSurfaceGridMesh( grid );
 

@@ -31,7 +31,7 @@ static const float s_Identity4x4[16] = {
 };
 
 
-void Mat4Copy( const float in[64], float out[16] )
+void Mat4Copy( const float in[16], float out[16] )
 {
     memcpy(out, in, 64);
 }

@@ -124,7 +124,18 @@ void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKH
         free(pPresentModes);
 
 
-        if (mailbox_supported)
+        // When r_swapInterval >= 1, force FIFO (vsync). FIFO is guaranteed
+        // by the Vulkan spec so we don't need to check for support.
+        // When r_swapInterval == 0, prefer MAILBOX > IMMEDIATE > FIFO
+        // for uncapped frame rates.
+        if (r_swapInterval->integer >= 1)
+        {
+            present_mode = VK_PRESENT_MODE_FIFO_KHR;
+            image_count = MAX(2u, vk.surface_caps.minImageCount);
+
+            ri.Printf(PRINT_ALL, "\n VK_PRESENT_MODE_FIFO_KHR (vsync) mode, minImageCount: %d. \n", image_count);
+        }
+        else if (mailbox_supported)
         {
             present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
             image_count = MAX(3u, vk.surface_caps.minImageCount);

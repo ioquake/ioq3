@@ -25,7 +25,16 @@ static void* q3_stbi_realloc(void* p, size_t old_size, size_t new_size) {
 #define STBI_FREE q3_stbi_free
 #define STBI_REALLOC_SIZED q3_stbi_realloc
 #define STB_IMAGE_IMPLEMENTATION
+// stb_image.h uses 'ri' as a local variable name which shadows
+// the global refimport_t ri declared in ref_import.h
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 #include "stb_image.h"
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 
 
