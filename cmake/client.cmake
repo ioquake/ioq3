@@ -90,7 +90,8 @@ if(NOT USE_RENDERER_DLOPEN)
     target_sources(${CLIENT_BINARY} PRIVATE
         # These are never simultaneously populated
         ${RENDERER_GL1_BINARY_SOURCES}
-        ${RENDERER_GL2_BINARY_SOURCES})
+        ${RENDERER_GL2_BINARY_SOURCES}
+        ${RENDERER_VULKAN_BINARY_SOURCES})
 
     target_include_directories( ${CLIENT_BINARY} PRIVATE ${RENDERER_INCLUDE_DIRS})
     target_compile_definitions( ${CLIENT_BINARY} PRIVATE ${RENDERER_DEFINITIONS})
