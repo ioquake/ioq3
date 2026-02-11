@@ -99,6 +99,23 @@ list(APPEND RENDERER_VULKAN_BINARY_SOURCES
     ${SOURCE_DIR}/renderercommon/puff.c
     ${RENDERER_LIBRARY_SOURCES})
 
+# Vulkan headers: use bundled copy or system-provided headers.
+# The renderer loads Vulkan dynamically via SDL, so we only need the headers
+# at compile time -- no link-time dependency on libvulkan.
+if(USE_INTERNAL_VULKAN_HEADERS)
+    set(VULKAN_INCLUDE_DIRS ${SOURCE_DIR}/renderer_vulkan)
+else()
+    find_path(VULKAN_INCLUDE_DIR vulkan/vulkan.h)
+    if(NOT VULKAN_INCLUDE_DIR)
+        message(FATAL_ERROR "System Vulkan headers not found. "
+            "Install vulkan-headers (e.g. 'brew install vulkan-headers' on macOS, "
+            "'sudo apt install libvulkan-dev' on Debian/Ubuntu, "
+            "'sudo dnf install vulkan-headers' on Fedora) "
+            "or set USE_INTERNAL_VULKAN_HEADERS=ON to use the bundled copy.")
+    endif()
+    set(VULKAN_INCLUDE_DIRS ${VULKAN_INCLUDE_DIR})
+endif()
+
 if(USE_RENDERER_DLOPEN)
     # The Vulkan renderer's ref_import.c already provides Com_Printf and
     # Com_Error, so we cannot include tr_subs.c from DYNAMIC_RENDERER_SOURCES.
@@ -111,7 +128,7 @@ if(USE_RENDERER_DLOPEN)
 
     target_link_libraries(      ${RENDERER_VULKAN_BINARY} PRIVATE ${RENDERER_LIBRARIES})
     target_include_directories( ${RENDERER_VULKAN_BINARY} PRIVATE ${RENDERER_INCLUDE_DIRS}
-                                                                   ${SOURCE_DIR}/renderer_vulkan)
+                                                                   ${VULKAN_INCLUDE_DIRS})
     target_compile_definitions( ${RENDERER_VULKAN_BINARY} PRIVATE ${RENDERER_DEFINITIONS})
     target_compile_options(     ${RENDERER_VULKAN_BINARY} PRIVATE ${RENDERER_COMPILE_OPTIONS})
     target_link_options(        ${RENDERER_VULKAN_BINARY} PRIVATE ${RENDERER_LINK_OPTIONS})

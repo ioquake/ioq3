@@ -193,8 +193,8 @@ static void vk_createInstance(void)
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     // pNext is NULL or a pointer to an extension-specific structure.
 	instanceCreateInfo.pNext = NULL;
-    // flags is reserved for future use.
-    instanceCreateInfo.flags = 0;
+    // flags is set below after scanning instance extensions for
+    // VK_KHR_portability_enumeration (needed for MoltenVK on macOS).
     // pApplicationInfo is NULL or a pointer to an instance of
     // VkApplicationInfo. If not NULL, this information helps 
     // implementations recognize behavior inherent to classes
@@ -235,14 +235,22 @@ static void vk_createInstance(void)
     // The application must enable instance extensions with vkCreateInstance
     // before using them.
 
-    // TODO: CHECK OUT
-    // All of the instance wxtention enabled, Does this reasonable ?
+    VkInstanceCreateFlags flags = 0;
 
     for (i = 0; i < nInsExt; i++)
     {    
         ppInstanceExt[i] = pInsExt[i].extensionName;
+
+        // Required for MoltenVK (macOS/iOS) to enumerate portability
+        // subset devices. Without this flag, vkEnumeratePhysicalDevices()
+        // may return zero devices on these platforms.
+        if (!strcmp(pInsExt[i].extensionName, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
+        {
+            flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        }
     }
     
+    instanceCreateInfo.flags = flags;
     instanceCreateInfo.enabledExtensionCount = nInsExt;
 	instanceCreateInfo.ppEnabledExtensionNames = ppInstanceExt;
 
@@ -551,9 +559,10 @@ static void vk_selectQueueFamilyForPresentation(void)
 
 static void vk_createLogicalDevice(void)
 {
-    static const char* device_extensions[1] = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
+    const char* device_extensions[2];
+    uint32_t device_extension_count = 0;
+
+    device_extensions[device_extension_count++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
     //  Not all graphics cards are capble of presenting images directly
     //  to a screen for various reasons, for example because they are 
@@ -579,10 +588,17 @@ static void vk_createLogicalDevice(void)
     uint32_t j;
     for (j = 0; j < nDevExts; j++)
     {
-        if (!strcmp(device_extensions[0], pDeviceExt[j].extensionName))
+        if (!strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, pDeviceExt[j].extensionName))
         {
             swapchainExtFound = VK_TRUE;
-            break;
+        }
+        // VK_KHR_portability_subset must be enabled on devices that
+        // report it (required by the Vulkan spec). This is the case
+        // for MoltenVK on macOS/iOS.
+        if (!strcmp("VK_KHR_portability_subset", pDeviceExt[j].extensionName))
+        {
+            device_extensions[device_extension_count++] = "VK_KHR_portability_subset";
+            ri.Printf( PRINT_ALL, " Enabling %s device extension.\n", "VK_KHR_portability_subset" );
         }
     }
     if (VK_FALSE == swapchainExtFound)
@@ -614,7 +630,7 @@ static void vk_createLogicalDevice(void)
     device_desc.pQueueCreateInfos = &queue_desc;
     device_desc.enabledLayerCount = 0;
     device_desc.ppEnabledLayerNames = NULL;
-    device_desc.enabledExtensionCount = 1;
+    device_desc.enabledExtensionCount = device_extension_count;
     device_desc.ppEnabledExtensionNames = device_extensions;
     device_desc.pEnabledFeatures = &vk.features;
     
@@ -944,8 +960,6 @@ const char * cvtResToStr(VkResult result)
 //
         case VK_RESULT_MAX_ENUM:
             return "VK_RESULT_MAX_ENUM";
-        case VK_RESULT_RANGE_SIZE:
-            return "VK_RESULT_RANGE_SIZE"; 
         case VK_ERROR_FRAGMENTATION_EXT:
             return "VK_ERROR_FRAGMENTATION_EXT";
     }

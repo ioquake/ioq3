@@ -38,6 +38,21 @@ The Vulkan renderer is not built by default.  To enable it, pass
 This produces `renderer_vulkan_<arch>.so` (Linux), `renderer_vulkan_<arch>.dll`
 (Windows), or a framework bundle (macOS).
 
+### Vulkan headers
+
+By default the renderer builds against the Vulkan headers bundled in
+`code/renderer_vulkan/vulkan/` (Khronos Vulkan 1.4, header version 341).
+No Vulkan SDK installation is required.
+
+To build against system-provided Vulkan headers instead (e.g. from the
+`vulkan-headers` package on Linux or the LunarG Vulkan SDK), pass:
+
+    cmake .. -DBUILD_RENDERER_VULKAN=ON -DUSE_INTERNAL_VULKAN_HEADERS=OFF
+
+CMake will then use `find_package(Vulkan)` to locate the system headers.
+This can be useful when you want to build against the latest headers from
+your distribution or SDK without updating the bundled copy.
+
 ### Shader compilation
 
 The SPIR-V shaders are shipped pre-compiled as C byte arrays in
@@ -72,6 +87,37 @@ For Win32:
      renderer_vulkan_x86_64.dll
 
    These can be found in the build output directory after compiling.
+
+For macOS:
+
+macOS does not provide a native Vulkan implementation.  The Vulkan renderer
+requires MoltenVK, a Vulkan Portability library that translates Vulkan calls
+to Apple's Metal API.
+
+1. Install MoltenVK via Homebrew:
+
+     brew install molten-vk
+
+   This provides `libMoltenVK.dylib` and the Vulkan loader (`libvulkan`).
+
+2. SDL2 searches for the Vulkan library at runtime.  It looks for (in order):
+   `vulkan.framework/vulkan`, `libvulkan.1.dylib`,
+   `MoltenVK.framework/MoltenVK`, and `libMoltenVK.dylib`.
+
+   If the library is not found in the default search paths, you can either:
+
+   a. Copy or symlink `libMoltenVK.dylib` into the app bundle:
+
+        cp $(brew --prefix molten-vk)/lib/libMoltenVK.dylib \
+           ioquake3.app/Contents/MacOS/
+
+   b. Or set the library path before launching:
+
+        export DYLD_LIBRARY_PATH=$(brew --prefix molten-vk)/lib
+        ./ioquake3.app/Contents/MacOS/ioquake3 +set cl_renderer vulkan
+
+   Without MoltenVK installed, the Vulkan renderer will fail with:
+   "Failed to load Vulkan Portability library".
 
 
 -------------------------------------------------------------------------------
