@@ -38,6 +38,21 @@ The Vulkan renderer is not built by default.  To enable it, pass
 This produces `renderer_vulkan_<arch>.so` (Linux), `renderer_vulkan_<arch>.dll`
 (Windows), or a framework bundle (macOS).
 
+### Vulkan headers
+
+By default the renderer builds against the Vulkan headers bundled in
+`code/renderer_vulkan/vulkan/` (Khronos Vulkan 1.4, header version 341).
+No Vulkan SDK installation is required.
+
+To build against system-provided Vulkan headers instead (e.g. from the
+`vulkan-headers` package on Linux or the LunarG Vulkan SDK), pass:
+
+    cmake .. -DBUILD_RENDERER_VULKAN=ON -DUSE_INTERNAL_VULKAN_HEADERS=OFF
+
+CMake will then use `find_package(Vulkan)` to locate the system headers.
+This can be useful when you want to build against the latest headers from
+your distribution or SDK without updating the bundled copy.
+
 ### Shader compilation
 
 The SPIR-V shaders are shipped pre-compiled as C byte arrays in
@@ -72,6 +87,32 @@ For Win32:
      renderer_vulkan_x86_64.dll
 
    These can be found in the build output directory after compiling.
+
+For macOS:
+
+macOS has no native Vulkan; the renderer runs on MoltenVK, which maps Vulkan
+to Metal. Install it together with the Vulkan loader:
+
+     brew install molten-vk vulkan-loader
+
+The renderer looks for the loader (`libvulkan.1.dylib`) and then MoltenVK
+(`libMoltenVK.dylib`) where SDL searches, in Homebrew's lib directory
+(`/opt/homebrew/lib` or `/usr/local/lib`) and in the app bundle
+(`ioquake3.app/Contents/MacOS`), so a copy of either library in the bundle
+works too. `SDL_VULKAN_LIBRARY=<path>` in the environment overrides the
+search. (`DYLD_LIBRARY_PATH` does not reach a game started from a script or
+from Finder: macOS strips it.)
+
+Without MoltenVK the Vulkan renderer reports "cannot load the Vulkan
+library" and the engine falls back to OpenGL 2.
+
+Homebrew's `vulkan-validationlayers` is not where the loader looks, and its
+manifest names the library by file name only, so to use `r_vkValidation 1`
+start the game binary directly (not through a script) with
+
+     VK_LAYER_PATH=$(brew --prefix)/share/vulkan/explicit_layer.d \
+     DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix)/lib \
+     ioquake3.app/Contents/MacOS/ioquake3 +set r_vkValidation 1
 
 
 -------------------------------------------------------------------------------
