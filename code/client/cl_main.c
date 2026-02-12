@@ -3244,6 +3244,61 @@ int CL_ScaledMilliseconds(void) {
 
 /*
 ============
+CL_DetectAvailableRenderers
+
+Probes for renderer DLLs in the binary path and fs_basepath,
+then sets cl_availableRenderers cvar with space-separated names.
+============
+*/
+#ifdef USE_RENDERER_DLOPEN
+static void CL_DetectAvailableRenderers( void ) {
+	static const char *rendererNames[] = { "opengl1", "opengl2", "vulkan", NULL };
+	char			available[MAX_STRING_CHARS];
+	char			dllName[MAX_OSPATH];
+	char			libPath[MAX_OSPATH];
+	const char		*binaryDir;
+	const char		*basePath;
+	int				i;
+	FILE			*f;
+
+	available[0] = '\0';
+	binaryDir = Sys_BinaryPath();
+	basePath = Cvar_VariableString( "fs_basepath" );
+
+	for ( i = 0; rendererNames[i]; i++ ) {
+		Com_sprintf( dllName, sizeof( dllName ), "renderer_%s" DLL_EXT, rendererNames[i] );
+
+		// check binary path
+		Com_sprintf( libPath, sizeof( libPath ), "%s%c%s", binaryDir, PATH_SEP, dllName );
+		f = Sys_FOpen( libPath, "rb" );
+		if ( !f && basePath && *basePath && FS_FilenameCompare( binaryDir, basePath ) ) {
+			// check fs_basepath
+			Com_sprintf( libPath, sizeof( libPath ), "%s%c%s", basePath, PATH_SEP, dllName );
+			f = Sys_FOpen( libPath, "rb" );
+		}
+
+		if ( f ) {
+			fclose( f );
+			if ( available[0] ) {
+				Q_strcat( available, sizeof( available ), " " );
+			}
+			Q_strcat( available, sizeof( available ), rendererNames[i] );
+		}
+	}
+
+	if ( !available[0] ) {
+		// fallback: at least list the current renderer
+		Q_strncpyz( available, cl_renderer->string, sizeof( available ) );
+	}
+
+	Cvar_Get( "cl_availableRenderers", available, CVAR_ROM );
+	Cvar_Set( "cl_availableRenderers", available );
+	Com_Printf( "Available renderers: %s\n", available );
+}
+#endif
+
+/*
+============
 CL_InitRef
 ============
 */
@@ -3259,6 +3314,8 @@ void CL_InitRef( void ) {
 
 #ifdef USE_RENDERER_DLOPEN
 	cl_renderer = Cvar_Get("cl_renderer", "opengl2", CVAR_ARCHIVE | CVAR_LATCH);
+
+	CL_DetectAvailableRenderers();
 
 	Com_sprintf(dllName, sizeof(dllName), "renderer_%s" DLL_EXT, cl_renderer->string);
 

@@ -248,6 +248,7 @@ GRAPHICS OPTIONS MENU
 #define ID_SOUND		108
 #define ID_NETWORK		109
 #define ID_RATIO		110
+#define ID_RENDERER		111
 
 typedef struct {
 	menuframework_s	menu;
@@ -262,9 +263,9 @@ typedef struct {
 	menutext_s		network;
 
 	menulist_s		list;
+	menulist_s		renderer;
 	menulist_s		ratio;
 	menulist_s		mode;
-	menulist_s		driver;
 	menuslider_s	tq;
 	menulist_s  	fs;
 	menulist_s  	lighting;
@@ -289,8 +290,8 @@ typedef struct
 	int texturebits;
 	int geometry;
 	int filter;
-	int driver;
 	qboolean extensions;
+	int renderer;	// not part of the quality presets
 } InitialVideoOptions_s;
 
 static InitialVideoOptions_s	s_ivo;
@@ -299,22 +300,22 @@ static graphicsoptions_t		s_graphicsoptions;
 static InitialVideoOptions_s s_ivo_templates[] =
 {
 	{
-		6, qtrue, 3, 0, 2, 2, 2, 1, 0, qtrue
+		6, qtrue, 3, 0, 2, 2, 2, 1, qtrue
 	},
 	{
-		4, qtrue, 2, 0, 2, 2, 1, 1, 0, qtrue	// JDC: this was tq 3
+		4, qtrue, 2, 0, 2, 2, 1, 1, qtrue	// JDC: this was tq 3
 	},
 	{
-		3, qtrue, 2, 0, 0, 0, 1, 0, 0, qtrue
+		3, qtrue, 2, 0, 0, 0, 1, 0, qtrue
 	},
 	{
-		2, qtrue, 1, 0, 1, 0, 0, 0, 0, qtrue
+		2, qtrue, 1, 0, 1, 0, 0, 0, qtrue
 	},
 	{
-		2, qtrue, 1, 1, 1, 0, 0, 0, 0, qtrue
+		2, qtrue, 1, 1, 1, 0, 0, 0, qtrue
 	},
 	{
-		3, qtrue, 1, 0, 0, 0, 1, 0, 0, qtrue
+		3, qtrue, 1, 0, 0, 0, 1, 0, qtrue
 	}
 };
 
@@ -362,6 +363,81 @@ static char currentResolution[ 20 ];
 
 static const char** resolutions = builtinResolutions;
 static qboolean resolutionsDetected = qfalse;
+
+#define MAX_RENDERERS	8
+
+typedef struct {
+	char	cvarName[32];		// e.g. "opengl1", "opengl2", "vulkan"
+	char	displayName[32];	// e.g. "OpenGL 1", "OpenGL 2", "Vulkan"
+} rendererInfo_t;
+
+static rendererInfo_t	detectedRenderers[MAX_RENDERERS];
+static const char*		rendererDisplayNames[MAX_RENDERERS + 1];	// NULL terminated
+static int				numDetectedRenderers;
+
+/*
+=================
+GraphicsOptions_DetectRenderers
+
+Parses cl_availableRenderers cvar and builds the renderer list.
+Maps cvar names to display names.
+=================
+*/
+static void GraphicsOptions_DetectRenderers( void )
+{
+	char	buf[MAX_STRING_CHARS];
+	char	*p, *token;
+	int		i;
+
+	numDetectedRenderers = 0;
+	memset( detectedRenderers, 0, sizeof( detectedRenderers ) );
+
+	trap_Cvar_VariableStringBuffer( "cl_availableRenderers", buf, sizeof( buf ) );
+
+	if ( !buf[0] ) {
+		// fallback: if cvar is empty, use current renderer
+		trap_Cvar_VariableStringBuffer( "cl_renderer", buf, sizeof( buf ) );
+		if ( !buf[0] ) {
+			Q_strncpyz( buf, "opengl2", sizeof( buf ) );
+		}
+	}
+
+	p = buf;
+	while ( numDetectedRenderers < MAX_RENDERERS ) {
+		// skip whitespace
+		while ( *p == ' ' )
+			p++;
+		if ( !*p )
+			break;
+
+		token = p;
+		while ( *p && *p != ' ' )
+			p++;
+		if ( *p ) {
+			*p++ = '\0';
+		}
+
+		i = numDetectedRenderers;
+		Q_strncpyz( detectedRenderers[i].cvarName, token, sizeof( detectedRenderers[i].cvarName ) );
+
+		// map cvar name to display name
+		if ( !Q_stricmp( token, "opengl1" ) ) {
+			Q_strncpyz( detectedRenderers[i].displayName, "OpenGL 1", sizeof( detectedRenderers[i].displayName ) );
+		} else if ( !Q_stricmp( token, "opengl2" ) ) {
+			Q_strncpyz( detectedRenderers[i].displayName, "OpenGL 2", sizeof( detectedRenderers[i].displayName ) );
+		} else if ( !Q_stricmp( token, "vulkan" ) ) {
+			Q_strncpyz( detectedRenderers[i].displayName, "Vulkan", sizeof( detectedRenderers[i].displayName ) );
+		} else {
+			// unknown renderer, use cvar name as display name
+			Q_strncpyz( detectedRenderers[i].displayName, token, sizeof( detectedRenderers[i].displayName ) );
+		}
+
+		rendererDisplayNames[numDetectedRenderers] = detectedRenderers[i].displayName;
+		numDetectedRenderers++;
+	}
+
+	rendererDisplayNames[numDetectedRenderers] = NULL;
+}
 
 /*
 =================
@@ -470,7 +546,7 @@ GraphicsOptions_GetInitialVideo
 static void GraphicsOptions_GetInitialVideo( void )
 {
 	s_ivo.colordepth  = s_graphicsoptions.colordepth.curvalue;
-	s_ivo.driver      = s_graphicsoptions.driver.curvalue;
+	s_ivo.renderer    = s_graphicsoptions.renderer.curvalue;
 	s_ivo.mode        = s_graphicsoptions.mode.curvalue;
 	s_ivo.fullscreen  = s_graphicsoptions.fs.curvalue;
 	s_ivo.extensions  = s_graphicsoptions.allow_extensions.curvalue;
@@ -538,8 +614,6 @@ static void GraphicsOptions_CheckConfig( void )
 	{
 		if ( s_ivo_templates[i].colordepth != s_graphicsoptions.colordepth.curvalue )
 			continue;
-		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
-			continue;
 		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
 			continue;
 		if ( s_ivo_templates[i].fullscreen != s_graphicsoptions.fs.curvalue )
@@ -569,18 +643,28 @@ GraphicsOptions_UpdateMenuItems
 */
 static void GraphicsOptions_UpdateMenuItems( void )
 {
-	if ( s_graphicsoptions.driver.curvalue == 1 )
+	int rendererIdx = s_graphicsoptions.renderer.curvalue;
+	qboolean isOpenGL = qtrue;
+
+	// determine if selected renderer is OpenGL-based
+	if ( rendererIdx >= 0 && rendererIdx < numDetectedRenderers ) {
+		if ( Q_stricmp( detectedRenderers[rendererIdx].cvarName, "opengl1" ) != 0 &&
+			 Q_stricmp( detectedRenderers[rendererIdx].cvarName, "opengl2" ) != 0 ) {
+			isOpenGL = qfalse;
+		}
+	}
+
+	// GL Extensions only means something to the OpenGL renderers
+	if ( !isOpenGL )
 	{
-		s_graphicsoptions.fs.curvalue = 1;
-		s_graphicsoptions.fs.generic.flags |= QMF_GRAYED;
-		s_graphicsoptions.colordepth.curvalue = 1;
+		s_graphicsoptions.allow_extensions.generic.flags |= QMF_HIDDEN|QMF_INACTIVE;
 	}
 	else
 	{
-		s_graphicsoptions.fs.generic.flags &= ~QMF_GRAYED;
+		s_graphicsoptions.allow_extensions.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
 
-	if ( s_graphicsoptions.fs.curvalue == 0 || s_graphicsoptions.driver.curvalue == 1 )
+	if ( s_graphicsoptions.fs.curvalue == 0 )
 	{
 		s_graphicsoptions.colordepth.curvalue = 0;
 		s_graphicsoptions.colordepth.generic.flags |= QMF_GRAYED;
@@ -624,7 +708,7 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
-	if ( s_ivo.driver != s_graphicsoptions.driver.curvalue )
+	if ( s_ivo.renderer != s_graphicsoptions.renderer.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
@@ -668,6 +752,12 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 	}
 	trap_Cvar_SetValue( "r_picmip", 3 - s_graphicsoptions.tq.curvalue );
 	trap_Cvar_SetValue( "r_allowExtensions", s_graphicsoptions.allow_extensions.curvalue );
+
+	if ( s_graphicsoptions.renderer.curvalue >= 0 &&
+		 s_graphicsoptions.renderer.curvalue < numDetectedRenderers )
+	{
+		trap_Cvar_Set( "cl_renderer", detectedRenderers[s_graphicsoptions.renderer.curvalue].cvarName );
+	}
 
 	if( resolutionsDetected )
 	{
@@ -762,14 +852,6 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		// fall through to apply mode constraints
 		
 	case ID_MODE:
-		// clamp 3dfx video modes
-		if ( s_graphicsoptions.driver.curvalue == 1 )
-		{
-			if ( s_graphicsoptions.mode.curvalue < 2 )
-				s_graphicsoptions.mode.curvalue = 2;
-			else if ( s_graphicsoptions.mode.curvalue > 6 )
-				s_graphicsoptions.mode.curvalue = 6;
-		}
 		s_graphicsoptions.ratio.curvalue =
 			resToRatio[ s_graphicsoptions.mode.curvalue ];
 		break;
@@ -791,6 +873,9 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 
 	case ID_DRIVERINFO:
 		UI_DriverInfo_Menu();
+		break;
+
+	case ID_RENDERER:
 		break;
 
 	case ID_BACK2:
@@ -953,9 +1038,19 @@ static void GraphicsOptions_SetMenuItems( void )
 	{
 		s_graphicsoptions.colordepth.curvalue = 0;
 	}
-	if ( s_graphicsoptions.driver.curvalue == 1 )
+
+	// set renderer from cl_renderer cvar
 	{
-		s_graphicsoptions.colordepth.curvalue = 1;
+		char buf[MAX_STRING_CHARS];
+		int i;
+		trap_Cvar_VariableStringBuffer( "cl_renderer", buf, sizeof( buf ) );
+		s_graphicsoptions.renderer.curvalue = 0;
+		for ( i = 0; i < numDetectedRenderers; i++ ) {
+			if ( !Q_stricmp( buf, detectedRenderers[i].cvarName ) ) {
+				s_graphicsoptions.renderer.curvalue = i;
+				break;
+			}
+		}
 	}
 }
 
@@ -966,13 +1061,6 @@ GraphicsOptions_MenuInit
 */
 void GraphicsOptions_MenuInit( void )
 {
-	static const char *s_driver_names[] =
-	{
-		"Default",
-		"Voodoo",
-		NULL
-	};
-
 	static const char *tq_names[] =
 	{
 		"Default",
@@ -1034,6 +1122,7 @@ void GraphicsOptions_MenuInit( void )
 
 	GraphicsOptions_GetResolutions();
 	GraphicsOptions_GetAspectRatios();
+	GraphicsOptions_DetectRenderers();
 	
 	GraphicsOptions_Cache();
 
@@ -1115,13 +1204,15 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.list.itemnames        = s_graphics_options_names;
 	y += 2 * ( BIGCHAR_HEIGHT + 2 );
 
-	s_graphicsoptions.driver.generic.type  = MTYPE_SPINCONTROL;
-	s_graphicsoptions.driver.generic.name  = "GL Driver:";
-	s_graphicsoptions.driver.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.driver.generic.x     = 400;
-	s_graphicsoptions.driver.generic.y     = y;
-	s_graphicsoptions.driver.itemnames     = s_driver_names;
-	s_graphicsoptions.driver.curvalue      = (uis.glconfig.driverType == GLDRV_VOODOO);
+	// references/modifies "cl_renderer"
+	s_graphicsoptions.renderer.generic.type     = MTYPE_SPINCONTROL;
+	s_graphicsoptions.renderer.generic.name     = "Graphics API:";
+	s_graphicsoptions.renderer.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.renderer.generic.x        = 400;
+	s_graphicsoptions.renderer.generic.y        = y;
+	s_graphicsoptions.renderer.generic.callback = GraphicsOptions_Event;
+	s_graphicsoptions.renderer.generic.id       = ID_RENDERER;
+	s_graphicsoptions.renderer.itemnames        = rendererDisplayNames;
 	y += BIGCHAR_HEIGHT+2;
 
 	// references/modifies "r_allowExtensions"
@@ -1260,7 +1351,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driver );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.renderer );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.allow_extensions );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
@@ -1278,12 +1369,6 @@ void GraphicsOptions_MenuInit( void )
 
 	GraphicsOptions_SetMenuItems();
 	GraphicsOptions_GetInitialVideo();
-
-	if ( uis.glconfig.driverType == GLDRV_ICD &&
-		 uis.glconfig.hardwareType == GLHW_3DFX_2D3D )
-	{
-		s_graphicsoptions.driver.generic.flags |= QMF_HIDDEN|QMF_INACTIVE;
-	}
 }
 
 
