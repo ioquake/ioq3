@@ -42,11 +42,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <time.h>
 #include <sys/resource.h>
 
-#if defined (__linux__) || defined (__FreeBSD__)
+#if defined (__linux__)
 #include <sys/sysinfo.h>
 #endif
 
-#ifdef __APPLE__
+#if defined (__FreeBSD__) || defined (__OpenBSD__) || defined (__APPLE__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #endif
@@ -604,16 +604,23 @@ TODO
 */
 qboolean Sys_LowPhysicalMemory( void )
 {
-#if defined (__linux__) || defined (__FreeBSD__)
-        struct sysinfo info;
+#if defined (__linux__)
+	struct sysinfo info;
 
 	if ( sysinfo(&info) == -1 )
 		return qfalse;
 
 	return info.totalram <= MEM_THRESHOLD;
-#elif defined (__APPLE__)
+#elif defined (__FreeBSD__) || defined (__OpenBSD__) || defined (__APPLE__)
+        #if defined (__FreeBSD__)
+	int mib[2] = { CTL_HW, HW_PHYSMEM };
+        #elif defined (__OpenBSD__)
+	int mib[2] = { CTL_HW, HW_PHYSMEM64 };
+        #elif defined (__APPLE__)
 	int mib[2] = { CTL_HW, HW_MEMSIZE };
-        size_t len;
+        #endif
+
+	size_t len;
 	int64_t total_mem;
 
 	len = sizeof(int64_t);
