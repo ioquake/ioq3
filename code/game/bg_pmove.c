@@ -1257,7 +1257,7 @@ static void PM_CheckDuck (void)
 		}
 		else {
 			VectorSet( pm->mins, -PLAYER_WIDTH, -PLAYER_WIDTH, MINS_Z );
-			VectorSet( pm->maxs, PLAYER_WIDTH, PLAYER_WIDTH, 16 );
+			VectorSet( pm->maxs, PLAYER_WIDTH, PLAYER_WIDTH, CROUCH_MAXS_Z );
 		}
 		pm->ps->pm_flags |= PMF_DUCKED;
 		pm->ps->viewheight = CROUCH_VIEWHEIGHT;
