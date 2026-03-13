@@ -1155,7 +1155,7 @@ void ClientSpawn(gentity_t *ent) {
 	ent->r.contents = CONTENTS_BODY;
 	ent->clipmask = MASK_PLAYERSOLID;
 	ent->die = player_die;
-	ent->waterlevel = 0;
+	ent->waterlevel = WATERLEVEL_NONE;
 	ent->watertype = 0;
 	ent->flags = 0;
 	
