@@ -12767,6 +12767,7 @@ bool MetalRenderer::drawModelEntities() {
 	}
 
 	// Render all model entities
+	bool depthHackActive = false;
 	for (const SceneDrawPacket& packet : drawPackets_) {
 		const refEntity_t& ent = packet.entity;
 		
@@ -12780,6 +12781,21 @@ bool MetalRenderer::drawModelEntities() {
 		bool personalModel = isThirdPerson; // TODO: exclude portal views when implemented
 		if (personalModel) {
 			continue;
+		}
+
+		// RF_DEPTHHACK: compress depth range to [0, 0.3] so the view model never
+		// clips into world geometry (matches GL2's glDepthRange(0, 0.3) hack).
+		const bool wantsDepthHack = (ent.renderfx & RF_DEPTHHACK) != 0;
+		if (wantsDepthHack != depthHackActive) {
+			MTL::Viewport vp;
+			vp.originX = 0.0;
+			vp.originY = 0.0;
+			vp.width   = static_cast<double>(config_.vidWidth);
+			vp.height  = static_cast<double>(config_.vidHeight);
+			vp.znear   = 0.0;
+			vp.zfar    = wantsDepthHack ? 0.3 : 1.0;
+			currentRenderEncoder_->setViewport(vp);
+			depthHackActive = wantsDepthHack;
 		}
 
 		// Resolve model handle
@@ -12831,6 +12847,18 @@ bool MetalRenderer::drawModelEntities() {
 
 		const int fogIndex = computeModelFogIndex(*lodData, ent);
 		renderModel(ent, *model, *lodData, fogIndex, cullState);
+	}
+
+	// Restore normal depth range if it was changed by RF_DEPTHHACK.
+	if (depthHackActive) {
+		MTL::Viewport vp;
+		vp.originX = 0.0;
+		vp.originY = 0.0;
+		vp.width   = static_cast<double>(config_.vidWidth);
+		vp.height  = static_cast<double>(config_.vidHeight);
+		vp.znear   = 0.0;
+		vp.zfar    = 1.0;
+		currentRenderEncoder_->setViewport(vp);
 	}
 
 	return true;

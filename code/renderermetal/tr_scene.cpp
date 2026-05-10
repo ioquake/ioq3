@@ -170,21 +170,27 @@ void RE_RenderScene(const refdef_t* fd) {
 		return;
 	}
 
-	// DEBUG: Log scene rendering
-	// if (ri.Printf) {
-	// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene called - numEntities=%d, firstSceneEntity=%d, rdflags=0x%x, NOWORLDMODEL=%d\n",
-	// 	          state.numEntities, state.firstSceneEntity, fd->rdflags, (fd->rdflags & RDF_NOWORLDMODEL) ? 1 : 0);
-	// }
+	// Q3 calls RE_RenderScene twice per frame:
+	//   1st call: world scene (no RDF_NOWORLDMODEL)  — world geometry + world entities
+	//   2nd call: weapon/overlay scene (RDF_NOWORLDMODEL) — gun model only
+	// If we overwrite state.refdef with the 2nd call, processPolys() sees NOWORLDMODEL
+	// and skips world BSP traversal, making the world completely black.
+	// Fix: when an overlay scene (NOWORLDMODEL) follows a valid world scene, preserve the
+	// world refdef and simply extend the entity range to include the overlay entities.
+	if (state.refdefValid &&
+	    (fd->rdflags & RDF_NOWORLDMODEL) &&
+	    !(state.refdef.rdflags & RDF_NOWORLDMODEL)) {
+		// Overlay pass: extend worldSceneNumEntities to cover all accumulated entities
+		// (world entities from 1st call + overlay entities from 2nd call).
+		// The world refdef (camera, frustum, rdflags) is unchanged.
+		state.worldSceneNumEntities = state.numEntities - state.worldSceneFirstEntity;
+		++state.sceneCount;
+		return;
+	}
 
-	// Save the current scene's entity range
+	// First scene or a new world-visible scene: record as the authoritative world scene.
 	state.worldSceneFirstEntity = state.firstSceneEntity;
 	state.worldSceneNumEntities = state.numEntities - state.firstSceneEntity;
-
-	// if (ri.Printf) {
-	// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene - ACCEPTING world scene (firstEntity=%d, numEntities=%d)\n",
-	// 	          state.worldSceneFirstEntity, state.worldSceneNumEntities);
-	// }
-
 	state.refdef = *fd;
 	state.refdefValid = qtrue;
 	++state.sceneCount;
