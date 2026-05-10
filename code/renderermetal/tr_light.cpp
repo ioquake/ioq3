@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Direct port from renderergl2/tr_light.c
 
 #include "tr_local.h"
+#include "tr_model.h"
+#include "tr_scene.h"
 #include <cmath>
 #include <cstring>
 
@@ -514,4 +516,68 @@ int R_LightForPoint(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec
     VectorCopy(ent.lightDir, lightDir);
 
     return qtrue;
+}
+
+/*
+=============
+R_DlightBmodel
+
+Determine which dynamic lights may affect this brush model.
+Port from renderergl2/tr_light.c:R_DlightBmodel.
+
+Transforms each scene light's world-space origin into the model's local
+coordinate system (using the entity's origin and axis), then tests the
+transformed position against the model's AABB.  A light overlaps if it
+comes within its radius of the box on every axis.
+
+Returns a bitmask where bit i is set when light i overlaps the model.
+The caller should render a dlight additive pass for each set bit.
+=============
+*/
+uint32_t R_DlightBmodel(const MetalBrushModel& bmodel, const refEntity_t& ent,
+                         const MetalSceneLight* lights, int numLights) {
+    uint32_t mask = 0;
+
+    const int count = (numLights < 32) ? numLights : 32;
+
+    for (int i = 0; i < count; i++) {
+        const MetalSceneLight& light = lights[i];
+        const float radius = light.intensity;  // intensity == radius in Q3
+
+        if (radius <= 0.0f) {
+            continue;
+        }
+
+        // Transform the light's world-space origin into model-local space.
+        // Matches R_TransformDlights in renderergl2/tr_light.c: subtract the
+        // model origin then project onto each model axis.
+        vec3_t temp;
+        VectorSubtract(light.origin, ent.origin, temp);
+
+        float transformed[3];
+        transformed[0] = DotProduct(temp, ent.axis[0]);
+        transformed[1] = DotProduct(temp, ent.axis[1]);
+        transformed[2] = DotProduct(temp, ent.axis[2]);
+
+        // AABB-sphere overlap test on each axis.
+        // bmodel.bounds[0] = min corner, bmodel.bounds[1] = max corner (model-local).
+        // If the light centre is more than one radius past any face, skip it.
+        bool overlaps = true;
+        for (int j = 0; j < 3; j++) {
+            if (transformed[j] - bmodel.bounds[1][j] > radius) {
+                overlaps = false;
+                break;
+            }
+            if (bmodel.bounds[0][j] - transformed[j] > radius) {
+                overlaps = false;
+                break;
+            }
+        }
+
+        if (overlaps) {
+            mask |= (1u << i);
+        }
+    }
+
+    return mask;
 }

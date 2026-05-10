@@ -464,6 +464,21 @@ void MetalModel_Bounds(const MetalModel* model, float* mins, float* maxs) {
 		}
 	}
 
+	if (model->type == MetalModelType::MDR && model->mdrData) {
+		const mdrHeader_t* mdr = (const mdrHeader_t*)model->mdrData;
+		if (mdr->numFrames > 0) {
+			// Compute frame size: header says how many bones
+			const int frameSize = (int)(sizeof(mdrFrame_t) + (size_t)(mdr->numBones - 1) * sizeof(mdrBone_t));
+			const mdrFrame_t* frame = (const mdrFrame_t*)((const byte*)mdr + mdr->ofsFrames);
+			for (int i = 0; i < 3; i++) {
+				mins[i] = frame->bounds[0][i];
+				maxs[i] = frame->bounds[1][i];
+			}
+			(void)frameSize; // used via pointer arithmetic above
+			return;
+		}
+	}
+
 	mins[0] = mins[1] = mins[2] = 0.0f;
 	maxs[0] = maxs[1] = maxs[2] = 0.0f;
 }

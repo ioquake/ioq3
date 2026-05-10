@@ -13,6 +13,9 @@ struct QuadInstance {
     float4 rect;        // x, y, w, h in NDC coordinates
     float4 texCoords;   // s1, t1, s2, t2
     float4 color;       // RGBA modulation
+    float2 pivot;       // rotation pivot in NDC (ignored when rotation == 0)
+    float  rotation;    // rotation angle in radians (0 = no rotation)
+    float  _pad;        // alignment padding
 };
 
 struct VertexOut {
@@ -44,12 +47,20 @@ vertex VertexOut vertex_ui_2d(
     VertexOut out;
     
     // Transform to NDC using instance rect
-    out.position = float4(
+    float2 ndcPos = float2(
         inst.rect.x + pos.x * inst.rect.z,  // x + u * width
-        inst.rect.y + pos.y * inst.rect.w,  // y + v * height
-        0.0,
-        1.0
+        inst.rect.y + pos.y * inst.rect.w   // y + v * height
     );
+    
+    // Apply rotation around pivot (identity when rotation == 0)
+    if (inst.rotation != 0.0) {
+        float s = sin(inst.rotation);
+        float c = cos(inst.rotation);
+        float2 d = ndcPos - inst.pivot;
+        ndcPos = inst.pivot + float2(d.x * c - d.y * s, d.x * s + d.y * c);
+    }
+    
+    out.position = float4(ndcPos, 0.0, 1.0);
     
     // Inter pollate texture coordinates
     out.texCoord = mix(inst.texCoords.xy, inst.texCoords.zw, pos);

@@ -31,8 +31,21 @@ struct DlightVertexIn {
     float3 position [[attribute(0)]];
     float2 texCoord [[attribute(1)]];
     float3 normal [[attribute(3)]];
-    // Note: position2/normal2 removed - world geometry doesn't have vertex animation
-    // For animated models, we'd need a separate dlight pipeline with model vertex descriptor
+};
+
+// Animated model vertex input for the dlight pass.
+// Attribute layout must exactly match the C++ ModelVertex struct (stride 56 bytes):
+//   offset  0: position  float3 [12]
+//   offset 12: normal    float3 [12]
+//   offset 24: texCoord  float2 [ 8]
+//   offset 32: position2 float3 [12]
+//   offset 44: normal2   float3 [12]
+struct DlightAnimatedVertexIn {
+    float3 position  [[attribute(0)]];
+    float3 normal    [[attribute(1)]];
+    float2 texCoord  [[attribute(2)]];
+    float3 position2 [[attribute(3)]];
+    float3 normal2   [[attribute(4)]];
 };
 
 struct DlightVSOut {
@@ -115,6 +128,35 @@ vertex DlightVSOut vertex_dlight(DlightVertexIn in [[stage_in]],
     dlightmod *= clamp(2.0 * (1.0 - abs(dist.z) * uniforms.dlightInfo.w), 0.0, 1.0);
 
     // Apply modulation to light color
+    out.color = uniforms.color * dlightmod;
+
+    return out;
+}
+
+// Dynamic light vertex shader for animated (MD3) models.
+// Interpolates between two animation frames using uniforms.vertexLerp,
+// then computes the same dlight projection as vertex_dlight.
+vertex DlightVSOut vertex_dlight_animated(DlightAnimatedVertexIn in [[stage_in]],
+                                           constant DlightUniforms& uniforms [[buffer(1)]]) {
+    DlightVSOut out;
+
+    // Lerp position and normal between old frame and new frame
+    float3 position = mix(in.position, in.position2, uniforms.vertexLerp);
+    float3 normal   = mix(in.normal,   in.normal2,   uniforms.vertexLerp);
+
+    // Apply deform if needed
+    if (uniforms.deformGen != DGEN_NONE) {
+        position = DeformPosition(position, normal, in.texCoord, uniforms);
+    }
+
+    out.position = uniforms.modelViewProjection * float4(position, 1.0);
+
+    float3 dist = uniforms.dlightInfo.xyz - position;
+    out.texCoord = dist.xy * uniforms.dlightInfo.w + float2(0.5);
+
+    float dlightmod = step(0.0, dot(dist, normal));
+    dlightmod *= clamp(2.0 * (1.0 - abs(dist.z) * uniforms.dlightInfo.w), 0.0, 1.0);
+
     out.color = uniforms.color * dlightmod;
 
     return out;

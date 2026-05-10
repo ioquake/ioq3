@@ -100,9 +100,16 @@ struct StageBuilder {
 
     void finalizeDefaults() {
         if (!rgbGenExplicit) {
-            // Default to vertex colors which contain BSP's baked lighting
-            // This ensures shader surfaces match non-shader surface lighting
-            info.rgbGen.type = MetalRGBGen::Vertex;
+            // GL2 default: CGEN_IDENTITY_LIGHTING for opaque/additive stages,
+            // CGEN_IDENTITY for filter-blend stages (ParseStage, tr_shader.c:1366-1373).
+            // In Metal, IdentityLighting (white, no per-stage overbright) is the correct
+            // equivalent for both cases:
+            //   - Opaque stages: white × 1.0 matches GL2's (1/2^OBB) × hw_overbright = 1.0.
+            //   - Filter stages: tr_backend already zeroes stageOverBright for DST_COLOR blends,
+            //     so Identity or IdentityLighting both reduce to white × 1.0 here anyway.
+            // Using Vertex was wrong: it applied BSP per-vertex lighting on top of the lightmap
+            // texture stage, causing double-lighting on shader-defined lightmapped surfaces.
+            info.rgbGen.type = MetalRGBGen::IdentityLighting;
         }
 
         if (!alphaGenExplicit) {
@@ -638,6 +645,20 @@ struct ShaderCache {
     bool loaded = false;
     std::unordered_map<std::string, ShaderRecord> records;
 } g_shaderCache;
+
+// Shader remap table: normalized old-name → normalized new-name.
+// Populated by MetalRemapShader; consulted by every public shader lookup.
+static std::unordered_map<std::string, std::string> g_shaderRemapTable;
+
+// Resolve a normalized shader key through the remap table (one level deep,
+// matching GL2's single-redirect semantics).
+static const std::string& resolveRemap(const std::string &key) {
+    const auto it = g_shaderRemapTable.find(key);
+    if (it != g_shaderRemapTable.end()) {
+        return it->second;
+    }
+    return key;
+}
 
 // ------------------------------------------------------------
 // Parsing helpers
@@ -1302,7 +1323,7 @@ static void parseFogParms(TokenStream &stream, ShaderBuilder &builder) {
 
 bool MetalShaderScriptLookup(const std::string &shaderName, std::string &outTexturePath) {
     ensureShadersLoaded();
-    const std::string key = MetalNormalizeShaderName(shaderName.c_str());
+    const std::string key = resolveRemap(MetalNormalizeShaderName(shaderName.c_str()));
     auto it = g_shaderCache.records.find(key);
     if (it == g_shaderCache.records.end()) {
         return false;
@@ -1321,7 +1342,7 @@ bool MetalShaderScriptCollectImages(const std::string &shaderName,
                                     bool &outForceOpaque,
                                     int &outAlphaFunc) {
     ensureShadersLoaded();
-    const std::string key = MetalNormalizeShaderName(shaderName.c_str());
+    const std::string key = resolveRemap(MetalNormalizeShaderName(shaderName.c_str()));
     auto it = g_shaderCache.records.find(key);
     if (it == g_shaderCache.records.end()) {
         return false;
@@ -1335,7 +1356,7 @@ bool MetalShaderScriptCollectImages(const std::string &shaderName,
 
 bool MetalShaderScriptGetInfo(const std::string &shaderName, MetalShaderScriptInfo &outInfo) {
     ensureShadersLoaded();
-    const std::string key = MetalNormalizeShaderName(shaderName.c_str());
+    const std::string key = resolveRemap(MetalNormalizeShaderName(shaderName.c_str()));
     auto it = g_shaderCache.records.find(key);
     if (it == g_shaderCache.records.end()) {
         return false;
@@ -1348,4 +1369,31 @@ bool MetalShaderScriptGetInfo(const std::string &shaderName, MetalShaderScriptIn
 void MetalShaderScriptClearCache() {
     g_shaderCache.records.clear();
     g_shaderCache.loaded = false;
+}
+
+// Mirrors GL2's R_RemapShader.  Maps every shader whose stripped name matches
+// shaderName to resolve instead to newShaderName at lookup time.  If both
+// names normalise to the same key the remap is removed (GL2 sets
+// remappedShader = NULL in that case).  The timeOffset parameter shifts
+// animation timing on the destination shader; it is stored for completeness
+// even though the Metal renderer does not yet consume it at draw time.
+void MetalRemapShader(const char *shaderName, const char *newShaderName,
+                      const char *timeOffset) {
+    if (!shaderName || !shaderName[0] || !newShaderName || !newShaderName[0]) {
+        ri.Printf(PRINT_WARNING,
+                  "WARNING: MetalRemapShader: invalid shader name(s)\n");
+        return;
+    }
+
+    const std::string oldKey = MetalNormalizeShaderName(shaderName);
+    const std::string newKey = MetalNormalizeShaderName(newShaderName);
+
+    if (oldKey == newKey) {
+        // Remove any existing remap (mirrors GL2 setting remappedShader = NULL).
+        g_shaderRemapTable.erase(oldKey);
+    } else {
+        g_shaderRemapTable[oldKey] = newKey;
+    }
+
+    (void)timeOffset; // stored for API parity; not yet consumed at draw time
 }

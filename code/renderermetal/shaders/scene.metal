@@ -23,6 +23,7 @@ struct SceneUniforms {
     float fogHasSurface;       // Whether fog has a visible surface plane
     float fogEnabled;          // Enable/disable fog rendering
     float overBrightBits;      // r_overBrightBits value
+    float greyscale;           // r_greyscale: 0.0 = colour, 1.0 = full greyscale
 };
 
 // Texture coordinate modification parameters
@@ -41,14 +42,29 @@ struct TCModParams {
 };
 
 struct StageFragmentParams {
+    // --- 8 scalars at offsets 0-28 ---
     float alphaRef;
     float alphaFunc;
     float alphaTestEnabled;
     float texCoordSelector;
-    float rgbGenType;     // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
-    float tcGenType;      // 0 = Texture, 1 = Lightmap, 2 = Environment
-    float overBrightBits; // Per-stage overbright bits
-    float waveColorScale; // For rgbGen wave - computed wave value
+    // rgbGenType: 0=Vertex, 1=Identity, 2=IdentityLighting, 3=LightingDiffuse, 4=Wave,
+    //             5=Const, 6=Entity, 7=OneMinusEntity, 8=OneMinusVertex
+    float rgbGenType;
+    // tcGenType:  0=Texture, 1=Lightmap, 2=Environment, 3=Vector, 4=Fog
+    float tcGenType;
+    float overBrightBits;
+    float waveColorScale; // For rgbGen wave - precomputed CPU wave value
+    // --- 4 scalars at offsets 32-44 (explicit pad to align float4s) ---
+    // alphaGenType: 0=Identity/default, 1=Entity, 2=OneMinusEntity, 3=Wave, 4=Specular, 5=Portal
+    float alphaGenType;
+    float alphaWaveValue;  // Precomputed clamped wave value for AGEN_WAVEFORM
+    float portalRange;     // View-distance threshold for AGEN_PORTAL
+    float _pad0;           // Explicit pad so entityColor lands at offset 48
+    // --- float4 members at 16-byte-aligned offsets 48-111 ---
+    float4 entityColor;    // Entity shaderRGBA / 255  (CGEN/AGEN_ENTITY, ONE_MINUS_ENTITY)
+    float4 constColor;     // CGEN_CONST constant color
+    float4 tcGenSVector;   // TCGEN_VECTOR s-axis (w unused)
+    float4 tcGenTVector;   // TCGEN_VECTOR t-axis (w unused)
 };
 
 // Entity lighting parameters - for CGEN_LIGHTING_DIFFUSE
@@ -58,6 +74,15 @@ struct EntityLightingParams {
     float4 directedLight;   // xyz = color (0-1), w = padding
     float4 lightDir;        // xyz = world space dir, w = padding
     float4 modelLightDir;   // xyz = model space dir, w = overBrightBits
+};
+
+// Normal-map and specular-map parameters
+// Layout must match C++ NormalSpecularParams struct exactly
+struct NormalSpecularParams {
+    float useNormalMap;    // 1.0 if a normal map is active, 0.0 otherwise
+    float useSpecularMap;  // 1.0 if a specular map is active, 0.0 otherwise
+    float normalScale;     // XY normal perturbation scale (typically 1.0)
+    float specularPower;   // Blinn-Phong shininess exponent (typically 32.0)
 };
 
 struct VertexIn {
@@ -169,14 +194,32 @@ float3 hashColor(uint id) {
 
 fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
                                       texture2d<float> tex [[texture(0)]],
+                                      texture2d<float> normalMap [[texture(1)]],
+                                      texture2d<float> specMap [[texture(2)]],
                                       sampler samp [[sampler(0)]],
                                       constant StageFragmentParams& stage [[buffer(0)]],
                                       constant SceneUniforms& uniforms [[buffer(1)]],
-                                      constant EntityLightingParams& lighting [[buffer(2)]]) {
+                                      constant EntityLightingParams& lighting [[buffer(2)]],
+                                      constant NormalSpecularParams& nsParams [[buffer(3)]]) {
     // Select texture coordinates based on tcGenType
-    // 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
+    // 0=Texture, 1=Lightmap, 2=Environment, 3=Vector, 4=Fog
     float2 uv;
-    if (stage.tcGenType > 1.5f) {
+    if (stage.tcGenType > 3.5f) {
+        // tcGen fog - compute fog texture coordinates from depth/distance vectors
+        // Matches RB_CalcFogTexCoords: s = distance factor, t = depth clamp factor
+        float fogS = dot(float4(in.worldPosition, 1.0f), uniforms.fogDistanceVector);
+        float fogT = dot(float4(in.worldPosition, 1.0f), uniforms.fogDepthVector);
+        float eyeOutside = uniforms.fogEyeT < 0.0f ? 1.0f : 0.0f;
+        float fogged     = fogT >= eyeOutside ? 1.0f : 0.0f;
+        fogT += 1e-6f;
+        float denom = fogT - uniforms.fogEyeT * eyeOutside;
+        fogT = fogged * fogT / (fabs(denom) > 1e-6f ? denom : 1e-6f);
+        uv = float2(fogS, fogT);
+    } else if (stage.tcGenType > 2.5f) {
+        // tcGen vector - dot-product UV generation (GL2: GenTexCoords TCGEN_VECTOR)
+        uv = float2(dot(in.worldPosition, stage.tcGenSVector.xyz),
+                    dot(in.worldPosition, stage.tcGenTVector.xyz));
+    } else if (stage.tcGenType > 1.5f) {
         // tcGen environment - use pre-computed environment map coords
         uv = in.envTexCoord;
     } else if (stage.tcGenType > 0.5f) {
@@ -189,46 +232,79 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
 
     float4 texColor = tex.sample(samp, uv);
 
-    // Apply rgbGen: determine vertex color to use based on rgbGen type
-    // 0 = Vertex (use in.color), 1 = Identity (white), 2 = IdentityLighting (white), 3 = LightingDiffuse
+    // Apply rgbGen: determine vertex color based on rgbGenType
+    // 0=Vertex, 1=Identity, 2=IdentityLighting, 3=LightingDiffuse, 4=Wave,
+    // 5=Const, 6=Entity, 7=OneMinusEntity, 8=OneMinusVertex
     float4 vertexColor = in.color;
     bool applyOverbright = false;
 
-    if (stage.rgbGenType > 3.5f) {
+    if (stage.rgbGenType > 7.5f) {
+        // rgbGen oneMinusVertex - invert vertex RGB, alpha fixed at 1.0 (matches GL2)
+        vertexColor = float4(1.0f - in.color.rgb, 1.0f);
+        applyOverbright = false;
+    } else if (stage.rgbGenType > 6.5f) {
+        // rgbGen oneMinusEntity - invert entity RGBA
+        vertexColor = float4(1.0f - stage.entityColor.rgb, 1.0f - stage.entityColor.a);
+        applyOverbright = false;
+    } else if (stage.rgbGenType > 5.5f) {
+        // rgbGen entity - use entity shaderRGBA
+        vertexColor = stage.entityColor;
+        applyOverbright = false;
+    } else if (stage.rgbGenType > 4.5f) {
+        // rgbGen const - use constant color from shader script
+        vertexColor = stage.constColor;
+        applyOverbright = false;
+    } else if (stage.rgbGenType > 3.5f) {
         // rgbGen wave - use pre-computed wave color scale
-        vertexColor = float4(stage.waveColorScale, stage.waveColorScale, stage.waveColorScale, 1.0);
+        vertexColor = float4(stage.waveColorScale, stage.waveColorScale, stage.waveColorScale, 1.0f);
         applyOverbright = true;
     } else if (stage.rgbGenType > 2.5f) {
-        // rgbGen lightingDiffuse - entity lighting (CGEN_LIGHTING_DIFFUSE)
-        // Matches OpenGL2: color = ambientLight + N·L * directedLight
-        // Note: ambientLight and directedLight are already normalized to 0-1 range in C++
-        float3 ambient = lighting.ambientLight.xyz;
+        // rgbGen lightingDiffuse - entity lighting (ambient + directional)
+        float3 ambient  = lighting.ambientLight.xyz;
         float3 directed = lighting.directedLight.xyz;
-
-        // Calculate N·L (normal dot light direction)
-        float NdotL = max(0.0, dot(normalize(in.normal), lighting.lightDir.xyz));
-
-        // Combine ambient and directional lighting
+        float NdotL     = max(0.0f, dot(normalize(in.normal), lighting.lightDir.xyz));
         float3 litColor = ambient + NdotL * directed;
-
         vertexColor = float4(litColor, in.color.a);
         applyOverbright = true;
     } else if (stage.rgbGenType > 1.5f) {
-        // rgbGen identityLighting - use white, NO overbright (for pre-lit surfaces)
-        vertexColor = float4(1.0, 1.0, 1.0, 1.0);
+        // rgbGen identityLighting - white, NO overbright (pre-lit surfaces)
+        vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
         applyOverbright = false;
     } else if (stage.rgbGenType > 0.5f) {
-        // rgbGen identity - use white WITH overbright
-        vertexColor = float4(1.0, 1.0, 1.0, 1.0);
+        // rgbGen identity - white WITH overbright
+        vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
         applyOverbright = true;
     } else {
-        // rgbGen vertex - use vertex colors WITHOUT additional overbright
-        // Vertex colors already have overbright baked in via ColorShiftLightingBytes
-        // This matches OpenGL2's generic_fp.glsl which just does "color.rgb * var_Color.rgb"
+        // rgbGen vertex - vertex colors (overbright already baked in via ColorShiftLightingBytes)
         applyOverbright = false;
     }
 
     float4 color = texColor * vertexColor;
+
+    // alphaGen override - 0=Identity(keep), 1=Entity, 2=OneMinusEntity, 3=Wave, 4=Specular, 5=Portal
+    if (stage.alphaGenType > 4.5f) {
+        // AGEN_PORTAL: fade alpha based on distance from viewer
+        float dist = length(uniforms.viewOrigin.xyz - in.worldPosition);
+        color.a = texColor.a * clamp(dist / stage.portalRange, 0.0f, 1.0f);
+    } else if (stage.alphaGenType > 3.5f) {
+        // AGEN_LIGHTING_SPECULAR: specular highlight with fixed light position (matches GL2 generic_vp.glsl)
+        float3 lightDir  = normalize(float3(-960.0f, 1980.0f, 96.0f) - in.worldPosition);
+        float3 reflected = -reflect(lightDir, normalize(in.normal));
+        float3 viewer    = normalize(uniforms.viewOrigin.xyz - in.worldPosition);
+        float spec = clamp(dot(reflected, viewer), 0.0f, 1.0f);
+        spec = spec * spec * spec * spec;  // ^4 as in GL2
+        color.a = texColor.a * spec;
+    } else if (stage.alphaGenType > 2.5f) {
+        // AGEN_WAVEFORM: precomputed alpha wave value from CPU
+        color.a = texColor.a * stage.alphaWaveValue;
+    } else if (stage.alphaGenType > 1.5f) {
+        // AGEN_ONE_MINUS_ENTITY
+        color.a = texColor.a * (1.0f - stage.entityColor.a);
+    } else if (stage.alphaGenType > 0.5f) {
+        // AGEN_ENTITY
+        color.a = texColor.a * stage.entityColor.a;
+    }
+    // else: AGEN_IDENTITY / default — keep color.a = texColor.a * vertexColor.a
 
     // Apply overbright bits scaling (per-stage) for Identity and LightingDiffuse modes only
     // Do NOT apply for Vertex mode - vertex colors already have overbright baked in!
@@ -257,6 +333,52 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
             discard_fragment();
         }
     }
+
+    // Normal-map and specular-map contribution (additive Blinn-Phong specular).
+    // The diffuse path is left unchanged so lightmaps continue to look correct.
+    // World-surface EntityLighting is in 0-255 range, so divide by 255 for specular.
+    if (nsParams.useNormalMap > 0.5f || nsParams.useSpecularMap > 0.5f) {
+        // Cotangent-frame TBN — no per-vertex tangent data required.
+        float3 dp1  = dfdx(in.worldPosition);
+        float3 dp2  = dfdy(in.worldPosition);
+        float2 duv1 = dfdx(uv);
+        float2 duv2 = dfdy(uv);
+        float det = duv1.x * duv2.y - duv2.x * duv1.y;
+        float f   = (abs(det) > 1e-8f) ? (1.0f / det) : 0.0f;
+        float3 T_raw = f * (duv2.y * dp1 - duv1.y * dp2);
+        float3 N     = normalize(in.normal);
+        float3 T     = normalize(T_raw - dot(T_raw, N) * N);
+        float3 B     = cross(N, T);
+        float3x3 TBN = float3x3(T, B, N);
+
+        if (nsParams.useNormalMap > 0.5f) {
+            float3 tsN = normalMap.sample(samp, uv).rgb * 2.0f - 1.0f;
+            tsN.xy    *= nsParams.normalScale;
+            tsN.z      = sqrt(max(0.0f, 1.0f - tsN.x * tsN.x - tsN.y * tsN.y));
+            N          = normalize(TBN * tsN);
+        }
+
+        float3 L    = normalize(lighting.lightDir.xyz);
+        float3 V    = normalize(uniforms.viewOrigin.xyz - in.worldPosition);
+        float3 H    = normalize(L + V);
+        float NdotH = max(dot(N, H), 0.0f);
+        float NdotL = max(dot(N, L), 0.0f);
+        float specF = pow(NdotH, nsParams.specularPower) * NdotL;
+
+        float3 specLight = lighting.directedLight.xyz * (1.0f / 255.0f);
+        if (nsParams.useSpecularMap > 0.5f) {
+            specLight *= specMap.sample(samp, uv).rgb;
+        }
+        color.rgb += specLight * specF;
+    }
+
+    // Apply greyscale (matches GL2 greyscale_fp.glsl, Rec. 709-1 LUMA coefficients)
+    if (uniforms.greyscale > 0.0f) {
+        const float3 LUMA = float3(0.2125f, 0.7154f, 0.0721f);
+        float y = dot(color.rgb, LUMA);
+        color.rgb = mix(color.rgb, float3(y), clamp(uniforms.greyscale, 0.0f, 1.0f));
+    }
+
     return color;
 }
 
@@ -285,6 +407,7 @@ struct ModelVertexOut {
     float2 texCoord;
     float2 envTexCoord;   // Pre-computed environment map texture coordinates
     float3 normal;        // Model-space normal for lighting (matches OpenGL)
+    float3 worldNormal;   // World-space normal for TBN construction
     float3 worldPosition; // World-space position for fog and env mapping
 };
 
@@ -335,6 +458,8 @@ vertex ModelVertexOut vertex_model(ModelVertexIn in [[stage_in]],
 
     // Keep normal in model space for lighting (matches OpenGL's u_ModelLightDir approach)
     out.normal = normalize(normal);
+    // World-space normal for fragment-shader TBN (rigid-body model, upper-left 3x3 is rotation)
+    out.worldNormal = normalize((modelUniforms.modelMatrix * float4(normal, 0.0f)).xyz);
     out.worldPosition = worldPos.xyz;
 
     // Pre-compute environment map texture coordinates (for tcGen environment)
@@ -367,10 +492,14 @@ inline float CalcModelFog(float3 worldPos, constant ModelFogParams& fog) {
 // Model fragment shader
 fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
                               texture2d<float> tex [[texture(0)]],
+                              texture2d<float> normalMap [[texture(1)]],
+                              texture2d<float> specMap [[texture(2)]],
                               sampler samp [[sampler(0)]],
                               constant EntityLightingParams& lighting [[buffer(0)]],
                               constant ModelFogParams& fogParams [[buffer(1)]],
-                              constant ModelStageParams& stageParams [[buffer(2)]]) {
+                              constant ModelStageParams& stageParams [[buffer(2)]],
+                              constant SceneUniforms& sceneUniforms [[buffer(3)]],
+                              constant NormalSpecularParams& nsParams [[buffer(4)]]) {
     // Select texture coordinates based on tcGenType
     // 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
     float2 uv;
@@ -445,6 +574,51 @@ fragment float4 fragment_model(ModelVertexOut in [[stage_in]],
         color.a = mix(color.a, fogParams.fogColor.a, fogFactor);
     }
 
+    // Normal-map and specular-map contribution (additive Blinn-Phong specular).
+    // Lighting is already normalized to 0-1 for model surfaces (done on CPU).
+    if (nsParams.useNormalMap > 0.5f || nsParams.useSpecularMap > 0.5f) {
+        // Cotangent-frame TBN using world-space position and UV derivatives.
+        float3 dp1  = dfdx(in.worldPosition);
+        float3 dp2  = dfdy(in.worldPosition);
+        float2 duv1 = dfdx(uv);
+        float2 duv2 = dfdy(uv);
+        float det = duv1.x * duv2.y - duv2.x * duv1.y;
+        float f   = (abs(det) > 1e-8f) ? (1.0f / det) : 0.0f;
+        float3 T_raw = f * (duv2.y * dp1 - duv1.y * dp2);
+        float3 N     = normalize(in.worldNormal);
+        float3 T     = normalize(T_raw - dot(T_raw, N) * N);
+        float3 B     = cross(N, T);
+        float3x3 TBN = float3x3(T, B, N);
+
+        if (nsParams.useNormalMap > 0.5f) {
+            float3 tsN = normalMap.sample(samp, uv).rgb * 2.0f - 1.0f;
+            tsN.xy    *= nsParams.normalScale;
+            tsN.z      = sqrt(max(0.0f, 1.0f - tsN.x * tsN.x - tsN.y * tsN.y));
+            N          = normalize(TBN * tsN);
+        }
+
+        float3 L    = normalize(lighting.lightDir.xyz);
+        float3 V    = normalize(sceneUniforms.viewOrigin.xyz - in.worldPosition);
+        float3 H    = normalize(L + V);
+        float NdotH = max(dot(N, H), 0.0f);
+        float NdotL = max(dot(N, L), 0.0f);
+        float specF = pow(NdotH, nsParams.specularPower) * NdotL;
+
+        // Specular uses the directed-light color (already 0-1 for models).
+        float3 specLight = lighting.directedLight.xyz;
+        if (nsParams.useSpecularMap > 0.5f) {
+            specLight *= specMap.sample(samp, uv).rgb;
+        }
+        color.rgb += specLight * specF * overBrightScale;
+    }
+
+    // Apply greyscale (matches GL2 greyscale_fp.glsl, Rec. 709-1 LUMA coefficients)
+    if (sceneUniforms.greyscale > 0.0f) {
+        const float3 LUMA = float3(0.2125f, 0.7154f, 0.0721f);
+        float y = dot(color.rgb, LUMA);
+        color.rgb = mix(color.rgb, float3(y), clamp(sceneUniforms.greyscale, 0.0f, 1.0f));
+    }
+
     return color;
 }
 
@@ -517,4 +691,32 @@ fragment float4 fragment_fog(FogVertexOut in [[stage_in]],
 
     // Return fog color with computed alpha
     return float4(uniforms.fogColor.rgb, alpha);
+}
+
+//
+// PROJECTION (BLOB) SHADOW RENDERING
+// Matches RB_ProjectionShadowDeform from renderergl2/tr_shadows.c.
+// Vertex deformation is done on the CPU; this shader just transforms
+// the already-projected shadow geometry and outputs a dark translucent colour.
+//
+
+struct ShadowVertexIn {
+    float3 position [[attribute(0)]];
+};
+
+// Uniforms shared by vertex and fragment shadow shaders.
+// Layout must match C++ ShadowShaderUniforms in tr_backend.cpp exactly.
+struct ShadowShaderUniforms {
+    float4x4 mvpMatrix;  // Combined model-view-projection (entity transform baked in)
+    float4   color;      // Shadow colour – typically (0, 0, 0, alpha)
+};
+
+vertex float4 vertex_shadow(ShadowVertexIn in [[stage_in]],
+                             constant ShadowShaderUniforms& uniforms [[buffer(1)]]) {
+    return uniforms.mvpMatrix * float4(in.position, 1.0);
+}
+
+fragment float4 fragment_shadow(float4 in [[position]],
+                                 constant ShadowShaderUniforms& uniforms [[buffer(1)]]) {
+    return uniforms.color;
 }

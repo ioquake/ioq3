@@ -176,17 +176,7 @@ void RE_RenderScene(const refdef_t* fd) {
 	// 	          state.numEntities, state.firstSceneEntity, fd->rdflags, (fd->rdflags & RDF_NOWORLDMODEL) ? 1 : 0);
 	// }
 
-	// Only use the 3D world scene refdef, not UI/player config scenes
-	// RDF_NOWORLDMODEL is set for UI scenes (player config, etc)
-	if (fd->rdflags & RDF_NOWORLDMODEL) {
-		// if (ri.Printf) {
-		// 	ri.Printf(PRINT_ALL, "DEBUG: RenderScene - DISCARDING UI scene (firstScene=%d, num=%d)\n",
-		// 	          state.firstSceneEntity, state.numEntities - state.firstSceneEntity);
-		// }
-		return;
-	}
-
-	// Save the world scene's entity range
+	// Save the current scene's entity range
 	state.worldSceneFirstEntity = state.firstSceneEntity;
 	state.worldSceneNumEntities = state.numEntities - state.firstSceneEntity;
 

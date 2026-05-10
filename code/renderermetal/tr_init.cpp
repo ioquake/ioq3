@@ -17,6 +17,33 @@ extern "C" {
 
 #include <cstring>
 
+// Forward declaration: implemented in tr_shader.cpp.
+void MetalRemapShader(const char *shaderName, const char *newShaderName,
+                      const char *timeOffset);
+
+// ---------------------------------------------------------------------------
+// Dependencies required by RE_RegisterFont (from renderercommon/tr_font.c).
+// ---------------------------------------------------------------------------
+extern "C" {
+
+// Declared in renderercommon/tr_common.h; defined here for the Metal renderer.
+cvar_t *r_saveFontData = nullptr;
+
+// RE_RegisterFont flushes pending render commands before doing CPU-side font
+// work.  Metal does not use a GL-style command queue, so this is a no-op.
+void R_IssuePendingRenderCommands(void) {}
+
+// RE_RegisterFont registers each glyph image as a "no-mip" shader so it is
+// sampled without mipmapping.  Forward to the Metal shader registration path.
+qhandle_t RE_RegisterShaderNoMip(const char *name) {
+    return MetalBackend_RegisterShader(name, /*mipmap=*/false);
+}
+
+// Forward declaration for RE_RegisterFont implemented in tr_font.c.
+void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font);
+
+} // extern "C"
+
 namespace {
 refexport_t g_refExport;
 }
@@ -35,6 +62,9 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 	if (!MetalBackend_Initialize(*rimp)) {
 		return nullptr;
 	}
+
+	// Initialize cvars that renderercommon/tr_font.c references via tr_common.h.
+	r_saveFontData = rimp->Cvar_Get("r_saveFontData", "0", CVAR_ARCHIVE);
 
 	std::memset(&g_refExport, 0, sizeof(g_refExport));
 
@@ -55,10 +85,7 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 	g_refExport.BeginFrame = MetalBackend_BeginFrame;
 	g_refExport.EndFrame = MetalBackend_EndFrame;
 
-	g_refExport.MarkFragments = [](int, const vec3_t*, const vec3_t, int, vec3_t, int, markFragment_t*) {
-		Metal_LogRendererCall("re.MarkFragments");
-		return 0;
-	};
+	g_refExport.MarkFragments = MetalBackend_MarkFragments;
 	g_refExport.LerpTag = MetalBackend_LerpTag;
 	g_refExport.ModelBounds = MetalBackend_ModelBounds;
 
@@ -72,29 +99,15 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp)
 
 	g_refExport.SetColor = MetalBackend_SetColor;
 	g_refExport.DrawStretchPic = MetalBackend_DrawStretchPic;
+	g_refExport.DrawRotatePic = MetalBackend_DrawRotatePic;
+	g_refExport.DrawRotatePic2 = MetalBackend_DrawRotatePic2;
 	g_refExport.DrawStretchRaw = MetalBackend_DrawStretchRaw;
 	g_refExport.UploadCinematic = MetalBackend_UploadCinematic;
 
-	g_refExport.RegisterFont = [](const char*, int, fontInfo_t* font) {
-		Metal_LogRendererCall("re.RegisterFont");
-		if (font) {
-			std::memset(font, 0, sizeof(*font));
-		}
-	};
-	g_refExport.RemapShader = [](const char*, const char*, const char*) {
-		Metal_LogRendererCall("re.RemapShader");
-	};
-	g_refExport.GetEntityToken = [](char* buffer, int size) {
-		Metal_LogRendererCall("re.GetEntityToken");
-		if (buffer && size > 0) {
-			buffer[0] = '\0';
-		}
-		return qfalse;
-	};
-	g_refExport.inPVS = [](const vec3_t, const vec3_t) {
-		Metal_LogRendererCall("re.inPVS");
-		return qfalse;
-	};
+	g_refExport.RegisterFont = RE_RegisterFont;
+	g_refExport.RemapShader = MetalRemapShader;
+	g_refExport.GetEntityToken = MetalBackend_GetEntityToken;
+	g_refExport.inPVS = MetalBackend_inPVS;
 
 	g_refExport.TakeVideoFrame = [](int, int, byte*, byte*, qboolean) {
 		Metal_LogRendererCall("re.TakeVideoFrame");

@@ -126,4 +126,20 @@ void R_SetupEntityLighting(const refdef_t* refdef, trRefEntity_t* ent,
 // Sample light grid at a specific point
 int R_LightForPoint(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 
+#ifdef __cplusplus
+// Forward declarations for C++ brush model dlight support
+struct MetalBrushModel;
+struct MetalSceneLight;
+
+/*
+ * R_DlightBmodel - port of renderergl2/tr_light.c:R_DlightBmodel
+ *
+ * Transforms each scene light into the brush model's local coordinate space
+ * and tests it against the model's AABB.  Returns a bitmask (bit i set means
+ * light i overlaps the model and should contribute a dlight pass).
+ */
+uint32_t R_DlightBmodel(const MetalBrushModel& bmodel, const refEntity_t& ent,
+                         const MetalSceneLight* lights, int numLights);
+#endif
+
 #endif // TR_LOCAL_H

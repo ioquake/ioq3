@@ -19,8 +19,12 @@ set(RENDERER_METAL_SOURCES
     ${SOURCE_DIR}/renderermetal/tr_scene.cpp
     ${SOURCE_DIR}/renderermetal/tr_shader.cpp
     ${SOURCE_DIR}/renderermetal/tr_texture.cpp
+    ${SOURCE_DIR}/renderermetal/tr_image_dds.cpp
     ${SOURCE_DIR}/renderermetal/tr_light.cpp
     ${SOURCE_DIR}/renderermetal/tr_model.cpp
+    ${SOURCE_DIR}/renderermetal/tr_model_iqm.cpp
+    ${SOURCE_DIR}/renderermetal/tr_animation.cpp
+    ${SOURCE_DIR}/renderermetal/tr_flares.cpp
     ${SOURCE_DIR}/sdl/sdl_metal.cpp
 )
 

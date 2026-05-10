@@ -16,6 +16,7 @@ Metal renderer with RAII and modern C++ practices
 
 extern "C" {
 #include "../qcommon/qfiles.h"
+#include "../renderercommon/iqm.h"
 }
 
 extern "C" {
@@ -39,14 +40,29 @@ constexpr int kBspLightmapHeight = 128;
 constexpr int kBspLightmapBytes = kBspLightmapWidth * kBspLightmapHeight * 3;
 
 struct StageFragmentParams {
+	// --- 8 scalars (offsets 0-28, 4 bytes each) ---
 	float alphaRef = 0.0f;
 	float alphaFunc = 0.0f;
 	float alphaTestEnabled = 0.0f;
 	float texCoordSelector = 0.0f;  // Legacy - now use tcGenType instead
-	float rgbGenType = 0.0f;  // 0 = Vertex, 1 = Identity, 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
-	float tcGenType = 0.0f;   // 0 = Texture, 1 = Lightmap, 2 = Environment
+	// rgbGenType: 0=Vertex, 1=Identity, 2=IdentityLighting, 3=LightingDiffuse, 4=Wave,
+	//             5=Const, 6=Entity, 7=OneMinusEntity, 8=OneMinusVertex
+	float rgbGenType = 0.0f;
+	// tcGenType: 0=Texture, 1=Lightmap, 2=Environment, 3=Vector, 4=Fog
+	float tcGenType = 0.0f;
 	float overBrightBits = 0.0f;
 	float waveColorScale = 1.0f;  // For rgbGen wave - computed wave value
+	// --- 4 scalars (offsets 32-44) then float4s at 16-byte-aligned offsets ---
+	// alphaGenType: 0=Identity/default, 1=Entity, 2=OneMinusEntity, 3=Wave, 4=Specular, 5=Portal
+	float alphaGenType = 0.0f;
+	float alphaWaveValue = 1.0f;  // Precomputed clamped wave value for AGEN_WAVEFORM
+	float portalRange = 256.0f;   // View-distance threshold for AGEN_PORTAL
+	float _pad0 = 0.0f;           // Align next float4 to offset 48 (16-byte boundary)
+	// --- float4 members (16-byte aligned, offsets 48-111) ---
+	float entityColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};  // Entity shaderRGBA / 255
+	float constColor[4]  = {1.0f, 1.0f, 1.0f, 1.0f};  // CGEN_CONST constant color
+	float tcGenSVector[4] = {1.0f, 0.0f, 0.0f, 0.0f}; // TCGEN_VECTOR s-axis (w unused)
+	float tcGenTVector[4] = {0.0f, 1.0f, 0.0f, 0.0f}; // TCGEN_VECTOR t-axis (w unused)
 };
 
 // Dynamic light uniforms - matches dlight.metal DlightUniforms
@@ -300,31 +316,42 @@ extern "C" {
 #include "tr_shader.h"
 
 //=============================================================================
-// Bezier Patch Tessellation
+// Bezier Patch Tessellation — adaptive subdivision + T-junction stitching
+// Matches GL2's R_SubdividePatchToGrid / R_StitchPatches algorithm
 //=============================================================================
 
 namespace {
-// Tessellation level for curved surfaces (higher = smoother, more triangles)
-constexpr int PATCH_SUBDIVISIONS = 8;
 
-// Bezier patch tessellation for curved surfaces
-// Quake 3 patches are quadratic Bezier surfaces defined by a grid of control points
-// Each 3x3 block of control points defines one Bezier patch
+// Maximum tessellated grid dimensions, matching GL2's MAX_GRID_SIZE
+constexpr int METAL_MAX_GRID_SIZE = 65;
+
+// Tessellated patch grid: holds the subdivided control mesh before triangle conversion.
+// Large struct (~182 KB); always heap-allocate (e.g. via std::unique_ptr or std::vector).
+struct PatchGrid {
+	int   width  = 0;
+	int   height = 0;
+	MetalPolyVertex ctrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE];
+	float widthLodError[METAL_MAX_GRID_SIZE]  = {};
+	float heightLodError[METAL_MAX_GRID_SIZE] = {};
+};
+
+// ---------------------------------------------------------------------------
+// Vertex helpers
+// ---------------------------------------------------------------------------
 
 inline MetalPolyVertex LerpVertex(const MetalPolyVertex& a, const MetalPolyVertex& b, float t) {
 	MetalPolyVertex out{};
-	float omt = 1.0f - t;
-	out.xyz[0] = a.xyz[0] * omt + b.xyz[0] * t;
-	out.xyz[1] = a.xyz[1] * omt + b.xyz[1] * t;
-	out.xyz[2] = a.xyz[2] * omt + b.xyz[2] * t;
-	out.st[0] = a.st[0] * omt + b.st[0] * t;
-	out.st[1] = a.st[1] * omt + b.st[1] * t;
+	const float omt = 1.0f - t;
+	out.xyz[0]      = a.xyz[0]      * omt + b.xyz[0]      * t;
+	out.xyz[1]      = a.xyz[1]      * omt + b.xyz[1]      * t;
+	out.xyz[2]      = a.xyz[2]      * omt + b.xyz[2]      * t;
+	out.st[0]       = a.st[0]       * omt + b.st[0]       * t;
+	out.st[1]       = a.st[1]       * omt + b.st[1]       * t;
 	out.lightmap[0] = a.lightmap[0] * omt + b.lightmap[0] * t;
 	out.lightmap[1] = a.lightmap[1] * omt + b.lightmap[1] * t;
-	out.normal[0] = a.normal[0] * omt + b.normal[0] * t;
-	out.normal[1] = a.normal[1] * omt + b.normal[1] * t;
-	out.normal[2] = a.normal[2] * omt + b.normal[2] * t;
-	// Lerp colors
+	out.normal[0]   = a.normal[0]   * omt + b.normal[0]   * t;
+	out.normal[1]   = a.normal[1]   * omt + b.normal[1]   * t;
+	out.normal[2]   = a.normal[2]   * omt + b.normal[2]   * t;
 	out.modulate[0] = static_cast<byte>(a.modulate[0] * omt + b.modulate[0] * t);
 	out.modulate[1] = static_cast<byte>(a.modulate[1] * omt + b.modulate[1] * t);
 	out.modulate[2] = static_cast<byte>(a.modulate[2] * omt + b.modulate[2] * t);
@@ -332,97 +359,501 @@ inline MetalPolyVertex LerpVertex(const MetalPolyVertex& a, const MetalPolyVerte
 	return out;
 }
 
-// Evaluate quadratic Bezier curve at parameter t (0 to 1)
-// control points: p0, p1, p2
-inline MetalPolyVertex EvaluateBezier(const MetalPolyVertex& p0, const MetalPolyVertex& p1, const MetalPolyVertex& p2, float t) {
-	// B(t) = (1-t)^2 * P0 + 2*(1-t)*t * P1 + t^2 * P2
-	MetalPolyVertex a = LerpVertex(p0, p1, t);
-	MetalPolyVertex b = LerpVertex(p1, p2, t);
-	return LerpVertex(a, b, t);
+inline MetalPolyVertex MidVert(const MetalPolyVertex& a, const MetalPolyVertex& b) {
+	return LerpVertex(a, b, 0.5f);
 }
 
-// Evaluate a 3x3 Bezier patch at (u, v) where u,v are in [0,1]
-inline MetalPolyVertex EvaluatePatch3x3(const MetalPolyVertex ctrl[3][3], float u, float v) {
-	// First interpolate along u for each row
-	MetalPolyVertex temp[3];
-	temp[0] = EvaluateBezier(ctrl[0][0], ctrl[0][1], ctrl[0][2], u);
-	temp[1] = EvaluateBezier(ctrl[1][0], ctrl[1][1], ctrl[1][2], u);
-	temp[2] = EvaluateBezier(ctrl[2][0], ctrl[2][1], ctrl[2][2], u);
-	// Then interpolate along v
-	return EvaluateBezier(temp[0], temp[1], temp[2], v);
-}
+// ---------------------------------------------------------------------------
+// Grid helpers — direct ports of GL2's tr_curve.c static functions
+// ---------------------------------------------------------------------------
 
-// Tessellate a single 3x3 Bezier patch into triangles
-// tessLevel is the number of subdivisions (e.g., 8 means 8x8 grid = 64 quads = 128 triangles)
-inline void TessellatePatch3x3(const MetalPolyVertex ctrl[3][3], int tessLevel,
-                               std::vector<MetalPolyVertex>& outVerts) {
-	if (tessLevel < 1) tessLevel = 1;
-	if (tessLevel > 32) tessLevel = 32;
-	
-	const float step = 1.0f / static_cast<float>(tessLevel);
-	
-	// Generate a grid of vertices
-	std::vector<MetalPolyVertex> grid(static_cast<size_t>((tessLevel + 1) * (tessLevel + 1)));
-	for (int j = 0; j <= tessLevel; ++j) {
-		float v = static_cast<float>(j) * step;
-		for (int i = 0; i <= tessLevel; ++i) {
-			float u = static_cast<float>(i) * step;
-			grid[static_cast<size_t>(j * (tessLevel + 1) + i)] = EvaluatePatch3x3(ctrl, u, v);
+// Rearranges ctrl data in place; caller must swap width/height afterwards.
+// Matches GL2's Transpose().
+static void GridTranspose(int width, int height,
+                          MetalPolyVertex ctrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE]) {
+	if (width > height) {
+		for (int i = 0; i < height; i++) {
+			for (int j = i + 1; j < width; j++) {
+				if (j < height)
+					std::swap(ctrl[j][i], ctrl[i][j]);
+				else
+					ctrl[j][i] = ctrl[i][j];
+			}
 		}
-	}
-	
-	// Generate triangles from the grid
-	for (int j = 0; j < tessLevel; ++j) {
-		for (int i = 0; i < tessLevel; ++i) {
-			size_t idx00 = static_cast<size_t>(j * (tessLevel + 1) + i);
-			size_t idx10 = static_cast<size_t>(j * (tessLevel + 1) + i + 1);
-			size_t idx01 = static_cast<size_t>((j + 1) * (tessLevel + 1) + i);
-			size_t idx11 = static_cast<size_t>((j + 1) * (tessLevel + 1) + i + 1);
-			
-			// Two triangles per quad
-			outVerts.push_back(grid[idx00]);
-			outVerts.push_back(grid[idx10]);
-			outVerts.push_back(grid[idx11]);
-			
-			outVerts.push_back(grid[idx00]);
-			outVerts.push_back(grid[idx11]);
-			outVerts.push_back(grid[idx01]);
+	} else {
+		for (int i = 0; i < width; i++) {
+			for (int j = i + 1; j < height; j++) {
+				if (j < width)
+					std::swap(ctrl[i][j], ctrl[j][i]);
+				else
+					ctrl[i][j] = ctrl[j][i];
+			}
 		}
 	}
 }
 
-// Tessellate a full Bezier patch mesh (width x height control points)
-// Quake 3 patches have dimensions that are 2*n+1 (e.g., 3, 5, 7, 9...)
-// Each overlapping 3x3 section is a separate Bezier patch
-inline void TessellateBezierPatch(const drawVert_t* controlPoints, int width, int height,
-                                  std::vector<MetalPolyVertex>& outVerts, int tessLevel,
-                                  int mapOverBrightBits, int overBrightBits) {
-	// Convert all control points to our vertex format
-	std::vector<MetalPolyVertex> ctrl(static_cast<size_t>(width * height));
-	for (int i = 0; i < width * height; ++i) {
-		ctrl[static_cast<size_t>(i)] = ConvertDrawVert(controlPoints[i], mapOverBrightBits, overBrightBits);
+static void GridInvertCtrl(int width, int height,
+                           MetalPolyVertex ctrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE]) {
+	for (int i = 0; i < height; i++)
+		for (int j = 0; j < width / 2; j++)
+			std::swap(ctrl[i][j], ctrl[i][width - 1 - j]);
+}
+
+// Matches GL2's InvertErrorTable().
+static void GridInvertErrorTable(float errorTable[2][METAL_MAX_GRID_SIZE],
+                                 int width, int height) {
+	float copy[2][METAL_MAX_GRID_SIZE];
+	Com_Memcpy(copy, errorTable, sizeof(copy));
+	for (int i = 0; i < width;  i++) errorTable[1][i] = copy[0][i];
+	for (int i = 0; i < height; i++) errorTable[0][i] = copy[1][height - 1 - i];
+}
+
+// Snap odd-indexed approximation control points onto the actual Bezier curve.
+// Matches GL2's PutPointsOnCurve().
+static void GridPutPointsOnCurve(MetalPolyVertex ctrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE],
+                                 int width, int height) {
+	for (int i = 0; i < width; i++)
+		for (int j = 1; j < height; j += 2)
+			ctrl[j][i] = MidVert(MidVert(ctrl[j][i], ctrl[j+1][i]),
+			                     MidVert(ctrl[j][i], ctrl[j-1][i]));
+	for (int j = 0; j < height; j++)
+		for (int i = 1; i < width; i += 2)
+			ctrl[j][i] = MidVert(MidVert(ctrl[j][i], ctrl[j][i+1]),
+			                     MidVert(ctrl[j][i], ctrl[j][i-1]));
+}
+
+// Compute smooth per-vertex normals via averaged cross-products of adjacent edge pairs.
+static void GridMakeNormals(MetalPolyVertex ctrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE],
+                            int width, int height) {
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < width; i++) {
+			float sum[3] = { 0.f, 0.f, 0.f };
+			const float* base = ctrl[j][i].xyz;
+
+			auto accum = [&](int di0, int dj0, int di1, int dj1) {
+				int i0 = i + di0, j0 = j + dj0;
+				int i1 = i + di1, j1 = j + dj1;
+				if (i0 < 0 || i0 >= width  || j0 < 0 || j0 >= height) return;
+				if (i1 < 0 || i1 >= width  || j1 < 0 || j1 >= height) return;
+				const float* p0 = ctrl[j0][i0].xyz;
+				const float* p1 = ctrl[j1][i1].xyz;
+				float e0[3] = { p0[0]-base[0], p0[1]-base[1], p0[2]-base[2] };
+				float e1[3] = { p1[0]-base[0], p1[1]-base[1], p1[2]-base[2] };
+				float nx = e0[1]*e1[2] - e0[2]*e1[1];
+				float ny = e0[2]*e1[0] - e0[0]*e1[2];
+				float nz = e0[0]*e1[1] - e0[1]*e1[0];
+				float len = sqrtf(nx*nx + ny*ny + nz*nz);
+				if (len > 0.001f) { sum[0] += nx/len; sum[1] += ny/len; sum[2] += nz/len; }
+			};
+
+			accum( 1, 0,  0,  1);
+			accum( 0, 1, -1,  0);
+			accum(-1, 0,  0, -1);
+			accum( 0,-1,  1,  0);
+
+			float len = sqrtf(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]);
+			if (len > 0.001f) {
+				ctrl[j][i].normal[0] = sum[0] / len;
+				ctrl[j][i].normal[1] = sum[1] / len;
+				ctrl[j][i].normal[2] = sum[2] / len;
+			}
+		}
 	}
-	
-	// Number of patches in each direction
-	int numPatchesX = (width - 1) / 2;
-	int numPatchesY = (height - 1) / 2;
-	
-	// Process each 3x3 patch
-	for (int py = 0; py < numPatchesY; ++py) {
-		for (int px = 0; px < numPatchesX; ++px) {
-			// Extract 3x3 control points for this patch
-			MetalPolyVertex patch[3][3];
-			for (int j = 0; j < 3; ++j) {
-				for (int i = 0; i < 3; ++i) {
-					int cx = px * 2 + i;
-					int cy = py * 2 + j;
-					patch[j][i] = ctrl[static_cast<size_t>(cy * width + cx)];
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive tessellation — direct port of GL2's R_SubdividePatchToGrid()
+//
+// subdivLevel: world-space flatness tolerance in game units.
+//   Keep subdividing while the perpendicular deviation of a Bezier midpoint
+//   from its chord exceeds this value.  Matches r_subdivisions cvar semantics.
+// ---------------------------------------------------------------------------
+static PatchGrid AdaptiveTessellate(const drawVert_t* controlPoints,
+                                    int patchWidth, int patchHeight,
+                                    float subdivLevel,
+                                    int mapOverBrightBits, int overBrightBits) {
+	PatchGrid g;
+	int width  = patchWidth;
+	int height = patchHeight;
+
+	float errorTable[2][METAL_MAX_GRID_SIZE];
+	Com_Memset(errorTable, 0, sizeof(errorTable));
+
+	for (int j = 0; j < height; j++)
+		for (int i = 0; i < width; i++)
+			g.ctrl[j][i] = ConvertDrawVert(controlPoints[j * patchWidth + i],
+			                               mapOverBrightBits, overBrightBits);
+
+	// Two passes: horizontal subdivision, then vertical (via transpose).
+	for (int dir = 0; dir < 2; dir++) {
+		for (int j2 = 0; j2 < METAL_MAX_GRID_SIZE; j2++) errorTable[dir][j2] = 0.f;
+
+		int consecutiveComplete = 0;
+
+		// Iterate over even-indexed columns of the current control grid.
+		for (int j = 0; ; j = (j + 2) % (width - 1)) {
+			// Find max perpendicular deviation of the Bezier midpoint from its chord.
+			float maxLen = 0.f;
+			for (int i = 0; i < height; i++) {
+				float midxyz[3];
+				for (int l = 0; l < 3; l++)
+					midxyz[l] = (g.ctrl[i][j].xyz[l]
+					             + g.ctrl[i][j+1].xyz[l] * 2.f
+					             + g.ctrl[i][j+2].xyz[l]) * 0.25f;
+
+				float d[3]     = { midxyz[0] - g.ctrl[i][j].xyz[0],
+				                   midxyz[1] - g.ctrl[i][j].xyz[1],
+				                   midxyz[2] - g.ctrl[i][j].xyz[2] };
+				float chord[3] = { g.ctrl[i][j+2].xyz[0] - g.ctrl[i][j].xyz[0],
+				                   g.ctrl[i][j+2].xyz[1] - g.ctrl[i][j].xyz[1],
+				                   g.ctrl[i][j+2].xyz[2] - g.ctrl[i][j].xyz[2] };
+				float clen = sqrtf(chord[0]*chord[0] + chord[1]*chord[1] + chord[2]*chord[2]);
+				if (clen > 0.001f) { chord[0]/=clen; chord[1]/=clen; chord[2]/=clen; }
+				float dot = d[0]*chord[0] + d[1]*chord[1] + d[2]*chord[2];
+				float perp[3] = { d[0]-dot*chord[0], d[1]-dot*chord[1], d[2]-dot*chord[2] };
+				float len2 = perp[0]*perp[0] + perp[1]*perp[1] + perp[2]*perp[2];
+				if (len2 > maxLen) maxLen = len2;
+			}
+			maxLen = sqrtf(maxLen);
+
+			if (maxLen < 0.1f) {
+				errorTable[dir][j+1] = 999.f;
+				if (++consecutiveComplete >= width) break;
+				continue;
+			}
+			if (width + 2 > METAL_MAX_GRID_SIZE) {
+				errorTable[dir][j+1] = 1.f / maxLen;
+				break;
+			}
+			if (maxLen <= subdivLevel) {
+				errorTable[dir][j+1] = 1.f / maxLen;
+				if (++consecutiveComplete >= width) break;
+				continue;
+			}
+
+			errorTable[dir][j+2] = 1.f / maxLen;
+			consecutiveComplete = 0;
+
+			// Insert two new columns replacing the approximation peak.
+			width += 2;
+			for (int i = 0; i < height; i++) {
+				MetalPolyVertex prev = MidVert(g.ctrl[i][j],   g.ctrl[i][j+1]);
+				MetalPolyVertex next = MidVert(g.ctrl[i][j+1], g.ctrl[i][j+2]);
+				MetalPolyVertex mid  = MidVert(prev, next);
+				for (int k = width - 1; k > j + 3; k--)
+					g.ctrl[i][k] = g.ctrl[i][k-2];
+				g.ctrl[i][j+1] = prev;
+				g.ctrl[i][j+2] = mid;
+				g.ctrl[i][j+3] = next;
+			}
+			j += 2;
+		}
+
+		// Transpose for the vertical pass (matching GL2: Transpose() then swap dims).
+		GridTranspose(width, height, g.ctrl);
+		int t = width; width = height; height = t;
+	}
+
+	GridPutPointsOnCurve(g.ctrl, width, height);
+
+	// Cull colinear columns (matching GL2: no i-- after deletion).
+	for (int i = 1; i < width - 1; i++) {
+		if (errorTable[0][i] != 999.f) continue;
+		for (int j = i + 1; j < width; j++) {
+			for (int k = 0; k < height; k++) g.ctrl[k][j-1] = g.ctrl[k][j];
+			errorTable[0][j-1] = errorTable[0][j];
+		}
+		width--;
+	}
+
+	// Cull colinear rows.
+	for (int i = 1; i < height - 1; i++) {
+		if (errorTable[1][i] != 999.f) continue;
+		for (int j = i + 1; j < height; j++) {
+			for (int k = 0; k < width; k++) g.ctrl[j-1][k] = g.ctrl[j][k];
+			errorTable[1][j-1] = errorTable[1][j];
+		}
+		height--;
+	}
+
+	// Flip for longest tristrips (matching GL2).
+	if (height > width) {
+		GridTranspose(width, height, g.ctrl);
+		GridInvertErrorTable(errorTable, width, height);
+		int t = width; width = height; height = t;
+		GridInvertCtrl(width, height, g.ctrl);
+	}
+
+	GridMakeNormals(g.ctrl, width, height);
+
+	g.width  = width;
+	g.height = height;
+	Com_Memcpy(g.widthLodError,  errorTable[0], width  * sizeof(float));
+	Com_Memcpy(g.heightLodError, errorTable[1], height * sizeof(float));
+	return g;
+}
+
+// ---------------------------------------------------------------------------
+// T-junction stitching — ports of GL2's R_GridInsertColumn / R_GridInsertRow
+// ---------------------------------------------------------------------------
+
+// Insert a new column at position `column` into grid g.
+// The new column's vertices are interpolated from the neighbours; the vertex at
+// row `row` is overridden with the exact xyz from `point`.
+// Matches GL2's R_GridInsertColumn().
+static void GridInsertColumn(PatchGrid& g, int column, int row,
+                             const float point[3], float loderror) {
+	if (g.width + 1 > METAL_MAX_GRID_SIZE) return;
+
+	const int newWidth = g.width + 1;
+	int oldwidth = 0;
+	float newLodError[METAL_MAX_GRID_SIZE];
+	MetalPolyVertex newCtrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE];
+
+	for (int i = 0; i < newWidth; i++) {
+		if (i == column) {
+			// column >= 1 guaranteed by all callers (always l+1 where l >= 0)
+			for (int j = 0; j < g.height; j++) {
+				newCtrl[j][i] = LerpVertex(g.ctrl[j][oldwidth-1], g.ctrl[j][oldwidth], 0.5f);
+				if (j == row) {
+					newCtrl[j][i].xyz[0] = point[0];
+					newCtrl[j][i].xyz[1] = point[1];
+					newCtrl[j][i].xyz[2] = point[2];
 				}
 			}
-			TessellatePatch3x3(patch, tessLevel, outVerts);
+			newLodError[i] = loderror;
+		} else {
+			for (int j = 0; j < g.height; j++)
+				newCtrl[j][i] = g.ctrl[j][oldwidth];
+			newLodError[i] = g.widthLodError[oldwidth];
+			oldwidth++;
+		}
+	}
+
+	for (int j = 0; j < g.height; j++)
+		for (int i = 0; i < newWidth; i++)
+			g.ctrl[j][i] = newCtrl[j][i];
+	Com_Memcpy(g.widthLodError, newLodError, newWidth * sizeof(float));
+	g.width = newWidth;
+	GridMakeNormals(g.ctrl, g.width, g.height);
+}
+
+// Insert a new row at position `row` into grid g.
+// Matches GL2's R_GridInsertRow().
+static void GridInsertRow(PatchGrid& g, int row, int column,
+                          const float point[3], float loderror) {
+	if (g.height + 1 > METAL_MAX_GRID_SIZE) return;
+
+	const int newHeight = g.height + 1;
+	int oldheight = 0;
+	float newLodError[METAL_MAX_GRID_SIZE];
+	MetalPolyVertex newCtrl[METAL_MAX_GRID_SIZE][METAL_MAX_GRID_SIZE];
+
+	for (int i = 0; i < newHeight; i++) {
+		if (i == row) {
+			// row >= 1 guaranteed by all callers
+			for (int j = 0; j < g.width; j++) {
+				newCtrl[i][j] = LerpVertex(g.ctrl[oldheight-1][j], g.ctrl[oldheight][j], 0.5f);
+				if (j == column) {
+					newCtrl[i][j].xyz[0] = point[0];
+					newCtrl[i][j].xyz[1] = point[1];
+					newCtrl[i][j].xyz[2] = point[2];
+				}
+			}
+			newLodError[i] = loderror;
+		} else {
+			for (int j = 0; j < g.width; j++)
+				newCtrl[i][j] = g.ctrl[oldheight][j];
+			newLodError[i] = g.heightLodError[oldheight];
+			oldheight++;
+		}
+	}
+
+	for (int i = 0; i < newHeight; i++)
+		for (int j = 0; j < g.width; j++)
+			g.ctrl[i][j] = newCtrl[i][j];
+	Com_Memcpy(g.heightLodError, newLodError, newHeight * sizeof(float));
+	g.height = newHeight;
+	GridMakeNormals(g.ctrl, g.width, g.height);
+}
+
+// Stitch one T-junction crack between g1 and g2.
+// Returns true if a column/row was inserted into g2 (caller should retry).
+// Direct port of GL2's R_StitchPatches() — all four directional scan passes.
+static bool StitchPatchGrids(PatchGrid& g1, PatchGrid& g2) {
+	// Tolerances matching GL2's R_StitchPatches
+	auto near01 = [](const float* a, const float* b) {
+		return fabsf(a[0]-b[0]) <= 0.1f && fabsf(a[1]-b[1]) <= 0.1f && fabsf(a[2]-b[2]) <= 0.1f;
+	};
+	auto near001 = [](const float* a, const float* b) {
+		return fabsf(a[0]-b[0]) < 0.01f && fabsf(a[1]-b[1]) < 0.01f && fabsf(a[2]-b[2]) < 0.01f;
+	};
+
+	// Pass 1: g1 top/bottom width-edges, forward k (g1 has more subdivisions than g2)
+	for (int n = 0; n < 2; n++) {
+		const int row1 = (n == 1) ? (g1.height - 1) : 0;
+		for (int k = 0; k < g1.width - 2; k += 2) {
+			for (int m = 0; m < 2; m++) {
+				if (g2.width >= METAL_MAX_GRID_SIZE) break;
+				const int row2 = (m == 1) ? (g2.height - 1) : 0;
+				for (int l = 0; l < g2.width - 1; l++) {
+					if (!near01(g1.ctrl[row1][k].xyz,   g2.ctrl[row2][l].xyz))   continue;
+					if (!near01(g1.ctrl[row1][k+2].xyz, g2.ctrl[row2][l+1].xyz)) continue;
+					if (near001(g2.ctrl[row2][l].xyz,   g2.ctrl[row2][l+1].xyz)) continue;
+					GridInsertColumn(g2, l+1, row2,
+					                 g1.ctrl[row1][k+1].xyz,
+					                 g1.widthLodError[std::min(k+1, g1.width-1)]);
+					return true;
+				}
+			}
+			for (int m = 0; m < 2; m++) {
+				if (g2.height >= METAL_MAX_GRID_SIZE) break;
+				const int col2 = (m == 1) ? (g2.width - 1) : 0;
+				for (int l = 0; l < g2.height - 1; l++) {
+					if (!near01(g1.ctrl[row1][k].xyz,   g2.ctrl[l][col2].xyz))   continue;
+					if (!near01(g1.ctrl[row1][k+2].xyz, g2.ctrl[l+1][col2].xyz)) continue;
+					if (near001(g2.ctrl[l][col2].xyz,   g2.ctrl[l+1][col2].xyz)) continue;
+					GridInsertRow(g2, l+1, col2,
+					              g1.ctrl[row1][k+1].xyz,
+					              g1.widthLodError[std::min(k+1, g1.width-1)]);
+					return true;
+				}
+			}
+		}
+	}
+
+	// Pass 2: g1 left/right height-edges, forward k
+	for (int n = 0; n < 2; n++) {
+		const int col1 = (n == 1) ? (g1.width - 1) : 0;
+		for (int k = 0; k < g1.height - 2; k += 2) {
+			for (int m = 0; m < 2; m++) {
+				if (g2.width >= METAL_MAX_GRID_SIZE) break;
+				const int row2 = (m == 1) ? (g2.height - 1) : 0;
+				for (int l = 0; l < g2.width - 1; l++) {
+					if (!near01(g1.ctrl[k][col1].xyz,   g2.ctrl[row2][l].xyz))   continue;
+					if (!near01(g1.ctrl[k+2][col1].xyz, g2.ctrl[row2][l+1].xyz)) continue;
+					if (near001(g2.ctrl[row2][l].xyz,   g2.ctrl[row2][l+1].xyz)) continue;
+					GridInsertColumn(g2, l+1, row2,
+					                 g1.ctrl[k+1][col1].xyz,
+					                 g1.heightLodError[std::min(k+1, g1.height-1)]);
+					return true;
+				}
+			}
+			for (int m = 0; m < 2; m++) {
+				if (g2.height >= METAL_MAX_GRID_SIZE) break;
+				const int col2 = (m == 1) ? (g2.width - 1) : 0;
+				for (int l = 0; l < g2.height - 1; l++) {
+					if (!near01(g1.ctrl[k][col1].xyz,   g2.ctrl[l][col2].xyz))   continue;
+					if (!near01(g1.ctrl[k+2][col1].xyz, g2.ctrl[l+1][col2].xyz)) continue;
+					if (near001(g2.ctrl[l][col2].xyz,   g2.ctrl[l+1][col2].xyz)) continue;
+					GridInsertRow(g2, l+1, col2,
+					              g1.ctrl[k+1][col1].xyz,
+					              g1.heightLodError[std::min(k+1, g1.height-1)]);
+					return true;
+				}
+			}
+		}
+	}
+
+	// Pass 3: g1 top/bottom width-edges, backward k (g1 has fewer subdivisions than g2)
+	for (int n = 0; n < 2; n++) {
+		const int row1 = (n == 1) ? (g1.height - 1) : 0;
+		for (int k = g1.width - 1; k > 1; k -= 2) {
+			for (int m = 0; m < 2; m++) {
+				if (g2.width >= METAL_MAX_GRID_SIZE) break;
+				const int row2 = (m == 1) ? (g2.height - 1) : 0;
+				for (int l = 0; l < g2.width - 1; l++) {
+					if (!near01(g1.ctrl[row1][k].xyz,   g2.ctrl[row2][l].xyz))   continue;
+					if (!near01(g1.ctrl[row1][k-2].xyz, g2.ctrl[row2][l+1].xyz)) continue;
+					if (near001(g2.ctrl[row2][l].xyz,   g2.ctrl[row2][l+1].xyz)) continue;
+					GridInsertColumn(g2, l+1, row2,
+					                 g1.ctrl[row1][k-1].xyz,
+					                 g1.widthLodError[std::min(k+1, g1.width-1)]);
+					return true;
+				}
+			}
+			for (int m = 0; m < 2; m++) {
+				if (g2.height >= METAL_MAX_GRID_SIZE) break;
+				const int col2 = (m == 1) ? (g2.width - 1) : 0;
+				for (int l = 0; l < g2.height - 1; l++) {
+					if (!near01(g1.ctrl[row1][k].xyz,   g2.ctrl[l][col2].xyz))   continue;
+					if (!near01(g1.ctrl[row1][k-2].xyz, g2.ctrl[l+1][col2].xyz)) continue;
+					if (near001(g2.ctrl[l][col2].xyz,   g2.ctrl[l+1][col2].xyz)) continue;
+					GridInsertRow(g2, l+1, col2,
+					              g1.ctrl[row1][k-1].xyz,
+					              g1.widthLodError[std::min(k+1, g1.width-1)]);
+					return true;
+				}
+			}
+		}
+	}
+
+	// Pass 4: g1 left/right height-edges, backward k
+	for (int n = 0; n < 2; n++) {
+		const int col1 = (n == 1) ? (g1.width - 1) : 0;
+		for (int k = g1.height - 1; k > 1; k -= 2) {
+			for (int m = 0; m < 2; m++) {
+				if (g2.width >= METAL_MAX_GRID_SIZE) break;
+				const int row2 = (m == 1) ? (g2.height - 1) : 0;
+				for (int l = 0; l < g2.width - 1; l++) {
+					if (!near01(g1.ctrl[k][col1].xyz,   g2.ctrl[row2][l].xyz))   continue;
+					if (!near01(g1.ctrl[k-2][col1].xyz, g2.ctrl[row2][l+1].xyz)) continue;
+					if (near001(g2.ctrl[row2][l].xyz,   g2.ctrl[row2][l+1].xyz)) continue;
+					GridInsertColumn(g2, l+1, row2,
+					                 g1.ctrl[k-1][col1].xyz,
+					                 g1.heightLodError[std::min(k+1, g1.height-1)]);
+					return true;
+				}
+			}
+			for (int m = 0; m < 2; m++) {
+				if (g2.height >= METAL_MAX_GRID_SIZE) break;
+				const int col2 = (m == 1) ? (g2.width - 1) : 0;
+				for (int l = 0; l < g2.height - 1; l++) {
+					if (!near01(g1.ctrl[k][col1].xyz,   g2.ctrl[l][col2].xyz))   continue;
+					if (!near01(g1.ctrl[k-2][col1].xyz, g2.ctrl[l+1][col2].xyz)) continue;
+					if (near001(g2.ctrl[l][col2].xyz,   g2.ctrl[l+1][col2].xyz)) continue;
+					GridInsertRow(g2, l+1, col2,
+					              g1.ctrl[k-1][col1].xyz,
+					              g1.heightLodError[std::min(k+1, g1.height-1)]);
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+// ---------------------------------------------------------------------------
+// Grid → triangle list conversion
+// Triangle ordering matches GL2's MakeMeshIndexes() for tristrip efficiency.
+// ---------------------------------------------------------------------------
+static void PatchGridToTriangles(const PatchGrid& g, std::vector<MetalPolyVertex>& out) {
+	for (int j = 0; j < g.height - 1; j++) {
+		for (int i = 0; i < g.width - 1; i++) {
+			// v2=ctrl[j][i], v1=ctrl[j][i+1], v3=ctrl[j+1][i], v4=ctrl[j+1][i+1]
+			const MetalPolyVertex& v2 = g.ctrl[j][i];
+			const MetalPolyVertex& v1 = g.ctrl[j][i+1];
+			const MetalPolyVertex& v3 = g.ctrl[j+1][i];
+			const MetalPolyVertex& v4 = g.ctrl[j+1][i+1];
+			out.push_back(v2); out.push_back(v3); out.push_back(v1);
+			out.push_back(v1); out.push_back(v3); out.push_back(v4);
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// TessellateBezierPatch — adaptive, used directly by the mark-fragments path.
+// subdivLevel: world-space flatness tolerance clamped to 1..64 (GL2 range).
+// ---------------------------------------------------------------------------
+inline void TessellateBezierPatch(const drawVert_t* controlPoints, int width, int height,
+                                  std::vector<MetalPolyVertex>& outVerts, float subdivLevel,
+                                  int mapOverBrightBits, int overBrightBits) {
+	PatchGrid g = AdaptiveTessellate(controlPoints, width, height, subdivLevel,
+	                                 mapOverBrightBits, overBrightBits);
+	PatchGridToTriangles(g, outVerts);
+}
+
 } // end anonymous namespace for patch tessellation
 
 //=============================================================================
@@ -658,6 +1089,34 @@ struct PortalOrientation {
 } // end anonymous namespace for deformVertexes helpers
 
 //=============================================================================
+// BSP surface types used by MarkFragments (file-scope so helpers can access them)
+//=============================================================================
+namespace {
+
+struct BspMarkVert {
+	float xyz[3];
+	float normal[3];
+};
+
+enum class BspMarkSurfType : int { Skip = 0, Face, Patch, TriSoup };
+
+struct BspMarkSurface {
+	BspMarkSurfType type          = BspMarkSurfType::Skip;
+	int             shaderSurfFlags = 0;
+	int             shaderContFlags = 0;
+	// Cull plane for MST_PLANAR surfaces
+	float           cullNormal[3] = {};
+	float           cullDist      = 0.0f;
+	byte            cullSignbits  = 0;
+	byte            cullType      = 0;
+	byte            pad[2]        = {};
+	// Flat triangle list: 3 consecutive BspMarkVerts per triangle (no separate index array)
+	std::vector<BspMarkVert> verts;
+};
+
+} // anonymous namespace (BSP mark types)
+
+//=============================================================================
 // Metal Renderer Class
 //=============================================================================
 
@@ -692,6 +1151,8 @@ public:
 	qhandle_t registerSkin(const char* name);
 	void setColor(const float* rgba);
 	void drawStretchPic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t shader);
+	void drawRotatePic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, float degrees, qhandle_t shader);
+	void drawRotatePic2(float x, float y, float w, float h, float s1, float t1, float s2, float t2, float degrees, qhandle_t shader);
 	
 	int lerpTag(orientation_t* tag, qhandle_t handle, int startFrame, int endFrame, float frac, const char* tagName);
 	void modelBounds(qhandle_t handle, vec3_t mins, vec3_t maxs);
@@ -704,6 +1165,12 @@ public:
 	friend void Metal_ImageList_f();
 	friend void Metal_DebugPoly_f();
 	friend void MetalBackend_LoadWorld(const char* name);
+	friend qboolean MetalBackend_GetEntityToken(char* buffer, int size);
+	friend qboolean MetalBackend_inPVS(const vec3_t p1, const vec3_t p2);
+	friend int MetalBackend_MarkFragments(int, const vec3_t*, const vec3_t, int, vec3_t, int, markFragment_t*);
+	friend qhandle_t MetalBackend_GetFlareShader();
+	friend void MetalBackend_DrawFlareQuad(float, float, float, float, float, float, float, qhandle_t);
+	friend void MetalBackend_GetSceneCameraForFlares(float[16], float[16], float[3], int*, int*, int*, int*);
 
 private:
 	struct CinematicSlot {
@@ -741,7 +1208,8 @@ private:
 		MTL::PrimitiveType primitive = MTL::PrimitiveTypeTriangle;
 		qhandle_t lightmapHandle = 0;
 		int fogIndex = 0;  // 0 = no fog, 1+ = fog volume index (1-based)
-		bool isPortal = false;  // True if this surface is a portal/mirror
+		bool isPortal = false;      // True if this surface is a portal/mirror
+		bool isStaticWorld = false; // True if vertices live in staticWorldVertexBuffer_
 	};
 
 	struct SceneLightPacket {
@@ -775,6 +1243,7 @@ private:
 		float fogHasSurface = 0.0f;       // Whether fog has a visible surface plane
 		float fogEnabled = 0.0f;          // Enable/disable fog rendering
 		float overBrightBits = 0.0f;      // r_overBrightBits value
+		float greyscale = 0.0f;           // r_greyscale: 0.0 = colour, 1.0 = full greyscale
 	};
 
 	// Texture coordinate modification params (matches Metal shader TCModParams)
@@ -796,6 +1265,14 @@ private:
 		float directedLight[4] = {150.0f, 150.0f, 150.0f, 0.0f}; // xyz = color, w = padding
 		float lightDir[4] = {0.0f, 0.0f, 1.0f, 0.0f};            // xyz = dir, w = padding
 		float modelLightDir[4] = {0.0f, 0.0f, 1.0f, 1.0f};       // xyz = dir, w = overBrightBits
+	};
+
+	// Normal-map and specular-map parameters — matches scene.metal NormalSpecularParams
+	struct alignas(16) NormalSpecularParams {
+		float useNormalMap   = 0.0f;
+		float useSpecularMap = 0.0f;
+		float normalScale    = 1.0f;
+		float specularPower  = 32.0f;
 	};
 
 	struct ModelFogParams {
@@ -889,6 +1366,8 @@ private:
 			qhandle_t primaryStageImage = 0;
 			bool usesLightmap = false;
 			bool usesWhiteImage = false;
+			qhandle_t normalMapHandle   = 0;  // Detected normal map for this stage (0 = none)
+			qhandle_t specularMapHandle = 0;  // Detected specular map for this stage (0 = none)
 		};
 
 		std::vector<MetalShaderStageRuntime> stageRuntimes;
@@ -928,11 +1407,25 @@ private:
 	cvar_t* r_swapInterval_ = nullptr;
 	cvar_t* r_mapOverBrightBits_ = nullptr;
 	cvar_t* r_overBrightBits_ = nullptr;
+	cvar_t* r_greyscale_ = nullptr;
+	cvar_t* r_shadows_ = nullptr;  // 0=off, 1+=blob/projection shadows
+	cvar_t* r_subdivisions_ = nullptr;  // world-space flatness tolerance for patch subdivision
+
+	// Projection (blob) shadow pipeline resources
+	MetalPtr<MTL::RenderPipelineState> shadowPipeline_;
+	MetalPtr<MTL::DepthStencilState>   shadowDepthState_;
+	MetalPtr<MTL::VertexDescriptor>    shadowVertexDescriptor_;
+	MetalPtr<MTL::Function>            shadowVertexFunction_;
+	MetalPtr<MTL::Function>            shadowFragmentFunction_;
 	MetalPtr<MTL::Buffer> sceneUniformBuffer_;
 	size_t sceneUniformBufferSize_ = 0;
 	MetalPtr<MTL::Buffer> polyVertexBuffer_;
 	size_t polyVertexBufferSize_ = 0;
 	size_t polyVertexCountGPU_ = 0;
+	// Static world vertex buffer — uploaded once at map load, never modified per-frame.
+	// Stores worldVertexTemplate_ on the GPU for zero-copy world rendering.
+	MetalPtr<MTL::Buffer> staticWorldVertexBuffer_;
+	size_t staticWorldVertexBufferSize_ = 0;  // Total bytes in staticWorldVertexBuffer_
 	MetalPtr<MTL::Buffer> lightBuffer_;
 	size_t lightBufferSize_ = 0;
 	size_t lightCountGPU_ = 0;
@@ -969,6 +1462,11 @@ private:
 	MetalPtr<MTL::Function> dlightFragmentFunction_;
 	MetalPtr<MTL::RenderPipelineState> dlightPipeline_;
 	MetalPtr<MTL::Texture> dlightTexture_;  // Radial falloff texture
+	MetalPtr<MTL::DepthStencilState> dlightDepthState_;  // Depth-test-only (no write) for dlight pass
+
+	// Animated-model dlight pipeline (uses model vertex descriptor with position2/normal2)
+	MetalPtr<MTL::Function> dlightAnimatedVertexFunction_;
+	MetalPtr<MTL::RenderPipelineState> dlightAnimatedPipeline_;
 
 
 	// Current frame cinematic texture (not owned, points into cinematicSlots_)
@@ -1015,6 +1513,14 @@ private:
 	};
 	std::vector<FogVolume> worldFogs_;
 	MetalPtr<MTL::RenderPipelineState> fogPipeline_;
+
+	// ---------- MarkFragments BSP data ----------
+	std::vector<int>            bspLeafSurfaces_;   // LUMP_LEAFSURFACES
+	std::vector<cplane_t>       bspCPlanes_;         // BSP planes with type/signbits
+	std::vector<BspMarkSurface> bspMarkSurfData_;    // per BSP surface geometry
+	std::vector<int>            bspSurfViewCounts_;  // per surface viewCount for dedup
+	int                         bspViewCount_ = 0;
+	cvar_t*                     r_marksOnTriangleMeshes_ = nullptr;
 	MetalPtr<MTL::Function> fogVertexFunction_;
 	MetalPtr<MTL::Function> fogFragmentFunction_;
 	MetalPtr<MTL::DepthStencilState> fogDepthState_;
@@ -1075,6 +1581,16 @@ private:
 
 	bool worldLoaded_ = false;
 	std::string worldName_;
+
+	// Entity lump data for GetEntityToken
+	std::vector<char> entityStringBuf_;   // null-terminated entity string from BSP
+	char* entityParsePoint_ = nullptr;    // cursor into entityStringBuf_
+
+	// BSP spatial data for inPVS / R_PointInLeaf
+	std::vector<dnode_t>  bspNodes_;
+	std::vector<dleaf_t>  bspLeafs_;
+	std::vector<dplane_t> bspPlanesForPVS_;  // copy of plane lump for node traversal
+
 	std::vector<MetalPolyVertex> worldVertexTemplate_;
 	std::vector<ScenePolyPacket> worldPacketTemplate_;
 	std::vector<qhandle_t> worldLightmapHandles_;
@@ -1082,17 +1598,32 @@ private:
 	std::vector<MetalBrushModel> brushModels_;  // Brush models (inline BSP models)
 	int numWorldSurfaces_ = 0;  // Number of surfaces in model 0 (the world itself)
 	int numWorldPackets_ = 0;   // Number of packets that belong to the world (vs brush models)
-	size_t worldVertexBaseOffset_ = 0;  // Offset into polyVertices_ where world geometry starts
 	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
+	std::unordered_map<uintptr_t, MetalPtr<MTL::Buffer>> mdrIndexBuffers_; // Cached MDR triangle index buffers
+	std::unordered_map<uintptr_t, MetalPtr<MTL::Buffer>> iqmIndexBuffers_; // Cached IQM triangle index buffers
 	std::vector<MetalSkin> registeredSkins_;  // Skin storage (index 0 is reserved)
 	std::unordered_map<std::string, qhandle_t> skinLookup_;
 	std::vector<MetalShaderResource> shaderResources_;
 	std::unordered_map<std::string, qhandle_t> shaderLookup_;
 
+	// Lens flare rendering (see tr_flares.cpp)
+	MetalPtr<MTL::RenderPipelineState> pipelineFlare_;  // additive One/One blend
+	qhandle_t flareShaderHandle_ = 0;
+	cvar_t* r_flares_   = nullptr;
+	cvar_t* r_flareSize_ = nullptr;
+	cvar_t* r_flareFade_ = nullptr;
+	cvar_t* r_flareCoeff_ = nullptr;
+
 	bool initializeWindow(int& width, int& height, qboolean& fullscreen);
 	bool createPipeline(MTL::Texture* drawableTexture);
 	bool create2DPipeline();
+	bool createFlarePipeline();
+	void drawFlareQuad(float x, float y, float w, float h,
+	                   float r, float g, float b, qhandle_t shader);
+	void getSceneCameraForFlares(float viewMat[16], float projMat[16], float viewOrg[3],
+	                             int* vpX, int* vpY, int* vpW, int* vpH) const;
+	qhandle_t getFlareShader();
 	bool ensureDepthTexture(int width, int height);
 	bool ensureDlightResources();
 	void createDlightTexture();
@@ -1100,12 +1631,20 @@ private:
 	void fillConfigDefaults(int width, int height, qboolean fullscreen);
 	void publishConfig();
 	void registerConsoleCommands();
+	void drawRotatePicImpl(float x, float y, float w, float h, float s1, float t1, float s2, float t2,
+	                       float degrees, qhandle_t shader, float pivotNdcX, float pivotNdcY);
 	void unregisterConsoleCommands();
 	void configureDebugPoly(bool enable, const char* shaderName, float size, float distance);
 	void appendDebugPoly(const MetalSceneState& scene);
 	qhandle_t ensureDebugPolyShaderHandle();
 	bool loadWorldMap(const char* name);
 	void unloadWorldMap();
+	int  markFragments(int numPoints, const vec3_t* points, const vec3_t projection,
+	                   int maxPoints, vec3_t pointBuffer, int maxFragments,
+	                   markFragment_t* fragmentBuffer);
+	qboolean getEntityToken(char* buffer, int size);
+	qboolean inPVS(const vec3_t p1, const vec3_t p2) const;
+	const dleaf_t* pointInLeaf(const vec3_t p) const;
 	void appendWorldGeometry();
 	void printGfxInfo();
 	void printImageList();
@@ -1123,6 +1662,7 @@ private:
 	bool ensureSceneShaderResources();
 	bool ensureFogPipeline();
 	bool ensureModelPipeline();
+	bool ensureShadowPipeline();
 	enum class CullResult { Out, In, Clip };
 	void renderModel(const refEntity_t& ent, MetalModel& model, MetalModelLOD& lodData,
 	                int fogIndex, CullResult cullState);
@@ -1140,8 +1680,30 @@ private:
 	void renderModelSurface(const refEntity_t& ent, MetalModelSurface& surface,
 	                        const float* mvpMatrix, const float* modelMatrix, float vertexLerp,
 	                        const ModelFogParams& fogParams,
-	                        const vec3_t ambientLight, const vec3_t directedLight, const vec3_t lightDir);
+	                        const vec3_t ambientLight, const vec3_t directedLight, const vec3_t lightDir,
+	                        uint32_t dlightBits);
+	void renderModelShadow(const refEntity_t& ent, MetalModelSurface& surface,
+	                       const float* mvpMatrix, const vec3_t modelLightDir);
 	MTL::Buffer* createModelVertexBuffer(const refEntity_t& ent, MetalModelSurface& surface);
+	// MDR skeletal animation rendering
+	void renderMDRModel(const refEntity_t& ent, MetalModel& model);
+	void renderMDRSurface(const refEntity_t& ent, const mdrHeader_t* header,
+	                      const mdrSurface_t* surf, const mdrBone_t* bonePtr,
+	                      const float* mvpMatrix, const float* modelMatrix,
+	                      const ModelFogParams& fogParams,
+	                      const vec3_t ambientLight, const vec3_t directedLight,
+	                      const vec3_t lightDir);
+	void registerMDRShaders(MetalModel* model);
+	// IQM skeletal animation rendering
+	void renderIQMModel(const refEntity_t& ent, MetalModel& model);
+	void renderIQMSurface(const refEntity_t& ent, MetalIQMData* data,
+	                      const MetalIQMSurface* surf,
+	                      int frame, int oldframe, float backlerp,
+	                      const float* mvpMatrix, const float* modelMatrix,
+	                      const ModelFogParams& fogParams,
+	                      const vec3_t ambientLight, const vec3_t directedLight,
+	                      const vec3_t lightDir);
+	void registerIQMShaders(MetalModel* model);
 	void calculateEntityTransform(const refEntity_t& ent, float* matrix);
 	void setupEntityLighting(const refEntity_t& ent, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 	void multiplyMatrices4x4(const float* a, const float* b, const float* c, float* result);
@@ -1153,6 +1715,8 @@ private:
 	bool drawModelEntities();
 	bool drawDynamicLights();
 	bool drawFogPasses();
+	bool ensureDlightAnimatedResources();
+	uint32_t computeModelDlightBits(const refEntity_t& ent, const MetalModelLOD& lodData) const;
 	// Portal/mirror rendering
 	void detectPortalSurfaces();
 	bool ensurePortalTexture(int width, int height);
@@ -1245,6 +1809,9 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	dlightFragmentFunction_.reset();
 	dlightPipeline_.reset();
 	dlightTexture_.reset();
+	dlightDepthState_.reset();
+	dlightAnimatedVertexFunction_.reset();
+	dlightAnimatedPipeline_.reset();
 	depthTexture_.reset();
 	depthTextureWidth_ = depthTextureHeight_ = 0;
 	stagePipelineCache_.clear();
@@ -1518,52 +2085,64 @@ void MetalRenderer::appendDebugPoly(const MetalSceneState& scene) {
 }
 
 void MetalRenderer::appendWorldGeometry() {
-	if (!worldLoaded_ || worldVertexTemplate_.empty() || worldPacketTemplate_.empty()) {
+	if (!worldLoaded_ || worldPacketTemplate_.empty() || !staticWorldVertexBuffer_) {
 		return;
 	}
 
-	const size_t baseVertex = polyVertices_.size();
-	worldVertexBaseOffset_ = baseVertex;  // Save for brush model rendering
 	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
-	
-	// Copy template vertices - we may modify them for deformVertexes
-	polyVertices_.insert(polyVertices_.end(), worldVertexTemplate_.begin(), worldVertexTemplate_.end());
-	
-	// Only append world packets (model 0), not brush model packets
-	// Brush model surfaces are rendered via renderBrushModel with entity transforms
+
+	// Only append world packets (model 0), not brush model packets.
+	// Brush model surfaces are rendered via renderBrushModel with entity transforms.
 	const int packetLimit = (numWorldPackets_ > 0) ? numWorldPackets_ : static_cast<int>(worldPacketTemplate_.size());
-	
+
 	for (int i = 0; i < packetLimit; ++i) {
 		const ScenePolyPacket& templatePacket = worldPacketTemplate_[i];
 		ScenePolyPacket packet = templatePacket;
-		packet.firstVertex += static_cast<int>(baseVertex);
-		
-		// Check if this shader has deformVertexes and apply it
-		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
-		if (shaderResource && shaderResource->hasScript) {
-			// Check for portal/mirror shader
-			if (shaderResource->script.isPortal) {
-				packet.isPortal = true;
-			}
 
-			// Apply deformVertexes if present
-			if (shaderResource->script.hasDeform) {
-				const MetalDeformInfo& deform = shaderResource->script.deform;
-				
-				if (deform.type == MetalDeformType::Wave || deform.type == MetalDeformType::Bulge) {
-					// Get pointer to the vertices for this packet
-					MetalPolyVertex* packetVerts = &polyVertices_[packet.firstVertex];
-					
-					if (deform.type == MetalDeformType::Wave) {
-						ApplyDeformVertexesWave(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
-					} else if (deform.type == MetalDeformType::Bulge) {
-						ApplyDeformVertexesBulge(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
-					}
-				}
+		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
+		if (shaderResource && shaderResource->hasScript && shaderResource->script.isPortal) {
+			packet.isPortal = true;
+		}
+
+		// Determine whether this surface needs per-frame CPU deformation.
+		bool hasActiveDeform = false;
+		if (shaderResource && shaderResource->hasScript && shaderResource->script.hasDeform) {
+			const MetalDeformInfo& deform = shaderResource->script.deform;
+			if (deform.type == MetalDeformType::Wave || deform.type == MetalDeformType::Bulge) {
+				hasActiveDeform = true;
 			}
 		}
-		
-		polyPackets_.push_back(packet);
+
+		if (!hasActiveDeform) {
+			// Static surface: reference geometry directly in the GPU-resident static buffer.
+			// No per-frame vertex copy required.
+			packet.isStaticWorld = true;
+			polyPackets_.push_back(packet);
+		} else {
+			// Deformed surface: copy template vertices into the per-frame dynamic buffer
+			// and apply the CPU-side deformation there.
+			const size_t srcStart = static_cast<size_t>(templatePacket.firstVertex);
+			const size_t srcEnd   = srcStart + static_cast<size_t>(templatePacket.vertexCount);
+			if (srcEnd > worldVertexTemplate_.size()) {
+				continue;
+			}
+			const size_t baseVertex = polyVertices_.size();
+			polyVertices_.insert(polyVertices_.end(),
+			                     worldVertexTemplate_.begin() + srcStart,
+			                     worldVertexTemplate_.begin() + srcEnd);
+
+			packet.firstVertex   = static_cast<int>(baseVertex);
+			packet.isStaticWorld = false;
+
+			MetalPolyVertex* packetVerts = &polyVertices_[packet.firstVertex];
+			const MetalDeformInfo& deform = shaderResource->script.deform;
+			if (deform.type == MetalDeformType::Wave) {
+				ApplyDeformVertexesWave(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+			} else if (deform.type == MetalDeformType::Bulge) {
+				ApplyDeformVertexesBulge(packetVerts, packet.vertexCount, deform, sceneTimeSeconds);
+			}
+			polyPackets_.push_back(packet);
+		}
 	}
 }
 
@@ -1646,6 +2225,16 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	const dbrush_t* brushes = reinterpret_cast<const dbrush_t*>(getLumpRange(LUMP_BRUSHES, brushCount, sizeof(dbrush_t)));
 	int brushSideCount = 0;
 	const dbrushside_t* brushSides = reinterpret_cast<const dbrushside_t*>(getLumpRange(LUMP_BRUSHSIDES, brushSideCount, sizeof(dbrushside_t)));
+
+	// Load nodes and leaves for inPVS / R_PointInLeaf
+	int nodeCount = 0;
+	const dnode_t* bspNodes = reinterpret_cast<const dnode_t*>(getLumpRange(LUMP_NODES, nodeCount, sizeof(dnode_t)));
+	int leafCount = 0;
+	const dleaf_t* bspLeafs = reinterpret_cast<const dleaf_t*>(getLumpRange(LUMP_LEAFS, leafCount, sizeof(dleaf_t)));
+
+	// Load entities lump for GetEntityToken
+	int entitiesLen = 0;
+	const char* entitiesData = reinterpret_cast<const char*>(getLumpRange(LUMP_ENTITIES, entitiesLen, 1));
 
 	if (!shaderTable || !drawVerts || !drawIndexes || !surfaces) {
 		if (ri_.Printf) {
@@ -1932,6 +2521,56 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	worldPacketTemplate_.reserve(static_cast<size_t>(surfaceCount));
 	worldSurfaceToPacket_.resize(surfaceCount, -1);  // -1 means surface was skipped
 
+	// Adaptive subdivision level: world-space flatness tolerance in game units.
+	// Clamp to 1..64 matching GL2.  Default 4 (GL2 default).
+	const float subdivLevel = r_subdivisions_
+	    ? static_cast<float>(std::max(1, std::min(64, r_subdivisions_->integer)))
+	    : 4.f;
+
+	// Pre-compute tessellated PatchGrids for ALL MST_PATCH surfaces,
+	// then stitch adjacent grids to eliminate T-junction seams.
+	// Uses unique_ptr because PatchGrid is large (~182 KB each).
+	std::vector<std::unique_ptr<PatchGrid>> patchGrids;
+	std::unordered_map<int, int> surfToPatchGrid;  // BSP surface index → patchGrids index
+
+	for (int si = 0; si < surfaceCount; ++si) {
+		const dsurface_t& ds2 = surfaces[si];
+		if (LittleLong(ds2.surfaceType) != MST_PATCH) continue;
+
+		const int pw = LittleLong(ds2.patchWidth);
+		const int ph = LittleLong(ds2.patchHeight);
+		const int fv = LittleLong(ds2.firstVert);
+		const int nv = LittleLong(ds2.numVerts);
+
+		if (pw < 3 || ph < 3 || (pw & 1) == 0 || (ph & 1) == 0) continue;
+		if (fv < 0 || nv < pw * ph || fv + nv > vertexCount) continue;
+
+		auto g = std::make_unique<PatchGrid>(
+		    AdaptiveTessellate(&drawVerts[fv], pw, ph, subdivLevel,
+		                       mapOverBrightBits, overBrightBits));
+		surfToPatchGrid[si] = static_cast<int>(patchGrids.size());
+		patchGrids.push_back(std::move(g));
+	}
+
+	// Stitch all patch pairs, matching GL2's R_StitchAllPatches:
+	// for each patch, keep stitching against all others until stable.
+	for (size_t pi = 0; pi < patchGrids.size(); pi++) {
+		bool anyStitch = true;
+		while (anyStitch) {
+			anyStitch = false;
+			for (size_t pj = 0; pj < patchGrids.size(); pj++) {
+				if (pi == pj) continue;
+				while (StitchPatchGrids(*patchGrids[pi], *patchGrids[pj]))
+					anyStitch = true;
+			}
+		}
+	}
+
+	if (ri_.Printf && !patchGrids.empty()) {
+		ri_.Printf(PRINT_ALL, "Metal: tessellated %zu patch surfaces (r_subdivisions=%.0f)\n",
+		           patchGrids.size(), subdivLevel);
+	}
+
 	// Load ALL surfaces into the template (world + brush models)
 	// Brush model surfaces need to be in the template so renderBrushModel can find them
 	for (int surfaceIndex = 0; surfaceIndex < surfaceCount; ++surfaceIndex) {
@@ -1971,28 +2610,10 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		const size_t startVertex = worldVertexTemplate_.size();
 
 		if (surfaceType == MST_PATCH) {
-			// Handle curved patch surfaces (Bezier patches)
-			const int patchWidth = LittleLong(ds.patchWidth);
-			const int patchHeight = LittleLong(ds.patchHeight);
-			const int firstVert = LittleLong(ds.firstVert);
-			const int numVerts = LittleLong(ds.numVerts);
-
-			// Validate patch dimensions - must be odd and at least 3
-			if (patchWidth < 3 || patchHeight < 3 || (patchWidth & 1) == 0 || (patchHeight & 1) == 0) {
-				continue;
-			}
-			if (firstVert < 0 || numVerts < patchWidth * patchHeight || firstVert + numVerts > vertexCount) {
-				continue;
-			}
-
-			// Tessellate the patch into triangles
-			std::vector<MetalPolyVertex> patchVerts;
-			TessellateBezierPatch(&drawVerts[firstVert], patchWidth, patchHeight, patchVerts, PATCH_SUBDIVISIONS, mapOverBrightBits, overBrightBits);
-
-			// Add tessellated vertices to the world buffer
-			for (const auto& v : patchVerts) {
-				worldVertexTemplate_.push_back(v);
-			}
+			// Use the pre-computed, T-junction-stitched PatchGrid.
+			auto patchIt = surfToPatchGrid.find(surfaceIndex);
+			if (patchIt == surfToPatchGrid.end()) continue;  // invalid dimensions — skipped in pre-pass
+			PatchGridToTriangles(*patchGrids[static_cast<size_t>(patchIt->second)], worldVertexTemplate_);
 		} else {
 			// Handle MST_PLANAR and MST_TRIANGLE_SOUP (indexed geometry)
 			const int firstVert = LittleLong(ds.firstVert);
@@ -2074,8 +2695,6 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		int gridBounds[3] = {0, 0, 0};
 
 		// Parse entities lump to find worldspawn gridsize
-		int entitiesLen = 0;
-		const char* entitiesData = reinterpret_cast<const char*>(getLumpRange(LUMP_ENTITIES, entitiesLen, 1));
 		if (entitiesData && entitiesLen > 0) {
 			// Simple parser to find "gridsize" key in worldspawn
 			const char* p = entitiesData;
@@ -2163,6 +2782,163 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		}
 	}
 
+	// Store entity string so GetEntityToken can walk it token-by-token.
+	// Match GL2's R_LoadEntities: copy the lump, reset the parse cursor.
+	if (entitiesData && entitiesLen > 0) {
+		entityStringBuf_.assign(entitiesData, entitiesData + entitiesLen);
+		entityStringBuf_.push_back('\0');
+	} else {
+		entityStringBuf_.assign(1, '\0');
+	}
+	entityParsePoint_ = entityStringBuf_.data();
+
+	// Store BSP spatial data for inPVS / R_PointInLeaf.
+	if (bspNodes && nodeCount > 0) {
+		bspNodes_.assign(bspNodes, bspNodes + nodeCount);
+	}
+	if (bspLeafs && leafCount > 0) {
+		bspLeafs_.assign(bspLeafs, bspLeafs + leafCount);
+	}
+	if (planes && planeCount > 0) {
+		bspPlanesForPVS_.assign(planes, planes + planeCount);
+	}
+
+	// ---- Build MarkFragments BSP data ----
+	// 1. BSP planes with signbits for BoxOnPlaneSide
+	bspCPlanes_.resize(planeCount);
+	for (int i = 0; i < planeCount; ++i) {
+		cplane_t& cp  = bspCPlanes_[i];
+		cp.normal[0]  = LittleFloat(planes[i].normal[0]);
+		cp.normal[1]  = LittleFloat(planes[i].normal[1]);
+		cp.normal[2]  = LittleFloat(planes[i].normal[2]);
+		cp.dist       = LittleFloat(planes[i].dist);
+		cp.type       = PlaneTypeForNormal(cp.normal);
+		SetPlaneSignbits(&cp);
+	}
+
+	// 2. Leaf-surface index mapping (LUMP_LEAFSURFACES)
+	{
+		int leafSurfCount = 0;
+		const int* leafSurfData = reinterpret_cast<const int*>(
+		    getLumpRange(LUMP_LEAFSURFACES, leafSurfCount, sizeof(int)));
+		bspLeafSurfaces_.resize(leafSurfCount);
+		if (leafSurfData) {
+			for (int i = 0; i < leafSurfCount; ++i)
+				bspLeafSurfaces_[i] = LittleLong(leafSurfData[i]);
+		}
+	}
+
+	// 3. Per-surface geometry for MarkFragments
+	bspMarkSurfData_.clear();
+	bspMarkSurfData_.resize(surfaceCount);
+	bspSurfViewCounts_.assign(surfaceCount, -1);
+	bspViewCount_ = 0;
+
+	for (int si = 0; si < surfaceCount; ++si) {
+		const dsurface_t& ds  = surfaces[si];
+		const int surfType    = LittleLong(ds.surfaceType);
+		BspMarkSurface&   ms  = bspMarkSurfData_[si];
+
+		// Shader flags for culling in the box-surface traversal
+		const int shNum = LittleLong(ds.shaderNum);
+		if (shNum >= 0 && shNum < shaderCount) {
+			ms.shaderSurfFlags = LittleLong(shaderTable[shNum].surfaceFlags);
+			ms.shaderContFlags = LittleLong(shaderTable[shNum].contentFlags);
+		}
+
+		if (surfType == MST_PLANAR) {
+			ms.type = BspMarkSurfType::Face;
+			const int fv = LittleLong(ds.firstVert);
+			const int nv = LittleLong(ds.numVerts);
+			const int fi = LittleLong(ds.firstIndex);
+			const int ni = LittleLong(ds.numIndexes);
+
+			// Face plane from lightmapVecs[2] (the surface normal stored in the BSP)
+			ms.cullNormal[0] = ds.lightmapVecs[2][0];
+			ms.cullNormal[1] = ds.lightmapVecs[2][1];
+			ms.cullNormal[2] = ds.lightmapVecs[2][2];
+			if (fv >= 0 && fv < vertexCount) {
+				ms.cullDist = ms.cullNormal[0] * drawVerts[fv].xyz[0]
+				            + ms.cullNormal[1] * drawVerts[fv].xyz[1]
+				            + ms.cullNormal[2] * drawVerts[fv].xyz[2];
+			}
+			ms.cullSignbits = 0;
+			if (ms.cullNormal[0] < 0) ms.cullSignbits |= 1;
+			if (ms.cullNormal[1] < 0) ms.cullSignbits |= 2;
+			if (ms.cullNormal[2] < 0) ms.cullSignbits |= 4;
+			ms.cullType = PlaneTypeForNormal(ms.cullNormal);
+
+			// Build flat triangle list (3 BspMarkVerts per triangle)
+			if (fv >= 0 && nv > 0 && fi >= 0 && ni >= 3
+			    && fv + nv <= vertexCount && fi + ni <= indexCount) {
+				ms.verts.reserve(ni);
+				bool ok = true;
+				for (int k = 0; k + 2 < ni && ok; k += 3) {
+					for (int j = 0; j < 3; ++j) {
+						const int idx = fv + LittleLong(drawIndexes[fi + k + j]);
+						if (idx < 0 || idx >= vertexCount) { ms.verts.clear(); ok = false; break; }
+						BspMarkVert v;
+						v.xyz[0]    = drawVerts[idx].xyz[0];
+						v.xyz[1]    = drawVerts[idx].xyz[1];
+						v.xyz[2]    = drawVerts[idx].xyz[2];
+						v.normal[0] = drawVerts[idx].normal[0];
+						v.normal[1] = drawVerts[idx].normal[1];
+						v.normal[2] = drawVerts[idx].normal[2];
+						ms.verts.push_back(v);
+					}
+				}
+			}
+
+		} else if (surfType == MST_PATCH) {
+			ms.type = BspMarkSurfType::Patch;
+			const int pw = LittleLong(ds.patchWidth);
+			const int ph = LittleLong(ds.patchHeight);
+			const int fv = LittleLong(ds.firstVert);
+			const int nv = LittleLong(ds.numVerts);
+			if (pw >= 3 && ph >= 3 && (pw & 1) == 1 && (ph & 1) == 1
+			    && fv >= 0 && nv >= pw * ph && fv + nv <= vertexCount) {
+				// Tessellate the patch and store as a flat triangle list
+				std::vector<MetalPolyVertex> tessVerts;
+				TessellateBezierPatch(&drawVerts[fv], pw, ph, tessVerts,
+				                      subdivLevel, mapOverBrightBits, overBrightBits);
+				ms.verts.reserve(tessVerts.size());
+				for (const auto& tv : tessVerts) {
+					BspMarkVert v;
+					v.xyz[0]    = tv.xyz[0]; v.xyz[1]    = tv.xyz[1]; v.xyz[2]    = tv.xyz[2];
+					v.normal[0] = tv.normal[0]; v.normal[1] = tv.normal[1]; v.normal[2] = tv.normal[2];
+					ms.verts.push_back(v);
+				}
+			}
+
+		} else if (surfType == MST_TRIANGLE_SOUP) {
+			ms.type = BspMarkSurfType::TriSoup;
+			const int fv = LittleLong(ds.firstVert);
+			const int nv = LittleLong(ds.numVerts);
+			const int fi = LittleLong(ds.firstIndex);
+			const int ni = LittleLong(ds.numIndexes);
+			if (fv >= 0 && nv > 0 && fi >= 0 && ni >= 3
+			    && fv + nv <= vertexCount && fi + ni <= indexCount) {
+				ms.verts.reserve(ni);
+				bool ok = true;
+				for (int k = 0; k + 2 < ni && ok; k += 3) {
+					for (int j = 0; j < 3; ++j) {
+						const int idx = fv + LittleLong(drawIndexes[fi + k + j]);
+						if (idx < 0 || idx >= vertexCount) { ms.verts.clear(); ok = false; break; }
+						BspMarkVert v;
+						v.xyz[0]    = drawVerts[idx].xyz[0];
+						v.xyz[1]    = drawVerts[idx].xyz[1];
+						v.xyz[2]    = drawVerts[idx].xyz[2];
+						v.normal[0] = drawVerts[idx].normal[0];
+						v.normal[1] = drawVerts[idx].normal[1];
+						v.normal[2] = drawVerts[idx].normal[2];
+						ms.verts.push_back(v);
+					}
+				}
+			}
+		}
+	}
+	// ---- End MarkFragments BSP data ----
+
 	ri_.FS_FreeFile(buffer);
 	worldLoaded_ = !worldPacketTemplate_.empty();
 	if (worldLoaded_) {
@@ -2179,6 +2955,28 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 			           foggedSurfaces,
 			           worldVertexTemplate_.size());
 		}
+
+		// Upload world geometry to a permanent GPU buffer once at map load.
+		// drawPolyPackets() and renderBrushModel() draw directly from this
+		// buffer with zero per-frame CPU→GPU copy for static surfaces.
+		staticWorldVertexBuffer_.reset();
+		staticWorldVertexBufferSize_ = 0;
+		if (!worldVertexTemplate_.empty() && device_) {
+			const size_t sz = worldVertexTemplate_.size() * sizeof(MetalPolyVertex);
+			staticWorldVertexBuffer_.reset(device_->newBuffer(
+			    worldVertexTemplate_.data(), sz, MTL::ResourceStorageModeShared));
+			if (staticWorldVertexBuffer_) {
+				staticWorldVertexBufferSize_ = sz;
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL,
+					           "Metal: static world VBO: %zu verts, %.2f MB\n",
+					           worldVertexTemplate_.size(),
+					           static_cast<float>(sz) / (1024.0f * 1024.0f));
+				}
+			} else if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: failed to create static world vertex buffer\n");
+			}
+		}
 	} else if (ri_.Printf) {
 		ri_.Printf(PRINT_WARNING, "Metal: no supported surfaces found in '%s'\n", requestedName.c_str());
 	}
@@ -2188,6 +2986,18 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 void MetalRenderer::unloadWorldMap() {
 	worldLoaded_ = false;
 	worldName_.clear();
+	entityStringBuf_.clear();
+	entityParsePoint_ = nullptr;
+	bspNodes_.clear();
+	bspLeafs_.clear();
+	bspPlanesForPVS_.clear();
+	bspLeafSurfaces_.clear();
+	bspCPlanes_.clear();
+	bspMarkSurfData_.clear();
+	bspSurfViewCounts_.clear();
+	bspViewCount_ = 0;
+	staticWorldVertexBuffer_.reset();
+	staticWorldVertexBufferSize_ = 0;
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
 	worldLightmapHandles_.clear();
@@ -2206,6 +3016,81 @@ void MetalRenderer::unloadWorldMap() {
 			++it;
 		}
 	}
+}
+
+/*
+================
+MetalRenderer::getEntityToken
+
+Walk the entity string token by token, matching GL2's R_GetEntityToken exactly.
+On end-of-string, reset the cursor and return qfalse.
+================
+*/
+qboolean MetalRenderer::getEntityToken(char* buffer, int size) {
+	const char* s = COM_Parse(&entityParsePoint_);
+	Q_strncpyz(buffer, s, size);
+	if (!entityParsePoint_ && !s[0]) {
+		// End of string — reset cursor for the next call, return false (GL2 behaviour).
+		entityParsePoint_ = entityStringBuf_.empty() ? nullptr : entityStringBuf_.data();
+		return qfalse;
+	}
+	return qtrue;
+}
+
+/*
+================
+MetalRenderer::pointInLeaf
+
+Traverse the BSP tree and return the leaf that contains point p.
+Mirrors GL2's R_PointInLeaf but works on raw dnode_t / dleaf_t data.
+================
+*/
+const dleaf_t* MetalRenderer::pointInLeaf(const vec3_t p) const {
+	if (bspNodes_.empty() || bspLeafs_.empty() || bspPlanesForPVS_.empty()) {
+		return nullptr;
+	}
+
+	int nodeIndex = 0;  // root
+	while (nodeIndex >= 0) {
+		const dnode_t& node = bspNodes_[nodeIndex];
+		const dplane_t& plane = bspPlanesForPVS_[node.planeNum];
+		const float d = DotProduct(p, plane.normal) - plane.dist;
+		nodeIndex = node.children[d <= 0 ? 1 : 0];
+	}
+
+	// nodeIndex encodes a leaf as -(leafIndex + 1)
+	const int leafIndex = -(nodeIndex + 1);
+	if (leafIndex < 0 || leafIndex >= static_cast<int>(bspLeafs_.size())) {
+		return nullptr;
+	}
+	return &bspLeafs_[leafIndex];
+}
+
+/*
+================
+MetalRenderer::inPVS
+
+Return qtrue if points p1 and p2 are in the same PVS cluster.
+Matches GL2's R_inPVS (uses ri.CM_ClusterPVS for the visibility bit-array).
+================
+*/
+qboolean MetalRenderer::inPVS(const vec3_t p1, const vec3_t p2) const {
+	const dleaf_t* leaf1 = pointInLeaf(p1);
+	if (!leaf1) {
+		return qfalse;
+	}
+	const byte* vis = ri_.CM_ClusterPVS(leaf1->cluster);
+	if (!vis) {
+		return qfalse;
+	}
+	const dleaf_t* leaf2 = pointInLeaf(p2);
+	if (!leaf2) {
+		return qfalse;
+	}
+	if (!(vis[leaf2->cluster >> 3] & (1 << (leaf2->cluster & 7)))) {
+		return qfalse;
+	}
+	return qtrue;
 }
 
 bool MetalRenderer::initializeWindow(int& width, int& height, qboolean& fullscreen) {
@@ -2418,6 +3303,205 @@ bool MetalRenderer::create2DPipeline() {
 	return true;
 }
 
+// Create an additive (GL_ONE / GL_ONE) 2D pipeline for lens flare rendering.
+bool MetalRenderer::createFlarePipeline() {
+	if (pipelineFlare_) {
+		return true;
+	}
+	if (!device_) {
+		return false;
+	}
+
+	NS::Error* error = nullptr;
+	MTL::Library* lib = device_->newDefaultLibrary();
+	if (!lib) {
+		ri_.Printf(PRINT_WARNING, "Metal: createFlarePipeline - failed to load shader library\n");
+		return false;
+	}
+
+	NS::String* vertexName   = NS::String::string("vertex_ui_2d",   NS::ASCIIStringEncoding);
+	NS::String* fragmentName = NS::String::string("fragment_ui_2d", NS::ASCIIStringEncoding);
+	MTL::Function* vfn = lib->newFunction(vertexName);
+	MTL::Function* ffn = lib->newFunction(fragmentName);
+	vertexName->release();
+	fragmentName->release();
+
+	if (!vfn || !ffn) {
+		ri_.Printf(PRINT_WARNING, "Metal: createFlarePipeline - 2D shader functions not found\n");
+		if (vfn) vfn->release();
+		if (ffn) ffn->release();
+		lib->release();
+		return false;
+	}
+
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+	pd->setVertexFunction(vfn);
+	pd->setFragmentFunction(ffn);
+	pd->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	// Additive blend: src=One, dst=One (GL_ONE, GL_ONE)
+	auto* ca = pd->colorAttachments()->object(0);
+	ca->setBlendingEnabled(true);
+	ca->setSourceRGBBlendFactor(MTL::BlendFactorOne);
+	ca->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
+	ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	ca->setDestinationAlphaBlendFactor(MTL::BlendFactorOne);
+
+	pipelineFlare_.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+	vfn->release();
+	ffn->release();
+	lib->release();
+
+	if (!pipelineFlare_) {
+		if (error) {
+			ri_.Printf(PRINT_WARNING, "Metal: flare pipeline creation failed: %s\n",
+			           error->localizedDescription()->utf8String());
+			error->release();
+		}
+		return false;
+	}
+
+	return true;
+}
+
+// Draw a screen-space quad with additive blending for lens flares.
+// (x, y, w, h) are in screen pixels; y=0 is the top of the window.
+// (r, g, b) are linear colour values in [0, 1], pre-multiplied by intensity.
+void MetalRenderer::drawFlareQuad(float x, float y, float w, float h,
+                                  float r, float g, float b, qhandle_t shader) {
+	if (!device_ || !currentRenderEncoder_) {
+		return;
+	}
+
+	if (!createFlarePipeline()) {
+		return;
+	}
+
+	// Ensure the 2D sampler exists.
+	if (!sampler2D_) {
+		create2DPipeline();
+	}
+	if (!sampler2D_) {
+		return;
+	}
+
+	TextureManager* tm = ensureTextureManager();
+	if (!tm) {
+		return;
+	}
+
+	MetalShaderResource* shaderRes = getShaderResource(shader);
+	if (!shaderRes) {
+		shaderRes = getShaderResource(0);
+	}
+	if (!shaderRes) {
+		return;
+	}
+
+	const auto* stageRuntime = getPrimaryStageRuntime(*shaderRes);
+	float timeSeconds = ri_.Milliseconds ? static_cast<float>(ri_.Milliseconds()) * 0.001f : 0.0f;
+	qhandle_t imageHandle = selectStageImage(*shaderRes, stageRuntime, timeSeconds);
+	MTL::Texture* texture = tm->getTexture(imageHandle);
+	if (!texture) {
+		texture = tm->getTexture(0);
+		if (!texture) return;
+	}
+
+	// Convert screen pixel coords (y=0 at top) to Metal NDC (y=+1 at top).
+	float ndcX =  (x     * 2.0f / config_.vidWidth)  - 1.0f;
+	float ndcY =  1.0f - (y     * 2.0f / config_.vidHeight);
+	float ndcW =   w    * 2.0f / config_.vidWidth;
+	float ndcH =   h    * 2.0f / config_.vidHeight;
+
+	// Must match ui_2d.metal QuadInstance layout exactly.
+	struct QuadInstance {
+		float rect[4];
+		float texCoords[4];
+		float color[4];
+		float pivot[2];
+		float rotation;
+		float _pad;
+	};
+
+	QuadInstance instance;
+	instance.rect[0] = ndcX;
+	instance.rect[1] = ndcY;
+	instance.rect[2] = ndcW;
+	instance.rect[3] = -ndcH;  // negative height: draw downward from top
+	instance.texCoords[0] = 0.0f;
+	instance.texCoords[1] = 0.0f;
+	instance.texCoords[2] = 1.0f;
+	instance.texCoords[3] = 1.0f;
+	instance.color[0] = r;
+	instance.color[1] = g;
+	instance.color[2] = b;
+	instance.color[3] = 1.0f;
+	instance.pivot[0] = 0.0f;
+	instance.pivot[1] = 0.0f;
+	instance.rotation = 0.0f;
+	instance._pad     = 0.0f;
+
+	// Full-window viewport (same as drawStretchPic).
+	MTL::Viewport vp;
+	vp.originX = 0.0;
+	vp.originY = 0.0;
+	vp.width   = static_cast<double>(config_.vidWidth);
+	vp.height  = static_cast<double>(config_.vidHeight);
+	vp.znear   = 0.0;
+	vp.zfar    = 1.0;
+	currentRenderEncoder_->setViewport(vp);
+
+	MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipelineFlare_.get());
+	if (depthState2D_) {
+		currentRenderEncoder_->setDepthStencilState(depthState2D_.get());
+	}
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+	currentRenderEncoder_->setVertexBytes(&instance, sizeof(instance), 0);
+	MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, texture);
+	MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler2D_.get());
+	currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangleStrip,
+	                                      NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
+}
+
+// Register (lazily) and return the flare shader handle.
+qhandle_t MetalRenderer::getFlareShader() {
+	if (!flareShaderHandle_) {
+		flareShaderHandle_ = registerShader("flareShader", false);
+		if (!flareShaderHandle_) {
+			// Fall back to the white texture if no flare shader is defined in game data.
+			flareShaderHandle_ = registerShader("white", false);
+		}
+	}
+	return flareShaderHandle_;
+}
+
+// Fill out the current scene camera matrices and viewport for tr_flares.cpp.
+void MetalRenderer::getSceneCameraForFlares(float viewMat[16], float projMat[16],
+                                            float viewOrg[3],
+                                            int* vpX, int* vpY, int* vpW, int* vpH) const {
+	if (!sceneCamera_.valid) {
+		for (int i = 0; i < 16; i++) { viewMat[i] = projMat[i] = 0.0f; }
+		viewOrg[0] = viewOrg[1] = viewOrg[2] = 0.0f;
+		if (vpX) *vpX = 0;
+		if (vpY) *vpY = 0;
+		if (vpW) *vpW = 0;
+		if (vpH) *vpH = 0;
+		return;
+	}
+
+	Mat4Copy(sceneCamera_.viewMatrix,       viewMat);
+	Mat4Copy(sceneCamera_.projectionMatrix, projMat);
+	VectorCopy(sceneCamera_.viewOrigin, viewOrg);
+
+	const refdef_t& rd = sceneCamera_.refdef;
+	if (vpX) *vpX = rd.x;
+	if (vpY) *vpY = rd.y;
+	if (vpW) *vpW = rd.width;
+	if (vpH) *vpH = rd.height;
+}
+
 bool MetalRenderer::ensureDepthTexture(int width, int height) {
 	if (!device_ || width <= 0 || height <= 0) {
 		depthTexture_.reset();
@@ -2551,7 +3635,13 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 	const char* ext = strrchr(name, '.');
 	qhandle_t result = 0;
 
-	if (ext && !Q_stricmp(ext, ".md3")) {
+	if (ext && !Q_stricmp(ext, ".mdr")) {
+		// Load MDR skeletal model
+		result = MetalModel_RegisterMDR(name, model, ri_);
+	} else if (ext && !Q_stricmp(ext, ".iqm")) {
+		// Load IQM skeletal model
+		result = MetalModel_RegisterIQM(name, model, ri_);
+	} else if (ext && !Q_stricmp(ext, ".md3")) {
 		// Load MD3 model
 		result = MetalModel_RegisterMD3(name, model, ri_);
 	} else {
@@ -2561,7 +3651,18 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 		result = MetalModel_RegisterMD3(namebuf, model, ri_);
 
 		if (!result) {
-			// Try other formats in the future (MDR, IQM)
+			// Try MDR if MD3 fails
+			Com_sprintf(namebuf, sizeof(namebuf), "%s.mdr", name);
+			result = MetalModel_RegisterMDR(namebuf, model, ri_);
+		}
+
+		if (!result) {
+			// Try IQM if MDR fails
+			Com_sprintf(namebuf, sizeof(namebuf), "%s.iqm", name);
+			result = MetalModel_RegisterIQM(namebuf, model, ri_);
+		}
+
+		if (!result) {
 			ri_.Printf(PRINT_WARNING, "MetalRenderer::registerModel: couldn't load %s\n", name);
 			model->type = MetalModelType::BAD;
 		}
@@ -2570,34 +3671,42 @@ qhandle_t MetalRenderer::registerModel(const char* name) {
 	if (result) {
 		ri_.Printf(PRINT_DEVELOPER, "Metal: loaded model '%s' as handle %d\n", name, handle);
 
-		// Create GPU buffers for the model
-		if (device_) {
-			if (!MetalModel_CreateGPUBuffers(model, device_.get())) {
-				ri_.Printf(PRINT_WARNING, "Metal: Failed to create GPU buffers for model '%s'\n", name);
+		if (model->type == MetalModelType::MDR) {
+			// Register shaders embedded in MDR surfaces
+			registerMDRShaders(model);
+		} else if (model->type == MetalModelType::IQM) {
+			// Register shaders embedded in IQM surfaces
+			registerIQMShaders(model);
+		} else {
+			// Create GPU buffers for MD3 models
+			if (device_) {
+				if (!MetalModel_CreateGPUBuffers(model, device_.get())) {
+					ri_.Printf(PRINT_WARNING, "Metal: Failed to create GPU buffers for model '%s'\n", name);
+				}
 			}
-		}
 
-		// Register shaders for all surfaces in all LODs
-		// This matches OpenGL2's approach where shaders are registered during model load
-		for (int lod = 0; lod < model->numLods; lod++) {
-			MetalModelLOD* lodData = model->lods[lod];
-			if (!lodData) continue;
+			// Register shaders for all surfaces in all LODs
+			// This matches OpenGL2's approach where shaders are registered during model load
+			for (int lod = 0; lod < model->numLods; lod++) {
+				MetalModelLOD* lodData = model->lods[lod];
+				if (!lodData) continue;
 
-			for (int surf = 0; surf < lodData->numSurfaces; surf++) {
-				MetalModelSurface& surface = lodData->surfaces[surf];
+				for (int surf = 0; surf < lodData->numSurfaces; surf++) {
+					MetalModelSurface& surface = lodData->surfaces[surf];
 
-				// Register each shader name and store the handle
-				for (size_t i = 0; i < surface.shaderNames.size(); i++) {
-					const std::string& shaderName = surface.shaderNames[i];
-					if (!shaderName.empty()) {
-						qhandle_t shaderHandle = registerShader(shaderName.c_str(), true);
-					surface.shaderIndexes[i] = shaderHandle;
+					// Register each shader name and store the handle
+					for (size_t i = 0; i < surface.shaderNames.size(); i++) {
+						const std::string& shaderName = surface.shaderNames[i];
+						if (!shaderName.empty()) {
+							qhandle_t shaderHandle = registerShader(shaderName.c_str(), true);
+						surface.shaderIndexes[i] = shaderHandle;
 
-					if (ri_.Printf && shaderHandle > 0 && shaderHandle < shaderResources_.size()) {
-						const MetalShaderResource& res = shaderResources_[shaderHandle];
-						ri_.Printf(PRINT_ALL, "MD3: Registered shader '%s' -> handle %d, primaryImage %d for model '%s' surf %d\n",
-						          shaderName.c_str(), shaderHandle, res.primaryImageHandle, name, surf);
-					}
+						if (ri_.Printf && shaderHandle > 0 && shaderHandle < shaderResources_.size()) {
+							const MetalShaderResource& res = shaderResources_[shaderHandle];
+							ri_.Printf(PRINT_ALL, "MD3: Registered shader '%s' -> handle %d, primaryImage %d for model '%s' surf %d\n",
+							          shaderName.c_str(), shaderHandle, res.primaryImageHandle, name, surf);
+						}
+						}
 					}
 				}
 			}
@@ -2898,11 +4007,14 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 	float ndcW = w * 2.0f / config_.vidWidth;
 	float ndcH = h * 2.0f / config_.vidHeight;
 
-	// Build quad instance data
+	// Build quad instance data — must match ui_2d.metal QuadInstance layout exactly
 	struct QuadInstance {
 		float rect[4];      // x, y, w, h in NDC
 		float texCoords[4]; // s1, t1, s2, t2
 		float color[4];     // RGBA
+		float pivot[2];     // rotation pivot in NDC (unused when rotation == 0)
+		float rotation;     // rotation angle in radians
+		float _pad;
 	};
 
 	QuadInstance instance;
@@ -2918,6 +4030,10 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 	instance.color[1] = currentColor_[1];
 	instance.color[2] = currentColor_[2];
 	instance.color[3] = currentColor_[3];
+	instance.pivot[0] = 0.0f;
+	instance.pivot[1] = 0.0f;
+	instance.rotation = 0.0f;
+	instance._pad = 0.0f;
 
 	// Set viewport (full screen)
 	MTL::Viewport vp;
@@ -2939,11 +4055,134 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 	currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
 }
 
+// Helper shared by drawRotatePic and drawRotatePic2 — submits a rotated quad instance.
+// pivotNdcX/pivotNdcY specify the NDC-space rotation pivot.
+void MetalRenderer::drawRotatePicImpl(float x, float y, float w, float h,
+                                      float s1, float t1, float s2, float t2,
+                                      float degrees, qhandle_t shader,
+                                      float pivotNdcX, float pivotNdcY) {
+	submitScene();
+	ensureSceneRendered();
+
+	if (!device_ || !currentRenderEncoder_) {
+		return;
+	}
+
+	TextureManager* textureManager = ensureTextureManager();
+	if (!textureManager) {
+		return;
+	}
+
+	if (!create2DPipeline()) {
+		return;
+	}
+
+	MetalShaderResource* shaderResource = getShaderResource(shader);
+	if (!shaderResource) {
+		shaderResource = getShaderResource(0);
+	}
+	if (!shaderResource) {
+		return;
+	}
+
+	const auto* stageRuntime = getPrimaryStageRuntime(*shaderResource);
+	float timeSeconds = 0.0f;
+	if (ri_.Milliseconds) {
+		timeSeconds = static_cast<float>(ri_.Milliseconds()) * 0.001f;
+	}
+	qhandle_t imageHandle = selectStageImage(*shaderResource, stageRuntime, timeSeconds);
+	MTL::Texture* texture = textureManager->getTexture(imageHandle);
+	if (!texture) {
+		texture = textureManager->getTexture(0);
+		if (!texture) {
+			return;
+		}
+	}
+
+	MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipeline2D_.get());
+	if (depthState2D_) {
+		currentRenderEncoder_->setDepthStencilState(depthState2D_.get());
+	}
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+
+	float ndcX = (x * 2.0f / config_.vidWidth) - 1.0f;
+	float ndcY = 1.0f - (y * 2.0f / config_.vidHeight);
+	float ndcW = w * 2.0f / config_.vidWidth;
+	float ndcH = h * 2.0f / config_.vidHeight;
+
+	// Must match ui_2d.metal QuadInstance layout exactly
+	struct QuadInstance {
+		float rect[4];
+		float texCoords[4];
+		float color[4];
+		float pivot[2];
+		float rotation;
+		float _pad;
+	};
+
+	QuadInstance instance;
+	instance.rect[0] = ndcX;
+	instance.rect[1] = ndcY;
+	instance.rect[2] = ndcW;
+	instance.rect[3] = -ndcH;
+	instance.texCoords[0] = s1;
+	instance.texCoords[1] = t1;
+	instance.texCoords[2] = s2;
+	instance.texCoords[3] = t2;
+	instance.color[0] = currentColor_[0];
+	instance.color[1] = currentColor_[1];
+	instance.color[2] = currentColor_[2];
+	instance.color[3] = currentColor_[3];
+	instance.pivot[0] = pivotNdcX;
+	instance.pivot[1] = pivotNdcY;
+	instance.rotation = degrees * (float)(M_PI / 180.0);
+	instance._pad = 0.0f;
+
+	MTL::Viewport vp;
+	vp.originX = 0.0;
+	vp.originY = 0.0;
+	vp.width = static_cast<double>(config_.vidWidth);
+	vp.height = static_cast<double>(config_.vidHeight);
+	vp.znear = 0.0;
+	vp.zfar = 1.0;
+	currentRenderEncoder_->setViewport(vp);
+
+	currentRenderEncoder_->setVertexBytes(&instance, sizeof(instance), 0);
+	MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, texture);
+	MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler2D_.get());
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+
+	currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangleStrip, NS::UInteger(0), NS::UInteger(4), NS::UInteger(1));
+}
+
+// Rotates around the top-left corner (x, y).
+void MetalRenderer::drawRotatePic(float x, float y, float w, float h,
+                                  float s1, float t1, float s2, float t2,
+                                  float degrees, qhandle_t shader) {
+	float pivotNdcX = (x * 2.0f / config_.vidWidth) - 1.0f;
+	float pivotNdcY = 1.0f - (y * 2.0f / config_.vidHeight);
+	drawRotatePicImpl(x, y, w, h, s1, t1, s2, t2, degrees, shader, pivotNdcX, pivotNdcY);
+}
+
+// Rotates around the center of the quad.
+void MetalRenderer::drawRotatePic2(float x, float y, float w, float h,
+                                   float s1, float t1, float s2, float t2,
+                                   float degrees, qhandle_t shader) {
+	float ndcX = (x * 2.0f / config_.vidWidth) - 1.0f;
+	float ndcY = 1.0f - (y * 2.0f / config_.vidHeight);
+	float ndcW = w * 2.0f / config_.vidWidth;
+	float ndcH = h * 2.0f / config_.vidHeight;
+	float pivotNdcX = ndcX + ndcW * 0.5f;
+	float pivotNdcY = ndcY - ndcH * 0.5f;
+	drawRotatePicImpl(x, y, w, h, s1, t1, s2, t2, degrees, shader, pivotNdcX, pivotNdcY);
+}
+
 void MetalRenderer::beginFrame(stereoFrame_t stereoFrame) {
-	MetalScene_BeginFrame();
-	stereoFrame_ = stereoFrame;
 	sceneReady_ = false;
 	sceneDispatched_ = false;
+
+	// Advance the scene frame counter so submitScene() can detect the new frame.
+	MetalScene_BeginFrame();
 
 	if (!device_) {
 		int width = 1280;
@@ -3060,6 +4299,12 @@ void MetalRenderer::endFrame(int* frontEndMsec, int* backEndMsec) {
 	submitScene();
 	ensureSceneRendered();
 
+	// Render lens flares on top of the 3-D scene, before ending the encoder.
+	if (r_flares_ && r_flares_->integer) {
+		RB_AddDlightFlares();
+		RB_RenderFlares();
+	}
+
 	if (currentRenderEncoder_) {
 		currentRenderEncoder_->endEncoding();
 		currentRenderEncoder_->release();
@@ -3166,7 +4411,9 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 }
 
 void MetalRenderer::processPolys(const MetalSceneState& scene) {
-	appendWorldGeometry();
+	if (!(scene.refdef.rdflags & RDF_NOWORLDMODEL)) {
+		appendWorldGeometry();
+	}
 	for (int i = 0; i < scene.numPolys; ++i) {
 		const MetalScenePolyRange& range = scene.polys[i];
 		if (range.numVerts <= 0) {
@@ -3483,6 +4730,9 @@ bool MetalRenderer::uploadSceneUniforms() {
 		sceneUniforms_.overBrightBits = 0.0f;
 	}
 
+	// Set greyscale
+	sceneUniforms_.greyscale = r_greyscale_ ? r_greyscale_->value : 0.0f;
+
 	std::memcpy(sceneUniformBuffer_->contents(), &sceneUniforms_, sizeof(SceneUniforms));
 	return true;
 }
@@ -3761,6 +5011,27 @@ void MetalRenderer::buildShaderStageRuntime(MetalRenderer::MetalShaderResource& 
 		}
 		if (runtime.primaryStageImage == 0 && !runtime.stageImageHandles.empty()) {
 			runtime.primaryStageImage = runtime.stageImageHandles[0];
+		}
+
+		// Probe for companion normal-map and specular-map files alongside the primary diffuse.
+		// Skip stages that use the lightmap or white-image placeholder.
+		if (runtime.primaryStageImage != 0 && !stageInfo.usesLightmap && !stageInfo.usesWhiteImage
+		    && !stageInfo.imagePaths.empty()) {
+			const std::string basePath = normalizePath(stageInfo.imagePaths[0]);
+			if (!basePath.empty()) {
+				TextureManager* tm = ensureTextureManager();
+				auto probeMap = [&](const std::initializer_list<const char*>& suffixes) -> qhandle_t {
+					for (const char* suffix : suffixes) {
+						std::string candidate = basePath + suffix;
+						if (assetExists(candidate.c_str()) && tm) {
+							return tm->registerShader(candidate.c_str(), true);
+						}
+					}
+					return 0;
+				};
+				runtime.normalMapHandle   = probeMap({"_n.tga",    "_norm.tga",     "_normal.tga"});
+				runtime.specularMapHandle = probeMap({"_s.tga",    "_spec.tga",     "_specular.tga"});
+			}
 		}
 	}
 
@@ -4391,6 +5662,106 @@ bool MetalRenderer::ensureModelPipeline() {
 	return true;
 }
 
+bool MetalRenderer::ensureShadowPipeline() {
+	if (shadowPipeline_) {
+		return true;
+	}
+	if (!device_ || !depthTexture_) {
+		return false;
+	}
+
+	if (!sceneLibrary_) {
+		sceneLibrary_.reset(device_->newDefaultLibrary());
+		if (!sceneLibrary_) {
+			return false;
+		}
+	}
+
+	if (!shadowVertexFunction_) {
+		NS::String* name = NS::String::string("vertex_shadow", NS::UTF8StringEncoding);
+		shadowVertexFunction_.reset(sceneLibrary_->newFunction(name));
+		if (!shadowVertexFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to load vertex_shadow shader function\n");
+			}
+			return false;
+		}
+	}
+
+	if (!shadowFragmentFunction_) {
+		NS::String* name = NS::String::string("fragment_shadow", NS::UTF8StringEncoding);
+		shadowFragmentFunction_.reset(sceneLibrary_->newFunction(name));
+		if (!shadowFragmentFunction_) {
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_WARNING, "Metal: Failed to load fragment_shadow shader function\n");
+			}
+			return false;
+		}
+	}
+
+	// Vertex descriptor: one attribute - float3 position, stride 12 bytes
+	if (!shadowVertexDescriptor_) {
+		shadowVertexDescriptor_.reset(MTL::VertexDescriptor::alloc()->init());
+
+		MTL::VertexAttributeDescriptor* attr0 = shadowVertexDescriptor_->attributes()->object(0);
+		attr0->setFormat(MTL::VertexFormatFloat3);
+		attr0->setOffset(0);
+		attr0->setBufferIndex(0);
+
+		MTL::VertexBufferLayoutDescriptor* layout0 = shadowVertexDescriptor_->layouts()->object(0);
+		layout0->setStride(sizeof(float) * 3);
+		layout0->setStepRate(1);
+		layout0->setStepFunction(MTL::VertexStepFunctionPerVertex);
+	}
+
+	// Pipeline: dark translucent, SrcAlpha / OneMinusSrcAlpha blending
+	NS::Error* error = nullptr;
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+
+	pd->setVertexFunction(shadowVertexFunction_.get());
+	pd->setFragmentFunction(shadowFragmentFunction_.get());
+	pd->setVertexDescriptor(shadowVertexDescriptor_.get());
+
+	MTL::RenderPipelineColorAttachmentDescriptor* ca = pd->colorAttachments()->object(0);
+	ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	ca->setBlendingEnabled(true);
+	ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+	ca->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	ca->setRgbBlendOperation(MTL::BlendOperationAdd);
+	ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	ca->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+	ca->setAlphaBlendOperation(MTL::BlendOperationAdd);
+
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	shadowPipeline_.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+
+	if (!shadowPipeline_) {
+		if (error && ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create shadow pipeline: %s\n",
+				error->localizedDescription()->utf8String());
+			error->release();
+		}
+		return false;
+	}
+
+	// Depth state: depth test enabled (LessEqual), depth write disabled
+	// so multiple shadow passes don't z-fight with each other.
+	if (!shadowDepthState_) {
+		MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+		depthDesc->setDepthWriteEnabled(false);
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLessEqual);
+		shadowDepthState_.reset(device_->newDepthStencilState(depthDesc));
+		depthDesc->release();
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL, "Metal: Created projection shadow pipeline\n");
+	}
+	return true;
+}
+
 MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(const MetalRenderer::MetalShaderResource::MetalPipelineKey& key) {
 	if (!ensureSceneShaderResources()) {
 		return nullptr;
@@ -4522,9 +5893,10 @@ bool MetalRenderer::drawPolyPackets() {
 	if (polyPackets_.empty()) {
 		return true;
 	}
-	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
-		// if (ri_.Printf) ri_.Printf(PRINT_ALL, "Metal: drawPolyPackets early exit - encoder=%p buffer=%p verts=%d\n",
-		//                           currentRenderEncoder_, polyVertexBuffer_.get(), static_cast<int>(polyVertexCountGPU_));
+	// Allow rendering as long as we have a static world buffer or a populated dynamic buffer.
+	const bool hasStaticWorld = (staticWorldVertexBuffer_.get() != nullptr);
+	const bool hasDynamic     = (polyVertexBuffer_ && polyVertexCountGPU_ > 0);
+	if (!currentRenderEncoder_ || (!hasStaticWorld && !hasDynamic)) {
 		return true;
 	}
 	if (!sceneUniformBuffer_) {
@@ -4536,18 +5908,11 @@ bool MetalRenderer::drawPolyPackets() {
 		return false;
 	}
 
-	// if (ri_.Printf) {
-	// 	static int frameCount = 0;
-	// 	if (frameCount++ % 60 == 0) {
-	// 		ri_.Printf(PRINT_ALL, "Metal: drawPolyPackets - %zu packets, %d GPU verts\n",
-	// 		          polyPackets_.size(), static_cast<int>(polyVertexCountGPU_));
-	// 	}
-	// }
-
-	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	// Bind uniform buffers once; the geometry vertex buffer (slot 0) is switched
+	// lazily per-packet between staticWorldVertexBuffer_ and polyVertexBuffer_.
 	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
-
-	// Setup default entity lighting for world surfaces
+	// Also bind sceneUniformBuffer to the fragment stage so uniforms.viewOrigin is valid.
+	currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 1);
 	// World surfaces use lightmaps, so entity lighting provides fallback/ambient
 	EntityLightingParams defaultLighting{};
 	// Use identity lighting (white) - surfaces will be lit by lightmaps
@@ -4576,6 +5941,8 @@ bool MetalRenderer::drawPolyPackets() {
 	MTL::DepthStencilState* boundDepthState = nullptr;
 	qhandle_t boundImageHandle = -1;
 	MTL::Texture* boundTexture = nullptr;
+	// Track which vertex buffer is currently bound to slot 0 to minimize rebinds.
+	MTL::Buffer* currentVtxBuffer = nullptr;
 	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
 	StageFragmentParams lastFragmentParams{};
 	bool hasFragmentParams = false;
@@ -4594,7 +5961,7 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 
 		// Set tcGen type for shader
-		// 0 = Texture (base texcoords), 1 = Lightmap, 2 = Environment
+		// 0=Texture, 1=Lightmap, 2=Environment, 3=Vector, 4=Fog
 		switch (stageInfo->tcGen.type) {
 			case MetalTCGen::Lightmap:
 				params.tcGenType = 1.0f;
@@ -4604,6 +5971,20 @@ bool MetalRenderer::drawPolyPackets() {
 				params.tcGenType = 2.0f;
 				params.texCoordSelector = 0.0f;
 				break;
+			case MetalTCGen::Vector:
+				params.tcGenType = 3.0f;
+				params.tcGenSVector[0] = stageInfo->tcGen.sVector[0];
+				params.tcGenSVector[1] = stageInfo->tcGen.sVector[1];
+				params.tcGenSVector[2] = stageInfo->tcGen.sVector[2];
+				params.tcGenSVector[3] = 0.0f;
+				params.tcGenTVector[0] = stageInfo->tcGen.tVector[0];
+				params.tcGenTVector[1] = stageInfo->tcGen.tVector[1];
+				params.tcGenTVector[2] = stageInfo->tcGen.tVector[2];
+				params.tcGenTVector[3] = 0.0f;
+				break;
+			case MetalTCGen::Fog:
+				params.tcGenType = 4.0f;
+				break;
 			default:
 				params.tcGenType = 0.0f;
 				params.texCoordSelector = 0.0f;
@@ -4611,14 +5992,12 @@ bool MetalRenderer::drawPolyPackets() {
 		}
 
 		// Set rgbGen type for shader
-		// 0 = Vertex (use vertex colors), 1 = Identity (white), 2 = IdentityLighting, 3 = LightingDiffuse, 4 = Wave
-		// IMPORTANT: For world surfaces with lightmaps, override lightingDiffuse → vertex
-		// This matches OpenGL2's behavior where surfaces with lightmaps use CGEN_EXACT_VERTEX
+		// 0=Vertex, 1=Identity, 2=IdentityLighting, 3=LightingDiffuse, 4=Wave,
+		// 5=Const, 6=Entity, 7=OneMinusEntity, 8=OneMinusVertex
+		// For world surfaces with lightmaps, override lightingDiffuse → vertex
+		// (matches OpenGL2's behavior where lightmapped surfaces use CGEN_EXACT_VERTEX)
 		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
 		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0 && !stageInfo->usesLightmap) {
-			// Surface has a lightmap AND this stage doesn't use $lightmap texture
-			// Use vertex colors (lightmap data) instead of entity lighting
-			// Stages using $lightmap texture should keep their rgbGen (usually identity)
 			effectiveRgbGen = MetalRGBGen::Vertex;
 		}
 
@@ -4634,17 +6013,66 @@ bool MetalRenderer::drawPolyPackets() {
 				break;
 			case MetalRGBGen::Wave:
 				params.rgbGenType = 4.0f;
-				// Evaluate the wave function to get color scale
 				params.waveColorScale = EvalWaveForm(stageInfo->rgbGen.wave, timeSeconds);
-				// Clamp to 0-1 range (matches GL2 behavior for clamped wave)
 				if (params.waveColorScale < 0.0f) params.waveColorScale = 0.0f;
 				if (params.waveColorScale > 1.0f) params.waveColorScale = 1.0f;
+				break;
+			case MetalRGBGen::Const:
+				params.rgbGenType = 5.0f;
+				params.constColor[0] = stageInfo->rgbGen.constColor[0];
+				params.constColor[1] = stageInfo->rgbGen.constColor[1];
+				params.constColor[2] = stageInfo->rgbGen.constColor[2];
+				params.constColor[3] = stageInfo->rgbGen.constColor[3];
+				break;
+			case MetalRGBGen::Entity:
+				params.rgbGenType = 6.0f;
+				// World entity is always white (shaderRGBA = {255,255,255,255})
+				params.entityColor[0] = params.entityColor[1] = params.entityColor[2] = params.entityColor[3] = 1.0f;
+				break;
+			case MetalRGBGen::OneMinusEntity:
+				params.rgbGenType = 7.0f;
+				params.entityColor[0] = params.entityColor[1] = params.entityColor[2] = params.entityColor[3] = 1.0f;
+				break;
+			case MetalRGBGen::OneMinusVertex:
+				params.rgbGenType = 8.0f;
 				break;
 			default:
 				params.rgbGenType = 0.0f;  // Use vertex color
 				break;
 		}
-		
+
+		// alphaGen handling - matches GL2's ComputeShaderColors alphaGen block
+		switch (stageInfo->alphaGen.type) {
+			case MetalAlphaGen::Entity:
+				params.alphaGenType = 1.0f;
+				// entityColor.a already set to 1.0 (world entity); reuse entityColor slot
+				params.entityColor[3] = 1.0f;
+				break;
+			case MetalAlphaGen::OneMinusEntity:
+				params.alphaGenType = 2.0f;
+				params.entityColor[3] = 1.0f;
+				break;
+			case MetalAlphaGen::Wave: {
+				params.alphaGenType = 3.0f;
+				float w = EvalWaveForm(stageInfo->alphaGen.wave, timeSeconds);
+				if (w < 0.0f) w = 0.0f;
+				if (w > 1.0f) w = 1.0f;
+				params.alphaWaveValue = w;
+				break;
+			}
+			case MetalAlphaGen::LightingSpecular:
+				params.alphaGenType = 4.0f;
+				break;
+			case MetalAlphaGen::Portal:
+				params.alphaGenType = 5.0f;
+				params.portalRange = (stageInfo->alphaGen.portalRange > 0.0f)
+				                     ? stageInfo->alphaGen.portalRange : 256.0f;
+				break;
+			default:
+				params.alphaGenType = 0.0f;
+				break;
+		}
+
 		const int alphaFunc = stageInfo->alphaFunc;
 		if (alphaFunc == 0) {
 			return params;
@@ -4669,9 +6097,24 @@ bool MetalRenderer::drawPolyPackets() {
 		if (packet.vertexCount <= 0) {
 			return;
 		}
-		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
-		if (endVertex > polyVertexCountGPU_) {
-			return;
+
+		// Select and (if necessary) bind the correct geometry vertex buffer for this packet.
+		MTL::Buffer* requiredVtxBuffer = nullptr;
+		if (packet.isStaticWorld) {
+			if (!hasStaticWorld) return;
+			const size_t totalVerts = staticWorldVertexBufferSize_ / sizeof(MetalPolyVertex);
+			const size_t endVertex  = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
+			if (endVertex > totalVerts) return;
+			requiredVtxBuffer = staticWorldVertexBuffer_.get();
+		} else {
+			if (!hasDynamic) return;
+			const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
+			if (endVertex > polyVertexCountGPU_) return;
+			requiredVtxBuffer = polyVertexBuffer_.get();
+		}
+		if (requiredVtxBuffer != currentVtxBuffer) {
+			currentRenderEncoder_->setVertexBuffer(requiredVtxBuffer, 0, 0);
+			currentVtxBuffer = requiredVtxBuffer;
 		}
 
 		MetalShaderResource* shaderResource = getShaderResource(packet.shader);
@@ -4762,7 +6205,29 @@ bool MetalRenderer::drawPolyPackets() {
 			bool useClamp = stageInfo && stageInfo->clampMap;
 			MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 			MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
-			
+
+			// Bind normal-map (texture 1) and specular-map (texture 2) for this stage.
+			// When no map was detected, fall back to the white/default texture so the
+			// shader slot is always valid; useNormalMap/useSpecularMap flags disable sampling.
+			{
+				NormalSpecularParams nsParams{};
+				MTL::Texture* normalTex = defaultTexture;
+				MTL::Texture* specTex   = defaultTexture;
+				if (stageRuntime) {
+					if (stageRuntime->normalMapHandle > 0) {
+						MTL::Texture* t = texManager->getTexture(stageRuntime->normalMapHandle);
+						if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+					}
+					if (stageRuntime->specularMapHandle > 0) {
+						MTL::Texture* t = texManager->getTexture(stageRuntime->specularMapHandle);
+						if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+					}
+				}
+				currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+				currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
+			}
+
 			currentRenderEncoder_->drawPrimitives(packet.primitive,
 			                                   static_cast<NS::UInteger>(packet.firstVertex),
 			                                   static_cast<NS::UInteger>(packet.vertexCount));
@@ -4810,9 +6275,9 @@ bool MetalRenderer::drawPolyPackets() {
 		if (isSkyboxPacket(packet)) {
 			if (!skyboxRenderedThisFrame_) {
 				drawSkybox(packet.shader);
-				// Reset state after skybox rendering - MUST rebind vertex buffer
-				// because skybox uses setVertexBytes which overrides the binding
-				currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+				// Reset state after skybox rendering — skybox uses its own vertex buffer,
+				// so force a rebind of the geometry buffer on the next draw call.
+				currentVtxBuffer = nullptr;
 				currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
 				boundPipeline = nullptr;
 				boundDepthState = nullptr;
@@ -4828,9 +6293,9 @@ bool MetalRenderer::drawPolyPackets() {
 		if (isCloudSkyPacket(packet)) {
 			if (!skyboxRenderedThisFrame_) {
 				drawCloudSky(packet.shader);
-				// Reset state after cloud sky rendering - MUST rebind vertex buffer
-				// because cloud sky uses setVertexBytes which overrides the binding
-				currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+				// Reset state after cloud sky rendering — cloud sky uses its own vertex buffer,
+				// so force a rebind of the geometry buffer on the next draw call.
+				currentVtxBuffer = nullptr;
 				currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
 				boundPipeline = nullptr;
 				boundDepthState = nullptr;
@@ -4877,7 +6342,9 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 	if (polyPackets_.empty()) {
 		return true;
 	}
-	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+	const bool hasStaticWorld = (staticWorldVertexBuffer_.get() != nullptr);
+	const bool hasDynamic     = (polyVertexBuffer_ && polyVertexCountGPU_ > 0);
+	if (!currentRenderEncoder_ || (!hasStaticWorld && !hasDynamic)) {
 		return true;
 	}
 	if (!sceneUniformBuffer_) {
@@ -4887,10 +6354,8 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 		return false;
 	}
 
-	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
 	currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
-
-	// Setup default entity lighting
+	currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 1);
 	EntityLightingParams defaultLighting{};
 	defaultLighting.ambientLight[0] = 255.0f;
 	defaultLighting.ambientLight[1] = 255.0f;
@@ -4917,6 +6382,7 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 	MTL::DepthStencilState* boundDepthState = nullptr;
 	qhandle_t boundImageHandle = -1;
 	MTL::Texture* boundTexture = nullptr;
+	MTL::Buffer* currentVtxBuffer = nullptr;
 	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
 
 	// Draw all non-portal, non-sky packets
@@ -4939,13 +6405,24 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 			continue;
 		}
 
-		// Skip invalid packets
+		// Skip invalid packets and select vertex buffer
 		if (packet.vertexCount <= 0) {
 			continue;
 		}
-		const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
-		if (endVertex > polyVertexCountGPU_) {
-			continue;
+		MTL::Buffer* requiredVtxBuffer = nullptr;
+		if (packet.isStaticWorld) {
+			if (!hasStaticWorld) continue;
+			const size_t totalVerts = staticWorldVertexBufferSize_ / sizeof(MetalPolyVertex);
+			if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > totalVerts) continue;
+			requiredVtxBuffer = staticWorldVertexBuffer_.get();
+		} else {
+			if (!hasDynamic) continue;
+			if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > polyVertexCountGPU_) continue;
+			requiredVtxBuffer = polyVertexBuffer_.get();
+		}
+		if (requiredVtxBuffer != currentVtxBuffer) {
+			currentRenderEncoder_->setVertexBuffer(requiredVtxBuffer, 0, 0);
+			currentVtxBuffer = requiredVtxBuffer;
 		}
 
 		// Draw the packet (simplified single-stage rendering)
@@ -5013,6 +6490,24 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 		bool useClamp = stageRuntime->stageInfo && stageRuntime->stageInfo->clampMap;
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
+
+		// Bind normal/specular maps so all fragment buffer slots are valid.
+		{
+			NormalSpecularParams nsParams{};
+			MTL::Texture* normalTex = defaultTexture;
+			MTL::Texture* specTex   = defaultTexture;
+			if (stageRuntime->normalMapHandle > 0) {
+				MTL::Texture* t = texManager->getTexture(stageRuntime->normalMapHandle);
+				if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+			}
+			if (stageRuntime->specularMapHandle > 0) {
+				MTL::Texture* t = texManager->getTexture(stageRuntime->specularMapHandle);
+				if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+			}
+			currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+			currentRenderEncoder_->setFragmentTexture(specTex,   2);
+			currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
+		}
 
 		currentRenderEncoder_->drawPrimitives(packet.primitive,
 		                                       static_cast<NS::UInteger>(packet.firstVertex),
@@ -5661,7 +7156,9 @@ bool MetalRenderer::drawDynamicLights() {
 		return true;  // No lights
 	}
 
-	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+	const bool hasStaticWorld = (staticWorldVertexBuffer_.get() != nullptr);
+	const bool hasDynamic     = (polyVertexBuffer_ && polyVertexCountGPU_ > 0);
+	if (!currentRenderEncoder_ || (!hasStaticWorld && !hasDynamic)) {
 		return true;  // No geometry to light
 	}
 
@@ -5676,7 +7173,6 @@ bool MetalRenderer::drawDynamicLights() {
 
 	// Set dlight pipeline and resources
 	currentRenderEncoder_->setRenderPipelineState(dlightPipeline_.get());
-	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
 	currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
 	currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
 
@@ -5691,6 +7187,7 @@ bool MetalRenderer::drawDynamicLights() {
 
 	int lightsRendered = 0;
 	int surfacesLit = 0;
+	MTL::Buffer* currentVtxBuffer = nullptr;
 
 	// Render each dynamic light
 	for (const SceneLightPacket& lightPacket : lightPackets_) {
@@ -5730,12 +7227,25 @@ bool MetalRenderer::drawDynamicLights() {
 
 		// Draw all surfaces that are within the light's radius
 		for (const ScenePolyPacket& packet : polyPackets_) {
-			// Simple culling: check if surface bounding sphere intersects light
-			// For now, just draw all surfaces (we'll add proper culling later)
-
-			// Skip if no vertices
 			if (packet.vertexCount <= 0) {
 				continue;
+			}
+
+			// Select and bind the correct vertex buffer for this packet
+			MTL::Buffer* requiredVtxBuffer = nullptr;
+			if (packet.isStaticWorld) {
+				if (!hasStaticWorld) continue;
+				const size_t totalVerts = staticWorldVertexBufferSize_ / sizeof(MetalPolyVertex);
+				if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > totalVerts) continue;
+				requiredVtxBuffer = staticWorldVertexBuffer_.get();
+			} else {
+				if (!hasDynamic) continue;
+				if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > polyVertexCountGPU_) continue;
+				requiredVtxBuffer = polyVertexBuffer_.get();
+			}
+			if (requiredVtxBuffer != currentVtxBuffer) {
+				currentRenderEncoder_->setVertexBuffer(requiredVtxBuffer, 0, 0);
+				currentVtxBuffer = requiredVtxBuffer;
 			}
 
 			// Draw the surface with dlight applied
@@ -5768,7 +7278,9 @@ bool MetalRenderer::drawFogPasses() {
 		return true;  // No fog to render
 	}
 
-	if (!currentRenderEncoder_ || !polyVertexBuffer_ || polyVertexCountGPU_ == 0) {
+	const bool hasStaticWorld = (staticWorldVertexBuffer_.get() != nullptr);
+	const bool hasDynamic     = (polyVertexBuffer_ && polyVertexCountGPU_ > 0);
+	if (!currentRenderEncoder_ || (!hasStaticWorld && !hasDynamic)) {
 		return true;  // No geometry to fog
 	}
 
@@ -5789,8 +7301,7 @@ bool MetalRenderer::drawFogPasses() {
 	currentRenderEncoder_->setDepthStencilState(fogDepthState_.get());
 	currentRenderEncoder_->setCullMode(MTL::CullModeNone);  // Allow viewing from inside fog
 
-	// Bind vertex buffer
-	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	MTL::Buffer* currentVtxBuffer = nullptr;
 
 	// int totalFoggedPackets = 0;
 	const float* viewOrigin = sceneCamera_.viewOrigin;
@@ -5847,9 +7358,21 @@ bool MetalRenderer::drawFogPasses() {
 				continue;
 			}
 
-			const size_t endVertex = static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount);
-			if (endVertex > polyVertexCountGPU_) {
-				continue;
+			// Select the correct vertex buffer for this packet
+			MTL::Buffer* requiredVtxBuffer = nullptr;
+			if (packet.isStaticWorld) {
+				if (!hasStaticWorld) continue;
+				const size_t totalVerts = staticWorldVertexBufferSize_ / sizeof(MetalPolyVertex);
+				if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > totalVerts) continue;
+				requiredVtxBuffer = staticWorldVertexBuffer_.get();
+			} else {
+				if (!hasDynamic) continue;
+				if (static_cast<size_t>(packet.firstVertex) + static_cast<size_t>(packet.vertexCount) > polyVertexCountGPU_) continue;
+				requiredVtxBuffer = polyVertexBuffer_.get();
+			}
+			if (requiredVtxBuffer != currentVtxBuffer) {
+				currentRenderEncoder_->setVertexBuffer(requiredVtxBuffer, 0, 0);
+				currentVtxBuffer = requiredVtxBuffer;
 			}
 
 			currentRenderEncoder_->drawPrimitives(packet.primitive,
@@ -5919,14 +7442,18 @@ void MetalRenderer::detectPortalSurfaces() {
 		}
 
 		// Compute plane equation from first triangle
-		if (packet.firstVertex < 0 || 
-		    static_cast<size_t>(packet.firstVertex + 2) >= polyVertices_.size()) {
+		if (packet.firstVertex < 0) {
+			continue;
+		}
+		const auto* verts = packet.isStaticWorld ? worldVertexTemplate_.data() : polyVertices_.data();
+		const size_t vsize = packet.isStaticWorld ? worldVertexTemplate_.size() : polyVertices_.size();
+		if (static_cast<size_t>(packet.firstVertex + 2) >= vsize) {
 			continue;
 		}
 
-		const MetalPolyVertex& v0 = polyVertices_[packet.firstVertex];
-		const MetalPolyVertex& v1 = polyVertices_[packet.firstVertex + 1];
-		const MetalPolyVertex& v2 = polyVertices_[packet.firstVertex + 2];
+		const MetalPolyVertex& v0 = verts[packet.firstVertex];
+		const MetalPolyVertex& v1 = verts[packet.firstVertex + 1];
+		const MetalPolyVertex& v2 = verts[packet.firstVertex + 2];
 
 		// Compute edge vectors
 		float e1[3] = {v1.xyz[0] - v0.xyz[0], v1.xyz[1] - v0.xyz[1], v1.xyz[2] - v0.xyz[2]};
@@ -5951,7 +7478,7 @@ void MetalRenderer::detectPortalSurfaces() {
 		// Compute center of surface (average all vertices)
 		float center[3] = {0.0f, 0.0f, 0.0f};
 		for (int j = 0; j < packet.vertexCount; ++j) {
-			const MetalPolyVertex& v = polyVertices_[packet.firstVertex + j];
+			const MetalPolyVertex& v = verts[packet.firstVertex + j];
 			center[0] += v.xyz[0];
 			center[1] += v.xyz[1];
 			center[2] += v.xyz[2];
@@ -6441,6 +7968,147 @@ void MetalRenderer::multiplyMatrices4x4(const float* a, const float* b, const fl
 	Mat4Multiply(temp, c, result);
 }
 
+/*
+ * renderModelShadow - projection (blob) shadow pass for a single MD3 surface.
+ *
+ * Mirrors RB_ProjectionShadowDeform() from renderergl2/tr_shadows.c exactly:
+ *   - ground is the world-up direction expressed in model space
+ *   - h = how far above the shadow plane each vertex sits (model space)
+ *   - deformed position = original - light * h  (projects vertex onto plane)
+ *
+ * The deformed vertices remain in model space; the same mvpMatrix that was
+ * used to render the surface is re-used here so they land correctly in clip space.
+ */
+void MetalRenderer::renderModelShadow(
+	const refEntity_t& ent,
+	MetalModelSurface& surface,
+	const float* mvpMatrix,
+	const vec3_t modelLightDir)
+{
+	if (!currentRenderEncoder_ || !shadowPipeline_ || !shadowDepthState_ || !device_) {
+		return;
+	}
+	if (!surface.indexBuffer || surface.numVerts <= 0 || surface.numIndexes <= 0) {
+		return;
+	}
+
+	// -----------------------------------------------------------------------
+	// Compute the shadow projection parameters (matches RB_ProjectionShadowDeform)
+	// -----------------------------------------------------------------------
+
+	// ground: world-up direction (Z axis) in model space.
+	// backEnd.or.axis[i][2] in GL2 == the Z-component of entity axis[i].
+	vec3_t ground;
+	ground[0] = ent.axis[0][2];
+	ground[1] = ent.axis[1][2];
+	ground[2] = ent.axis[2][2];
+
+	// groundDist: signed distance from entity origin to shadow plane in world Z.
+	const float groundDist = ent.origin[2] - ent.shadowPlane;
+
+	// lightDir adjusted so it never becomes too horizontal (d < 0.5 case).
+	vec3_t lightDir;
+	VectorCopy(modelLightDir, lightDir);
+	float d = DotProduct(lightDir, ground);
+	if (d < 0.5f) {
+		VectorMA(lightDir, (0.5f - d), ground, lightDir);
+		d = DotProduct(lightDir, ground);
+	}
+	d = 1.0f / d;
+
+	vec3_t light;
+	light[0] = lightDir[0] * d;
+	light[1] = lightDir[1] * d;
+	light[2] = lightDir[2] * d;
+
+	// -----------------------------------------------------------------------
+	// Clamp frame indices, compute lerp factor
+	// -----------------------------------------------------------------------
+	int oldFrame = ent.oldframe;
+	int newFrame = ent.frame;
+	if (oldFrame < 0) oldFrame = 0;
+	if (oldFrame >= surface.numFrames) oldFrame = surface.numFrames - 1;
+	if (newFrame < 0) newFrame = 0;
+	if (newFrame >= surface.numFrames) newFrame = surface.numFrames - 1;
+	const float vertexLerp = 1.0f - ent.backlerp;
+
+	// -----------------------------------------------------------------------
+	// Build shadow vertex buffer: deformed positions in model space (float3 each)
+	// -----------------------------------------------------------------------
+	const int numVerts = surface.numVerts;
+	std::vector<float> shadowPositions(numVerts * 3);
+
+	for (int i = 0; i < numVerts; i++) {
+		const MetalModelVertex& oldVert = surface.vertices[oldFrame * numVerts + i];
+		const MetalModelVertex& newVert = surface.vertices[newFrame * numVerts + i];
+
+		// Lerp between frames (matches vertex_model GPU lerp: mix(old, new, vertexLerp))
+		float xyz[3];
+		xyz[0] = oldVert.xyz[0] + vertexLerp * (newVert.xyz[0] - oldVert.xyz[0]);
+		xyz[1] = oldVert.xyz[1] + vertexLerp * (newVert.xyz[1] - oldVert.xyz[1]);
+		xyz[2] = oldVert.xyz[2] + vertexLerp * (newVert.xyz[2] - oldVert.xyz[2]);
+
+		// Height of this vertex above the shadow plane (model space)
+		const float h = DotProduct(xyz, ground) + groundDist;
+
+		// Project vertex onto shadow plane
+		xyz[0] -= light[0] * h;
+		xyz[1] -= light[1] * h;
+		xyz[2] -= light[2] * h;
+
+		shadowPositions[i * 3 + 0] = xyz[0];
+		shadowPositions[i * 3 + 1] = xyz[1];
+		shadowPositions[i * 3 + 2] = xyz[2];
+	}
+
+	MTL::Buffer* shadowVertexBuffer = device_->newBuffer(
+		shadowPositions.data(),
+		static_cast<NS::UInteger>(shadowPositions.size() * sizeof(float)),
+		MTL::ResourceStorageModeShared);
+	if (!shadowVertexBuffer) {
+		return;
+	}
+
+	// -----------------------------------------------------------------------
+	// Shadow shader uniforms (must match ShadowShaderUniforms in scene.metal)
+	// -----------------------------------------------------------------------
+	struct ShadowShaderUniforms {
+		float mvpMatrix[16];
+		float color[4];
+	};
+	ShadowShaderUniforms shadowUniforms{};
+	std::memcpy(shadowUniforms.mvpMatrix, mvpMatrix, sizeof(float) * 16);
+	shadowUniforms.color[0] = 0.0f;
+	shadowUniforms.color[1] = 0.0f;
+	shadowUniforms.color[2] = 0.0f;
+	shadowUniforms.color[3] = 0.5f;  // 50 % opaque black blob
+
+	// -----------------------------------------------------------------------
+	// Encode shadow draw call
+	// -----------------------------------------------------------------------
+	currentRenderEncoder_->setRenderPipelineState(shadowPipeline_.get());
+	currentRenderEncoder_->setDepthStencilState(shadowDepthState_.get());
+	// Render both faces so the shadow is visible from all angles
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+
+	currentRenderEncoder_->setVertexBuffer(shadowVertexBuffer, 0, 0);
+	currentRenderEncoder_->setVertexBytes(&shadowUniforms, sizeof(ShadowShaderUniforms), 1);
+	currentRenderEncoder_->setFragmentBytes(&shadowUniforms, sizeof(ShadowShaderUniforms), 1);
+
+	MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+	currentRenderEncoder_->drawIndexedPrimitives(
+		MTL::PrimitiveTypeTriangle,
+		static_cast<NS::UInteger>(surface.numIndexes),
+		MTL::IndexTypeUInt32,
+		indexBuffer,
+		0);
+
+	shadowVertexBuffer->release();
+
+	// Restore the cull mode used by model rendering (front-face culled for Q3 convention)
+	currentRenderEncoder_->setCullMode(MTL::CullModeFront);
+}
+
 MTL::Buffer* MetalRenderer::createModelVertexBuffer(const refEntity_t& ent, MetalModelSurface& surface) {
 	if (!device_) {
 		return nullptr;
@@ -6497,7 +8165,8 @@ void MetalRenderer::renderModelSurface(
 	const ModelFogParams& fogParams,
 	const vec3_t ambientLight,
 	const vec3_t directedLight,
-	const vec3_t lightDir)
+	const vec3_t lightDir,
+	uint32_t dlightBits)
 {
 	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_) {
 		return;
@@ -6665,7 +8334,27 @@ void MetalRenderer::renderModelSurface(
 			currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
 			currentRenderEncoder_->setFragmentBytes(&fogParams, sizeof(ModelFogParams), 1);
 			currentRenderEncoder_->setFragmentBytes(&stageParams, sizeof(ModelStageParams), 2);
-			
+			currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+			// Bind normal-map (texture 1) and specular-map (texture 2), plus NormalSpecularParams.
+			{
+				NormalSpecularParams nsParams{};
+				MTL::Texture* defaultTex = texMgr ? texMgr->getTexture(0) : nullptr;
+				MTL::Texture* normalTex  = defaultTex;
+				MTL::Texture* specTex    = defaultTex;
+				if (stageRuntime.normalMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.normalMapHandle);
+					if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+				}
+				if (stageRuntime.specularMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.specularMapHandle);
+					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+				}
+				if (normalTex) currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+				if (specTex)   currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+			}
+
 			// Bind texture for this stage
 			qhandle_t textureHandle = stageRuntime.primaryStageImage;
 			if (textureHandle == 0 && shaderRes->primaryImageHandle > 0) {
@@ -6714,7 +8403,30 @@ void MetalRenderer::renderModelSurface(
 		currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
 		currentRenderEncoder_->setFragmentBytes(&fogParams, sizeof(ModelFogParams), 1);
 		currentRenderEncoder_->setFragmentBytes(&stageParams, sizeof(ModelStageParams), 2);
-		
+		currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+		// Bind normal-map (texture 1) and specular-map (texture 2), plus NormalSpecularParams.
+		{
+			NormalSpecularParams nsParams{};
+			MTL::Texture* defaultTex = texMgr ? texMgr->getTexture(0) : nullptr;
+			MTL::Texture* normalTex  = defaultTex;
+			MTL::Texture* specTex    = defaultTex;
+			if (shaderRes && shaderRes->primaryStageIndex < shaderRes->stageRuntimes.size()) {
+				const auto& primaryRuntime = shaderRes->stageRuntimes[shaderRes->primaryStageIndex];
+				if (primaryRuntime.normalMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(primaryRuntime.normalMapHandle);
+					if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+				}
+				if (primaryRuntime.specularMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(primaryRuntime.specularMapHandle);
+					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+				}
+			}
+			if (normalTex) currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+			if (specTex)   currentRenderEncoder_->setFragmentTexture(specTex,   2);
+			currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+		}
+
 		// Bind primary texture
 		qhandle_t textureHandle = shaderRes ? shaderRes->primaryImageHandle : 0;
 		if (textureHandle > 0 && texMgr) {
@@ -6730,6 +8442,68 @@ void MetalRenderer::renderModelSurface(
 		// Draw
 		if (surface.indexBuffer) {
 			MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+			currentRenderEncoder_->drawIndexedPrimitives(
+				MTL::PrimitiveTypeTriangle,
+				surface.numIndexes,
+				MTL::IndexTypeUInt32,
+				indexBuffer,
+				0
+			);
+		}
+	}
+
+	// --- DLIGHT PASS for animated MD3 models ---
+	// Re-draw the surface additively for each dynamic light that overlaps this model.
+	// dlightBits is a pre-computed bitmask from renderModel() with per-model sphere culling.
+	if (dlightBits != 0
+	    && surface.indexBuffer
+	    && ensureDlightAnimatedResources()
+	    && dlightAnimatedPipeline_
+	    && dlightTexture_
+	    && dlightDepthState_) {
+
+		currentRenderEncoder_->setRenderPipelineState(dlightAnimatedPipeline_.get());
+		currentRenderEncoder_->setDepthStencilState(dlightDepthState_.get());
+		currentRenderEncoder_->setCullMode(MTL::CullModeFront);
+		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+		currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
+		currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+
+		DlightUniforms dlightUniforms{};
+		std::memcpy(dlightUniforms.modelViewProjection, mvpMatrix, sizeof(float) * 16);
+		dlightUniforms.deformGen = 0;
+		dlightUniforms.time = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+		dlightUniforms.vertexLerp = vertexLerp;
+
+		const int numLights = std::min(static_cast<int>(lightPackets_.size()), 32);
+		MTL::Buffer* indexBuffer = static_cast<MTL::Buffer*>(surface.indexBuffer);
+
+		for (int i = 0; i < numLights; i++) {
+			if (!(dlightBits & (1u << i))) {
+				continue;
+			}
+
+			const MetalSceneLight& light = lightPackets_[i].light;
+			const float radius = light.intensity;
+			if (radius <= 0.0f) {
+				continue;
+			}
+
+			// Transform world-space light origin into model-local space.
+			// Mirrors R_TransformDlights from renderergl2/tr_light.c.
+			vec3_t temp;
+			VectorSubtract(light.origin, ent.origin, temp);
+			dlightUniforms.dlightInfo[0] = DotProduct(temp, ent.axis[0]);
+			dlightUniforms.dlightInfo[1] = DotProduct(temp, ent.axis[1]);
+			dlightUniforms.dlightInfo[2] = DotProduct(temp, ent.axis[2]);
+			dlightUniforms.dlightInfo[3] = 1.0f / radius;
+
+			dlightUniforms.color[0] = light.color[0];
+			dlightUniforms.color[1] = light.color[1];
+			dlightUniforms.color[2] = light.color[2];
+			dlightUniforms.color[3] = 1.0f;
+
+			currentRenderEncoder_->setVertexBytes(&dlightUniforms, sizeof(DlightUniforms), 1);
 			currentRenderEncoder_->drawIndexedPrimitives(
 				MTL::PrimitiveTypeTriangle,
 				surface.numIndexes,
@@ -6783,13 +8557,908 @@ void MetalRenderer::renderModel(const refEntity_t& ent, MetalModel& model, Metal
 	// Calculate vertex interpolation factor
 	float vertexLerp = 1.0f - ent.backlerp;
 
+	// Compute which dynamic lights overlap this model (bounding-sphere cull).
+	// Only lights with a set bit will trigger a dlight additive pass per surface.
+	const uint32_t dlightBits = computeModelDlightBits(ent, lodData);
+
 	// Render each surface
 	for (int i = 0; i < lodData.numSurfaces; i++) {
-		// if (ri_.Printf) {
-		// 	ri_.Printf(PRINT_ALL, "DEBUG: renderModel - rendering surface %d/%d\n", i, lodData->numSurfaces);
-		// }
 		renderModelSurface(ent, lodData.surfaces[i], mvpMatrix, modelMatrix, vertexLerp,
-		                   fogParams, ambientLight, directedLight, lightDir);
+		                   fogParams, ambientLight, directedLight, lightDir, dlightBits);
+	}
+
+	// Projection (blob) shadow pass.
+	// Matches GL2's r_shadows == 3 / RF_SHADOW_PLANE path in tr_mesh.c.
+	// We show shadows whenever r_shadows >= 1 so the default setting works,
+	// provided the client game has set RF_SHADOW_PLANE and a valid shadowPlane.
+	const bool shadowsEnabled = r_shadows_ && r_shadows_->integer >= 1;
+	const bool hasShadowPlane = (ent.renderfx & RF_SHADOW_PLANE) != 0;
+	const bool noShadow       = (ent.renderfx & RF_NOSHADOW)     != 0;
+
+	if (shadowsEnabled && hasShadowPlane && !noShadow
+	    && ensureShadowPipeline()) {
+		// Compute the model-space light direction (mirrors setupEntityLighting
+		// which stores modelLightDir in the trRefEntity_t on the GL2 side).
+		// Here we project the world-space lightDir into model space ourselves.
+		vec3_t axis0, axis1, axis2;
+		VectorCopy(ent.axis[0], axis0);
+		VectorCopy(ent.axis[1], axis1);
+		VectorCopy(ent.axis[2], axis2);
+
+		// Normalize if non-normalised axes are used (e.g. scaled entities)
+		if (ent.nonNormalizedAxes) {
+			const float axisLength = VectorLength(axis0);
+			const float invLength  = (axisLength > 0.0f) ? (1.0f / axisLength) : 1.0f;
+			VectorScale(axis0, invLength, axis0);
+			VectorScale(axis1, invLength, axis1);
+			VectorScale(axis2, invLength, axis2);
+		}
+
+		vec3_t normalizedLightDir;
+		VectorNormalize2(lightDir, normalizedLightDir);
+
+		vec3_t modelLightDir;
+		modelLightDir[0] = DotProduct(normalizedLightDir, axis0);
+		modelLightDir[1] = DotProduct(normalizedLightDir, axis1);
+		modelLightDir[2] = DotProduct(normalizedLightDir, axis2);
+
+		for (int i = 0; i < lodData.numSurfaces; i++) {
+			renderModelShadow(ent, lodData.surfaces[i], mvpMatrix, modelLightDir);
+		}
+	}
+}
+
+// ===========================================================================
+// MDR SKELETAL ANIMATION RENDERING
+// ===========================================================================
+
+// registerMDRShaders: traverse all LODs in an MDR model and register each
+// surface's shader with the renderer, storing the handle in surf->shaderIndex.
+void MetalRenderer::registerMDRShaders(MetalModel* model)
+{
+	if (!model || !model->mdrData) {
+		return;
+	}
+	const mdrHeader_t* mdr = (const mdrHeader_t*)model->mdrData;
+	const mdrLOD_t* lod = (const mdrLOD_t*)((const byte*)mdr + mdr->ofsLODs);
+
+	for (int l = 0; l < mdr->numLODs; l++) {
+		mdrSurface_t* surf = (mdrSurface_t*)((byte*)lod + lod->ofsSurfaces);
+		for (int i = 0; i < lod->numSurfaces; i++) {
+			qhandle_t sh = registerShader(surf->shader, true);
+			surf->shaderIndex = sh;
+			surf = (mdrSurface_t*)((byte*)surf + surf->ofsEnd);
+		}
+		lod = (const mdrLOD_t*)((const byte*)lod + lod->ofsEnd);
+	}
+}
+
+// renderMDRSurface: skin one MDR surface on the CPU using the pre-lerped bone
+// palette, upload the result as a Metal vertex buffer, and render via the
+// existing model pipeline so all normal shader/tcMod/fog logic applies.
+void MetalRenderer::renderMDRSurface(
+	const refEntity_t& ent,
+	const mdrHeader_t* header,
+	const mdrSurface_t* surf,
+	const mdrBone_t* bonePtr,
+	const float* mvpMatrix,
+	const float* modelMatrix,
+	const ModelFogParams& fogParams,
+	const vec3_t ambientLight,
+	const vec3_t directedLight,
+	const vec3_t lightDir)
+{
+	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_ || !device_) {
+		return;
+	}
+
+	const int numVerts = surf->numVerts;
+	const int numTris  = surf->numTriangles;
+
+	// -----------------------------------------------------------------
+	// 1. CPU skinning: produce one skinned vertex per input vertex.
+	//    Layout matches the model vertex descriptor (14 floats / 56 bytes):
+	//      [0..2]  position    (old frame, == skinned)
+	//      [3..5]  normal      (old frame, == skinned)
+	//      [6..7]  texCoord
+	//      [8..10] position2   (new frame, == skinned, no GPU lerp needed)
+	//      [11..13] normal2    (new frame, == skinned)
+	// -----------------------------------------------------------------
+	struct MDRVert {
+		float pos[3];
+		float nrm[3];
+		float tc[2];
+		float pos2[3];
+		float nrm2[3];
+	};
+	static_assert(sizeof(MDRVert) == 56, "MDRVert stride mismatch");
+
+	std::vector<MDRVert> verts(numVerts);
+
+	const mdrVertex_t* v = (const mdrVertex_t*)((const byte*)surf + surf->ofsVerts);
+	for (int j = 0; j < numVerts; j++) {
+		float tp[3] = {0.f, 0.f, 0.f};
+		float tn[3] = {0.f, 0.f, 0.f};
+
+		const mdrWeight_t* w = v->weights;
+		for (int k = 0; k < v->numWeights; k++, w++) {
+			const mdrBone_t* bone = bonePtr + w->boneIndex;
+			const float bw  = w->boneWeight;
+			const float ox  = w->offset[0];
+			const float oy  = w->offset[1];
+			const float oz  = w->offset[2];
+
+			tp[0] += bw * (bone->matrix[0][0]*ox + bone->matrix[0][1]*oy + bone->matrix[0][2]*oz + bone->matrix[0][3]);
+			tp[1] += bw * (bone->matrix[1][0]*ox + bone->matrix[1][1]*oy + bone->matrix[1][2]*oz + bone->matrix[1][3]);
+			tp[2] += bw * (bone->matrix[2][0]*ox + bone->matrix[2][1]*oy + bone->matrix[2][2]*oz + bone->matrix[2][3]);
+
+			const float nx = v->normal[0];
+			const float ny = v->normal[1];
+			const float nz = v->normal[2];
+			tn[0] += bw * (bone->matrix[0][0]*nx + bone->matrix[0][1]*ny + bone->matrix[0][2]*nz);
+			tn[1] += bw * (bone->matrix[1][0]*nx + bone->matrix[1][1]*ny + bone->matrix[1][2]*nz);
+			tn[2] += bw * (bone->matrix[2][0]*nx + bone->matrix[2][1]*ny + bone->matrix[2][2]*nz);
+		}
+
+		MDRVert& out = verts[j];
+		out.pos[0] = out.pos2[0] = tp[0];
+		out.pos[1] = out.pos2[1] = tp[1];
+		out.pos[2] = out.pos2[2] = tp[2];
+		out.nrm[0] = out.nrm2[0] = tn[0];
+		out.nrm[1] = out.nrm2[1] = tn[1];
+		out.nrm[2] = out.nrm2[2] = tn[2];
+		out.tc[0]  = v->texCoords[0];
+		out.tc[1]  = v->texCoords[1];
+
+		v = (const mdrVertex_t*)&v->weights[v->numWeights];
+	}
+
+	const size_t vertBufSize = verts.size() * sizeof(MDRVert);
+	MTL::Buffer* vertexBuffer = device_->newBuffer(
+		verts.data(), vertBufSize, MTL::ResourceStorageModeShared);
+	if (!vertexBuffer) {
+		return;
+	}
+
+	// -----------------------------------------------------------------
+	// 2. Obtain (or build and cache) the index buffer for this surface.
+	//    Triangles don't change between frames so we cache by surface addr.
+	// -----------------------------------------------------------------
+	const uintptr_t indexKey = reinterpret_cast<uintptr_t>(surf);
+	MTL::Buffer* indexBuffer = nullptr;
+
+	auto it = mdrIndexBuffers_.find(indexKey);
+	if (it != mdrIndexBuffers_.end()) {
+		indexBuffer = it->second.get();
+	} else {
+		std::vector<unsigned int> indexes(numTris * 3);
+		const mdrTriangle_t* tri = (const mdrTriangle_t*)((const byte*)surf + surf->ofsTriangles);
+		for (int j = 0; j < numTris; j++, tri++) {
+			indexes[j*3 + 0] = (unsigned int)tri->indexes[0];
+			indexes[j*3 + 1] = (unsigned int)tri->indexes[1];
+			indexes[j*3 + 2] = (unsigned int)tri->indexes[2];
+		}
+		const size_t idxSize = indexes.size() * sizeof(unsigned int);
+		MTL::Buffer* ib = device_->newBuffer(
+			indexes.data(), idxSize, MTL::ResourceStorageModeShared);
+		if (ib) {
+			mdrIndexBuffers_[indexKey] = MetalPtr<MTL::Buffer>(ib);
+			indexBuffer = ib;
+		}
+	}
+
+	if (!indexBuffer) {
+		vertexBuffer->release();
+		return;
+	}
+
+	const int numIndexes = numTris * 3;
+
+	// -----------------------------------------------------------------
+	// 3. Shader / skin selection (same priority as renderModelSurface)
+	// -----------------------------------------------------------------
+	qhandle_t shaderHandle = 0;
+
+	if (ent.customShader) {
+		shaderHandle = ent.customShader;
+	} else if (ent.customSkin > 0) {
+		MetalSkin* skin = getSkinByHandle(ent.customSkin);
+		if (skin) {
+			char surfName[MAX_QPATH];
+			Q_strncpyz(surfName, surf->name, sizeof(surfName));
+			Q_strlwr(surfName);
+			for (int j = 0; j < skin->numSurfaces; j++) {
+				if (strcmp(skin->surfaces[j].name, surfName) == 0) {
+					shaderHandle = skin->surfaces[j].shader;
+					break;
+				}
+			}
+		}
+	}
+
+	if (!shaderHandle) {
+		shaderHandle = surf->shaderIndex;
+	}
+	if (!shaderHandle) {
+		shaderHandle = registerShader("white", true);
+	}
+
+	const MetalShaderResource* shaderRes = nullptr;
+	if (shaderHandle > 0 && static_cast<size_t>(shaderHandle) < shaderResources_.size()) {
+		shaderRes = &shaderResources_[shaderHandle];
+	}
+
+	// -----------------------------------------------------------------
+	// 4. Build uniform blocks (identical to renderModelSurface)
+	// -----------------------------------------------------------------
+	struct ModelUniforms {
+		float mvpMatrix[16];
+		float modelMatrix[16];
+		float vertexLerp;
+		float padding[3];
+	};
+	ModelUniforms uniforms{};
+	std::memcpy(uniforms.mvpMatrix,   mvpMatrix,   sizeof(float) * 16);
+	std::memcpy(uniforms.modelMatrix, modelMatrix, sizeof(float) * 16);
+	uniforms.vertexLerp = 1.0f; // CPU-skinned: no GPU lerp needed
+
+	EntityLightingParams lightingParams{};
+	VectorScale(ambientLight,  1.0f / 255.0f, lightingParams.ambientLight);
+	lightingParams.ambientLight[3] = 0.0f;
+	VectorScale(directedLight, 1.0f / 255.0f, lightingParams.directedLight);
+	lightingParams.directedLight[3] = 0.0f;
+	vec3_t normalizedLightDir;
+	VectorNormalize2(lightDir, normalizedLightDir);
+	VectorCopy(normalizedLightDir, lightingParams.lightDir);
+	lightingParams.lightDir[3] = 0.0f;
+
+	vec3_t axis0, axis1, axis2;
+	VectorCopy(ent.axis[0], axis0);
+	VectorCopy(ent.axis[1], axis1);
+	VectorCopy(ent.axis[2], axis2);
+	if (ent.nonNormalizedAxes) {
+		const float axisLength = VectorLength(axis0);
+		const float invLen = (axisLength > 0.0f) ? (1.0f / axisLength) : 1.0f;
+		VectorScale(axis0, invLen, axis0);
+		VectorScale(axis1, invLen, axis1);
+		VectorScale(axis2, invLen, axis2);
+	}
+	lightingParams.modelLightDir[0] = DotProduct(normalizedLightDir, axis0);
+	lightingParams.modelLightDir[1] = DotProduct(normalizedLightDir, axis1);
+	lightingParams.modelLightDir[2] = DotProduct(normalizedLightDir, axis2);
+
+	int overbrightBits    = r_overBrightBits_    ? r_overBrightBits_->integer    : 1;
+	int mapOverbrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+	if (overbrightBits > 2) overbrightBits = 2;
+	if (overbrightBits < 0) overbrightBits = 0;
+	if (overbrightBits > mapOverbrightBits) overbrightBits = mapOverbrightBits;
+	lightingParams.modelLightDir[3] = static_cast<float>(overbrightBits);
+
+	currentRenderEncoder_->setCullMode(MTL::CullModeFront);
+
+	TextureManager* texMgr = ensureTextureManager();
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+
+	// -----------------------------------------------------------------
+	// 5. Multi-pass rendering (identical structure to renderModelSurface)
+	// -----------------------------------------------------------------
+	const size_t numStages = (shaderRes && !shaderRes->stageRuntimes.empty())
+	                          ? shaderRes->stageRuntimes.size() : 0;
+
+	if (numStages > 0) {
+		for (size_t stageIndex = 0; stageIndex < numStages; stageIndex++) {
+			const auto& stageRuntime = shaderRes->stageRuntimes[stageIndex];
+			ModelStagePipelineEntry* stagePipeline = getModelStagePipeline(stageRuntime.pipelineKey);
+			if (!stagePipeline || !stagePipeline->pipeline) {
+				continue;
+			}
+
+			currentRenderEncoder_->setRenderPipelineState(stagePipeline->pipeline.get());
+			currentRenderEncoder_->setDepthStencilState(stagePipeline->depthState.get());
+			currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+			currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+			currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+
+			ModelStageParams stageParams{};
+			if (stageRuntime.stageInfo) {
+				switch (stageRuntime.stageInfo->tcGen.type) {
+					case MetalTCGen::Lightmap:     stageParams.tcGenType = 1.0f; break;
+					case MetalTCGen::Environment:  stageParams.tcGenType = 2.0f; break;
+					default:                       stageParams.tcGenType = 0.0f; break;
+				}
+				TCModParams tcMod = computeTCModParams(stageRuntime.stageInfo, sceneTimeSeconds);
+				std::memcpy(stageParams.texMatrix0, tcMod.texMatrix0, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix1, tcMod.texMatrix1, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix2, tcMod.texMatrix2, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix3, tcMod.texMatrix3, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix4, tcMod.texMatrix4, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix5, tcMod.texMatrix5, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix6, tcMod.texMatrix6, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix7, tcMod.texMatrix7, sizeof(float) * 4);
+			}
+
+			currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+			currentRenderEncoder_->setFragmentBytes(&fogParams,       sizeof(ModelFogParams),       1);
+			currentRenderEncoder_->setFragmentBytes(&stageParams,     sizeof(ModelStageParams),     2);
+			currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+			// Bind normal/specular maps for this stage.
+			{
+				NormalSpecularParams nsParams{};
+				MTL::Texture* defaultTex_ = texMgr ? texMgr->getTexture(0) : nullptr;
+				MTL::Texture* normalTex  = defaultTex_;
+				MTL::Texture* specTex    = defaultTex_;
+				if (stageRuntime.normalMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.normalMapHandle);
+					if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+				}
+				if (stageRuntime.specularMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.specularMapHandle);
+					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+				}
+				if (normalTex) currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+				if (specTex)   currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+			}
+
+			qhandle_t textureHandle = stageRuntime.primaryStageImage;
+			if (!textureHandle && shaderRes->primaryImageHandle > 0) {
+				textureHandle = shaderRes->primaryImageHandle;
+			}
+			if (textureHandle > 0 && texMgr) {
+				MTL::Texture* tex = texMgr->getTexture(textureHandle);
+				if (tex) {
+					currentRenderEncoder_->setFragmentTexture(tex, 0);
+					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
+					MTL::SamplerState* samp = (useClamp && sceneClampSampler_)
+					                          ? sceneClampSampler_.get() : sceneSampler_.get();
+					currentRenderEncoder_->setFragmentSamplerState(samp, 0);
+				}
+			}
+
+			currentRenderEncoder_->drawIndexedPrimitives(
+				MTL::PrimitiveTypeTriangle, numIndexes, MTL::IndexTypeUInt32, indexBuffer, 0);
+		}
+	} else {
+		// Single-pass fallback
+		currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
+		currentRenderEncoder_->setDepthStencilState(modelDepthState_.get());
+		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+		currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+
+		ModelStageParams stageParams{};
+		currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+		currentRenderEncoder_->setFragmentBytes(&fogParams,       sizeof(ModelFogParams),       1);
+		currentRenderEncoder_->setFragmentBytes(&stageParams,     sizeof(ModelStageParams),     2);
+		currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+		// Bind no-op NormalSpecularParams for single-pass fallback.
+		{
+			NormalSpecularParams nsParams{};
+			MTL::Texture* defaultTex_ = texMgr ? texMgr->getTexture(0) : nullptr;
+			if (defaultTex_) currentRenderEncoder_->setFragmentTexture(defaultTex_, 1);
+			if (defaultTex_) currentRenderEncoder_->setFragmentTexture(defaultTex_, 2);
+			currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+		}
+
+		qhandle_t textureHandle = shaderRes ? shaderRes->primaryImageHandle : 0;
+		if (textureHandle > 0 && texMgr) {
+			MTL::Texture* tex = texMgr->getTexture(textureHandle);
+			if (tex) {
+				currentRenderEncoder_->setFragmentTexture(tex, 0);
+				if (sceneSampler_) {
+					currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
+				}
+			}
+		}
+
+		currentRenderEncoder_->drawIndexedPrimitives(
+			MTL::PrimitiveTypeTriangle, numIndexes, MTL::IndexTypeUInt32, indexBuffer, 0);
+	}
+
+	vertexBuffer->release();
+}
+
+// renderMDRModel: cull, select LOD, lerp bones, then call renderMDRSurface
+// for each surface in the chosen LOD level.
+void MetalRenderer::renderMDRModel(const refEntity_t& ent, MetalModel& model)
+{
+	if (!model.mdrData) {
+		return;
+	}
+
+	const mdrHeader_t* header = (const mdrHeader_t*)model.mdrData;
+	if (header->numFrames < 1 || header->numLODs < 1) {
+		return;
+	}
+
+	// Clamp / wrap frame indices
+	int frameIdx    = ent.frame;
+	int oldFrameIdx = ent.oldframe;
+	if (ent.renderfx & RF_WRAP_FRAMES) {
+		frameIdx    = ((frameIdx    % header->numFrames) + header->numFrames) % header->numFrames;
+		oldFrameIdx = ((oldFrameIdx % header->numFrames) + header->numFrames) % header->numFrames;
+	}
+	if (frameIdx    < 0 || frameIdx    >= header->numFrames) frameIdx    = 0;
+	if (oldFrameIdx < 0 || oldFrameIdx >= header->numFrames) oldFrameIdx = 0;
+
+	const int frameSize = (int)(sizeof(mdrFrame_t) + (size_t)(header->numBones - 1) * sizeof(mdrBone_t));
+	const mdrFrame_t* newFrame =
+		(const mdrFrame_t*)((const byte*)header + header->ofsFrames + frameSize * frameIdx);
+	const mdrFrame_t* oldFrame =
+		(const mdrFrame_t*)((const byte*)header + header->ofsFrames + frameSize * oldFrameIdx);
+
+	// Sphere + box culling (mirrors R_MDRCullModel in renderergl2/tr_animation.c)
+	if (!ent.nonNormalizedAxes) {
+		if (frameIdx == oldFrameIdx) {
+			vec3_t center;
+			transformModelPoint(ent, newFrame->localOrigin, center);
+			if (cullBoundingSphere(center, newFrame->radius) == CullResult::Out) {
+				return;
+			}
+		} else {
+			vec3_t newCenter, oldCenter;
+			transformModelPoint(ent, newFrame->localOrigin, newCenter);
+			transformModelPoint(ent, oldFrame->localOrigin, oldCenter);
+			const CullResult cn = cullBoundingSphere(newCenter, newFrame->radius);
+			const CullResult co = cullBoundingSphere(oldCenter, oldFrame->radius);
+			if (cn == CullResult::Out && co == CullResult::Out) {
+				return;
+			}
+		}
+	}
+
+	vec3_t mergedMins, mergedMaxs;
+	for (int i = 0; i < 3; i++) {
+		mergedMins[i] = std::min(oldFrame->bounds[0][i], newFrame->bounds[0][i]);
+		mergedMaxs[i] = std::max(oldFrame->bounds[1][i], newFrame->bounds[1][i]);
+	}
+	if (cullBoundingBox(mergedMins, mergedMaxs, ent) == CullResult::Out) {
+		return;
+	}
+
+	// LOD selection (mirrors computeModelLod but uses MDR frame data directly)
+	int lodnum = 0;
+	if (header->numLODs > 1) {
+		float projectedRadius = projectRadius(newFrame->radius, ent.origin);
+		float flod;
+		if (projectedRadius != 0.0f) {
+			float lodscale = r_lodScale_ ? r_lodScale_->value : 1.0f;
+			if (lodscale > 20.0f) lodscale = 20.0f;
+			if (lodscale < 0.0f)  lodscale = 0.0f;
+			flod = 1.0f - projectedRadius * lodscale;
+		} else {
+			flod = 0.0f;
+		}
+		flod   *= (float)header->numLODs;
+		lodnum  = (int)flod;
+		if (lodnum < 0) lodnum = 0;
+		if (lodnum >= header->numLODs) lodnum = header->numLODs - 1;
+		if (r_lodBias_) {
+			lodnum += r_lodBias_->integer;
+			if (lodnum < 0) lodnum = 0;
+			if (lodnum >= header->numLODs) lodnum = header->numLODs - 1;
+		}
+	}
+
+	// Navigate to selected LOD
+	const mdrLOD_t* lod = (const mdrLOD_t*)((const byte*)header + header->ofsLODs);
+	for (int i = 0; i < lodnum; i++) {
+		lod = (const mdrLOD_t*)((const byte*)lod + lod->ofsEnd);
+	}
+
+	// Fog index (mirrors R_MDRComputeFogNum in renderergl2/tr_animation.c)
+	int fogIndex = 0;
+	if (!(sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL)) {
+		vec3_t worldOrigin;
+		VectorAdd(ent.origin, newFrame->localOrigin, worldOrigin);
+		for (size_t fi = 0; fi < worldFogs_.size(); fi++) {
+			const FogVolume& fog = worldFogs_[fi];
+			bool inside = true;
+			for (int ax = 0; ax < 3; ax++) {
+				if (worldOrigin[ax] - newFrame->radius >= fog.bounds[1][ax]) { inside = false; break; }
+				if (worldOrigin[ax] + newFrame->radius <= fog.bounds[0][ax]) { inside = false; break; }
+			}
+			if (inside) { fogIndex = (int)fi + 1; break; }
+		}
+	}
+	const ModelFogParams fogParams = buildModelFogParams(fogIndex);
+
+	// Entity lighting
+	vec3_t ambientLight, directedLight, lightDir;
+	setupEntityLighting(ent, ambientLight, directedLight, lightDir);
+
+	// Transform matrices
+	float modelMatrix[16];
+	calculateEntityTransform(ent, modelMatrix);
+	float mvpMatrix[16];
+	multiplyMatrices4x4(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, modelMatrix, mvpMatrix);
+
+	// Bone lerp (mirrors RB_MDRSurfaceAnim in renderergl2/tr_animation.c)
+	const float backlerp  = ent.backlerp;
+	const float frontlerp = 1.0f - backlerp;
+
+	std::vector<mdrBone_t> lerpedBones(header->numBones);
+	if (backlerp == 0.0f || frameIdx == oldFrameIdx) {
+		std::memcpy(lerpedBones.data(), newFrame->bones,
+		            header->numBones * sizeof(mdrBone_t));
+	} else {
+		for (int i = 0; i < header->numBones * 12; i++) {
+			((float*)lerpedBones.data())[i] =
+				frontlerp * ((const float*)newFrame->bones)[i] +
+				backlerp  * ((const float*)oldFrame->bones)[i];
+		}
+	}
+
+	// Ensure model pipeline is set up
+	if (!ensureModelPipeline() || !modelPipeline_) {
+		return;
+	}
+
+	// Render each surface in the selected LOD
+	const mdrSurface_t* surf = (const mdrSurface_t*)((const byte*)lod + lod->ofsSurfaces);
+	for (int i = 0; i < lod->numSurfaces; i++) {
+		renderMDRSurface(ent, header, surf, lerpedBones.data(),
+		                 mvpMatrix, modelMatrix, fogParams,
+		                 ambientLight, directedLight, lightDir);
+		surf = (const mdrSurface_t*)((const byte*)surf + surf->ofsEnd);
+	}
+}
+
+// ===========================================================================
+// IQM SKELETAL ANIMATION RENDERING
+// ===========================================================================
+
+// registerIQMShaders: walk all surfaces in an IQM model and register each
+// surface's material string with the renderer.
+void MetalRenderer::registerIQMShaders(MetalModel* model)
+{
+	if (!model || !model->iqmData) return;
+	MetalIQMData* data = (MetalIQMData*)model->iqmData;
+	for (int i = 0; i < data->num_surfaces; i++) {
+		MetalIQMSurface* surf = &data->surfaces[i];
+		if (surf->materialName[0]) {
+			surf->shaderIndex = registerShader(surf->materialName, true);
+		}
+	}
+}
+
+// renderIQMSurface: CPU-skin one IQM surface for the current frame pair,
+// upload the result as a Metal shared buffer, and draw it using the same
+// model pipeline as MDR so all shader/tcMod/fog logic applies.
+void MetalRenderer::renderIQMSurface(
+	const refEntity_t& ent,
+	MetalIQMData* data,
+	const MetalIQMSurface* surf,
+	int frame, int oldframe, float backlerp,
+	const float* mvpMatrix, const float* modelMatrix,
+	const ModelFogParams& fogParams,
+	const vec3_t ambientLight, const vec3_t directedLight,
+	const vec3_t lightDir)
+{
+	if (!currentRenderEncoder_ || !modelPipeline_ || !modelDepthState_ || !device_) {
+		return;
+	}
+
+	const int numVerts = surf->num_vertexes;
+	const int numTris  = surf->num_triangles;
+
+	// -----------------------------------------------------------------
+	// 1. CPU skinning – produce MetalIQMVert (== 56 bytes, MDRVert-compatible)
+	// -----------------------------------------------------------------
+	std::vector<MetalIQMVert> verts(numVerts);
+	Metal_IQMSurfaceAnim(data, surf, frame, oldframe, backlerp, verts.data());
+
+	const size_t vertBufSize = verts.size() * sizeof(MetalIQMVert);
+	MTL::Buffer* vertexBuffer = device_->newBuffer(
+		verts.data(), vertBufSize, MTL::ResourceStorageModeShared);
+	if (!vertexBuffer) return;
+
+	// -----------------------------------------------------------------
+	// 2. Index buffer – cached by surface pointer (triangles are static)
+	// -----------------------------------------------------------------
+	const uintptr_t indexKey = reinterpret_cast<uintptr_t>(surf);
+	MTL::Buffer* indexBuffer = nullptr;
+
+	auto it = iqmIndexBuffers_.find(indexKey);
+	if (it != iqmIndexBuffers_.end()) {
+		indexBuffer = it->second.get();
+	} else {
+		std::vector<unsigned int> indexes(numTris * 3);
+		const int* tri = &data->triangles[surf->first_triangle * 3];
+		for (int j = 0; j < numTris; j++) {
+			indexes[j*3 + 0] = (unsigned int)(tri[j*3 + 0] - surf->first_vertex);
+			indexes[j*3 + 1] = (unsigned int)(tri[j*3 + 1] - surf->first_vertex);
+			indexes[j*3 + 2] = (unsigned int)(tri[j*3 + 2] - surf->first_vertex);
+		}
+		const size_t idxSize = indexes.size() * sizeof(unsigned int);
+		MTL::Buffer* ib = device_->newBuffer(
+			indexes.data(), idxSize, MTL::ResourceStorageModeShared);
+		if (ib) {
+			iqmIndexBuffers_[indexKey] = MetalPtr<MTL::Buffer>(ib);
+			indexBuffer = ib;
+		}
+	}
+
+	if (!indexBuffer) {
+		vertexBuffer->release();
+		return;
+	}
+
+	const int numIndexes = numTris * 3;
+
+	// -----------------------------------------------------------------
+	// 3. Shader / skin selection (same priority as renderMDRSurface)
+	// -----------------------------------------------------------------
+	qhandle_t shaderHandle = 0;
+	if (ent.customShader) {
+		shaderHandle = ent.customShader;
+	} else if (ent.customSkin > 0) {
+		MetalSkin* skin = getSkinByHandle(ent.customSkin);
+		if (skin) {
+			char surfName[MAX_QPATH];
+			Q_strncpyz(surfName, surf->name, sizeof(surfName));
+			Q_strlwr(surfName);
+			for (int j = 0; j < skin->numSurfaces; j++) {
+				if (strcmp(skin->surfaces[j].name, surfName) == 0) {
+					shaderHandle = skin->surfaces[j].shader;
+					break;
+				}
+			}
+		}
+	}
+	if (!shaderHandle) shaderHandle = surf->shaderIndex;
+	if (!shaderHandle) shaderHandle = registerShader("white", true);
+
+	const MetalShaderResource* shaderRes = nullptr;
+	if (shaderHandle > 0 && static_cast<size_t>(shaderHandle) < shaderResources_.size()) {
+		shaderRes = &shaderResources_[shaderHandle];
+	}
+
+	// -----------------------------------------------------------------
+	// 4. Uniform blocks (identical to renderMDRSurface)
+	// -----------------------------------------------------------------
+	struct ModelUniforms {
+		float mvpMatrix[16];
+		float modelMatrix[16];
+		float vertexLerp;
+		float padding[3];
+	};
+	ModelUniforms uniforms{};
+	std::memcpy(uniforms.mvpMatrix,   mvpMatrix,   sizeof(float) * 16);
+	std::memcpy(uniforms.modelMatrix, modelMatrix, sizeof(float) * 16);
+	uniforms.vertexLerp = 1.0f; // CPU-skinned: pos == pos2, no GPU lerp needed
+
+	EntityLightingParams lightingParams{};
+	VectorScale(ambientLight,  1.0f / 255.0f, lightingParams.ambientLight);
+	lightingParams.ambientLight[3] = 0.0f;
+	VectorScale(directedLight, 1.0f / 255.0f, lightingParams.directedLight);
+	lightingParams.directedLight[3] = 0.0f;
+	vec3_t normalizedLightDir;
+	VectorNormalize2(lightDir, normalizedLightDir);
+	VectorCopy(normalizedLightDir, lightingParams.lightDir);
+	lightingParams.lightDir[3] = 0.0f;
+
+	vec3_t axis0, axis1, axis2;
+	VectorCopy(ent.axis[0], axis0);
+	VectorCopy(ent.axis[1], axis1);
+	VectorCopy(ent.axis[2], axis2);
+	if (ent.nonNormalizedAxes) {
+		const float axisLength = VectorLength(axis0);
+		const float invLen = (axisLength > 0.0f) ? (1.0f / axisLength) : 1.0f;
+		VectorScale(axis0, invLen, axis0);
+		VectorScale(axis1, invLen, axis1);
+		VectorScale(axis2, invLen, axis2);
+	}
+	lightingParams.modelLightDir[0] = DotProduct(normalizedLightDir, axis0);
+	lightingParams.modelLightDir[1] = DotProduct(normalizedLightDir, axis1);
+	lightingParams.modelLightDir[2] = DotProduct(normalizedLightDir, axis2);
+
+	int overbrightBits    = r_overBrightBits_    ? r_overBrightBits_->integer    : 1;
+	int mapOverbrightBits = r_mapOverBrightBits_ ? r_mapOverBrightBits_->integer : 2;
+	if (overbrightBits > 2) overbrightBits = 2;
+	if (overbrightBits < 0) overbrightBits = 0;
+	if (overbrightBits > mapOverbrightBits) overbrightBits = mapOverbrightBits;
+	lightingParams.modelLightDir[3] = static_cast<float>(overbrightBits);
+
+	currentRenderEncoder_->setCullMode(MTL::CullModeFront);
+
+	TextureManager* texMgr = ensureTextureManager();
+	const float sceneTimeSeconds = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+
+	// -----------------------------------------------------------------
+	// 5. Multi-pass rendering (same structure as renderMDRSurface)
+	// -----------------------------------------------------------------
+	const size_t numStages = (shaderRes && !shaderRes->stageRuntimes.empty())
+	                          ? shaderRes->stageRuntimes.size() : 0;
+
+	if (numStages > 0) {
+		for (size_t stageIndex = 0; stageIndex < numStages; stageIndex++) {
+			const auto& stageRuntime = shaderRes->stageRuntimes[stageIndex];
+			ModelStagePipelineEntry* stagePipeline = getModelStagePipeline(stageRuntime.pipelineKey);
+			if (!stagePipeline || !stagePipeline->pipeline) continue;
+
+			currentRenderEncoder_->setRenderPipelineState(stagePipeline->pipeline.get());
+			currentRenderEncoder_->setDepthStencilState(stagePipeline->depthState.get());
+			currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+			currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+			currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+
+			ModelStageParams stageParams{};
+			if (stageRuntime.stageInfo) {
+				switch (stageRuntime.stageInfo->tcGen.type) {
+					case MetalTCGen::Lightmap:    stageParams.tcGenType = 1.0f; break;
+					case MetalTCGen::Environment: stageParams.tcGenType = 2.0f; break;
+					default:                      stageParams.tcGenType = 0.0f; break;
+				}
+				TCModParams tcMod = computeTCModParams(stageRuntime.stageInfo, sceneTimeSeconds);
+				std::memcpy(stageParams.texMatrix0, tcMod.texMatrix0, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix1, tcMod.texMatrix1, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix2, tcMod.texMatrix2, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix3, tcMod.texMatrix3, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix4, tcMod.texMatrix4, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix5, tcMod.texMatrix5, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix6, tcMod.texMatrix6, sizeof(float) * 4);
+				std::memcpy(stageParams.texMatrix7, tcMod.texMatrix7, sizeof(float) * 4);
+			}
+
+			currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+			currentRenderEncoder_->setFragmentBytes(&fogParams,       sizeof(ModelFogParams),       1);
+			currentRenderEncoder_->setFragmentBytes(&stageParams,     sizeof(ModelStageParams),     2);
+			currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+			// Bind normal/specular maps for this stage.
+			{
+				NormalSpecularParams nsParams{};
+				MTL::Texture* defaultTex_ = texMgr ? texMgr->getTexture(0) : nullptr;
+				MTL::Texture* normalTex  = defaultTex_;
+				MTL::Texture* specTex    = defaultTex_;
+				if (stageRuntime.normalMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.normalMapHandle);
+					if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+				}
+				if (stageRuntime.specularMapHandle > 0 && texMgr) {
+					MTL::Texture* t = texMgr->getTexture(stageRuntime.specularMapHandle);
+					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+				}
+				if (normalTex) currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+				if (specTex)   currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+			}
+
+			qhandle_t textureHandle = stageRuntime.primaryStageImage;
+			if (!textureHandle && shaderRes->primaryImageHandle > 0)
+				textureHandle = shaderRes->primaryImageHandle;
+			if (textureHandle > 0 && texMgr) {
+				MTL::Texture* tex = texMgr->getTexture(textureHandle);
+				if (tex) {
+					currentRenderEncoder_->setFragmentTexture(tex, 0);
+					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
+					MTL::SamplerState* samp = (useClamp && sceneClampSampler_)
+					                          ? sceneClampSampler_.get() : sceneSampler_.get();
+					currentRenderEncoder_->setFragmentSamplerState(samp, 0);
+				}
+			}
+
+			currentRenderEncoder_->drawIndexedPrimitives(
+				MTL::PrimitiveTypeTriangle, numIndexes, MTL::IndexTypeUInt32, indexBuffer, 0);
+		}
+	} else {
+		// Single-pass fallback
+		currentRenderEncoder_->setRenderPipelineState(modelPipeline_.get());
+		currentRenderEncoder_->setDepthStencilState(modelDepthState_.get());
+		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
+		currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(ModelUniforms), 1);
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+
+		ModelStageParams stageParams{};
+		currentRenderEncoder_->setFragmentBytes(&lightingParams, sizeof(EntityLightingParams), 0);
+		currentRenderEncoder_->setFragmentBytes(&fogParams,       sizeof(ModelFogParams),       1);
+		currentRenderEncoder_->setFragmentBytes(&stageParams,     sizeof(ModelStageParams),     2);
+		currentRenderEncoder_->setFragmentBuffer(sceneUniformBuffer_.get(), 0, 3);
+
+		// Bind no-op NormalSpecularParams for single-pass fallback.
+		{
+			NormalSpecularParams nsParams{};
+			MTL::Texture* defaultTex_ = texMgr ? texMgr->getTexture(0) : nullptr;
+			if (defaultTex_) currentRenderEncoder_->setFragmentTexture(defaultTex_, 1);
+			if (defaultTex_) currentRenderEncoder_->setFragmentTexture(defaultTex_, 2);
+			currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 4);
+		}
+
+		qhandle_t textureHandle = shaderRes ? shaderRes->primaryImageHandle : 0;
+		if (textureHandle > 0 && texMgr) {
+			MTL::Texture* tex = texMgr->getTexture(textureHandle);
+			if (tex) {
+				currentRenderEncoder_->setFragmentTexture(tex, 0);
+				if (sceneSampler_) {
+					currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
+				}
+			}
+		}
+
+		currentRenderEncoder_->drawIndexedPrimitives(
+			MTL::PrimitiveTypeTriangle, numIndexes, MTL::IndexTypeUInt32, indexBuffer, 0);
+	}
+
+	vertexBuffer->release();
+}
+
+// renderIQMModel: cull, validate frames, then call renderIQMSurface for each
+// surface.  IQM has no LOD concept – all surfaces are rendered.
+void MetalRenderer::renderIQMModel(const refEntity_t& ent, MetalModel& model)
+{
+	if (!model.iqmData) return;
+	MetalIQMData* data = (MetalIQMData*)model.iqmData;
+	if (data->num_surfaces < 1) return;
+
+	// Clamp / wrap frame indices
+	int frame    = ent.frame;
+	int oldframe = ent.oldframe;
+	if (data->num_frames > 0) {
+		if (ent.renderfx & RF_WRAP_FRAMES) {
+			frame    = ((frame    % data->num_frames) + data->num_frames) % data->num_frames;
+			oldframe = ((oldframe % data->num_frames) + data->num_frames) % data->num_frames;
+		}
+		if (frame    < 0 || frame    >= data->num_frames) frame    = 0;
+		if (oldframe < 0 || oldframe >= data->num_frames) oldframe = 0;
+	} else {
+		frame = oldframe = 0;
+	}
+
+	// Bounding-box culling from per-frame bounds
+	if (data->bounds) {
+		const float* bOld = data->bounds + 6 * oldframe;
+		const float* bNew = data->bounds + 6 * frame;
+		float mins[3], maxs[3];
+		for (int i = 0; i < 3; i++) {
+			mins[i] = std::min(bOld[i],   bNew[i]);
+			maxs[i] = std::max(bOld[i+3], bNew[i+3]);
+		}
+		if (cullBoundingBox(mins, maxs, ent) == CullResult::Out) return;
+	}
+
+	// Fog index (same approach as MDR)
+	int fogIndex = 0;
+	if (!(sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL) && data->bounds) {
+		const float* b = data->bounds + 6 * frame;
+		vec3_t diag, center, worldOrigin;
+		for (int i = 0; i < 3; i++) {
+			diag[i]   = b[i+3] - b[i];
+			center[i] = b[i] + 0.5f * diag[i];
+		}
+		VectorAdd(ent.origin, center, worldOrigin);
+		const float radius = 0.5f * VectorLength(diag);
+		for (size_t fi = 0; fi < worldFogs_.size(); fi++) {
+			const FogVolume& fog = worldFogs_[fi];
+			bool inside = true;
+			for (int ax = 0; ax < 3; ax++) {
+				if (worldOrigin[ax] - radius >= fog.bounds[1][ax]) { inside = false; break; }
+				if (worldOrigin[ax] + radius <= fog.bounds[0][ax]) { inside = false; break; }
+			}
+			if (inside) { fogIndex = (int)fi + 1; break; }
+		}
+	}
+	const ModelFogParams fogParams = buildModelFogParams(fogIndex);
+
+	// Entity lighting
+	vec3_t ambientLight, directedLight, lightDir;
+	setupEntityLighting(ent, ambientLight, directedLight, lightDir);
+
+	// Transform matrices
+	float modelMatrix[16];
+	calculateEntityTransform(ent, modelMatrix);
+	float mvpMatrix[16];
+	multiplyMatrices4x4(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, modelMatrix, mvpMatrix);
+
+	if (!ensureModelPipeline() || !modelPipeline_) return;
+
+	for (int i = 0; i < data->num_surfaces; i++) {
+		renderIQMSurface(ent, data, &data->surfaces[i],
+		                 frame, oldframe, ent.backlerp,
+		                 mvpMatrix, modelMatrix, fogParams,
+		                 ambientLight, directedLight, lightDir);
 	}
 }
 
@@ -6850,9 +9519,15 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 		return;
 	}
 	
-	// Set up vertex buffer (same as world rendering)
-	currentRenderEncoder_->setVertexBuffer(polyVertexBuffer_.get(), 0, 0);
+	// Set up vertex buffer (brush model geometry lives in staticWorldVertexBuffer_)
+	if (!staticWorldVertexBuffer_) {
+		brushUniformBuffer->release();
+		return;
+	}
+	currentRenderEncoder_->setVertexBuffer(staticWorldVertexBuffer_.get(), 0, 0);
 	currentRenderEncoder_->setVertexBuffer(brushUniformBuffer, 0, 1);
+	// Also bind to fragment stage so uniforms.viewOrigin is accessible.
+	currentRenderEncoder_->setFragmentBuffer(brushUniformBuffer, 0, 1);
 	
 	// Setup entity lighting for brush model
 	EntityLightingParams lightingParams{};
@@ -6904,7 +9579,7 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 			return params;
 		}
 
-		// Set tcGen type
+		// Set tcGen type: 0=Texture, 1=Lightmap, 2=Environment, 3=Vector, 4=Fog
 		switch (stageInfo->tcGen.type) {
 			case MetalTCGen::Lightmap:
 				params.tcGenType = 1.0f;
@@ -6914,18 +9589,38 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 				params.tcGenType = 2.0f;
 				params.texCoordSelector = 0.0f;
 				break;
+			case MetalTCGen::Vector:
+				params.tcGenType = 3.0f;
+				params.tcGenSVector[0] = stageInfo->tcGen.sVector[0];
+				params.tcGenSVector[1] = stageInfo->tcGen.sVector[1];
+				params.tcGenSVector[2] = stageInfo->tcGen.sVector[2];
+				params.tcGenSVector[3] = 0.0f;
+				params.tcGenTVector[0] = stageInfo->tcGen.tVector[0];
+				params.tcGenTVector[1] = stageInfo->tcGen.tVector[1];
+				params.tcGenTVector[2] = stageInfo->tcGen.tVector[2];
+				params.tcGenTVector[3] = 0.0f;
+				break;
+			case MetalTCGen::Fog:
+				params.tcGenType = 4.0f;
+				break;
 			default:
 				params.tcGenType = 0.0f;
 				params.texCoordSelector = 0.0f;
 				break;
 		}
 
+		// Entity shaderRGBA normalized to 0-1 (used by Entity/OneMinusEntity modes)
+		const float entR = ent.shaderRGBA[0] / 255.0f;
+		const float entG = ent.shaderRGBA[1] / 255.0f;
+		const float entB = ent.shaderRGBA[2] / 255.0f;
+		const float entA = ent.shaderRGBA[3] / 255.0f;
+
 		// Set rgbGen type - use vertex colors for lightmapped surfaces
 		MetalRGBGen effectiveRgbGen = stageInfo->rgbGen.type;
 		if (effectiveRgbGen == MetalRGBGen::LightingDiffuse && lightmapHandle > 0 && !stageInfo->usesLightmap) {
 			effectiveRgbGen = MetalRGBGen::Vertex;
 		}
-		
+
 		switch (effectiveRgbGen) {
 			case MetalRGBGen::Identity:
 				params.rgbGenType = 1.0f;
@@ -6936,11 +9631,96 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 			case MetalRGBGen::LightingDiffuse:
 				params.rgbGenType = 3.0f;
 				break;
+			case MetalRGBGen::Wave: {
+				params.rgbGenType = 4.0f;
+				float w = EvalWaveForm(stageInfo->rgbGen.wave, sceneTimeSeconds);
+				if (w < 0.0f) w = 0.0f;
+				if (w > 1.0f) w = 1.0f;
+				params.waveColorScale = w;
+				break;
+			}
+			case MetalRGBGen::Const:
+				params.rgbGenType = 5.0f;
+				params.constColor[0] = stageInfo->rgbGen.constColor[0];
+				params.constColor[1] = stageInfo->rgbGen.constColor[1];
+				params.constColor[2] = stageInfo->rgbGen.constColor[2];
+				params.constColor[3] = stageInfo->rgbGen.constColor[3];
+				break;
+			case MetalRGBGen::Entity:
+				params.rgbGenType = 6.0f;
+				params.entityColor[0] = entR;
+				params.entityColor[1] = entG;
+				params.entityColor[2] = entB;
+				params.entityColor[3] = entA;
+				break;
+			case MetalRGBGen::OneMinusEntity:
+				params.rgbGenType = 7.0f;
+				params.entityColor[0] = entR;
+				params.entityColor[1] = entG;
+				params.entityColor[2] = entB;
+				params.entityColor[3] = entA;
+				break;
+			case MetalRGBGen::OneMinusVertex:
+				params.rgbGenType = 8.0f;
+				break;
 			default:
 				params.rgbGenType = 0.0f;
 				break;
 		}
-		
+
+		// alphaGen handling
+		switch (stageInfo->alphaGen.type) {
+			case MetalAlphaGen::Entity:
+				params.alphaGenType = 1.0f;
+				params.entityColor[0] = entR;
+				params.entityColor[1] = entG;
+				params.entityColor[2] = entB;
+				params.entityColor[3] = entA;
+				break;
+			case MetalAlphaGen::OneMinusEntity:
+				params.alphaGenType = 2.0f;
+				params.entityColor[0] = entR;
+				params.entityColor[1] = entG;
+				params.entityColor[2] = entB;
+				params.entityColor[3] = entA;
+				break;
+			case MetalAlphaGen::Wave: {
+				params.alphaGenType = 3.0f;
+				float w = EvalWaveForm(stageInfo->alphaGen.wave, sceneTimeSeconds);
+				if (w < 0.0f) w = 0.0f;
+				if (w > 1.0f) w = 1.0f;
+				params.alphaWaveValue = w;
+				break;
+			}
+			case MetalAlphaGen::LightingSpecular:
+				params.alphaGenType = 4.0f;
+				break;
+			case MetalAlphaGen::Portal:
+				params.alphaGenType = 5.0f;
+				params.portalRange = (stageInfo->alphaGen.portalRange > 0.0f)
+				                     ? stageInfo->alphaGen.portalRange : 256.0f;
+				break;
+			default:
+				params.alphaGenType = 0.0f;
+				break;
+		}
+
+		const int alphaFunc = stageInfo->alphaFunc;
+		if (alphaFunc != 0) {
+			params.alphaTestEnabled = 1.0f;
+			params.alphaFunc = static_cast<float>(alphaFunc);
+			switch (alphaFunc) {
+				case 1:  // GT0
+					params.alphaRef = 1.0f / 255.0f;
+					break;
+				case 2:  // LT128
+				case 3:  // GE128
+				default:
+					params.alphaRef = 128.0f / 255.0f;
+					break;
+			}
+		}
+
 		return params;
 	};
 	
@@ -7017,15 +9797,112 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 				boundTexture = packetTexture;
 				boundImageHandle = desiredHandle;
 			}
-			
-			// Add the world vertex base offset to get the correct position in polyVertices_
-			NS::UInteger adjustedFirstVertex = static_cast<NS::UInteger>(packet.firstVertex) + worldVertexBaseOffset_;
+
+			// Bind normal/specular maps and NormalSpecularParams for this stage.
+			{
+				NormalSpecularParams nsParams{};
+				MTL::Texture* normalTex = defaultTexture;
+				MTL::Texture* specTex   = defaultTexture;
+				if (stageRuntime->normalMapHandle > 0) {
+					MTL::Texture* t = texManager->getTexture(stageRuntime->normalMapHandle);
+					if (t) { normalTex = t; nsParams.useNormalMap = 1.0f; }
+				}
+				if (stageRuntime->specularMapHandle > 0) {
+					MTL::Texture* t = texManager->getTexture(stageRuntime->specularMapHandle);
+					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
+				}
+				// World-surface lighting is 0-255; fragment shader divides by 255 for specular.
+				currentRenderEncoder_->setFragmentTexture(normalTex, 1);
+				currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
+			}
+
+			// Vertices are in staticWorldVertexBuffer_ at the same offsets as worldVertexTemplate_
 			currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangle,
-				adjustedFirstVertex,
+				static_cast<NS::UInteger>(packet.firstVertex),
 				static_cast<NS::UInteger>(packet.vertexCount));
 		}
 	}
-	
+
+	// --- DLIGHT PASS ---
+	// After rendering all surfaces normally, apply dynamic lighting additively.
+	// For each dlight that overlaps this brush model, re-draw the surfaces with
+	// the dlight pipeline (additive blend, depth-test-only) using the model-local
+	// light position so the shader can compute per-vertex falloff.
+	{
+		const int numLights = static_cast<int>(lightPackets_.size());
+		if (numLights > 0 && ensureDlightResources() && dlightPipeline_ && dlightTexture_ && dlightDepthState_) {
+			// Collect light origins/radii into a plain array for R_DlightBmodel
+			MetalSceneLight lightArray[MAX_DLIGHTS];
+			const int clampedLights = std::min(numLights, static_cast<int>(MAX_DLIGHTS));
+			for (int i = 0; i < clampedLights; i++) {
+				lightArray[i] = lightPackets_[i].light;
+			}
+
+			const uint32_t dlightMask = R_DlightBmodel(bmodel, ent, lightArray, clampedLights);
+
+			if (dlightMask) {
+				// Set up dlight render state once for all lights on this bmodel
+				currentRenderEncoder_->setRenderPipelineState(dlightPipeline_.get());
+				currentRenderEncoder_->setDepthStencilState(dlightDepthState_.get());
+				currentRenderEncoder_->setVertexBuffer(staticWorldVertexBuffer_.get(), 0, 0);
+				currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
+				currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+
+				DlightUniforms dlightUniforms{};
+				// The brush-model MVP already includes the entity transform:
+				//   brushViewProjection = projection * (view * model)
+				std::memcpy(dlightUniforms.modelViewProjection, brushViewProjection,
+				            sizeof(brushViewProjection));
+				dlightUniforms.deformGen = 0;
+				dlightUniforms.time = static_cast<float>(sceneCamera_.refdef.time) * 0.001f;
+				dlightUniforms.vertexLerp = 0.0f;
+
+				for (int i = 0; i < clampedLights; i++) {
+					if (!(dlightMask & (1u << i))) {
+						continue;
+					}
+
+					const MetalSceneLight& light = lightPackets_[i].light;
+					const float radius = light.intensity;
+					if (radius <= 0.0f) {
+						continue;
+					}
+
+					// Transform world-space light origin into model-local space.
+					// Vertices in the BSP are stored in model-local space; the entity
+					// origin/axis describe the model-to-world transform.
+					// This mirrors R_TransformDlights from renderergl2/tr_light.c.
+					vec3_t temp;
+					VectorSubtract(light.origin, ent.origin, temp);
+					dlightUniforms.dlightInfo[0] = DotProduct(temp, ent.axis[0]);
+					dlightUniforms.dlightInfo[1] = DotProduct(temp, ent.axis[1]);
+					dlightUniforms.dlightInfo[2] = DotProduct(temp, ent.axis[2]);
+					dlightUniforms.dlightInfo[3] = 1.0f / radius;  // inverse radius for shader falloff
+
+					dlightUniforms.color[0] = light.color[0];
+					dlightUniforms.color[1] = light.color[1];
+					dlightUniforms.color[2] = light.color[2];
+					dlightUniforms.color[3] = 1.0f;
+
+					currentRenderEncoder_->setVertexBytes(&dlightUniforms, sizeof(DlightUniforms), 1);
+
+					// Re-draw every surface of this brush model under the light
+					for (int packetIndex : packetIndices) {
+						const ScenePolyPacket& packet = worldPacketTemplate_[packetIndex];
+						if (packet.vertexCount <= 0) {
+							continue;
+						}
+						// Vertices are in staticWorldVertexBuffer_ at the same offsets as worldVertexTemplate_
+						currentRenderEncoder_->drawPrimitives(MTL::PrimitiveTypeTriangle,
+							static_cast<NS::UInteger>(packet.firstVertex),
+							static_cast<NS::UInteger>(packet.vertexCount));
+					}
+				}
+			}
+		}
+	}
+
 	brushUniformBuffer->release();
 }
 
@@ -7926,6 +10803,18 @@ bool MetalRenderer::drawModelEntities() {
 			continue;
 		}
 
+		// Handle MDR skeletal models
+		if (model->type == MetalModelType::MDR) {
+			renderMDRModel(ent, *model);
+			continue;
+		}
+
+		// Handle IQM skeletal models
+		if (model->type == MetalModelType::IQM) {
+			renderIQMModel(ent, *model);
+			continue;
+		}
+
 		// Handle regular models (MD3, etc.)
 		int lod = computeModelLod(*model, ent);
 		if (lod < 0) {
@@ -8746,11 +11635,494 @@ bool MetalRenderer::ensureDlightResources() {
 	// Create dlight texture
 	createDlightTexture();
 
+	// Create depth state for dlight pass: test (LessEqual) but no depth write
+	// Dlights are an additive pass over already-rendered geometry
+	if (!dlightDepthState_) {
+		MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+		depthDesc->setDepthWriteEnabled(false);
+		depthDesc->setDepthCompareFunction(MTL::CompareFunctionLessEqual);
+		dlightDepthState_.reset(device_->newDepthStencilState(depthDesc));
+		depthDesc->release();
+	}
+
 	if (ri_.Printf) {
 		ri_.Printf(PRINT_DEVELOPER, "Metal: Dlight resources initialized\n");
 	}
 
 	return true;
+}
+
+// Create the animated-model dlight pipeline. Must be called only after
+// ensureDlightResources() (for dlightFragmentFunction_, dlightTexture_,
+// dlightDepthState_) and after the model pipeline (for modelVertexDescriptor_).
+bool MetalRenderer::ensureDlightAnimatedResources() {
+	if (dlightAnimatedPipeline_) {
+		return true;
+	}
+
+	// Ensure base dlight resources (texture, depth state, fragment function) exist first.
+	if (!ensureDlightResources()) {
+		return false;
+	}
+
+	// modelVertexDescriptor_ is created lazily by ensureModelPipeline(); it must
+	// exist before we get here because renderModelSurface() has already run.
+	if (!modelVertexDescriptor_ || !dlightFragmentFunction_) {
+		return false;
+	}
+
+	// Load the animated dlight vertex function from the same library.
+	NS::String* animVertName = NS::String::string("vertex_dlight_animated", NS::UTF8StringEncoding);
+	dlightAnimatedVertexFunction_.reset(sceneLibrary_->newFunction(animVertName));
+	if (!dlightAnimatedVertexFunction_) {
+		if (ri_.Printf) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to load vertex_dlight_animated shader function\n");
+		}
+		return false;
+	}
+
+	// Build the pipeline descriptor, mirroring the world dlight pipeline but
+	// with the model vertex descriptor (14 floats / 56 bytes per vertex).
+	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+	pd->setVertexFunction(dlightAnimatedVertexFunction_.get());
+	pd->setFragmentFunction(dlightFragmentFunction_.get());
+	pd->setVertexDescriptor(modelVertexDescriptor_.get());
+
+	// Additive blend: src ONE + dst ONE
+	MTL::RenderPipelineColorAttachmentDescriptor* ca = pd->colorAttachments()->object(0);
+	ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	ca->setBlendingEnabled(true);
+	ca->setSourceRGBBlendFactor(MTL::BlendFactorOne);
+	ca->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
+	ca->setRgbBlendOperation(MTL::BlendOperationAdd);
+	ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+	ca->setDestinationAlphaBlendFactor(MTL::BlendFactorOne);
+	ca->setAlphaBlendOperation(MTL::BlendOperationAdd);
+
+	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+	NS::Error* error = nullptr;
+	dlightAnimatedPipeline_.reset(device_->newRenderPipelineState(pd, &error));
+	pd->release();
+
+	if (!dlightAnimatedPipeline_) {
+		if (ri_.Printf && error) {
+			ri_.Printf(PRINT_WARNING, "Metal: Failed to create animated dlight pipeline: %s\n",
+			           error->localizedDescription()->utf8String());
+		}
+		return false;
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_DEVELOPER, "Metal: Animated dlight pipeline initialized\n");
+	}
+
+	return true;
+}
+
+// Compute a bitmask of which scene lights potentially illuminate this model.
+// Uses a conservative bounding-sphere test in world space to avoid drawing
+// the dlight pass for lights that are clearly too far away.
+uint32_t MetalRenderer::computeModelDlightBits(const refEntity_t& ent,
+                                                const MetalModelLOD& lodData) const {
+	if (lightPackets_.empty() || lodData.frames.empty()) {
+		return 0;
+	}
+
+	// Clamp frame indices to valid range.
+	int oldFrame = ent.oldframe;
+	int newFrame = ent.frame;
+	const int maxFrame = lodData.numFrames - 1;
+	if (oldFrame < 0) oldFrame = 0;
+	if (oldFrame > maxFrame) oldFrame = maxFrame;
+	if (newFrame < 0) newFrame = 0;
+	if (newFrame > maxFrame) newFrame = maxFrame;
+
+	const MetalModelFrame& oldF = lodData.frames[oldFrame];
+	const MetalModelFrame& newF = lodData.frames[newFrame];
+
+	// Conservative: use the larger of the two frame radii.
+	const float modelRadius = (oldF.radius > newF.radius) ? oldF.radius : newF.radius;
+
+	// Transform frame localOrigin into world space using entity origin + axes.
+	float worldCenter[3];
+	for (int j = 0; j < 3; j++) {
+		worldCenter[j] = ent.origin[j]
+		    + ent.axis[0][j] * oldF.localOrigin[0]
+		    + ent.axis[1][j] * oldF.localOrigin[1]
+		    + ent.axis[2][j] * oldF.localOrigin[2];
+	}
+
+	uint32_t bits = 0;
+	const int count = std::min(static_cast<int>(lightPackets_.size()), 32);
+	for (int i = 0; i < count; i++) {
+		const MetalSceneLight& light = lightPackets_[i].light;
+		if (light.intensity <= 0.0f) {
+			continue;
+		}
+
+		const float dx = light.origin[0] - worldCenter[0];
+		const float dy = light.origin[1] - worldCenter[1];
+		const float dz = light.origin[2] - worldCenter[2];
+		const float dist2 = dx*dx + dy*dy + dz*dz;
+		const float combinedR = light.intensity + modelRadius;
+		if (dist2 < combinedR * combinedR) {
+			bits |= (1u << i);
+		}
+	}
+
+	return bits;
+}
+
+//=============================================================================
+// R_MarkFragments - port of renderergl2/tr_marks.c
+//=============================================================================
+
+namespace {
+
+#define MF_MAX_VERTS_ON_POLY 64
+#define MF_SIDE_FRONT 0
+#define MF_SIDE_BACK  1
+#define MF_SIDE_ON    2
+
+// Sutherland-Hodgman clip: keep points in front of the plane.
+// Matches GL2's R_ChopPolyBehindPlane exactly.
+static void MF_ChopPolyBehindPlane(
+    int numInPoints, vec3_t inPoints[MF_MAX_VERTS_ON_POLY],
+    int* numOutPoints, vec3_t outPoints[MF_MAX_VERTS_ON_POLY],
+    vec3_t normal, vec_t dist, vec_t epsilon)
+{
+	if (numInPoints >= MF_MAX_VERTS_ON_POLY - 2) {
+		*numOutPoints = 0;
+		return;
+	}
+
+	float dists[MF_MAX_VERTS_ON_POLY + 4] = {};
+	int   sides[MF_MAX_VERTS_ON_POLY + 4] = {};
+	int   counts[3] = {};
+
+	for (int i = 0; i < numInPoints; ++i) {
+		float dot = DotProduct(inPoints[i], normal) - dist;
+		dists[i] = dot;
+		if (dot > epsilon)       sides[i] = MF_SIDE_FRONT;
+		else if (dot < -epsilon) sides[i] = MF_SIDE_BACK;
+		else                     sides[i] = MF_SIDE_ON;
+		counts[sides[i]]++;
+	}
+	sides[numInPoints] = sides[0];
+	dists[numInPoints] = dists[0];
+
+	*numOutPoints = 0;
+	if (!counts[MF_SIDE_FRONT]) return;
+	if (!counts[MF_SIDE_BACK]) {
+		*numOutPoints = numInPoints;
+		Com_Memcpy(outPoints, inPoints, numInPoints * sizeof(vec3_t));
+		return;
+	}
+
+	for (int i = 0; i < numInPoints; ++i) {
+		float* p1   = inPoints[i];
+		float* clip = outPoints[*numOutPoints];
+
+		if (sides[i] == MF_SIDE_ON) {
+			VectorCopy(p1, clip);
+			(*numOutPoints)++;
+			continue;
+		}
+		if (sides[i] == MF_SIDE_FRONT) {
+			VectorCopy(p1, clip);
+			(*numOutPoints)++;
+			clip = outPoints[*numOutPoints];
+		}
+		if (sides[i + 1] == MF_SIDE_ON || sides[i + 1] == sides[i])
+			continue;
+
+		float* p2 = inPoints[(i + 1) % numInPoints];
+		float d   = dists[i] - dists[i + 1];
+		float dot = (d == 0) ? 0.0f : dists[i] / d;
+		for (int j = 0; j < 3; ++j)
+			clip[j] = p1[j] + dot * (p2[j] - p1[j]);
+		(*numOutPoints)++;
+	}
+}
+
+// Clip the surface polygon against all bounding planes and, if any fragment
+// remains, append it to pointBuffer / fragmentBuffer.
+// Matches GL2's R_AddMarkFragments.
+static void MF_AddMarkFragments(
+    int numClipPoints, vec3_t clipPoints[2][MF_MAX_VERTS_ON_POLY],
+    int numPlanes, vec3_t* normals, float* dists,
+    int maxPoints, vec3_t pointBuffer,
+    int maxFragments, markFragment_t* fragmentBuffer,
+    int* returnedPoints, int* returnedFragments,
+    vec3_t /*mins*/, vec3_t /*maxs*/)
+{
+	int pingPong = 0;
+	for (int i = 0; i < numPlanes; ++i) {
+		MF_ChopPolyBehindPlane(numClipPoints, clipPoints[pingPong],
+		                       &numClipPoints, clipPoints[!pingPong],
+		                       normals[i], dists[i], 0.5f);
+		pingPong ^= 1;
+		if (!numClipPoints) return;
+	}
+	if (!numClipPoints) return;
+	if (numClipPoints + *returnedPoints > maxPoints) return;
+
+	markFragment_t* mf = fragmentBuffer + (*returnedFragments);
+	mf->firstPoint = *returnedPoints;
+	mf->numPoints  = numClipPoints;
+	Com_Memcpy(pointBuffer + *returnedPoints * 3, clipPoints[pingPong],
+	           numClipPoints * sizeof(vec3_t));
+	(*returnedPoints)   += numClipPoints;
+	(*returnedFragments)++;
+}
+
+// Recursive BSP box-surface traversal.
+// childCode follows Q3 BSP convention: >= 0 means node index, < 0 means -(leafIdx+1).
+// Matches GL2's R_BoxSurfaces_r.
+static void MF_BoxSurfaces_r(
+    int childCode,
+    const std::vector<dnode_t>&  nodes,
+    const std::vector<dleaf_t>&  leaves,
+    const std::vector<cplane_t>& cplanes,
+    const std::vector<int>&      leafSurfs,
+    const std::vector<BspMarkSurface>& surfData,
+    std::vector<int>& surfViewCounts, int viewCount,
+    vec3_t mins, vec3_t maxs,
+    const BspMarkSurface** list, int listsize, int* listlength,
+    vec3_t dir)
+{
+	const int numNodes  = (int)nodes.size();
+	const int numLeaves = (int)leaves.size();
+	const int numSurfs  = (int)surfData.size();
+	const int numLSurfs = (int)leafSurfs.size();
+
+	// Tail-recurse through internal nodes, then process leaf.
+	while (childCode >= 0) {
+		if (childCode >= numNodes) return;
+		const dnode_t& node = nodes[childCode];
+		const int planeNum  = LittleLong(node.planeNum);
+		if (planeNum < 0 || planeNum >= (int)cplanes.size()) return;
+
+		int s = BoxOnPlaneSide(mins, maxs, const_cast<cplane_t*>(&cplanes[planeNum]));
+		if (s == 1) {
+			childCode = LittleLong(node.children[0]);
+		} else if (s == 2) {
+			childCode = LittleLong(node.children[1]);
+		} else {
+			// Box straddles the plane: visit both children.
+			MF_BoxSurfaces_r(LittleLong(node.children[0]),
+			                 nodes, leaves, cplanes, leafSurfs, surfData,
+			                 surfViewCounts, viewCount, mins, maxs,
+			                 list, listsize, listlength, dir);
+			childCode = LittleLong(node.children[1]);
+		}
+	}
+
+	// Leaf: childCode < 0  =>  leafIdx = -childCode - 1
+	const int leafIdx = -childCode - 1;
+	if (leafIdx < 0 || leafIdx >= numLeaves) return;
+
+	const dleaf_t& leaf    = leaves[leafIdx];
+	const int      firstLS = LittleLong(leaf.firstLeafSurface);
+	const int      numLS   = LittleLong(leaf.numLeafSurfaces);
+
+	for (int i = 0; i < numLS; ++i) {
+		if (*listlength >= listsize) break;
+
+		const int lsIdx = firstLS + i;
+		if (lsIdx < 0 || lsIdx >= numLSurfs) continue;
+		const int surfIdx = leafSurfs[lsIdx];
+		if (surfIdx < 0 || surfIdx >= numSurfs) continue;
+
+		int& svc = surfViewCounts[surfIdx];
+		const BspMarkSurface& surf = surfData[surfIdx];
+
+		// Surfaces flagged NOIMPACT / NOMARKS, or fog volumes, are silently skipped.
+		if ((surf.shaderSurfFlags & (SURF_NOIMPACT | SURF_NOMARKS))
+		    || (surf.shaderContFlags & CONTENTS_FOG)) {
+			svc = viewCount;
+		}
+		// For face surfaces: cull by plane-box side and projection angle.
+		else if (surf.type == BspMarkSurfType::Face) {
+			cplane_t cp;
+			cp.normal[0] = surf.cullNormal[0];
+			cp.normal[1] = surf.cullNormal[1];
+			cp.normal[2] = surf.cullNormal[2];
+			cp.dist      = surf.cullDist;
+			cp.type      = surf.cullType;
+			cp.signbits  = surf.cullSignbits;
+			int s2 = BoxOnPlaneSide(mins, maxs, &cp);
+			if (s2 == 1 || s2 == 2) {
+				svc = viewCount;  // entirely on one side
+			} else if (DotProduct(surf.cullNormal, dir) > -0.5f) {
+				svc = viewCount;  // face too oblique to projection
+			}
+		}
+		// Skip surface types we don't handle.
+		else if (surf.type != BspMarkSurfType::Face
+		      && surf.type != BspMarkSurfType::Patch
+		      && surf.type != BspMarkSurfType::TriSoup) {
+			svc = viewCount;
+		}
+
+		// Add to list if not already processed this frame.
+		if (svc != viewCount) {
+			svc = viewCount;
+			list[*listlength] = &surf;
+			(*listlength)++;
+		}
+	}
+}
+
+} // anonymous namespace for MarkFragments helpers
+
+int MetalRenderer::markFragments(
+    int numPoints, const vec3_t* points, const vec3_t projection,
+    int maxPoints, vec3_t pointBuffer,
+    int maxFragments, markFragment_t* fragmentBuffer)
+{
+	if (numPoints <= 0 || bspNodes_.empty() || bspMarkSurfData_.empty())
+		return 0;
+
+	// Increment viewCount for per-frame surface deduplication.
+	++bspViewCount_;
+	// Ensure the per-surface view-count array is sized correctly (grows with BSP loads).
+	if ((int)bspSurfViewCounts_.size() != (int)bspMarkSurfData_.size())
+		bspSurfViewCounts_.assign(bspMarkSurfData_.size(), -1);
+
+	vec3_t projectionDir;
+	VectorNormalize2(projection, projectionDir);
+
+	// Compute AABB that encloses the winding polygon plus projection extent.
+	vec3_t mins, maxs;
+	ClearBounds(mins, maxs);
+	for (int i = 0; i < numPoints; ++i) {
+		vec3_t temp;
+		AddPointToBounds(points[i], mins, maxs);
+		VectorAdd(points[i], projection, temp);
+		AddPointToBounds(temp, mins, maxs);
+		VectorMA(points[i], -20.0f, projectionDir, temp);
+		AddPointToBounds(temp, mins, maxs);
+	}
+
+	if (numPoints > MF_MAX_VERTS_ON_POLY) numPoints = MF_MAX_VERTS_ON_POLY;
+
+	// Build side-clipping planes for the winding polygon and the projection depth.
+	vec3_t normals[MF_MAX_VERTS_ON_POLY + 2];
+	float  dists  [MF_MAX_VERTS_ON_POLY + 2];
+	for (int i = 0; i < numPoints; ++i) {
+		vec3_t v1, v2;
+		VectorSubtract(points[(i + 1) % numPoints], points[i], v1);
+		VectorAdd(points[i], projection, v2);
+		VectorSubtract(points[i], v2, v2);
+		CrossProduct(v1, v2, normals[i]);
+		VectorNormalizeFast(normals[i]);
+		dists[i] = DotProduct(normals[i], points[i]);
+	}
+	// Near plane (32 units behind the surface)
+	VectorCopy(projectionDir, normals[numPoints]);
+	dists[numPoints] = DotProduct(projectionDir, points[0]) - 32.0f;
+	// Far plane (20 units in front)
+	VectorCopy(projectionDir, normals[numPoints + 1]);
+	VectorInverse(normals[numPoints + 1]);
+	dists[numPoints + 1] = DotProduct(normals[numPoints + 1], points[0]) - 20.0f;
+	const int numPlanes = numPoints + 2;
+
+	// Gather candidate surfaces via BSP traversal.
+	constexpr int MAX_MARK_SURFS = 64;
+	const BspMarkSurface* surfaces[MAX_MARK_SURFS];
+	int numsurfaces = 0;
+
+	MF_BoxSurfaces_r(/*root = node 0*/ 0,
+	                 bspNodes_, bspLeafs_, bspCPlanes_,
+	                 bspLeafSurfaces_, bspMarkSurfData_,
+	                 bspSurfViewCounts_, bspViewCount_,
+	                 mins, maxs,
+	                 surfaces, MAX_MARK_SURFS, &numsurfaces,
+	                 projectionDir);
+
+	int returnedPoints    = 0;
+	int returnedFragments = 0;
+
+	for (int i = 0; i < numsurfaces; ++i) {
+		const BspMarkSurface& surf = *surfaces[i];
+
+		if (surf.type == BspMarkSurfType::Face) {
+			// Check that the projection direction faces the surface.
+			if (DotProduct(surf.cullNormal, projectionDir) > -0.5f) continue;
+
+			// Each triangle is stored as 3 consecutive vertices.
+			const int numTris = (int)surf.verts.size() / 3;
+			for (int t = 0; t < numTris; ++t) {
+				vec3_t clipPoints[2][MF_MAX_VERTS_ON_POLY];
+				for (int j = 0; j < 3; ++j) {
+					const BspMarkVert& v = surf.verts[t * 3 + j];
+					clipPoints[0][j][0] = v.xyz[0];
+					clipPoints[0][j][1] = v.xyz[1];
+					clipPoints[0][j][2] = v.xyz[2];
+				}
+				MF_AddMarkFragments(3, clipPoints,
+				                    numPlanes, normals, dists,
+				                    maxPoints, pointBuffer,
+				                    maxFragments, fragmentBuffer,
+				                    &returnedPoints, &returnedFragments,
+				                    mins, maxs);
+				if (returnedFragments == maxFragments) return returnedFragments;
+			}
+
+		} else if (surf.type == BspMarkSurfType::Patch) {
+			// Tessellated patch stored as flat triangle list (3 verts per tri).
+			// Check each triangle's computed normal against the projection direction.
+			const int numTris = (int)surf.verts.size() / 3;
+			for (int t = 0; t < numTris; ++t) {
+				vec3_t clipPoints[2][MF_MAX_VERTS_ON_POLY];
+				for (int j = 0; j < 3; ++j) {
+					const BspMarkVert& v = surf.verts[t * 3 + j];
+					clipPoints[0][j][0] = v.xyz[0];
+					clipPoints[0][j][1] = v.xyz[1];
+					clipPoints[0][j][2] = v.xyz[2];
+				}
+				// Compute triangle normal and check against projection.
+				vec3_t v1, v2, normal;
+				VectorSubtract(clipPoints[0][0], clipPoints[0][1], v1);
+				VectorSubtract(clipPoints[0][2], clipPoints[0][1], v2);
+				CrossProduct(v1, v2, normal);
+				VectorNormalizeFast(normal);
+				if (DotProduct(normal, projectionDir) < -0.1f) {
+					MF_AddMarkFragments(3, clipPoints,
+					                    numPlanes, normals, dists,
+					                    maxPoints, pointBuffer,
+					                    maxFragments, fragmentBuffer,
+					                    &returnedPoints, &returnedFragments,
+					                    mins, maxs);
+					if (returnedFragments == maxFragments) return returnedFragments;
+				}
+			}
+
+		} else if (surf.type == BspMarkSurfType::TriSoup
+		        && r_marksOnTriangleMeshes_ && r_marksOnTriangleMeshes_->integer) {
+			// Triangle soup: iterate triangles.
+			const int numTris = (int)surf.verts.size() / 3;
+			for (int t = 0; t < numTris; ++t) {
+				vec3_t clipPoints[2][MF_MAX_VERTS_ON_POLY];
+				for (int j = 0; j < 3; ++j) {
+					const BspMarkVert& v = surf.verts[t * 3 + j];
+					clipPoints[0][j][0] = v.xyz[0];
+					clipPoints[0][j][1] = v.xyz[1];
+					clipPoints[0][j][2] = v.xyz[2];
+				}
+				MF_AddMarkFragments(3, clipPoints,
+				                    numPlanes, normals, dists,
+				                    maxPoints, pointBuffer,
+				                    maxFragments, fragmentBuffer,
+				                    &returnedPoints, &returnedFragments,
+				                    mins, maxs);
+				if (returnedFragments == maxFragments) return returnedFragments;
+			}
+		}
+	}
+	return returnedFragments;
 }
 
 bool MetalBackend_Initialize(refimport_t imports) {
@@ -8826,6 +12198,14 @@ void MetalBackend_DrawStretchPic(float x, float y, float w, float h, float s1, f
 	g_renderer.drawStretchPic(x, y, w, h, s1, t1, s2, t2, shader);
 }
 
+void MetalBackend_DrawRotatePic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, float degrees, qhandle_t shader) {
+	g_renderer.drawRotatePic(x, y, w, h, s1, t1, s2, t2, degrees, shader);
+}
+
+void MetalBackend_DrawRotatePic2(float x, float y, float w, float h, float s1, float t1, float s2, float t2, float degrees, qhandle_t shader) {
+	g_renderer.drawRotatePic2(x, y, w, h, s1, t1, s2, t2, degrees, shader);
+}
+
 void MetalBackend_LoadWorld(const char* name) {
 	Metal_LogRendererCall("re.LoadWorld");
 	g_renderer.loadWorldMap(name);
@@ -8840,8 +12220,46 @@ void MetalBackend_EndRegistration() {
 	Metal_LogRendererCall("re.EndRegistration");
 }
 
+qboolean MetalBackend_GetEntityToken(char* buffer, int size) {
+	Metal_LogRendererCall("re.GetEntityToken");
+	return g_renderer.getEntityToken(buffer, size);
+}
+
+qboolean MetalBackend_inPVS(const vec3_t p1, const vec3_t p2) {
+	// Avoid per-frame log spam — inPVS is called every game tick for every entity.
+	return g_renderer.inPVS(p1, p2);
+}
+
+int MetalBackend_MarkFragments(int numPoints, const vec3_t* points, const vec3_t projection,
+                               int maxPoints, vec3_t pointBuffer,
+                               int maxFragments, markFragment_t* fragmentBuffer)
+{
+	return g_renderer.markFragments(numPoints, points, projection,
+	                                maxPoints, pointBuffer,
+	                                maxFragments, fragmentBuffer);
+}
+
 void Metal_LogRendererCall(const char* name) {
 	g_renderer.logRendererCall(name);
+}
+
+// ---------------------------------------------------------------------------
+// Flare system C-wrappers called from tr_flares.cpp
+// ---------------------------------------------------------------------------
+
+qhandle_t MetalBackend_GetFlareShader() {
+	return g_renderer.getFlareShader();
+}
+
+void MetalBackend_DrawFlareQuad(float x, float y, float w, float h,
+                                float r, float g, float b, qhandle_t shader) {
+	g_renderer.drawFlareQuad(x, y, w, h, r, g, b, shader);
+}
+
+void MetalBackend_GetSceneCameraForFlares(float viewMat[16], float projMat[16],
+                                          float viewOrg[3],
+                                          int* vpX, int* vpY, int* vpW, int* vpH) {
+	g_renderer.getSceneCameraForFlares(viewMat, projMat, viewOrg, vpX, vpY, vpW, vpH);
 }
 
 bool MetalRenderer::initialize(refimport_t imports) {
@@ -8860,12 +12278,18 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	r_swapInterval_ = ri_.Cvar_Get("r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapOverBrightBits_ = ri_.Cvar_Get("r_mapOverBrightBits", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	r_overBrightBits_ = ri_.Cvar_Get("r_overBrightBits", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_greyscale_ = ri_.Cvar_Get("r_greyscale", "0", CVAR_ARCHIVE);
 
 	// Lighting console variables (matching OpenGL2 renderer)
 	r_ambientScale = ri_.Cvar_Get("r_ambientScale", "0.6", CVAR_CHEAT);
 	r_directedScale = ri_.Cvar_Get("r_directedScale", "1", CVAR_CHEAT);
 	r_debugLight = ri_.Cvar_Get("r_debugLight", "0", CVAR_TEMP);
 	r_dlightMode = ri_.Cvar_Get("r_dlightMode", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_marksOnTriangleMeshes_ = ri_.Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE);
+	// Shadows: 0=off, 1+=projection (blob) shadows. Mirrors cg_shadows in GL2.
+	r_shadows_ = ri_.Cvar_Get("cg_shadows", "1", 0);
+	// Patch subdivision flatness tolerance (world units). Matches GL2's r_subdivisions.
+	r_subdivisions_ = ri_.Cvar_Get("r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH);
 
 	// Initialize lighting system
 	R_InitLightingSystem();
@@ -8884,7 +12308,14 @@ bool MetalRenderer::initialize(refimport_t imports) {
 		R_SetIdentityLight(overbrightBits);
 	}
 
+	// Lens flare cvars (matching GL2 renderer defaults)
+	r_flares_    = ri_.Cvar_Get("r_flares",    "0",    CVAR_ARCHIVE);
+	r_flareSize_ = ri_.Cvar_Get("r_flareSize", "40",   CVAR_CHEAT);
+	r_flareFade_ = ri_.Cvar_Get("r_flareFade", "7",    CVAR_CHEAT);
+	r_flareCoeff_ = ri_.Cvar_Get("r_flareCoeff", "150", CVAR_CHEAT);
+
 	resetShaderCaches();
 	// TextureManager will be created when device is available
+	Metal_InitFlares();
 	return true;
 }

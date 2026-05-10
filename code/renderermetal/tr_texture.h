@@ -24,6 +24,17 @@ extern "C" {
 #include <unordered_map>
 #include <vector>
 
+// Load a DDS file from disk.  Returns the raw compressed/uncompressed pixel
+// data in *pic (caller must ri.Free()), the image dimensions, the Metal pixel
+// format that matches the DDS encoding, and the number of mip levels present.
+// *pic is set to nullptr on failure.
+void R_LoadDDS_Metal(const char*       filename,
+                     byte**            pic,
+                     int*              width,
+                     int*              height,
+                     MTL::PixelFormat* pixelFormat,
+                     int*              numMips);
+
 class TextureManager {
 public:
 	explicit TextureManager(MTL::Device* device, refimport_t* rimp);
@@ -53,9 +64,17 @@ private:
 
 	// Load image from file using renderercommon loaders
 	qhandle_t loadImageFile(const char* name, bool mipmap);
-	
-	// Create Metal texture from pixel data
+
+	// Create Metal texture from RGBA pixel data (generates optional mipmaps)
 	MTL::Texture* createTexture(const byte* data, int width, int height, bool mipmap);
+
+	// Create Metal texture from DDS data (compressed or RGBA8).
+	// Uploads all mip levels present in the raw DDS payload.
+	MTL::Texture* createCompressedTexture(const byte* data,
+	                                      int         width,
+	                                      int         height,
+	                                      int         numMips,
+	                                      MTL::PixelFormat pixelFormat);
 
 	MTL::Device* device_;
 	refimport_t* ri_;  // Store pointer to engine imports
