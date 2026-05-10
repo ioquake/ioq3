@@ -100,3 +100,33 @@ bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 
 **Scope**: This applies to all sampler binding sites in `tr_backend.cpp`:  
 world surface rendering (2 sites), model multi-pass rendering (3 sites), and other specialized surface types (4 sites). All 9 sites were updated in commit 49549f18.
+# Decision: Dlight Pass Must Use ClampToEdge Sampler
+
+**Author**: Bishop  
+**Date**: 2026-05-10  
+**Status**: Proposed
+
+## Decision
+
+All dynamic light (dlight) passes that bind the radial-falloff texture must use `sceneClampSampler_` (ClampToEdge), not `sampler2D_` (Repeat).
+
+## Rationale
+
+The dlight vertex shader computes UV as:
+```
+UV = dist.xy * (1/radius) + 0.5
+```
+This places surfaces *within* the light radius in UV [0,1]. Surfaces outside that radius produce UV outside [0,1]. With Repeat address mode, these out-of-range UVs wrap back toward the centre of the 16×16 falloff disk and sample bright values — producing full-intensity dlight contribution far beyond the intended radius. With an orange/red rocket dlight this manifests as a vivid orange splash on the floor.
+
+ClampToEdge causes out-of-range UVs to sample the black border of the disk (intensity 0), correctly producing no contribution.
+
+## Scope
+
+This applies to every `setFragmentSamplerState` call that targets the `dlightTexture_`:
+- `encodeDlights()` world surface pass
+- Animated model dlight pass (in `renderAnimatedModel`)
+- Brush model dlight pass (in `renderBrushModel`)
+
+## Non-Impact
+
+`sampler2D_` can remain Repeat for its intended uses (2D/UI texture rendering, cinematics).
