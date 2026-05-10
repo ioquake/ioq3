@@ -1976,6 +1976,7 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	sampler_.reset();
 	pipeline_.reset();
 	sceneSampler_.reset();
+	sceneClampSampler_.reset();
 	sceneVertexDescriptor_.reset();
 	sceneFragmentFunction_.reset();
 	sceneVertexFunction_.reset();
@@ -8206,8 +8207,10 @@ bool MetalRenderer::drawPolyPackets() {
 				boundTexture = textureToUse;
 			}
 			
-			// Use clamp sampler if shader stage specifies clampmap
-			bool useClamp = stageInfo && stageInfo->clampMap;
+			// Use clamp sampler if shader stage specifies clampmap or is a lightmap stage.
+			// Lightmap textures are individual 128x128 tiles; Repeat mode causes UV overshoot
+			// to wrap to the opposite edge, producing seam/brightness artifacts.
+			bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 			MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 			MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 
@@ -8510,7 +8513,7 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 		}
 
 		// Use appropriate sampler
-		bool useClamp = stageRuntime->stageInfo && stageRuntime->stageInfo->clampMap;
+		bool useClamp = stageRuntime->stageInfo && (stageRuntime->stageInfo->clampMap || stageRuntime->stageInfo->usesLightmap);
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 
@@ -10394,9 +10397,9 @@ void MetalRenderer::renderModelSurface(
 				MTL::Texture* tex = texMgr->getTexture(textureHandle);
 				if (tex) {
 					currentRenderEncoder_->setFragmentTexture(tex, 0);
-					// Use clamp sampler if shader stage specifies clampmap
-					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
-					if (useClamp && sceneClampSampler_) {
+					// Use clamp sampler if shader stage specifies clampmap or is a lightmap stage.
+				bool useClamp = stageRuntime.stageInfo && (stageRuntime.stageInfo->clampMap || stageRuntime.stageInfo->usesLightmap);
+				if (useClamp && sceneClampSampler_) {
 						currentRenderEncoder_->setFragmentSamplerState(sceneClampSampler_.get(), 0);
 					} else if (sceneSampler_) {
 						currentRenderEncoder_->setFragmentSamplerState(sceneSampler_.get(), 0);
@@ -10938,7 +10941,7 @@ void MetalRenderer::renderMDRSurface(
 				MTL::Texture* tex = texMgr->getTexture(textureHandle);
 				if (tex) {
 					currentRenderEncoder_->setFragmentTexture(tex, 0);
-					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
+					bool useClamp = stageRuntime.stageInfo && (stageRuntime.stageInfo->clampMap || stageRuntime.stageInfo->usesLightmap);
 					MTL::SamplerState* samp = (useClamp && sceneClampSampler_)
 					                          ? sceneClampSampler_.get() : sceneSampler_.get();
 					currentRenderEncoder_->setFragmentSamplerState(samp, 0);
@@ -11363,7 +11366,7 @@ void MetalRenderer::renderIQMSurface(
 				MTL::Texture* tex = texMgr->getTexture(textureHandle);
 				if (tex) {
 					currentRenderEncoder_->setFragmentTexture(tex, 0);
-					bool useClamp = stageRuntime.stageInfo && stageRuntime.stageInfo->clampMap;
+					bool useClamp = stageRuntime.stageInfo && (stageRuntime.stageInfo->clampMap || stageRuntime.stageInfo->usesLightmap);
 					MTL::SamplerState* samp = (useClamp && sceneClampSampler_)
 					                          ? sceneClampSampler_.get() : sceneSampler_.get();
 					currentRenderEncoder_->setFragmentSamplerState(samp, 0);
@@ -12125,7 +12128,7 @@ void MetalRenderer::renderSprite(const refEntity_t& ent) {
 		}
 		
 		// Bind sampler
-		bool useClamp = stageInfo && stageInfo->clampMap;
+		bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 		
@@ -12436,7 +12439,7 @@ void MetalRenderer::renderRailRibbonSegment(size_t baseVertex, int vertexCount, 
 			}
 		}
 		
-		bool useClamp = stageInfo && stageInfo->clampMap;
+		bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 		
@@ -12589,7 +12592,7 @@ void MetalRenderer::renderRailRings(const refEntity_t& ent) {
 			}
 		}
 		
-		bool useClamp = stageInfo && stageInfo->clampMap;
+		bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 		
@@ -12759,7 +12762,7 @@ void MetalRenderer::renderLightning(const refEntity_t& ent) {
 			}
 		}
 		
-		bool useClamp = stageInfo && stageInfo->clampMap;
+		bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 		

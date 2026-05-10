@@ -241,6 +241,12 @@ fragment float4 fragment_tonemap(
         color.rgb *= ao;
     }
 
+    // sRGB gamma correction.
+    // The Metal drawable is BGRA8Unorm with no automatic linear→sRGB conversion,
+    // so we apply the standard 1/2.2 power curve here, matching GL2's tonemap_fp.glsl.
+    // Without this, tonemapped linear values appear too dark on a gamma display.
+    color.rgb = pow(color.rgb, float3(1.0f / 2.2f));
+
     return float4(color.rgb, 1.0f);
 }
 
