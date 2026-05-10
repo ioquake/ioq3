@@ -44,6 +44,54 @@ extern "C" {
 #define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
 
 //=============================================================================
+// PER-OBJECT SHADOW MAPS (PSHADOW)
+//=============================================================================
+
+#define MAX_DRAWN_PSHADOWS  4
+#define MAX_CALC_PSHADOWS   32
+#define PSHADOW_MAP_SIZE    512
+
+typedef struct {
+	float      lightRadius;      // World-space extent of shadow projection
+	float      viewRadius;       // Bounding sphere radius of all caster entities
+	vec3_t     lightOrigin;      // World-space light position
+	vec3_t     viewOrigin;       // World-space centre of caster bounding sphere
+	vec3_t     lightViewAxis[3]; // [0]=forward(-lightDir), [1]=right, [2]=up
+	cplane_t   cullPlane;        // Cull receivers facing away from the light
+	int        numEntities;      // Number of caster entities (max 8)
+	int        entityNums[8];    // Indices into drawPackets_ (set during computePshadows)
+	vec3_t     entityOrigins[8]; // Entity world-space origins
+	float      entityRadiuses[8];// Entity bounding radii
+	float      sort;             // Sort key: smaller = higher priority
+} pshadow_t;
+
+#ifdef __cplusplus
+#include <cmath>
+static inline bool SpheresIntersect(const float* a, float ra, const float* b, float rb) {
+	float dx = b[0]-a[0], dy = b[1]-a[1], dz = b[2]-a[2];
+	float r  = ra + rb;
+	return (dx*dx + dy*dy + dz*dz) <= (r*r);
+}
+static inline void BoundingSphereOfSpheres(const float* a, float ra, const float* b, float rb,
+                                            float* center, float* radius) {
+	float dx = b[0]-a[0], dy = b[1]-a[1], dz = b[2]-a[2];
+	float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+	if (dist < 1e-4f) {
+		center[0] = a[0]; center[1] = a[1]; center[2] = a[2];
+		*radius = (ra > rb) ? ra : rb;
+	} else {
+		float t = (dist + rb - ra) / (2.0f * dist);
+		if (t < 0.0f) t = 0.0f;
+		if (t > 1.0f) t = 1.0f;
+		center[0] = a[0] + t*dx;
+		center[1] = a[1] + t*dy;
+		center[2] = a[2] + t*dz;
+		*radius = (dist + ra + rb) * 0.5f;
+	}
+}
+#endif
+
+//=============================================================================
 // DYNAMIC LIGHTS
 //=============================================================================
 
@@ -113,6 +161,9 @@ void R_SetIdentityLight(int overbrightBits);
 // Get current identity light value
 float R_GetIdentityLight(void);
 
+// Get current sun direction (world-space unit vector, used by post-processing)
+void R_GetSunDirection(vec3_t out);
+
 // Load light grid data from BSP
 void R_LoadLightGrid(const byte* gridData, int gridDataSize,
                      const uint16_t* grid16Data, int grid16DataSize,
@@ -125,6 +176,27 @@ void R_SetupEntityLighting(const refdef_t* refdef, trRefEntity_t* ent,
 
 // Sample light grid at a specific point
 int R_LightForPoint(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
+
+// -------------------------------------------------------------------------
+// Cubemap probe system (mirrors GL2 tr_light.c / tr_bsp.c)
+// -------------------------------------------------------------------------
+
+// Clear any loaded probe origins (called on world load/unload).
+void R_InitCubemapProbes(void);
+void R_ShutdownCubemapProbes(void);
+
+// Parse the BSP entity string and collect probe origins from
+// 'misc_cubemap' entities (falls back to 'info_player_deathmatch').
+// Returns the number of probes found.
+int  R_LoadCubemapProbeOrigins(const char* entitiesData, int entitiesLen);
+
+// Return the 1-based index of the nearest probe to 'point', or 0 if none.
+// Matches GL2's R_CubemapForPoint return convention.
+int  R_CubemapForPoint(const vec3_t point);
+
+// Accessors for probe data (used by the Metal backend to build GPU textures).
+int  R_GetNumCubemapProbes(void);
+void R_GetCubemapProbeOrigin(int idx, vec3_t out);
 
 #ifdef __cplusplus
 // Forward declarations for C++ brush model dlight support

@@ -95,6 +95,23 @@ struct __attribute__((packed)) MetalPolyVertex {
 // Verify structure matches Metal shader expectations
 static_assert(sizeof(MetalPolyVertex) == 44, "MetalPolyVertex must be exactly 44 bytes to match Metal shader");
 
+// PShadow uniform structs — layout must exactly match scene.metal structs of the same name.
+struct alignas(16) PShadowCasterUniforms {
+	float lightOrigin[4];   // xyz = light origin, w = viewRadius
+	float lightForward[4];  // xyz = axis[0] (toward scene), w = lightRadius
+	float lightRight[4];    // xyz = axis[1], w = unused
+	float lightUp[4];       // xyz = axis[2], w = unused
+};
+static_assert(sizeof(PShadowCasterUniforms) == 64, "PShadowCasterUniforms size mismatch");
+
+struct alignas(16) PShadowReceiverUniforms {
+	float lightOrigin[4];   // xyz = light origin, w = lightRadius
+	float lightForward[4];  // xyz = axis[0] (unscaled)
+	float lightRight[4];    // xyz = axis[1] / viewRadius (SCALED)
+	float lightUp[4];       // xyz = axis[2] / viewRadius (SCALED)
+};
+static_assert(sizeof(PShadowReceiverUniforms) == 64, "PShadowReceiverUniforms size mismatch");
+
 // Skin system data structures (matches OpenGL2 tr_local.h:792-801)
 constexpr int MAX_SKIN_SURFACES = 256;
 
@@ -1208,6 +1225,7 @@ private:
 		MTL::PrimitiveType primitive = MTL::PrimitiveTypeTriangle;
 		qhandle_t lightmapHandle = 0;
 		int fogIndex = 0;  // 0 = no fog, 1+ = fog volume index (1-based)
+		int cubemapIndex = 0; // 0 = no probe, 1+ = probe index (1-based into worldCubemapTextures_)
 		bool isPortal = false;      // True if this surface is a portal/mirror
 		bool isStaticWorld = false; // True if vertices live in staticWorldVertexBuffer_
 	};
@@ -1269,10 +1287,15 @@ private:
 
 	// Normal-map and specular-map parameters — matches scene.metal NormalSpecularParams
 	struct alignas(16) NormalSpecularParams {
-		float useNormalMap   = 0.0f;
-		float useSpecularMap = 0.0f;
-		float normalScale    = 1.0f;
-		float specularPower  = 32.0f;
+		float useNormalMap    = 0.0f;
+		float useSpecularMap  = 0.0f;
+		float normalScale     = 1.0f;
+		float specularPower   = 32.0f;
+		// Cubemap reflection (NEW) — must match scene.metal NormalSpecularParams layout
+		float useCubemap      = 0.0f;  // 1.0 = sample cubemap, 0.0 = disabled
+		float cubemapStrength = 0.0f;  // Reflection blend strength (0–1)
+		float _pad0           = 0.0f;
+		float _pad1           = 0.0f;
 	};
 
 	struct ModelFogParams {
@@ -1410,6 +1433,7 @@ private:
 	cvar_t* r_greyscale_ = nullptr;
 	cvar_t* r_shadows_ = nullptr;  // 0=off, 1+=blob/projection shadows
 	cvar_t* r_subdivisions_ = nullptr;  // world-space flatness tolerance for patch subdivision
+	cvar_t* r_pshadowDist_ = nullptr;   // max distance for per-object shadow consideration
 
 	// Projection (blob) shadow pipeline resources
 	MetalPtr<MTL::RenderPipelineState> shadowPipeline_;
@@ -1468,6 +1492,22 @@ private:
 	MetalPtr<MTL::Function> dlightAnimatedVertexFunction_;
 	MetalPtr<MTL::RenderPipelineState> dlightAnimatedPipeline_;
 
+	// Per-object shadow maps (pshadow) — per-frame state
+	pshadow_t pshadows_[MAX_DRAWN_PSHADOWS];
+	int       numPshadows_ = 0;
+
+	// PShadow GPU resources
+	MetalPtr<MTL::Texture>             pshadowMaps_[MAX_DRAWN_PSHADOWS];
+	MetalPtr<MTL::Function>            pshadowCasterVFn_;
+	MetalPtr<MTL::Function>            pshadowRecvWorldVFn_;
+	MetalPtr<MTL::Function>            pshadowRecvModelVFn_;
+	MetalPtr<MTL::Function>            pshadowRecvFFn_;
+	MetalPtr<MTL::RenderPipelineState> pshadowCasterPipeline_;
+	MetalPtr<MTL::RenderPipelineState> pshadowRecvWorldPipeline_;
+	MetalPtr<MTL::RenderPipelineState> pshadowRecvModelPipeline_;
+	MetalPtr<MTL::VertexDescriptor>    pshadowCasterVD_;
+	MetalPtr<MTL::DepthStencilState>   pshadowCasterDepthState_;
+	MetalPtr<MTL::DepthStencilState>   pshadowRecvDepthState_;
 
 	// Current frame cinematic texture (not owned, points into cinematicSlots_)
 	MTL::Texture* frameCinematicTexture_ = nullptr;
@@ -1586,6 +1626,12 @@ private:
 	std::vector<char> entityStringBuf_;   // null-terminated entity string from BSP
 	char* entityParsePoint_ = nullptr;    // cursor into entityStringBuf_
 
+	// Sky portal: if the BSP entity lump contains a "skyboxportal" or "misc_skyportal"
+	// entity (as used in some custom Q3 maps), the sky is rendered from its origin rather
+	// than the player's eye position, producing the portal-sky visual effect.
+	bool    hasSkyPortal_ = false;
+	vec3_t  skyPortalOrigin_ = {0.0f, 0.0f, 0.0f};
+
 	// BSP spatial data for inPVS / R_PointInLeaf
 	std::vector<dnode_t>  bspNodes_;
 	std::vector<dleaf_t>  bspLeafs_;
@@ -1598,6 +1644,21 @@ private:
 	std::vector<MetalBrushModel> brushModels_;  // Brush models (inline BSP models)
 	int numWorldSurfaces_ = 0;  // Number of surfaces in model 0 (the world itself)
 	int numWorldPackets_ = 0;   // Number of packets that belong to the world (vs brush models)
+
+	// Cubemap probe textures (TextureTypeCube) for environment reflections.
+	// Index 0 = fallback (1×1 black), indices 1..N = probe textures (1-based,
+	// matching the convention returned by R_CubemapForPoint).
+	std::vector<MetalPtr<MTL::Texture>> worldCubemapTextures_;
+	// Permanent 1×1 black cubemap — bound to texture slot 3 when no world
+	// cubemaps are loaded so the shader slot is always valid.
+	MetalPtr<MTL::Texture> fallbackCubemapTexture_;
+
+	// PVS visibility culling
+	std::vector<byte> visData_;       // Raw PVS bit arrays from LUMP_VISIBILITY (after 8-byte header)
+	int visNumClusters_ = 0;          // Number of clusters in the PVS
+	int visClusterBytes_ = 0;         // Bytes per cluster row in the PVS bit array
+	std::vector<int> surfaceVisFrame_; // Per-packet visibility frame (indexed by packet index)
+	int visFrame_ = 0;                // Incremented each frame; a packet is visible iff surfaceVisFrame_[i]==visFrame_
 	std::vector<MetalModel*> models_;  // Model storage (index 0 is reserved for BAD model)
 	std::unordered_map<std::string, qhandle_t> modelLookup_;
 	std::unordered_map<uintptr_t, MetalPtr<MTL::Buffer>> mdrIndexBuffers_; // Cached MDR triangle index buffers
@@ -1615,6 +1676,76 @@ private:
 	cvar_t* r_flareFade_ = nullptr;
 	cvar_t* r_flareCoeff_ = nullptr;
 
+	// -------------------------------------------------------------------------
+	// Post-processing pipeline
+	// -------------------------------------------------------------------------
+
+	// HDR render target — scene renders here instead of directly to drawable.
+	MetalPtr<MTL::Texture> hdrColorTarget_;
+	int hdrTargetWidth_  = 0;
+	int hdrTargetHeight_ = 0;
+
+	// Half-resolution ping-pong targets for bloom and sun-ray intermediates.
+	MetalPtr<MTL::Texture> bloomTarget_[2];
+	int bloomTargetWidth_  = 0;
+	int bloomTargetHeight_ = 0;
+
+	// SSAO occlusion map (full-res, r=AO).
+	MetalPtr<MTL::Texture> ssaoTarget_;
+	int ssaoTargetWidth_  = 0;
+	int ssaoTargetHeight_ = 0;
+
+	// Luminance targets — one raw (current frame) and two for ping-pong
+	// temporal accumulation (matches GL2's calcLevelsFbo + targetLevelsFbo).
+	MetalPtr<MTL::Texture> lumRawTarget_;        // 1×1 log-lum this frame
+	MetalPtr<MTL::Texture> lumAccumTarget_[2];   // ping-pong smoothed lum
+	int lumAccumIdx_ = 0;                        // which accum is the "current"
+	bool lumAccumInitialized_ = false;
+
+	// Intermediate scratch textures for the luminance downsample chain.
+	// Created at up to 256×256; reused across frames.
+	MetalPtr<MTL::Texture> lumScratch_[2];
+	int lumScratchWidth_  = 0;
+	int lumScratchHeight_ = 0;
+
+	// Post-processing render pipeline states.
+	MetalPtr<MTL::RenderPipelineState> ppPassthroughPso_;       // simple blit
+	MetalPtr<MTL::RenderPipelineState> ppDownsample4xPso_;      // 4× box downsample
+	MetalPtr<MTL::RenderPipelineState> ppCalcLevelsFirstPso_;   // lum first pass
+	MetalPtr<MTL::RenderPipelineState> ppCalcLevelsPso_;        // lum subsequent
+	MetalPtr<MTL::RenderPipelineState> ppLumBlendPso_;          // temporal lum blend
+	MetalPtr<MTL::RenderPipelineState> ppTonemapPso_;           // HDR→LDR tonemap+SSAO
+	MetalPtr<MTL::RenderPipelineState> ppBloomExtractPso_;      // bright extraction
+	MetalPtr<MTL::RenderPipelineState> ppGaussianBlurHPso_;     // Gaussian H
+	MetalPtr<MTL::RenderPipelineState> ppGaussianBlurVPso_;     // Gaussian V
+	MetalPtr<MTL::RenderPipelineState> ppSSAOPso_;              // SSAO occlusion
+	MetalPtr<MTL::RenderPipelineState> ppDepthBlurPso_;         // SSAO depth-aware blur
+	MetalPtr<MTL::RenderPipelineState> ppSunRaysPso_;           // sun-ray radial blur
+	MetalPtr<MTL::RenderPipelineState> ppDofBlurPso_;           // DOF bokeh
+	// Additive blend pipeline (for bloom composite and sun-ray composite).
+	MetalPtr<MTL::RenderPipelineState> ppAdditivePso_;
+
+	// Shared linear-clamp sampler for all post-processing passes.
+	MetalPtr<MTL::SamplerState> ppLinearSampler_;
+
+	// Post-processing cvars.
+	cvar_t* r_hdr_               = nullptr;   // 0 = off, 1 = HDR path
+	cvar_t* r_bloom_             = nullptr;   // 0 = off, 1 = bloom enabled
+	cvar_t* r_bloomThreshold_    = nullptr;   // luminance threshold (default 1.0)
+	cvar_t* r_bloomStrength_     = nullptr;   // bloom output multiplier
+	cvar_t* r_ssao_              = nullptr;   // 0 = off, 1 = SSAO
+	cvar_t* r_dof_               = nullptr;   // 0 = off, blurFactor from refdef
+	cvar_t* r_sunlightMode_      = nullptr;   // 0 = off, 1 = sun rays
+	cvar_t* r_autoExposure_      = nullptr;   // 0 = manual, 1 = auto
+	cvar_t* r_autoExposureMinValue_ = nullptr;
+	cvar_t* r_autoExposureMaxValue_ = nullptr;
+	cvar_t* r_cameraExposure_    = nullptr;   // manual exposure bias
+	cvar_t* r_tonemapExposure_   = nullptr;   // target average scene luminance
+
+	// Per-frame post-processing state.
+	bool usingHDRRenderPath_  = false;   // beginFrame set this when r_hdr=1
+	bool postProcessingDone_  = false;   // set after runPostProcessing()
+
 	bool initializeWindow(int& width, int& height, qboolean& fullscreen);
 	bool createPipeline(MTL::Texture* drawableTexture);
 	bool create2DPipeline();
@@ -1625,6 +1756,20 @@ private:
 	                             int* vpX, int* vpY, int* vpW, int* vpH) const;
 	qhandle_t getFlareShader();
 	bool ensureDepthTexture(int width, int height);
+	bool ensureHDRTargets(int width, int height);
+	bool createPostProcessPipelines();
+	void ensurePostProcessed();
+	void runPostProcessing();
+	void doRenderPass(MTL::RenderPipelineState* pso,
+	                  MTL::Texture* src0, MTL::Texture* src1, MTL::Texture* src2,
+	                  MTL::Texture* dst,
+	                  MTL::LoadAction loadAction,
+	                  const void* uniforms, size_t uniformSize);
+	MTL::RenderPipelineState* makePPPso(MTL::Library* lib,
+	                                    const char* vfnName,
+	                                    const char* ffnName,
+	                                    MTL::PixelFormat colorFmt,
+	                                    bool additiveBlend = false);
 	bool ensureDlightResources();
 	void createDlightTexture();
 	void processPendingUploads();
@@ -1643,8 +1788,13 @@ private:
 	                   int maxPoints, vec3_t pointBuffer, int maxFragments,
 	                   markFragment_t* fragmentBuffer);
 	qboolean getEntityToken(char* buffer, int size);
+	void parseSkyPortalEntity();  // Scan entity lump for a sky portal origin
 	qboolean inPVS(const vec3_t p1, const vec3_t p2) const;
 	const dleaf_t* pointInLeaf(const vec3_t p) const;
+	const byte* getClusterPVS(int cluster) const;
+	bool cullWorldBox(const int mins[3], const int maxs[3], uint32_t& planeBits) const;
+	void recursiveWorldNode(int nodeIndex, uint32_t planeBits, const byte* pvs);
+	void markWorldSurfaces();
 	void appendWorldGeometry();
 	void printGfxInfo();
 	void printImageList();
@@ -1663,6 +1813,12 @@ private:
 	bool ensureFogPipeline();
 	bool ensureModelPipeline();
 	bool ensureShadowPipeline();
+	// PShadow (per-object shadow maps)
+	void computePshadows();
+	bool ensurePshadowResources();
+	void ensurePshadowTexture(int i);
+	void renderPshadowCasterPass(int shadowIdx);
+	void renderPshadowReceiverPasses();
 	enum class CullResult { Out, In, Clip };
 	void renderModel(const refEntity_t& ent, MetalModel& model, MetalModelLOD& lodData,
 	                int fogIndex, CullResult cullState);
@@ -1764,6 +1920,19 @@ private:
 	MetalSkin* getSkinByHandle(qhandle_t handle);
 	static MTL::BlendFactor ToMetalBlendFactor(MetalBlendFactor factor);
 	TCModParams computeTCModParams(const MetalShaderStageInfo* stageInfo, float timeSeconds, const refEntity_t* entity = nullptr) const;
+
+	// -------------------------------------------------------------------------
+	// Cubemap helpers
+	// -------------------------------------------------------------------------
+	// Create a Metal TextureTypeCube texture with all 6 faces set to a solid colour.
+	MTL::Texture* createSolidColorCubemap(float r, float g, float b);
+	// Attempt to load a pre-baked DDS cubemap file.  Returns nullptr on failure.
+	MTL::Texture* loadCubemapDDS(const char* filename);
+	// Load/generate cubemap textures for all probes of the current world and
+	// assign cubemapIndex to every packet in worldPacketTemplate_.
+	void loadWorldCubemaps(const std::string& requestedName);
+	// Return the permanent fallback cubemap, creating it on first use.
+	MTL::Texture* getOrCreateFallbackCubemap();
 };
 
 //=============================================================================
@@ -1815,6 +1984,36 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	depthTexture_.reset();
 	depthTextureWidth_ = depthTextureHeight_ = 0;
 	stagePipelineCache_.clear();
+
+	// Post-processing resources
+	hdrColorTarget_.reset();
+	hdrTargetWidth_ = hdrTargetHeight_ = 0;
+	for (int i = 0; i < 2; ++i) {
+		bloomTarget_[i].reset();
+		lumAccumTarget_[i].reset();
+		lumScratch_[i].reset();
+	}
+	ssaoTarget_.reset();
+	ssaoTargetWidth_ = ssaoTargetHeight_ = 0;
+	bloomTargetWidth_ = bloomTargetHeight_ = 0;
+	lumScratchWidth_ = lumScratchHeight_ = 0;
+	lumRawTarget_.reset();
+	lumAccumInitialized_ = false;
+	ppPassthroughPso_.reset();
+	ppDownsample4xPso_.reset();
+	ppCalcLevelsFirstPso_.reset();
+	ppCalcLevelsPso_.reset();
+	ppLumBlendPso_.reset();
+	ppTonemapPso_.reset();
+	ppBloomExtractPso_.reset();
+	ppGaussianBlurHPso_.reset();
+	ppGaussianBlurVPso_.reset();
+	ppSSAOPso_.reset();
+	ppDepthBlurPso_.reset();
+	ppSunRaysPso_.reset();
+	ppDofBlurPso_.reset();
+	ppAdditivePso_.reset();
+	ppLinearSampler_.reset();
 	
 	for (auto& slot : cinematicSlots_) {
 		slot.texture.reset();
@@ -2096,6 +2295,12 @@ void MetalRenderer::appendWorldGeometry() {
 	const int packetLimit = (numWorldPackets_ > 0) ? numWorldPackets_ : static_cast<int>(worldPacketTemplate_.size());
 
 	for (int i = 0; i < packetLimit; ++i) {
+		// PVS + frustum culling: skip surfaces not marked visible this frame.
+		// surfaceVisFrame_[i] == visFrame_ means markWorldSurfaces() saw this surface.
+		if (!surfaceVisFrame_.empty() && visFrame_ > 0 && surfaceVisFrame_[i] != visFrame_) {
+			continue;
+		}
+
 		const ScenePolyPacket& templatePacket = worldPacketTemplate_[i];
 		ScenePolyPacket packet = templatePacket;
 
@@ -2235,6 +2440,16 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	// Load entities lump for GetEntityToken
 	int entitiesLen = 0;
 	const char* entitiesData = reinterpret_cast<const char*>(getLumpRange(LUMP_ENTITIES, entitiesLen, 1));
+
+	// Load cubemap probe origins from entity string early so they are available
+	// when we assign indices to world packets later in this function.
+	{
+		const int numProbes = R_LoadCubemapProbeOrigins(entitiesData, entitiesLen);
+		if (numProbes > 0 && ri_.Printf) {
+			ri_.Printf(PRINT_ALL, "Metal: Found %d cubemap probe(s) in '%s'\n",
+			           numProbes, requestedName.c_str());
+		}
+	}
 
 	if (!shaderTable || !drawVerts || !drawIndexes || !surfaces) {
 		if (ri_.Printf) {
@@ -2687,6 +2902,12 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		          numWorldPackets_, worldPacketTemplate_.size(), numWorldPackets_);
 	}
 
+	// Initialize per-packet visibility frame array.
+	// Sized to the full worldPacketTemplate_ (world + brush model packets).
+	// Only entries 0..numWorldPackets_-1 are used for PVS culling.
+	surfaceVisFrame_.assign(worldPacketTemplate_.size(), -1);
+	visFrame_ = 0;
+
 	// Load lightGrid for entity lighting
 	// First parse entities to get gridSize, then load the grid data
 	{
@@ -2782,6 +3003,15 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 		}
 	}
 
+	// Load cubemap textures and assign probe indices to world surface packets.
+	// This must happen after the light grid is loaded (for fallback solid-colour
+	// cubemaps sampled from the light grid at each probe position).
+	if (R_GetNumCubemapProbes() > 0) {
+		loadWorldCubemaps(requestedName);
+	} else {
+		worldCubemapTextures_.clear();
+	}
+
 	// Store entity string so GetEntityToken can walk it token-by-token.
 	// Match GL2's R_LoadEntities: copy the lump, reset the parse cursor.
 	if (entitiesData && entitiesLen > 0) {
@@ -2792,6 +3022,10 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	}
 	entityParsePoint_ = entityStringBuf_.data();
 
+	// Scan entity lump for a sky portal entity so sky rendering knows to offset
+	// the view origin to the portal position (GL2-compatible sky portal behaviour).
+	parseSkyPortalEntity();
+
 	// Store BSP spatial data for inPVS / R_PointInLeaf.
 	if (bspNodes && nodeCount > 0) {
 		bspNodes_.assign(bspNodes, bspNodes + nodeCount);
@@ -2801,6 +3035,30 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	}
 	if (planes && planeCount > 0) {
 		bspPlanesForPVS_.assign(planes, planes + planeCount);
+	}
+
+	// Load LUMP_VISIBILITY for PVS-based world culling.
+	// Format: int numClusters, int clusterBytes, then numClusters*clusterBytes bytes of PVS bits.
+	{
+		visNumClusters_ = 0;
+		visClusterBytes_ = 0;
+		visData_.clear();
+		const lump_t& visLump = header->lumps[LUMP_VISIBILITY];
+		const int visOfs = LittleLong(visLump.fileofs);
+		const int visLen = LittleLong(visLump.filelen);
+		if (visLen >= 8 && visOfs >= 0 && visOfs + visLen <= fileLen) {
+			const byte* visRaw = reinterpret_cast<const byte*>(buffer) + visOfs;
+			visNumClusters_ = LittleLong(reinterpret_cast<const int*>(visRaw)[0]);
+			visClusterBytes_ = LittleLong(reinterpret_cast<const int*>(visRaw)[1]);
+			const int dataBytes = visLen - 8;
+			if (dataBytes > 0 && visNumClusters_ > 0 && visClusterBytes_ > 0) {
+				visData_.assign(visRaw + 8, visRaw + 8 + dataBytes);
+				if (ri_.Printf) {
+					ri_.Printf(PRINT_ALL, "Metal: PVS loaded: %d clusters, %d bytes/cluster\n",
+					           visNumClusters_, visClusterBytes_);
+				}
+			}
+		}
 	}
 
 	// ---- Build MarkFragments BSP data ----
@@ -2988,10 +3246,17 @@ void MetalRenderer::unloadWorldMap() {
 	worldName_.clear();
 	entityStringBuf_.clear();
 	entityParsePoint_ = nullptr;
+	hasSkyPortal_ = false;
+	VectorClear(skyPortalOrigin_);
 	bspNodes_.clear();
 	bspLeafs_.clear();
 	bspPlanesForPVS_.clear();
 	bspLeafSurfaces_.clear();
+	visData_.clear();
+	visNumClusters_ = 0;
+	visClusterBytes_ = 0;
+	surfaceVisFrame_.clear();
+	visFrame_ = 0;
 	bspCPlanes_.clear();
 	bspMarkSurfData_.clear();
 	bspSurfViewCounts_.clear();
@@ -3001,6 +3266,7 @@ void MetalRenderer::unloadWorldMap() {
 	worldVertexTemplate_.clear();
 	worldPacketTemplate_.clear();
 	worldLightmapHandles_.clear();
+	worldCubemapTextures_.clear();
 	worldSurfaceToPacket_.clear();
 	brushModels_.clear();
 	numWorldSurfaces_ = 0;
@@ -3035,6 +3301,97 @@ qboolean MetalRenderer::getEntityToken(char* buffer, int size) {
 		return qfalse;
 	}
 	return qtrue;
+}
+
+/*
+================
+MetalRenderer::parseSkyPortalEntity
+
+Scan the BSP entity lump for a sky portal entity.  Two conventions are
+recognised (matching the skyboxportal feature referenced in GL2-based forks):
+
+  1. An entity whose "classname" is "skyboxportal" or "misc_skyportal".
+  2. Any entity that carries a key literally named "skyboxportal" (value
+     ignored; its presence is the flag).
+
+In either case the entity's "origin" key is parsed and the world-space
+position is stored in skyPortalOrigin_.  The sky rendering passes
+(drawSkybox / buildCloudSkyDome) then translate the sky to this position
+instead of the player's eye origin, implementing the portal-sky effect.
+
+Uses a local parse pointer so entityParsePoint_ (used by GetEntityToken)
+is left undisturbed.
+================
+*/
+void MetalRenderer::parseSkyPortalEntity() {
+	hasSkyPortal_ = false;
+	VectorClear(skyPortalOrigin_);
+
+	if (entityStringBuf_.empty()) {
+		return;
+	}
+
+	// COM_ParseExt requires a non-const char** — use a mutable pointer into our buffer.
+	char* p = entityStringBuf_.data();
+
+	while (p && *p) {
+		// Find the opening brace of the next entity block.
+		const char* tok = COM_ParseExt(&p, qtrue);
+		if (!tok || !tok[0]) {
+			break;
+		}
+		if (tok[0] != '{') {
+			continue;
+		}
+
+		// Parse all key-value pairs inside this entity block.
+		char classname[MAX_TOKEN_CHARS]  = {};
+		char origin[MAX_TOKEN_CHARS]     = {};
+		bool hasSkyboxportalKey          = false;
+
+		while (p && *p) {
+			// Read the key token.
+			const char* key = COM_ParseExt(&p, qtrue);
+			if (!key || !key[0] || key[0] == '}') {
+				break;
+			}
+
+			// Read the value token.
+			const char* value = COM_ParseExt(&p, qtrue);
+			if (!value || !value[0] || value[0] == '}') {
+				break;
+			}
+
+			if (Q_stricmp(key, "classname") == 0) {
+				Q_strncpyz(classname, value, sizeof(classname));
+			} else if (Q_stricmp(key, "origin") == 0) {
+				Q_strncpyz(origin, value, sizeof(origin));
+			} else if (Q_stricmp(key, "skyboxportal") == 0) {
+				hasSkyboxportalKey = true;
+			}
+		}
+
+		// Qualify as a sky portal entity by classname or explicit key.
+		bool isSkyPortal = (Q_stricmp(classname, "skyboxportal")  == 0) ||
+		                   (Q_stricmp(classname, "misc_skyportal") == 0) ||
+		                   hasSkyboxportalKey;
+
+		if (isSkyPortal && origin[0]) {
+			float x = 0.0f, y = 0.0f, z = 0.0f;
+			sscanf(origin, "%f %f %f", &x, &y, &z);
+			skyPortalOrigin_[0] = x;
+			skyPortalOrigin_[1] = y;
+			skyPortalOrigin_[2] = z;
+			hasSkyPortal_ = true;
+
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_ALL,
+				           "Metal: Sky portal entity '%s' at (%.1f, %.1f, %.1f)\n",
+				           classname, x, y, z);
+			}
+			break;  // Only the first qualifying entity is used.
+		}
+	}
 }
 
 /*
@@ -3091,6 +3448,177 @@ qboolean MetalRenderer::inPVS(const vec3_t p1, const vec3_t p2) const {
 		return qfalse;
 	}
 	return qtrue;
+}
+
+/*
+================
+MetalRenderer::getClusterPVS
+
+Return the PVS byte row for a given cluster, or nullptr if unavailable.
+A bit set at (pvs[cluster>>3] & (1<<(cluster&7))) means that cluster is visible.
+================
+*/
+const byte* MetalRenderer::getClusterPVS(int cluster) const {
+	if (visData_.empty() || cluster < 0 || cluster >= visNumClusters_) {
+		return nullptr;
+	}
+	return visData_.data() + static_cast<size_t>(cluster) * static_cast<size_t>(visClusterBytes_);
+}
+
+/*
+================
+MetalRenderer::cullWorldBox
+
+Test a world-space AABB (integer mins/maxs from BSP) against the current view frustum.
+planeBits: bitmask of which of the 4 side planes to test (bit i = test plane i).
+           If a box is fully inside a plane, that plane's bit is cleared so descendants
+           can skip testing it (GL2's optimisation).
+Returns true if the box is fully OUTSIDE the frustum (should be culled).
+================
+*/
+bool MetalRenderer::cullWorldBox(const int imins[3], const int imaxs[3], uint32_t& planeBits) const {
+	if (!sceneCamera_.frustumValid || planeBits == 0) {
+		return false;
+	}
+
+	const float mins[3] = { static_cast<float>(imins[0]), static_cast<float>(imins[1]), static_cast<float>(imins[2]) };
+	const float maxs[3] = { static_cast<float>(imaxs[0]), static_cast<float>(imaxs[1]), static_cast<float>(imaxs[2]) };
+
+	// Test only the 4 side planes (skip near/far — indices 4 and 5) for BSP node traversal.
+	// planeBits bit 0..3 correspond to frustumPlanes 0..3.
+	for (int i = 0; i < 4; ++i) {
+		if (!(planeBits & (1u << i))) {
+			continue;
+		}
+		const float* p = sceneCamera_.frustumPlanes[i];
+
+		// Positive vertex: the corner of the AABB that is most in the direction of the plane normal.
+		// If this most-inside point is still outside, the whole box is culled.
+		const float px = p[0] >= 0.0f ? maxs[0] : mins[0];
+		const float py = p[1] >= 0.0f ? maxs[1] : mins[1];
+		const float pz = p[2] >= 0.0f ? maxs[2] : mins[2];
+		if (p[0] * px + p[1] * py + p[2] * pz + p[3] < 0.0f) {
+			return true;  // Fully outside this plane — cull the subtree
+		}
+
+		// Negative vertex: the corner least in the plane's direction.
+		// If this least-inside point is still inside, all descendants are also inside
+		// this plane and we don't need to test it further.
+		const float nx = p[0] >= 0.0f ? mins[0] : maxs[0];
+		const float ny = p[1] >= 0.0f ? mins[1] : maxs[1];
+		const float nz = p[2] >= 0.0f ? mins[2] : maxs[2];
+		if (p[0] * nx + p[1] * ny + p[2] * nz + p[3] >= 0.0f) {
+			planeBits &= ~(1u << i);
+		}
+	}
+	return false;
+}
+
+/*
+================
+MetalRenderer::recursiveWorldNode
+
+Recursive BSP traversal combining PVS and frustum culling, mirroring GL2's
+R_RecursiveWorldNode.  For each leaf that passes both tests, the BSP surfaces
+it references are marked visible for the current frame (surfaceVisFrame_).
+
+nodeIndex: BSP node index (>= 0) or encoded leaf (< 0, decoded as -(idx+1)).
+planeBits: bitmask of frustum planes still requiring testing.
+pvs:       PVS byte-row for the camera's cluster (nullptr = all clusters visible).
+================
+*/
+void MetalRenderer::recursiveWorldNode(int nodeIndex, uint32_t planeBits, const byte* pvs) {
+	while (nodeIndex >= 0) {
+		if (static_cast<size_t>(nodeIndex) >= bspNodes_.size()) {
+			return;
+		}
+		const dnode_t& node = bspNodes_[nodeIndex];
+
+		// Frustum-cull this node's AABB; clear planeBits for planes the box is fully inside.
+		if (planeBits && cullWorldBox(node.mins, node.maxs, planeBits)) {
+			return;
+		}
+
+		// Recurse into the front child, then tail-recurse into the back child.
+		recursiveWorldNode(node.children[0], planeBits, pvs);
+		nodeIndex = node.children[1];
+	}
+
+	// nodeIndex < 0: it's a leaf encoded as -(leafIndex + 1).
+	const int leafIndex = -(nodeIndex + 1);
+	if (leafIndex < 0 || leafIndex >= static_cast<int>(bspLeafs_.size())) {
+		return;
+	}
+	const dleaf_t& leaf = bspLeafs_[leafIndex];
+
+	// PVS check: skip this leaf if its cluster is not visible from the camera cluster.
+	const int cluster = leaf.cluster;
+	if (pvs && cluster >= 0 && cluster < visNumClusters_) {
+		if (!(pvs[cluster >> 3] & (1 << (cluster & 7)))) {
+			return;
+		}
+	}
+
+	// Mark all BSP surfaces in this leaf as visible this frame.
+	const int first = leaf.firstLeafSurface;
+	const int count = leaf.numLeafSurfaces;
+	if (first < 0 || count <= 0 || first + count > static_cast<int>(bspLeafSurfaces_.size())) {
+		return;
+	}
+	for (int i = 0; i < count; ++i) {
+		const int bspSurf = bspLeafSurfaces_[first + i];
+		// Skip BSP surface indices belonging to brush models (>= numWorldSurfaces_).
+		if (bspSurf < 0 || bspSurf >= numWorldSurfaces_) {
+			continue;
+		}
+		const int packetIdx = worldSurfaceToPacket_[bspSurf];
+		if (packetIdx < 0 || packetIdx >= static_cast<int>(surfaceVisFrame_.size())) {
+			continue;
+		}
+		surfaceVisFrame_[packetIdx] = visFrame_;
+	}
+}
+
+/*
+================
+MetalRenderer::markWorldSurfaces
+
+Top-level PVS + frustum traversal called once per frame before appendWorldGeometry().
+Increments visFrame_ and marks only the surfaces visible from the camera position.
+If no PVS data is available, all world surfaces are marked (safe fallback).
+================
+*/
+void MetalRenderer::markWorldSurfaces() {
+	if (!worldLoaded_ || bspNodes_.empty() || bspLeafs_.empty() || surfaceVisFrame_.empty()) {
+		return;
+	}
+
+	// Advance the per-frame visibility counter.
+	++visFrame_;
+
+	// Find the BSP leaf containing the camera.
+	const dleaf_t* cameraLeaf = pointInLeaf(sceneCamera_.viewOrigin);
+	if (!cameraLeaf) {
+		// Cannot locate camera in tree — mark everything visible as a safe fallback.
+		const int n = std::min(static_cast<int>(surfaceVisFrame_.size()), numWorldPackets_);
+		for (int i = 0; i < n; ++i) {
+			surfaceVisFrame_[i] = visFrame_;
+		}
+		return;
+	}
+
+	// Get the PVS row for the camera's cluster.
+	const int cameraCluster = cameraLeaf->cluster;
+	const byte* pvs = (cameraCluster >= 0) ? getClusterPVS(cameraCluster) : nullptr;
+
+	// If no PVS data was loaded, fall back to drawing everything (frustum culling still applies).
+	if (visData_.empty()) {
+		pvs = nullptr;
+	}
+
+	// Traverse the BSP tree from the root, testing 4 frustum side planes.
+	const uint32_t planeBits = sceneCamera_.frustumValid ? 15u : 0u;
+	recursiveWorldNode(0, planeBits, pvs);
 }
 
 bool MetalRenderer::initializeWindow(int& width, int& height, qboolean& fullscreen) {
@@ -3517,7 +4045,8 @@ bool MetalRenderer::ensureDepthTexture(int width, int height) {
 	MTL::TextureDescriptor* desc = MTL::TextureDescriptor::texture2DDescriptor(
 		MTL::PixelFormatDepth32Float, width, height, false);
 	desc->setStorageMode(MTL::StorageModePrivate);
-	desc->setUsage(MTL::TextureUsageRenderTarget);
+	// Always add ShaderRead so the SSAO pass can sample depth.
+	desc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
 
 	depthTexture_.reset(device_->newTexture(desc));
 	depthTextureWidth_ = depthTexture_ ? width : 0;
@@ -3532,6 +4061,533 @@ bool MetalRenderer::ensureDepthTexture(int width, int height) {
 	}
 
 	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Post-processing infrastructure
+// ---------------------------------------------------------------------------
+
+// Helper: allocate a 2-D render target or return the existing one if size unchanged.
+static MetalPtr<MTL::Texture> makeRenderTarget(MTL::Device* dev,
+                                               MTL::PixelFormat fmt,
+                                               int w, int h,
+                                               const char* label = nullptr) {
+	MTL::TextureDescriptor* desc = MTL::TextureDescriptor::texture2DDescriptor(fmt, w, h, false);
+	desc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+	desc->setStorageMode(MTL::StorageModePrivate);
+	MTL::Texture* tex = dev->newTexture(desc);
+	desc->release();
+	if (tex && label) {
+		tex->setLabel(NS::String::string(label, NS::UTF8StringEncoding));
+	}
+	MetalPtr<MTL::Texture> result;
+	result.reset(tex);
+	return result;
+}
+
+bool MetalRenderer::ensureHDRTargets(int width, int height) {
+	if (!device_ || width <= 0 || height <= 0) {
+		return false;
+	}
+
+	const int halfW = std::max(1, width / 2);
+	const int halfH = std::max(1, height / 2);
+	const int lumW  = std::max(1, std::min(256, width  / 4));
+	const int lumH  = std::max(1, std::min(256, height / 4));
+
+	// Recreate HDR target on resize.
+	if (!hdrColorTarget_ || hdrTargetWidth_ != width || hdrTargetHeight_ != height) {
+		hdrColorTarget_ = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, width, height, "hdrColorTarget");
+		if (!hdrColorTarget_) { return false; }
+		hdrTargetWidth_  = width;
+		hdrTargetHeight_ = height;
+	}
+
+	// Bloom / sun-ray scratch at half resolution.
+	if (!bloomTarget_[0] || bloomTargetWidth_ != halfW || bloomTargetHeight_ != halfH) {
+		bloomTarget_[0] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, halfW, halfH, "bloom0");
+		bloomTarget_[1] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, halfW, halfH, "bloom1");
+		if (!bloomTarget_[0] || !bloomTarget_[1]) { return false; }
+		bloomTargetWidth_  = halfW;
+		bloomTargetHeight_ = halfH;
+	}
+
+	// SSAO target full-res (single-channel packed as R in RGBA8).
+	if (!ssaoTarget_ || ssaoTargetWidth_ != width || ssaoTargetHeight_ != height) {
+		ssaoTarget_ = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA8Unorm, width, height, "ssao");
+		if (!ssaoTarget_) { return false; }
+		ssaoTargetWidth_  = width;
+		ssaoTargetHeight_ = height;
+	}
+
+	// Luminance downsample scratch.
+	if (!lumScratch_[0] || lumScratchWidth_ != lumW || lumScratchHeight_ != lumH) {
+		lumScratch_[0] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, lumW, lumH, "lumScratch0");
+		lumScratch_[1] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, lumW, lumH, "lumScratch1");
+		if (!lumScratch_[0] || !lumScratch_[1]) { return false; }
+		lumScratchWidth_  = lumW;
+		lumScratchHeight_ = lumH;
+	}
+
+	// Raw 1×1 luminance target.
+	if (!lumRawTarget_) {
+		lumRawTarget_ = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, 1, 1, "lumRaw");
+		if (!lumRawTarget_) { return false; }
+	}
+
+	// Temporal accumulation targets.
+	if (!lumAccumTarget_[0]) {
+		lumAccumTarget_[0] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, 1, 1, "lumAccum0");
+		lumAccumTarget_[1] = makeRenderTarget(device_.get(), MTL::PixelFormatRGBA16Float, 1, 1, "lumAccum1");
+		if (!lumAccumTarget_[0] || !lumAccumTarget_[1]) { return false; }
+		lumAccumInitialized_ = false;
+	}
+
+	return true;
+}
+
+// Build a single post-process PSO.
+MTL::RenderPipelineState* MetalRenderer::makePPPso(MTL::Library* lib,
+                                                   const char* vfnName,
+                                                   const char* ffnName,
+                                                   MTL::PixelFormat colorFmt,
+                                                   bool additiveBlend) {
+	NS::Error* err = nullptr;
+	auto vfn = NS::TransferPtr(lib->newFunction(
+		NS::String::string(vfnName, NS::UTF8StringEncoding)));
+	auto ffn = NS::TransferPtr(lib->newFunction(
+		NS::String::string(ffnName, NS::UTF8StringEncoding)));
+	if (!vfn || !ffn) {
+		if (ri_.Printf) ri_.Printf(PRINT_WARNING,
+			"Metal post-process: missing shader %s / %s\n", vfnName, ffnName);
+		return nullptr;
+	}
+
+	auto* rpdesc = MTL::RenderPipelineDescriptor::alloc()->init();
+	rpdesc->setVertexFunction(vfn.get());
+	rpdesc->setFragmentFunction(ffn.get());
+	rpdesc->colorAttachments()->object(0)->setPixelFormat(colorFmt);
+
+	if (additiveBlend) {
+		rpdesc->colorAttachments()->object(0)->setBlendingEnabled(true);
+		rpdesc->colorAttachments()->object(0)->setSourceRGBBlendFactor(MTL::BlendFactorOne);
+		rpdesc->colorAttachments()->object(0)->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
+		rpdesc->colorAttachments()->object(0)->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+		rpdesc->colorAttachments()->object(0)->setDestinationAlphaBlendFactor(MTL::BlendFactorOne);
+	}
+
+	MTL::RenderPipelineState* pso = device_->newRenderPipelineState(rpdesc, &err);
+	rpdesc->release();
+	if (!pso && ri_.Printf) {
+		ri_.Printf(PRINT_WARNING, "Metal post-process PSO compile error: %s\n",
+		           err ? err->localizedDescription()->utf8String() : "unknown");
+	}
+	return pso;
+}
+
+bool MetalRenderer::createPostProcessPipelines() {
+	if (ppTonemapPso_) {
+		return true; // already created
+	}
+	if (!device_) return false;
+
+	auto* lib = device_->newDefaultLibrary();
+	if (!lib) {
+		if (ri_.Printf) ri_.Printf(PRINT_WARNING,
+			"Metal post-process: could not load default library\n");
+		return false;
+	}
+
+	auto fmt16  = MTL::PixelFormatRGBA16Float;
+	auto fmt8   = MTL::PixelFormatRGBA8Unorm;
+	auto fmtDraw = currentDrawable_ ? currentDrawable_->texture()->pixelFormat()
+	                                : MTL::PixelFormatBGRA8Unorm;
+
+	ppPassthroughPso_     .reset(makePPPso(lib, "vertex_fullscreen", "fragment_passthrough",          fmt16));
+	ppDownsample4xPso_    .reset(makePPPso(lib, "vertex_fullscreen", "fragment_downsample4x",         fmt16));
+	ppCalcLevelsFirstPso_ .reset(makePPPso(lib, "vertex_fullscreen", "fragment_calc_levels_first",    fmt16));
+	ppCalcLevelsPso_      .reset(makePPPso(lib, "vertex_fullscreen", "fragment_calc_levels",          fmt16));
+	ppLumBlendPso_        .reset(makePPPso(lib, "vertex_fullscreen", "fragment_lum_blend",            fmt16));
+	ppTonemapPso_         .reset(makePPPso(lib, "vertex_fullscreen", "fragment_tonemap",              fmtDraw));
+	ppBloomExtractPso_    .reset(makePPPso(lib, "vertex_fullscreen", "fragment_bloom_extract",        fmt16));
+	ppGaussianBlurHPso_   .reset(makePPPso(lib, "vertex_fullscreen", "fragment_gaussian_blur_h",      fmt16));
+	ppGaussianBlurVPso_   .reset(makePPPso(lib, "vertex_fullscreen", "fragment_gaussian_blur_v",      fmt16));
+	ppSSAOPso_            .reset(makePPPso(lib, "vertex_fullscreen", "fragment_ssao",                 fmt8));
+	ppDepthBlurPso_       .reset(makePPPso(lib, "vertex_fullscreen", "fragment_depthblur",            fmt8));
+	ppSunRaysPso_         .reset(makePPPso(lib, "vertex_fullscreen", "fragment_sun_rays",             fmtDraw, /*additive=*/true));
+	ppDofBlurPso_         .reset(makePPPso(lib, "vertex_fullscreen", "fragment_dof_blur",             fmt16));
+	ppAdditivePso_        .reset(makePPPso(lib, "vertex_fullscreen", "fragment_passthrough",          fmtDraw, /*additive=*/true));
+
+	lib->release();
+
+	// Build a shared linear-clamp sampler for all PP passes.
+	if (!ppLinearSampler_) {
+		MTL::SamplerDescriptor* sd = MTL::SamplerDescriptor::alloc()->init();
+		sd->setMinFilter(MTL::SamplerMinMagFilterLinear);
+		sd->setMagFilter(MTL::SamplerMinMagFilterLinear);
+		sd->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
+		sd->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
+		ppLinearSampler_.reset(device_->newSamplerState(sd));
+		sd->release();
+	}
+
+	return static_cast<bool>(ppTonemapPso_);
+}
+
+// Run a single full-screen post-process pass and end the encoder.
+void MetalRenderer::doRenderPass(MTL::RenderPipelineState* pso,
+                                 MTL::Texture* src0, MTL::Texture* src1, MTL::Texture* src2,
+                                 MTL::Texture* dst,
+                                 MTL::LoadAction loadAction,
+                                 const void* uniforms, size_t uniformSize) {
+	if (!pso || !dst || !currentCommandBuffer_) return;
+
+	MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+	rpd->colorAttachments()->object(0)->setTexture(dst);
+	rpd->colorAttachments()->object(0)->setLoadAction(loadAction);
+	rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+	rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+
+	auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+	rpd->release();
+	if (!enc) return;
+
+	enc->setRenderPipelineState(pso);
+	enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+	if (src0) enc->setFragmentTexture(src0, 0);
+	if (src1) enc->setFragmentTexture(src1, 1);
+	if (src2) enc->setFragmentTexture(src2, 2);
+	if (uniforms && uniformSize > 0) {
+		enc->setFragmentBytes(uniforms, uniformSize, 0);
+	}
+	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+	enc->endEncoding();
+	enc->release();
+}
+
+void MetalRenderer::ensurePostProcessed() {
+	if (!usingHDRRenderPath_ || postProcessingDone_) {
+		return;
+	}
+	postProcessingDone_ = true;
+	runPostProcessing();
+}
+
+void MetalRenderer::runPostProcessing() {
+	if (!currentCommandBuffer_ || !currentDrawable_) return;
+
+	// End the scene (HDR) encoder before starting compute passes.
+	if (currentRenderEncoder_) {
+		currentRenderEncoder_->endEncoding();
+		currentRenderEncoder_->release();
+		MetalStateCache::Instance().resetEncoder(nullptr);
+		currentRenderEncoder_ = nullptr;
+	}
+
+	if (!createPostProcessPipelines()) {
+		// Fall back: blit HDR target to drawable via passthrough.
+		goto create_2d_encoder;
+	}
+
+	// -----------------------------------------------------------------------
+	// 1. Luminance chain: build per-frame log-lum then temporal smooth
+	// -----------------------------------------------------------------------
+	if (r_autoExposure_ && r_autoExposure_->integer && lumScratch_[0] && lumRawTarget_) {
+		// First pass: log-lum from full HDR → lumScratch_[0] (256×256 ish)
+		doRenderPass(ppCalcLevelsFirstPso_.get(),
+		             hdrColorTarget_.get(), nullptr, nullptr,
+		             lumScratch_[0].get(),
+		             MTL::LoadActionDontCare,
+		             nullptr, 0);
+
+		// Downsample chain: ping-pong until 1×1.
+		int src = 0;
+		int curW = lumScratchWidth_, curH = lumScratchHeight_;
+		while (curW > 1 || curH > 1) {
+			int nextW = std::max(1, curW / 2);
+			int nextH = std::max(1, curH / 2);
+			int dst = src ^ 1;
+			// Re-use the scratch textures — they are large enough for the initial
+			// pass; for the tiny passes we just render into the corner pixels.
+			// When we reach 1×1 write to lumRawTarget_.
+			MTL::Texture* dstTex = (nextW == 1 && nextH == 1) ? lumRawTarget_.get() : lumScratch_[dst].get();
+			doRenderPass(ppCalcLevelsPso_.get(),
+			             lumScratch_[src].get(), nullptr, nullptr,
+			             dstTex,
+			             MTL::LoadActionDontCare,
+			             nullptr, 0);
+			src = dst;
+			curW = nextW;
+			curH = nextH;
+		}
+
+		// Temporal blend: lumRaw → lumAccum (ping-pong).
+		if (!lumAccumInitialized_) {
+			// Prime the accumulator with the raw value on first use.
+			doRenderPass(ppPassthroughPso_.get(),
+			             lumRawTarget_.get(), nullptr, nullptr,
+			             lumAccumTarget_[lumAccumIdx_].get(),
+			             MTL::LoadActionDontCare,
+			             nullptr, 0);
+			lumAccumInitialized_ = true;
+		}
+
+		int nextAccum = lumAccumIdx_ ^ 1;
+		struct LumBlendParams { float alpha; float _pad[3]; };
+		LumBlendParams lbp;
+		lbp.alpha = 0.03f; // 3% new per frame, matches GL2
+		// Clamp to faster response when cvar allows.
+		if (r_autoExposure_ && r_autoExposure_->integer == 2) lbp.alpha = 0.1f;
+		doRenderPass(ppLumBlendPso_.get(),
+		             lumRawTarget_.get(),
+		             lumAccumTarget_[lumAccumIdx_].get(),
+		             nullptr,
+		             lumAccumTarget_[nextAccum].get(),
+		             MTL::LoadActionDontCare,
+		             &lbp, sizeof(lbp));
+		lumAccumIdx_ = nextAccum;
+	}
+
+	// -----------------------------------------------------------------------
+	// 2. SSAO
+	// -----------------------------------------------------------------------
+	if (r_ssao_ && r_ssao_->integer && depthTexture_ && ssaoTarget_) {
+		struct SSAOParams {
+			float viewInfo[4]; // (zFar/zNear, zFar, 1/w, 1/h)
+			float invProj[16];
+		};
+		SSAOParams sp{};
+		sp.viewInfo[0] = sceneCamera_.zFar / sceneCamera_.zNear;
+		sp.viewInfo[1] = sceneCamera_.zFar;
+		sp.viewInfo[2] = 1.0f / (float)config_.vidWidth;
+		sp.viewInfo[3] = 1.0f / (float)config_.vidHeight;
+		// We don't have the projection inverse readily — pass zeros; the
+		// shader falls back to the depth buffer directly.
+		doRenderPass(ppSSAOPso_.get(),
+		             depthTexture_.get(), nullptr, nullptr,
+		             ssaoTarget_.get(),
+		             MTL::LoadActionDontCare,
+		             &sp, sizeof(sp));
+
+		// Depth-aware bilateral blur (H pass → bloomTarget_[0], V pass → ssaoTarget_).
+		doRenderPass(ppDepthBlurPso_.get(),
+		             ssaoTarget_.get(), depthTexture_.get(), nullptr,
+		             bloomTarget_[0].get(),
+		             MTL::LoadActionDontCare,
+		             nullptr, 0);
+		doRenderPass(ppDepthBlurPso_.get(),
+		             bloomTarget_[0].get(), depthTexture_.get(), nullptr,
+		             ssaoTarget_.get(),
+		             MTL::LoadActionDontCare,
+		             nullptr, 0);
+	}
+
+	// -----------------------------------------------------------------------
+	// 3. Tonemap (HDR → drawable)
+	// -----------------------------------------------------------------------
+	{
+		struct TonemapParams {
+			float exposureBias;
+			float autoExposureMinMax[2];
+			float toneAvg;
+			int   hasSSAO;
+			int   hasAutoExposure;
+			float _pad[2];
+		};
+		TonemapParams tp{};
+		tp.exposureBias = r_cameraExposure_ ? r_cameraExposure_->value : 0.0f;
+		tp.autoExposureMinMax[0] = r_autoExposureMinValue_ ? r_autoExposureMinValue_->value : -2.0f;
+		tp.autoExposureMinMax[1] = r_autoExposureMaxValue_ ? r_autoExposureMaxValue_->value :  2.0f;
+		tp.toneAvg   = r_tonemapExposure_ ? r_tonemapExposure_->value : 0.18f;
+		tp.hasSSAO   = (r_ssao_ && r_ssao_->integer) ? 1 : 0;
+		tp.hasAutoExposure = (r_autoExposure_ && r_autoExposure_->integer) ? 1 : 0;
+
+		// Bind HDR source, optional SSAO, optional lum accum.
+		MTL::Texture* lumTex = lumAccumInitialized_ ? lumAccumTarget_[lumAccumIdx_].get() : nullptr;
+		MTL::Texture* aoTex  = (tp.hasSSAO && ssaoTarget_) ? ssaoTarget_.get() : nullptr;
+
+		MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+		rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+		rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+		rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+		rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+		auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+		rpd->release();
+		if (enc) {
+			enc->setRenderPipelineState(ppTonemapPso_.get());
+			enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+			enc->setFragmentTexture(hdrColorTarget_.get(), 0);
+			if (lumTex) enc->setFragmentTexture(lumTex, 1);
+			if (aoTex)  enc->setFragmentTexture(aoTex,  2);
+			enc->setFragmentBytes(&tp, sizeof(tp), 0);
+			enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+			enc->endEncoding();
+			enc->release();
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// 4. Bloom (extract bright → blur → additive composite onto drawable)
+	// -----------------------------------------------------------------------
+	if (r_bloom_ && r_bloom_->integer && bloomTarget_[0] && ppBloomExtractPso_) {
+		struct BloomExtractParams {
+			float threshold;
+			float strength;
+			float _pad[2];
+		};
+		BloomExtractParams bep{};
+		bep.threshold = r_bloomThreshold_ ? r_bloomThreshold_->value : 1.0f;
+		bep.strength  = r_bloomStrength_  ? r_bloomStrength_->value  : 0.5f;
+
+		// Extract bright pixels → bloomTarget_[0]
+		doRenderPass(ppBloomExtractPso_.get(),
+		             hdrColorTarget_.get(), nullptr, nullptr,
+		             bloomTarget_[0].get(),
+		             MTL::LoadActionDontCare,
+		             &bep, sizeof(bep));
+
+		// H blur → bloomTarget_[1], V blur → bloomTarget_[0]
+		doRenderPass(ppGaussianBlurHPso_.get(),
+		             bloomTarget_[0].get(), nullptr, nullptr,
+		             bloomTarget_[1].get(),
+		             MTL::LoadActionDontCare,
+		             nullptr, 0);
+		doRenderPass(ppGaussianBlurVPso_.get(),
+		             bloomTarget_[1].get(), nullptr, nullptr,
+		             bloomTarget_[0].get(),
+		             MTL::LoadActionDontCare,
+		             nullptr, 0);
+
+		// Additive composite onto drawable.
+		struct { float strength; float _pad[3]; } bc{ bep.strength };
+		MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+		rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+		rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+		rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+		auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+		rpd->release();
+		if (enc) {
+			enc->setRenderPipelineState(ppAdditivePso_.get());
+			enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+			enc->setFragmentTexture(bloomTarget_[0].get(), 0);
+			enc->setFragmentBytes(&bc, sizeof(bc), 0);
+			enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+			enc->endEncoding();
+			enc->release();
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// 5. Sun rays (additive radial blur onto drawable)
+	// -----------------------------------------------------------------------
+	if (r_sunlightMode_ && r_sunlightMode_->integer && sceneCamera_.valid) {
+		vec3_t sunDir;
+		R_GetSunDirection(sunDir);
+		float dotVal = DotProduct(sunDir, sceneCamera_.viewAxis[0]);
+		if (dotVal >= 0.25f) {
+			float dist = sceneCamera_.zFar / 1.75f;
+			float wx = sceneCamera_.viewOrigin[0] + sunDir[0] * dist;
+			float wy = sceneCamera_.viewOrigin[1] + sunDir[1] * dist;
+			float wz = sceneCamera_.viewOrigin[2] + sunDir[2] * dist;
+
+			// Project into clip space using the stored viewProjectionMatrix.
+			float cx = sceneCamera_.viewProjectionMatrix[0]*wx + sceneCamera_.viewProjectionMatrix[4]*wy + sceneCamera_.viewProjectionMatrix[8]*wz  + sceneCamera_.viewProjectionMatrix[12];
+			float cy = sceneCamera_.viewProjectionMatrix[1]*wx + sceneCamera_.viewProjectionMatrix[5]*wy + sceneCamera_.viewProjectionMatrix[9]*wz  + sceneCamera_.viewProjectionMatrix[13];
+			float cw = sceneCamera_.viewProjectionMatrix[3]*wx + sceneCamera_.viewProjectionMatrix[7]*wy + sceneCamera_.viewProjectionMatrix[11]*wz + sceneCamera_.viewProjectionMatrix[15];
+
+			if (cw > 0.0f) {
+				float sunU = 0.5f + cx / cw * 0.5f;
+				float sunV = 0.5f - cy / cw * 0.5f;
+
+				struct SunRaysParams {
+					float sunPos[2];
+					float exposure;
+					float _pad;
+				};
+				SunRaysParams srp{};
+				srp.sunPos[0] = sunU;
+				srp.sunPos[1] = sunV;
+				srp.exposure  = dotVal;
+
+				MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+				rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+				rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+				rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+				auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+				rpd->release();
+				if (enc) {
+					enc->setRenderPipelineState(ppSunRaysPso_.get());
+					enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+					enc->setFragmentTexture(hdrColorTarget_.get(), 0);
+					enc->setFragmentBytes(&srp, sizeof(srp), 0);
+					enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+					enc->endEncoding();
+					enc->release();
+				}
+			}
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// 6. DOF (bokeh blur, blended by backEnd.refdef.blurFactor or r_dof cvar)
+	// -----------------------------------------------------------------------
+	{
+		float dofFactor = (r_dof_ && r_dof_->integer) ? r_dof_->value : 0.0f;
+		// Also support the engine's blurFactor from the scene camera refdef.
+		if (sceneCamera_.valid && (sceneCamera_.refdef.rdflags & RDF_NOWORLDMODEL) == 0) {
+			// blurFactor isn't in refdef_t by default; skip if not available.
+		}
+		if (dofFactor > 0.001f && depthTexture_ && bloomTarget_[0] && ppDofBlurPso_) {
+			struct BokehParams {
+				float blurFactor;
+				float _pad[3];
+			} bp{ dofFactor };
+			doRenderPass(ppDofBlurPso_.get(),
+			             hdrColorTarget_.get(), depthTexture_.get(), nullptr,
+			             bloomTarget_[0].get(),
+			             MTL::LoadActionDontCare,
+			             &bp, sizeof(bp));
+
+			// Blend DOF result onto drawable (src=alpha, dst=1-alpha).
+			MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+			rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+			rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+			rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+			auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+			rpd->release();
+			if (enc) {
+				// Use passthrough with additive disabled — need alpha blend.
+				// Reuse ppAdditivePso_ with src=One, dst=One isn't correct for DOF;
+				// for now use a simple alpha-blended overlay if we have a suitable PSO.
+				// Without a separate DOF composite PSO we fall back to passthrough.
+				enc->setRenderPipelineState(ppPassthroughPso_ ? ppPassthroughPso_.get() : ppAdditivePso_.get());
+				enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+				enc->setFragmentTexture(bloomTarget_[0].get(), 0);
+				enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+				enc->endEncoding();
+				enc->release();
+			}
+		}
+	}
+
+create_2d_encoder:
+	// -----------------------------------------------------------------------
+	// Create the 2-D encoder targeting the drawable for UI / 2D draws.
+	// -----------------------------------------------------------------------
+	{
+		MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+		rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+		rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
+		rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+		// No depth attachment for 2D.
+		currentRenderEncoder_ = currentCommandBuffer_->renderCommandEncoder(rpd);
+		rpd->release();
+		if (currentRenderEncoder_) {
+			MetalStateCache::Instance().resetEncoder(currentRenderEncoder_);
+			currentRenderEncoder_->setFrontFacingWinding(MTL::WindingCounterClockwise);
+			currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+		}
+	}
 }
 
 qhandle_t MetalRenderer::registerShader(const char* name, bool mipmap) {
@@ -3957,6 +5013,8 @@ void MetalRenderer::drawStretchPic(float x, float y, float w, float h,
 	// This ensures 3D draws before 2D.
 	submitScene();
 	ensureSceneRendered();
+	// Run post-processing before any 2D draw so the UI is never tonemapped.
+	ensurePostProcessed();
 	
 	if (!device_ || !currentRenderEncoder_) {
 		return;
@@ -4063,6 +5121,8 @@ void MetalRenderer::drawRotatePicImpl(float x, float y, float w, float h,
                                       float pivotNdcX, float pivotNdcY) {
 	submitScene();
 	ensureSceneRendered();
+	// Run post-processing before any 2D draw so the UI is never tonemapped.
+	ensurePostProcessed();
 
 	if (!device_ || !currentRenderEncoder_) {
 		return;
@@ -4235,17 +5295,38 @@ void MetalRenderer::beginFrame(stereoFrame_t stereoFrame) {
 	}
 
 	MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
-	rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+
+	// Decide whether to render 3D scene into an HDR intermediate target.
+	usingHDRRenderPath_ = (r_hdr_ && r_hdr_->integer) ? true : false;
+	postProcessingDone_ = false;
+
+	MTL::Texture* colorTarget = nullptr;
+	if (usingHDRRenderPath_) {
+		ensureHDRTargets(config_.vidWidth, config_.vidHeight);
+		colorTarget = hdrColorTarget_.get();
+	}
+	if (!colorTarget) {
+		// HDR disabled or allocation failed — render directly to drawable.
+		usingHDRRenderPath_ = false;
+		colorTarget = currentDrawable_->texture();
+	}
+
+	rpd->colorAttachments()->object(0)->setTexture(colorTarget);
 	rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
 	rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
 	rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+
 	ensureDepthTexture(config_.vidWidth, config_.vidHeight);
 	if (depthTexture_) {
 		MTL::RenderPassDepthAttachmentDescriptor* depthAttachment = rpd->depthAttachment();
 		depthAttachment->setTexture(depthTexture_.get());
 		depthAttachment->setLoadAction(MTL::LoadActionClear);
 		depthAttachment->setClearDepth(1.0);
-		depthAttachment->setStoreAction(MTL::StoreActionDontCare);
+		// Store depth so SSAO can sample it after the scene pass.
+		bool needDepthForSSAO = usingHDRRenderPath_ && r_ssao_ && r_ssao_->integer;
+		depthAttachment->setStoreAction(needDepthForSSAO
+		                                ? MTL::StoreActionStore
+		                                : MTL::StoreActionDontCare);
 	}
 
 	currentRenderEncoder_ = currentCommandBuffer_->renderCommandEncoder(rpd);
@@ -4304,6 +5385,10 @@ void MetalRenderer::endFrame(int* frontEndMsec, int* backEndMsec) {
 		RB_AddDlightFlares();
 		RB_RenderFlares();
 	}
+
+	// End the 3D/HDR encoder and run post-processing.
+	// If 2D draws already happened this frame, this is a no-op.
+	ensurePostProcessed();
 
 	if (currentRenderEncoder_) {
 		currentRenderEncoder_->endEncoding();
@@ -4369,20 +5454,13 @@ void MetalRenderer::processScene(const MetalSceneState& scene) {
 	polyVertices_.reserve(static_cast<size_t>(scene.numPolyVerts) * 3u);
 	lightPackets_.reserve(scene.numLights);
 
+	// updateCamera must run first so the view frustum is available for PVS traversal.
+	updateCamera(scene);
 	processEntities(scene);
 	processPolys(scene);
 	processLights(scene);
-	updateCamera(scene);
 	polyVertexBufferDirty_ = true;
 	lightBufferDirty_ = true;
-
-	// Debug logging disabled - too noisy
-	// if (ri_.Printf) {
-	// 	ri_.Printf(PRINT_DEVELOPER, "MetalScene: processed %d entities, %d polys, %d lights\n",
-	// 	           sceneStats_.entities,
-	// 	           sceneStats_.polys,
-	// 	           sceneStats_.lights);
-	// }
 }
 
 void MetalRenderer::processEntities(const MetalSceneState& scene) {
@@ -4412,6 +5490,7 @@ void MetalRenderer::processEntities(const MetalSceneState& scene) {
 
 void MetalRenderer::processPolys(const MetalSceneState& scene) {
 	if (!(scene.refdef.rdflags & RDF_NOWORLDMODEL)) {
+		markWorldSurfaces();
 		appendWorldGeometry();
 	}
 	for (int i = 0; i < scene.numPolys; ++i) {
@@ -4518,6 +5597,32 @@ void MetalRenderer::renderScenePackets() {
 		return;
 	}
 
+	// Compute per-object shadow map state and run caster passes (offscreen depth renders).
+	// Must happen after portal views and before main scene draws so the shadow depth
+	// textures are ready when the receiver overlay is composited later.
+	computePshadows();
+	if (numPshadows_ > 0 && ensurePshadowResources()) {
+		// End the current (empty) main encoder to free it for the offscreen passes.
+		MTL::RenderCommandEncoder* savedEncoder = currentRenderEncoder_;
+		savedEncoder->endEncoding();
+		MetalStateCache::Instance().resetEncoder(nullptr);
+		currentRenderEncoder_ = nullptr;
+
+		// Render each shadow's caster geometry into its depth texture.
+		for (int pi = 0; pi < numPshadows_; pi++) {
+			renderPshadowCasterPass(pi);
+		}
+
+		// Recreate the main encoder.  Use LoadActionLoad on colour to preserve
+		// the black clear from beginFrame, and LoadActionClear on depth so the
+		// main scene gets a fresh depth buffer.
+		resumeMainEncoder(savedEncoder);
+		if (!currentRenderEncoder_) {
+			return;
+		}
+		configureSceneViewport(sceneCamera_.refdef);
+	}
+
 	if (!drawPolyPackets()) {
 		return;
 	}
@@ -4532,6 +5637,12 @@ void MetalRenderer::renderScenePackets() {
 	// Draw fog passes after dynamic lights
 	if (!drawFogPasses()) {
 		return;
+	}
+
+	// PShadow receiver overlay: alpha-blend a dark shadow on top of surfaces
+	// that lie within the shadow footprint of a caster entity.
+	if (numPshadows_ > 0) {
+		renderPshadowReceiverPasses();
 	}
 	sceneDispatchSummary_ = summary;
 
@@ -4906,15 +6017,282 @@ void MetalRenderer::loadShaderImages(MetalRenderer::MetalShaderResource& resourc
 	}
 }
 
+// ============================================================================
+// Cubemap helper implementations
+// ============================================================================
+
+/*
+ * createSolidColorCubemap – create a Metal TextureTypeCube with all six
+ * 1×1 faces set to (r, g, b, 1).  Used as the per-probe fallback when no
+ * pre-baked DDS file exists.
+ */
+MTL::Texture* MetalRenderer::createSolidColorCubemap(float r, float g, float b) {
+	if (!device_) return nullptr;
+
+	byte pixel[4] = {
+		static_cast<byte>(std::min(255, static_cast<int>(r * 255.0f))),
+		static_cast<byte>(std::min(255, static_cast<int>(g * 255.0f))),
+		static_cast<byte>(std::min(255, static_cast<int>(b * 255.0f))),
+		255u
+	};
+
+	MTL::TextureDescriptor* desc = MTL::TextureDescriptor::alloc()->init();
+	desc->setTextureType(MTL::TextureTypeCube);
+	desc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+	desc->setWidth(1);
+	desc->setHeight(1);
+	desc->setMipmapLevelCount(1);
+	desc->setUsage(MTL::TextureUsageShaderRead);
+	desc->setStorageMode(MTL::StorageModeShared);
+
+	MTL::Texture* tex = device_->newTexture(desc);
+	desc->release();
+	if (!tex) return nullptr;
+
+	MTL::Region region = MTL::Region::Make2D(0, 0, 1, 1);
+	for (NS::UInteger face = 0; face < 6; ++face) {
+		tex->replaceRegion(region, 0, face, pixel, 4, 0);
+	}
+	return tex;
+}
+
+/*
+ * loadCubemapDDS – attempt to load a DDS cubemap file from the virtual
+ * file system.  Supports the DXT1/DXT3/DXT5 and RGBA8 variants that
+ * ioq3's cubemap baker writes.  Returns nullptr on failure.
+ *
+ * DDS cubemap layout:  6 faces × numMips mip levels, +X/-X/+Y/-Y/+Z/-Z.
+ * Metal's TextureTypeCube uses the same face order for slice indices 0–5.
+ */
+MTL::Texture* MetalRenderer::loadCubemapDDS(const char* filename) {
+	if (!device_ || !filename) return nullptr;
+
+	byte* buf = nullptr;
+	const int len = ri_.FS_ReadFile(filename, reinterpret_cast<void**>(&buf));
+	if (len <= 0 || !buf) return nullptr;
+
+	// -----------------------------------------------------------------------
+	// Minimal DDS structures (matching tr_image_dds.cpp)
+	// -----------------------------------------------------------------------
+	struct DDSPixFmt {
+		uint32_t size, flags, fourCC, rgbBitCount;
+		uint32_t rMask, gMask, bMask, aMask;
+	};
+	struct DDSHdr {
+		uint32_t size, flags, height, width, pitchOrSize, depth, numMips;
+		uint32_t reserved1[11];
+		DDSPixFmt pf;
+		uint32_t caps, caps2, caps3, caps4, reserved2;
+	};
+
+	static constexpr uint32_t DDS_CAPS2_CUBEMAP = 0xFE00u;
+	static constexpr uint32_t DDS_PF_FOURCC     = 0x4u;
+	static constexpr uint32_t DDS_FLAGS_MIPCOUNT = 0x20000u;
+
+	auto makeFCC = [](const char* s) -> uint32_t {
+		return static_cast<uint32_t>(s[0])        |
+		       (static_cast<uint32_t>(s[1]) <<  8) |
+		       (static_cast<uint32_t>(s[2]) << 16) |
+		       (static_cast<uint32_t>(s[3]) << 24);
+	};
+
+	if (len < 4 + static_cast<int>(sizeof(DDSHdr))) { ri_.FS_FreeFile(buf); return nullptr; }
+	if (memcmp(buf, "DDS ", 4) != 0)                { ri_.FS_FreeFile(buf); return nullptr; }
+
+	const DDSHdr* hdr = reinterpret_cast<const DDSHdr*>(buf + 4);
+	if (!(hdr->caps2 & DDS_CAPS2_CUBEMAP))          { ri_.FS_FreeFile(buf); return nullptr; }
+
+	const byte* data = buf + 4 + sizeof(DDSHdr);
+	int remaining    = len - 4 - static_cast<int>(sizeof(DDSHdr));
+
+	const int width   = static_cast<int>(hdr->width);
+	const int height  = static_cast<int>(hdr->height);
+	const int numMips = (hdr->flags & DDS_FLAGS_MIPCOUNT) ? static_cast<int>(hdr->numMips) : 1;
+
+	// Map FourCC → Metal pixel format and block size (bytes per 4×4 block)
+	uint32_t fcc   = (hdr->pf.flags & DDS_PF_FOURCC) ? hdr->pf.fourCC : 0;
+	MTL::PixelFormat fmt = MTL::PixelFormatRGBA8Unorm;
+	size_t blockSize = 0; // 0 = uncompressed
+
+	if      (fcc == makeFCC("DXT1")) { fmt = MTL::PixelFormatBC1_RGBA;    blockSize =  8; }
+	else if (fcc == makeFCC("DXT3")) { fmt = MTL::PixelFormatBC2_RGBA;    blockSize = 16; }
+	else if (fcc == makeFCC("DXT5")) { fmt = MTL::PixelFormatBC3_RGBA;    blockSize = 16; }
+	else if (fcc == makeFCC("ATI1") || fcc == makeFCC("BC4U")) { fmt = MTL::PixelFormatBC4_RUnorm;  blockSize = 8;  }
+	else if (fcc == makeFCC("ATI2") || fcc == makeFCC("BC5U")) { fmt = MTL::PixelFormatBC5_RGUnorm; blockSize = 16; }
+	else if (fcc != 0) { ri_.FS_FreeFile(buf); return nullptr; } // unknown FourCC
+
+	// Helper: byte size of one mip level
+	auto mipBytes = [&](int w, int h) -> size_t {
+		if (blockSize > 0) {
+			size_t bw = (static_cast<size_t>(w) + 3) / 4;
+			size_t bh = (static_cast<size_t>(h) + 3) / 4;
+			return bw * bh * blockSize;
+		}
+		return static_cast<size_t>(w) * static_cast<size_t>(h) * 4;
+	};
+	auto bytesPerRow = [&](int w) -> size_t {
+		if (blockSize > 0) return ((static_cast<size_t>(w) + 3) / 4) * blockSize;
+		return static_cast<size_t>(w) * 4;
+	};
+
+	// Create Metal cubemap texture
+	MTL::TextureDescriptor* desc = MTL::TextureDescriptor::alloc()->init();
+	desc->setTextureType(MTL::TextureTypeCube);
+	desc->setPixelFormat(fmt);
+	desc->setWidth(static_cast<NS::UInteger>(width));
+	desc->setHeight(static_cast<NS::UInteger>(height));
+	desc->setMipmapLevelCount(static_cast<NS::UInteger>(numMips));
+	desc->setUsage(MTL::TextureUsageShaderRead);
+	desc->setStorageMode(MTL::StorageModeShared);
+
+	MTL::Texture* tex = device_->newTexture(desc);
+	desc->release();
+
+	if (!tex) { ri_.FS_FreeFile(buf); return nullptr; }
+
+	// Upload each face's mip chain
+	const byte* src = data;
+	for (NS::UInteger face = 0; face < 6; ++face) {
+		int mipW = width, mipH = height;
+		for (int mip = 0; mip < numMips; ++mip) {
+			size_t mb  = mipBytes(mipW, mipH);
+			size_t bpr = bytesPerRow(mipW);
+			if (static_cast<int>(mb) > remaining) break;
+
+			MTL::Region region = MTL::Region::Make2D(0, 0,
+			    static_cast<NS::UInteger>(mipW),
+			    static_cast<NS::UInteger>(mipH));
+			tex->replaceRegion(region, static_cast<NS::UInteger>(mip), face, src, bpr, 0);
+
+			src       += mb;
+			remaining -= static_cast<int>(mb);
+			mipW = std::max(1, mipW / 2);
+			mipH = std::max(1, mipH / 2);
+		}
+	}
+
+	ri_.FS_FreeFile(buf);
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_DEVELOPER, "Metal: Loaded cubemap DDS '%s' (%dx%d, %d mips)\n",
+		           filename, width, height, numMips);
+	}
+	return tex;
+}
+
+/*
+ * getOrCreateFallbackCubemap – return (or lazily create) a permanent 1×1
+ * black cubemap used as the null binding for texture slot 3 when no probe
+ * is assigned to a surface.
+ */
+MTL::Texture* MetalRenderer::getOrCreateFallbackCubemap() {
+	if (!fallbackCubemapTexture_) {
+		fallbackCubemapTexture_.reset(createSolidColorCubemap(0.0f, 0.0f, 0.0f));
+	}
+	return fallbackCubemapTexture_.get();
+}
+
+/*
+ * loadWorldCubemaps – load or generate cubemap textures for every probe
+ * that was found in the entity string, then assign a per-surface cubemap
+ * index to each world packet using the nearest-probe selection from
+ * R_CubemapForPoint (same algorithm as GL2's R_AssignCubemapsToWorldSurfaces).
+ *
+ * Slot 0 in worldCubemapTextures_ is always the fallback (black).
+ * Slots 1..N correspond to probes 0..N-1 (1-based as returned by
+ * R_CubemapForPoint).
+ *
+ * For each probe we first try to load a pre-baked DDS file from
+ *   cubemaps/<mapBaseName>/<NNN>.dds
+ * and fall back to a solid-colour cubemap sampled from the light grid at
+ * the probe's world position.
+ */
+void MetalRenderer::loadWorldCubemaps(const std::string& requestedName) {
+	worldCubemapTextures_.clear();
+
+	const int numProbes = R_GetNumCubemapProbes();
+	if (numProbes <= 0) return;
+
+	// Derive the map base name: "maps/q3dm1.bsp" → "q3dm1"
+	std::string mapBaseName = requestedName;
+	{
+		const size_t slash = mapBaseName.rfind('/');
+		if (slash != std::string::npos) mapBaseName = mapBaseName.substr(slash + 1);
+		const size_t dot = mapBaseName.rfind('.');
+		if (dot   != std::string::npos) mapBaseName = mapBaseName.substr(0, dot);
+	}
+
+	// Slot 0 = always-available fallback (black, useCubemap disabled)
+	worldCubemapTextures_.push_back(MetalPtr<MTL::Texture>(createSolidColorCubemap(0.0f, 0.0f, 0.0f)));
+
+	// Slots 1..numProbes = per-probe textures
+	for (int i = 0; i < numProbes; ++i) {
+		MTL::Texture* cubeTex = nullptr;
+
+		// Try pre-baked DDS (matches GL2's R_LoadCubemaps path)
+		char ddsPath[MAX_QPATH];
+		Com_sprintf(ddsPath, sizeof(ddsPath), "cubemaps/%s/%03d.dds",
+		            mapBaseName.c_str(), i);
+		cubeTex = loadCubemapDDS(ddsPath);
+
+		if (!cubeTex) {
+			// Fallback: sample the light grid at the probe origin to get an
+			// approximate ambient colour and create a solid-colour cubemap.
+			vec3_t probeOrigin;
+			R_GetCubemapProbeOrigin(i, probeOrigin);
+
+			vec3_t ambient = {0.5f, 0.5f, 0.5f};
+			vec3_t directed, lightDir;
+			if (R_LightForPoint(probeOrigin, ambient, directed, lightDir)) {
+				// Average ambient + directed, normalised from 0-255 to 0-1
+				for (int c = 0; c < 3; ++c)
+					ambient[c] = (ambient[c] + directed[c]) / 510.0f;
+			}
+			cubeTex = createSolidColorCubemap(ambient[0], ambient[1], ambient[2]);
+
+			if (ri_.Printf) {
+				ri_.Printf(PRINT_DEVELOPER,
+				           "Metal: Probe %d: no DDS found, using solid-color cubemap "
+				           "(%.2f, %.2f, %.2f)\n",
+				           i, ambient[0], ambient[1], ambient[2]);
+			}
+		}
+
+		worldCubemapTextures_.push_back(MetalPtr<MTL::Texture>(cubeTex));
+	}
+
+	// Assign the nearest probe index to every world surface packet.
+	// Uses the position of the first vertex as the surface representative point,
+	// matching GL2's R_AssignCubemapsToWorldSurfaces which averages the
+	// surface bounds (we keep it simpler for performance).
+	for (auto& packet : worldPacketTemplate_) {
+		if (packet.firstVertex < 0 ||
+		    packet.vertexCount <= 0 ||
+		    static_cast<size_t>(packet.firstVertex) >= worldVertexTemplate_.size()) {
+			continue;
+		}
+		const MetalPolyVertex& v0 = worldVertexTemplate_[packet.firstVertex];
+		vec3_t surfCenter;
+		VectorSet(surfCenter, v0.xyz[0], v0.xyz[1], v0.xyz[2]);
+		packet.cubemapIndex = R_CubemapForPoint(surfCenter); // 0 = none, 1+ = probe
+	}
+
+	if (ri_.Printf) {
+		ri_.Printf(PRINT_ALL,
+		           "Metal: Loaded %d cubemap probe texture(s) for '%s'\n",
+		           numProbes, mapBaseName.c_str());
+	}
+}
+
 void MetalRenderer::loadSkyboxTextures(MetalRenderer::MetalShaderResource& resource) {
 	TextureManager* tm = ensureTextureManager();
 	if (!tm) {
 		return;
 	}
-	
+
 	resource.skyboxLoaded = false;
 	bool hasOuterbox = false;
-	
+
 	// Load outer skybox textures (6 faces)
 	for (size_t i = 0; i < 6; ++i) {
 		const std::string& path = resource.script.outerboxTextures[i];
@@ -4926,7 +6304,7 @@ void MetalRenderer::loadSkyboxTextures(MetalRenderer::MetalShaderResource& resou
 			}
 		}
 	}
-	
+
 	// Load inner skybox textures if present
 	for (size_t i = 0; i < 6; ++i) {
 		const std::string& path = resource.script.innerboxTextures[i];
@@ -4935,9 +6313,9 @@ void MetalRenderer::loadSkyboxTextures(MetalRenderer::MetalShaderResource& resou
 			resource.skyboxInnerHandles[i] = handle;
 		}
 	}
-	
+
 	resource.skyboxLoaded = hasOuterbox;
-	
+
 	if (hasOuterbox && ri_.Printf) {
 		ri_.Printf(PRINT_ALL, "Metal: Loaded skybox textures for '%s'\n", resource.name.c_str());
 	}
@@ -5762,7 +7140,553 @@ bool MetalRenderer::ensureShadowPipeline() {
 	return true;
 }
 
-MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(const MetalRenderer::MetalShaderResource::MetalPipelineKey& key) {
+//=============================================================================
+// PER-OBJECT SHADOW MAPS (PSHADOW)
+//=============================================================================
+
+// Collect shadow-casting entities for this frame and compute their light params.
+// Ported from renderergl2/tr_main.c R_AddPshadowDrawSurfs.
+void MetalRenderer::computePshadows() {
+	numPshadows_ = 0;
+
+	// Only active when r_shadows >= 2 (per-object shadows mode).
+	if (!r_shadows_ || r_shadows_->integer < 2) {
+		return;
+	}
+	if (drawPackets_.empty()) {
+		return;
+	}
+
+	const float pshadowDist = r_pshadowDist_ ? r_pshadowDist_->value : 512.0f;
+	const float* vieworg   = sceneCamera_.refdef.vieworg;
+	const float* viewaxis0 = sceneCamera_.refdef.viewaxis[0]; // forward
+
+	int numCalc = 0;
+	pshadow_t calc[MAX_CALC_PSHADOWS];
+
+	for (int ei = 0; ei < (int)drawPackets_.size(); ei++) {
+		const refEntity_t& ent = drawPackets_[ei].entity;
+
+		if (ent.reType != RT_MODEL)              continue;
+		if (ent.renderfx & RF_NOSHADOW)          continue;
+
+		if (ent.hModel <= 0 || (size_t)ent.hModel >= models_.size()) continue;
+		MetalModel* model = models_[ent.hModel];
+		if (!model || model->type != MetalModelType::MD3) continue;
+		int lod = 0;
+		if (lod >= model->numLods || !model->lods[lod]) continue;
+		MetalModelLOD* lodData = model->lods[lod];
+		if (lodData->frames.empty()) continue;
+
+		int fIdx = ent.frame;
+		if (fIdx < 0) fIdx = 0;
+		if (fIdx >= (int)lodData->frames.size()) fIdx = (int)lodData->frames.size() - 1;
+		float radius = lodData->frames[fIdx].radius;
+		if (radius <= 0.0f) continue;
+
+		if (ent.nonNormalizedAxes) {
+			float axLen = sqrtf(ent.axis[0][0]*ent.axis[0][0] +
+			                    ent.axis[0][1]*ent.axis[0][1] +
+			                    ent.axis[0][2]*ent.axis[0][2]);
+			radius *= axLen;
+		}
+
+		// Cull entities behind the camera by more than pshadowDist.
+		float diff[3] = { ent.origin[0]-vieworg[0], ent.origin[1]-vieworg[1], ent.origin[2]-vieworg[2] };
+		float dotFwd  = diff[0]*viewaxis0[0] + diff[1]*viewaxis0[1] + diff[2]*viewaxis0[2];
+		if (dotFwd < -(pshadowDist)) {
+			continue;
+		}
+
+		float distSq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
+
+		// Build initial pshadow candidate.
+		pshadow_t s = {};
+		s.numEntities = 1;
+		s.entityNums[0] = ei;
+		VectorCopy(ent.origin, s.entityOrigins[0]);
+		s.entityRadiuses[0] = radius;
+		s.viewRadius         = radius;
+		s.lightRadius        = pshadowDist;
+		VectorCopy(ent.origin, s.viewOrigin);
+		s.sort = (radius * radius > 0.0f) ? (distSq / (radius * radius)) : distSq;
+
+		// Insert into sorted list (ascending sort).
+		if (numCalc < MAX_CALC_PSHADOWS) {
+			int ins = numCalc;
+			for (int k = 0; k < numCalc; k++) {
+				if (calc[k].sort > s.sort) { ins = k; break; }
+			}
+			for (int k = numCalc; k > ins; k--) calc[k] = calc[k-1];
+			calc[ins] = s;
+			numCalc++;
+		} else if (s.sort < calc[numCalc-1].sort) {
+			calc[numCalc-1] = s;
+			// Re-sort the last element into place.
+			for (int k = numCalc-1; k > 0 && calc[k].sort < calc[k-1].sort; k--) {
+				pshadow_t tmp = calc[k]; calc[k] = calc[k-1]; calc[k-1] = tmp;
+			}
+		}
+	}
+
+	// Merge overlapping shadow spheres (up to 8 entities per shadow map).
+	for (int i = 0; i < numCalc; i++) {
+		pshadow_t* ps1 = &calc[i];
+		for (int j = i + 1; j < numCalc && ps1->numEntities < 8; j++) {
+			pshadow_t* ps2 = &calc[j];
+			bool touch = false;
+			for (int k = 0; k < ps1->numEntities && !touch; k++) {
+				touch = SpheresIntersect(ps1->entityOrigins[k], ps1->entityRadiuses[k],
+				                         ps2->viewOrigin, ps2->viewRadius);
+			}
+			if (touch) {
+				vec3_t newOrig; float newRad;
+				BoundingSphereOfSpheres(ps1->viewOrigin, ps1->viewRadius,
+				                         ps2->viewOrigin, ps2->viewRadius,
+				                         newOrig, &newRad);
+				VectorCopy(newOrig, ps1->viewOrigin);
+				ps1->viewRadius = newRad;
+
+				int ne = ps1->numEntities;
+				ps1->entityNums[ne]      = ps2->entityNums[0];
+				VectorCopy(ps2->entityOrigins[0], ps1->entityOrigins[ne]);
+				ps1->entityRadiuses[ne]  = ps2->entityRadiuses[0];
+				ps1->numEntities++;
+
+				for (int k = j; k < numCalc-1; k++) calc[k] = calc[k+1];
+				j--;
+				numCalc--;
+			}
+		}
+	}
+
+	if (numCalc > MAX_DRAWN_PSHADOWS) numCalc = MAX_DRAWN_PSHADOWS;
+	numPshadows_ = numCalc;
+
+	// Compute light direction and axes for each final shadow.
+	for (int i = 0; i < numPshadows_; i++) {
+		pshadow_t* shadow = &calc[i];
+
+		vec3_t ambientLight, directedLight, lightDir;
+		VectorSet(lightDir, 0.57735f, 0.57735f, 0.57735f);
+		R_LightForPoint(shadow->viewOrigin, ambientLight, directedLight, lightDir);
+		// Normalise just in case R_LightForPoint returned a degenerate vector.
+		float ldLen = VectorLength(lightDir);
+		if (ldLen < 0.5f) VectorSet(lightDir, 0.0f, 0.0f, 1.0f);
+		else VectorScale(lightDir, 1.0f / ldLen, lightDir);
+
+		if (shadow->viewRadius * 3.0f > shadow->lightRadius) {
+			shadow->lightRadius = shadow->viewRadius * 3.0f;
+		}
+
+		// Light origin is above the entity cluster, along the light direction.
+		VectorMA(shadow->viewOrigin, shadow->viewRadius, lightDir, shadow->lightOrigin);
+
+		// Build orthonormal light-space axes.
+		// axis[0] = forward from light toward scene (opposite of lightDir).
+		VectorScale(lightDir, -1.0f, shadow->lightViewAxis[0]);
+		vec3_t up = {0.0f, 0.0f, -1.0f};
+		if (fabsf(DotProduct(up, shadow->lightViewAxis[0])) > 0.9f) {
+			VectorSet(up, -1.0f, 0.0f, 0.0f);
+		}
+		CrossProduct(shadow->lightViewAxis[0], up, shadow->lightViewAxis[1]);
+		VectorNormalize(shadow->lightViewAxis[1]);
+		CrossProduct(shadow->lightViewAxis[0], shadow->lightViewAxis[1], shadow->lightViewAxis[2]);
+
+		// Cull plane faces toward the light; surfaces on its back are culled.
+		VectorCopy(shadow->lightViewAxis[0], shadow->cullPlane.normal);
+		shadow->cullPlane.dist = DotProduct(shadow->cullPlane.normal, shadow->lightOrigin);
+		shadow->cullPlane.type = PlaneTypeForNormal(shadow->cullPlane.normal);
+		SetPlaneSignbits(&shadow->cullPlane);
+
+		pshadows_[i] = *shadow;
+	}
+}
+
+// Lazily create all PShadow pipeline objects.
+bool MetalRenderer::ensurePshadowResources() {
+	if (pshadowCasterPipeline_ && pshadowRecvWorldPipeline_ && pshadowRecvModelPipeline_) {
+		return true;
+	}
+	if (!device_) return false;
+
+	// Ensure prerequisite resources are available.
+	if (!ensureSceneShaderResources() || !sceneVertexDescriptor_) return false;
+	if (!ensureModelPipeline()       || !modelVertexDescriptor_)  return false;
+
+	if (!sceneLibrary_) {
+		sceneLibrary_.reset(device_->newDefaultLibrary());
+		if (!sceneLibrary_) return false;
+	}
+
+	// Load shader functions.
+	auto loadFn = [&](const char* name, MetalPtr<MTL::Function>& fn) -> bool {
+		if (fn) return true;
+		NS::String* s = NS::String::string(name, NS::UTF8StringEncoding);
+		fn.reset(sceneLibrary_->newFunction(s));
+		if (!fn && ri_.Printf)
+			ri_.Printf(PRINT_WARNING, "Metal PShadow: missing shader function '%s'\n", name);
+		return !!fn;
+	};
+	if (!loadFn("vertex_pshadow_caster",         pshadowCasterVFn_))    return false;
+	if (!loadFn("vertex_pshadow_receiver_world",  pshadowRecvWorldVFn_)) return false;
+	if (!loadFn("vertex_pshadow_receiver_model",  pshadowRecvModelVFn_)) return false;
+	if (!loadFn("fragment_pshadow_receiver",      pshadowRecvFFn_))      return false;
+
+	// Caster vertex descriptor: only float3 position, stride 12.
+	if (!pshadowCasterVD_) {
+		pshadowCasterVD_.reset(MTL::VertexDescriptor::alloc()->init());
+		auto* attr = pshadowCasterVD_->attributes()->object(0);
+		attr->setFormat(MTL::VertexFormatFloat3);
+		attr->setOffset(0);
+		attr->setBufferIndex(0);
+		auto* layout = pshadowCasterVD_->layouts()->object(0);
+		layout->setStride(sizeof(float) * 3);
+		layout->setStepRate(1);
+		layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+	}
+
+	NS::Error* err = nullptr;
+
+	// ---- Caster pipeline (depth-only, no colour attachment) ----
+	if (!pshadowCasterPipeline_) {
+		MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+		pd->setVertexFunction(pshadowCasterVFn_.get());
+		pd->setVertexDescriptor(pshadowCasterVD_.get());
+		// No colour attachment; depth only.
+		pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+		pshadowCasterPipeline_.reset(device_->newRenderPipelineState(pd, &err));
+		pd->release();
+		if (!pshadowCasterPipeline_) {
+			if (err && ri_.Printf)
+				ri_.Printf(PRINT_WARNING, "Metal PShadow: caster pipeline failed: %s\n",
+				           err->localizedDescription()->utf8String());
+			return false;
+		}
+	}
+
+	// ---- World receiver pipeline ----
+	auto makeRecvPipeline = [&](MTL::Function* vfn, MTL::VertexDescriptor* vd,
+	                             MetalPtr<MTL::RenderPipelineState>& out) -> bool {
+		if (out) return true;
+		MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
+		pd->setVertexFunction(vfn);
+		pd->setFragmentFunction(pshadowRecvFFn_.get());
+		pd->setVertexDescriptor(vd);
+		auto* ca = pd->colorAttachments()->object(0);
+		ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+		ca->setBlendingEnabled(true);
+		ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+		ca->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+		ca->setRgbBlendOperation(MTL::BlendOperationAdd);
+		ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+		ca->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+		ca->setAlphaBlendOperation(MTL::BlendOperationAdd);
+		pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+		err = nullptr;
+		out.reset(device_->newRenderPipelineState(pd, &err));
+		pd->release();
+		if (!out) {
+			if (err && ri_.Printf)
+				ri_.Printf(PRINT_WARNING, "Metal PShadow: receiver pipeline failed: %s\n",
+				           err->localizedDescription()->utf8String());
+			return false;
+		}
+		return true;
+	};
+	if (!makeRecvPipeline(pshadowRecvWorldVFn_.get(), sceneVertexDescriptor_.get(),
+	                       pshadowRecvWorldPipeline_)) return false;
+	if (!makeRecvPipeline(pshadowRecvModelVFn_.get(), modelVertexDescriptor_.get(),
+	                       pshadowRecvModelPipeline_)) return false;
+
+	// ---- Caster depth state: write enabled, LessEqual compare ----
+	if (!pshadowCasterDepthState_) {
+		MTL::DepthStencilDescriptor* dd = MTL::DepthStencilDescriptor::alloc()->init();
+		dd->setDepthWriteEnabled(true);
+		dd->setDepthCompareFunction(MTL::CompareFunctionLessEqual);
+		pshadowCasterDepthState_.reset(device_->newDepthStencilState(dd));
+		dd->release();
+	}
+
+	// ---- Receiver depth state: no write, Always (depth buffer not preserved) ----
+	if (!pshadowRecvDepthState_) {
+		MTL::DepthStencilDescriptor* dd = MTL::DepthStencilDescriptor::alloc()->init();
+		dd->setDepthWriteEnabled(false);
+		dd->setDepthCompareFunction(MTL::CompareFunctionAlways);
+		pshadowRecvDepthState_.reset(device_->newDepthStencilState(dd));
+		dd->release();
+	}
+
+	if (ri_.Printf)
+		ri_.Printf(PRINT_ALL, "Metal: Created pshadow pipelines\n");
+	return true;
+}
+
+// Ensure a 512x512 Depth32Float shadow-map texture exists for slot i.
+void MetalRenderer::ensurePshadowTexture(int i) {
+	if (i < 0 || i >= MAX_DRAWN_PSHADOWS || !device_) return;
+	if (pshadowMaps_[i]) return;
+
+	MTL::TextureDescriptor* td = MTL::TextureDescriptor::texture2DDescriptor(
+		MTL::PixelFormatDepth32Float,
+		PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE, false);
+	td->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+	td->setStorageMode(MTL::StorageModePrivate);
+	pshadowMaps_[i].reset(device_->newTexture(td));
+}
+
+// Render the shadow-casting entities for shadow slot shadowIdx into its
+// depth-only offscreen texture.
+void MetalRenderer::renderPshadowCasterPass(int shadowIdx) {
+	if (!device_ || !currentCommandBuffer_) return;
+	if (shadowIdx < 0 || shadowIdx >= numPshadows_) return;
+
+	ensurePshadowTexture(shadowIdx);
+	MTL::Texture* shadowMap = pshadowMaps_[shadowIdx].get();
+	if (!shadowMap) return;
+
+	const pshadow_t& shadow = pshadows_[shadowIdx];
+
+	// Build a depth-only render pass targeting the shadow texture.
+	MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+	rpd->depthAttachment()->setTexture(shadowMap);
+	rpd->depthAttachment()->setLoadAction(MTL::LoadActionClear);
+	rpd->depthAttachment()->setClearDepth(1.0);
+	rpd->depthAttachment()->setStoreAction(MTL::StoreActionStore);
+
+	MTL::RenderCommandEncoder* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+	rpd->release();
+	if (!enc) return;
+
+	enc->setRenderPipelineState(pshadowCasterPipeline_.get());
+	enc->setDepthStencilState(pshadowCasterDepthState_.get());
+	enc->setCullMode(MTL::CullModeNone);
+
+	// Build caster uniforms once per shadow.
+	PShadowCasterUniforms cu{};
+	cu.lightOrigin[0] = shadow.lightOrigin[0];
+	cu.lightOrigin[1] = shadow.lightOrigin[1];
+	cu.lightOrigin[2] = shadow.lightOrigin[2];
+	cu.lightOrigin[3] = shadow.viewRadius;
+	cu.lightForward[0] = shadow.lightViewAxis[0][0];
+	cu.lightForward[1] = shadow.lightViewAxis[0][1];
+	cu.lightForward[2] = shadow.lightViewAxis[0][2];
+	cu.lightForward[3] = shadow.lightRadius;
+	cu.lightRight[0] = shadow.lightViewAxis[1][0];
+	cu.lightRight[1] = shadow.lightViewAxis[1][1];
+	cu.lightRight[2] = shadow.lightViewAxis[1][2];
+	cu.lightRight[3] = 0.0f;
+	cu.lightUp[0] = shadow.lightViewAxis[2][0];
+	cu.lightUp[1] = shadow.lightViewAxis[2][1];
+	cu.lightUp[2] = shadow.lightViewAxis[2][2];
+	cu.lightUp[3] = 0.0f;
+	enc->setVertexBytes(&cu, sizeof(cu), 1);
+
+	// Render each entity's MD3 surfaces with world-space vertex positions.
+	for (int ei = 0; ei < shadow.numEntities; ei++) {
+		int packetIdx = shadow.entityNums[ei];
+		if (packetIdx < 0 || packetIdx >= (int)drawPackets_.size()) continue;
+		const refEntity_t& ent = drawPackets_[packetIdx].entity;
+
+		if (ent.hModel <= 0 || (size_t)ent.hModel >= models_.size()) continue;
+		MetalModel* model = models_[ent.hModel];
+		if (!model || model->type != MetalModelType::MD3) continue;
+		int lod = 0;
+		if (lod >= model->numLods || !model->lods[lod]) continue;
+		MetalModelLOD* lodData = model->lods[lod];
+
+		// Frame clamping + lerp factor (same as blob shadow).
+		int oldFrame = ent.oldframe;
+		int newFrame = ent.frame;
+		if (oldFrame < 0) oldFrame = 0;
+		if (oldFrame >= lodData->numSurfaces * 0 + (int)lodData->frames.size())
+			oldFrame = (int)lodData->frames.size() - 1;
+		if (newFrame < 0) newFrame = 0;
+		if (newFrame >= (int)lodData->frames.size())
+			newFrame = (int)lodData->frames.size() - 1;
+		const float vertexLerp = 1.0f - ent.backlerp;
+
+		// Entity model matrix (world transform).
+		float modelMatrix[16];
+		calculateEntityTransform(ent, modelMatrix);
+
+		for (MetalModelSurface& surface : lodData->surfaces) {
+			if (surface.numVerts <= 0 || surface.numIndexes <= 0) continue;
+			if (!surface.indexBuffer) continue;
+
+			// Clamp frame indices to this surface's frame count.
+			int of = oldFrame < surface.numFrames ? oldFrame : surface.numFrames - 1;
+			int nf = newFrame < surface.numFrames ? newFrame : surface.numFrames - 1;
+
+			// Build world-space float3 positions (lerp model space → world space).
+			std::vector<float> wpos(surface.numVerts * 3);
+			for (int vi = 0; vi < surface.numVerts; vi++) {
+				const MetalModelVertex& ov = surface.vertices[of * surface.numVerts + vi];
+				const MetalModelVertex& nv = surface.vertices[nf * surface.numVerts + vi];
+				float ms[3];
+				ms[0] = ov.xyz[0] + vertexLerp * (nv.xyz[0] - ov.xyz[0]);
+				ms[1] = ov.xyz[1] + vertexLerp * (nv.xyz[1] - ov.xyz[1]);
+				ms[2] = ov.xyz[2] + vertexLerp * (nv.xyz[2] - ov.xyz[2]);
+				// Apply model matrix (column-major) to get world space.
+				wpos[vi*3+0] = modelMatrix[0]*ms[0]+modelMatrix[4]*ms[1]+modelMatrix[8] *ms[2]+modelMatrix[12];
+				wpos[vi*3+1] = modelMatrix[1]*ms[0]+modelMatrix[5]*ms[1]+modelMatrix[9] *ms[2]+modelMatrix[13];
+				wpos[vi*3+2] = modelMatrix[2]*ms[0]+modelMatrix[6]*ms[1]+modelMatrix[10]*ms[2]+modelMatrix[14];
+			}
+
+			MTL::Buffer* vbuf = device_->newBuffer(
+				wpos.data(),
+				wpos.size() * sizeof(float),
+				MTL::ResourceStorageModeShared);
+			if (!vbuf) continue;
+
+			enc->setVertexBuffer(vbuf, 0, 0);
+
+			MTL::Buffer* ibuf = static_cast<MTL::Buffer*>(surface.indexBuffer);
+			enc->drawIndexedPrimitives(
+				MTL::PrimitiveTypeTriangle,
+				(NS::UInteger)surface.numIndexes,
+				MTL::IndexTypeUInt32,
+				ibuf, 0);
+
+			vbuf->release();
+		}
+	}
+
+	enc->endEncoding();
+	enc->release();
+}
+
+// Alpha-blend a dark shadow overlay on all world and model surfaces that fall
+// within the shadow footprint of each active shadow.
+void MetalRenderer::renderPshadowReceiverPasses() {
+	if (!currentRenderEncoder_ || !device_ || !sceneUniformBuffer_) return;
+
+	const bool hasStaticWorld = staticWorldVertexBuffer_.get() != nullptr;
+	const bool hasDynamic     = polyVertexBuffer_.get() != nullptr;
+
+	for (int si = 0; si < numPshadows_; si++) {
+		MTL::Texture* shadowMap = pshadowMaps_[si].get();
+		if (!shadowMap) continue;
+
+		const pshadow_t& shadow = pshadows_[si];
+
+		// Build receiver uniforms.
+		PShadowReceiverUniforms ru{};
+		ru.lightOrigin[0] = shadow.lightOrigin[0];
+		ru.lightOrigin[1] = shadow.lightOrigin[1];
+		ru.lightOrigin[2] = shadow.lightOrigin[2];
+		ru.lightOrigin[3] = shadow.lightRadius;
+		ru.lightForward[0] = shadow.lightViewAxis[0][0];
+		ru.lightForward[1] = shadow.lightViewAxis[0][1];
+		ru.lightForward[2] = shadow.lightViewAxis[0][2];
+		ru.lightForward[3] = 0.0f;
+		// lightRight and lightUp are pre-scaled by 1/viewRadius so the UV
+		// computation in the shader gives values in [-1, 1] for in-shadow pixels.
+		float invVR = (shadow.viewRadius > 0.0f) ? (1.0f / shadow.viewRadius) : 1.0f;
+		ru.lightRight[0] = shadow.lightViewAxis[1][0] * invVR;
+		ru.lightRight[1] = shadow.lightViewAxis[1][1] * invVR;
+		ru.lightRight[2] = shadow.lightViewAxis[1][2] * invVR;
+		ru.lightRight[3] = 0.0f;
+		ru.lightUp[0] = shadow.lightViewAxis[2][0] * invVR;
+		ru.lightUp[1] = shadow.lightViewAxis[2][1] * invVR;
+		ru.lightUp[2] = shadow.lightViewAxis[2][2] * invVR;
+		ru.lightUp[3] = 0.0f;
+
+		// ---- World surface receiver pass ----
+		currentRenderEncoder_->setRenderPipelineState(pshadowRecvWorldPipeline_.get());
+		currentRenderEncoder_->setDepthStencilState(pshadowRecvDepthState_.get());
+		currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 1);
+		currentRenderEncoder_->setFragmentBytes(&ru, sizeof(ru), 0);
+		currentRenderEncoder_->setFragmentTexture(shadowMap, 0);
+
+		MTL::Buffer* currentVB = nullptr;
+		for (const ScenePolyPacket& packet : polyPackets_) {
+			if (packet.vertexCount <= 0) continue;
+			if (packet.isPortal)         continue;
+
+			MTL::Buffer* vb = nullptr;
+			if (packet.isStaticWorld) {
+				if (!hasStaticWorld) continue;
+				vb = staticWorldVertexBuffer_.get();
+			} else {
+				if (!hasDynamic) continue;
+				if ((size_t)(packet.firstVertex + packet.vertexCount) > polyVertexCountGPU_) continue;
+				vb = polyVertexBuffer_.get();
+			}
+			if (vb != currentVB) {
+				currentRenderEncoder_->setVertexBuffer(vb, 0, 0);
+				currentVB = vb;
+			}
+			currentRenderEncoder_->drawPrimitives(
+				packet.primitive,
+				(NS::UInteger)packet.firstVertex,
+				(NS::UInteger)packet.vertexCount);
+		}
+
+		// ---- Model entity receiver pass ----
+		currentRenderEncoder_->setRenderPipelineState(pshadowRecvModelPipeline_.get());
+		currentRenderEncoder_->setVertexBuffer(sceneUniformBuffer_.get(), 0, 2);
+		// fragment state (ru, shadowMap) already bound above.
+
+		for (const SceneDrawPacket& dp : drawPackets_) {
+			const refEntity_t& ent = dp.entity;
+			if (ent.reType != RT_MODEL)              continue;
+			if (ent.renderfx & RF_NOSHADOW)          continue;
+			if (ent.renderfx & RF_THIRD_PERSON)      continue;
+
+			if (ent.hModel <= 0 || (size_t)ent.hModel >= models_.size()) continue;
+			MetalModel* model = models_[ent.hModel];
+			if (!model || model->type != MetalModelType::MD3) continue;
+			int lod = 0;
+			if (lod >= model->numLods || !model->lods[lod]) continue;
+			MetalModelLOD* lodData = model->lods[lod];
+
+			// Build ModelUniforms for this entity.
+			float modelMatrix[16];
+			calculateEntityTransform(ent, modelMatrix);
+			float mvpMatrix[16];
+			multiplyMatrices4x4(sceneCamera_.projectionMatrix, sceneCamera_.viewMatrix, modelMatrix, mvpMatrix);
+
+			struct {
+				float modelViewProjection[16];
+				float modelMatrix[16];
+				float vertexLerp;
+				float padding[3];
+			} mu{};
+			std::memcpy(mu.modelViewProjection, mvpMatrix,     sizeof(float)*16);
+			std::memcpy(mu.modelMatrix,         modelMatrix,   sizeof(float)*16);
+			mu.vertexLerp = 1.0f - ent.backlerp;
+
+			for (MetalModelSurface& surface : lodData->surfaces) {
+				if (surface.numVerts <= 0 || surface.numIndexes <= 0) continue;
+				if (!surface.indexBuffer) continue;
+
+				// Create per-frame interleaved vertex buffer (same layout as main model pass).
+				MTL::Buffer* vbuf = createModelVertexBuffer(ent, surface);
+				if (!vbuf) continue;
+
+				currentRenderEncoder_->setVertexBuffer(vbuf, 0, 0);
+				currentRenderEncoder_->setVertexBytes(&mu, sizeof(mu), 1);
+
+				MTL::Buffer* ibuf = static_cast<MTL::Buffer*>(surface.indexBuffer);
+				currentRenderEncoder_->drawIndexedPrimitives(
+					MTL::PrimitiveTypeTriangle,
+					(NS::UInteger)surface.numIndexes,
+					MTL::IndexTypeUInt32,
+					ibuf, 0);
+
+				vbuf->release();
+			}
+		}
+	}
+
+	// Restore default cull mode.
+	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
+}
+
+MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(
+		const MetalRenderer::MetalShaderResource::MetalPipelineKey& key) {
 	if (!ensureSceneShaderResources()) {
 		return nullptr;
 	}
@@ -6207,6 +8131,7 @@ bool MetalRenderer::drawPolyPackets() {
 			MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 
 			// Bind normal-map (texture 1) and specular-map (texture 2) for this stage.
+			// Bind cubemap (texture 3) for environment reflections.
 			// When no map was detected, fall back to the white/default texture so the
 			// shader slot is always valid; useNormalMap/useSpecularMap flags disable sampling.
 			{
@@ -6225,6 +8150,23 @@ bool MetalRenderer::drawPolyPackets() {
 				}
 				currentRenderEncoder_->setFragmentTexture(normalTex, 1);
 				currentRenderEncoder_->setFragmentTexture(specTex,   2);
+
+				// Cubemap reflection: look up the probe texture for this surface.
+				// Always bind a valid cubemap to slot 3 (Metal validation requires it),
+				// but only enable sampling when we have a real probe.
+				MTL::Texture* cubeTex = getOrCreateFallbackCubemap();
+				if (!worldCubemapTextures_.empty()) {
+					int ci = packet.cubemapIndex; // 0 = fallback, 1..N = probe
+					if (ci > 0 && ci < (int)worldCubemapTextures_.size()) {
+						MTL::Texture* probeTex = worldCubemapTextures_[ci].get();
+						if (probeTex) {
+							cubeTex = probeTex;
+							nsParams.useCubemap      = 1.0f;
+							nsParams.cubemapStrength = 0.25f; // base strength; spec-alpha modulates it
+						}
+					}
+				}
+				currentRenderEncoder_->setFragmentTexture(cubeTex, 3);
 				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
 			}
 
@@ -6491,7 +8433,7 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 		MTL::SamplerState* sampler = (useClamp && sceneClampSampler_) ? sceneClampSampler_.get() : sceneSampler_.get();
 		MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler);
 
-		// Bind normal/specular maps so all fragment buffer slots are valid.
+		// Bind normal/specular maps and cubemap so all fragment texture/buffer slots are valid.
 		{
 			NormalSpecularParams nsParams{};
 			MTL::Texture* normalTex = defaultTexture;
@@ -6506,6 +8448,9 @@ bool MetalRenderer::drawPolyPacketsForPortal(int excludePacketIndex) {
 			}
 			currentRenderEncoder_->setFragmentTexture(normalTex, 1);
 			currentRenderEncoder_->setFragmentTexture(specTex,   2);
+			// Always bind a valid cubemap to slot 3; cubemap reflections are
+			// disabled in portal views (useCubemap stays 0.0f).
+			currentRenderEncoder_->setFragmentTexture(getOrCreateFallbackCubemap(), 3);
 			currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
 		}
 
@@ -6696,7 +8641,9 @@ bool MetalRenderer::drawSkybox(qhandle_t skyShader) {
 	// This is less efficient but easier to implement correctly
 	
 	const float boxSize = sceneCamera_.zFar / 1.75f;  // Match OpenGL calculation
-	const float* viewOrigin = sceneCamera_.viewOrigin;
+	// When a sky portal entity is present, render the skybox centred on the portal
+	// origin rather than the player's eye, matching GL2's R_AddSkyPortal behaviour.
+	const float* viewOrigin = hasSkyPortal_ ? skyPortalOrigin_ : sceneCamera_.viewOrigin;
 	
 	// Create temporary vertices for each face
 	std::vector<MetalPolyVertex> faceVerts(6);  // 2 triangles = 6 verts per face
@@ -6929,7 +8876,8 @@ void MetalRenderer::buildCloudSkyDome(qhandle_t skyShader) {
 	}
 	
 	const float boxSize = sceneCamera_.zFar / 1.75f;
-	const float* viewOrigin = sceneCamera_.viewOrigin;
+	// Mirror drawSkybox: use the portal origin when a sky portal entity is present.
+	const float* viewOrigin = hasSkyPortal_ ? skyPortalOrigin_ : sceneCamera_.viewOrigin;
 	
 	// st_to_vec mapping from OpenGL
 	static const int st_to_vec[6][3] = {
@@ -9811,9 +11759,10 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 					MTL::Texture* t = texManager->getTexture(stageRuntime->specularMapHandle);
 					if (t) { specTex = t; nsParams.useSpecularMap = 1.0f; }
 				}
-				// World-surface lighting is 0-255; fragment shader divides by 255 for specular.
+				// Bind cubemap slot 3 (always valid texture; reflections disabled for brush models).
 				currentRenderEncoder_->setFragmentTexture(normalTex, 1);
 				currentRenderEncoder_->setFragmentTexture(specTex,   2);
+				currentRenderEncoder_->setFragmentTexture(getOrCreateFallbackCubemap(), 3);
 				currentRenderEncoder_->setFragmentBytes(&nsParams, sizeof(NormalSpecularParams), 3);
 			}
 
@@ -12288,6 +14237,8 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	r_marksOnTriangleMeshes_ = ri_.Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE);
 	// Shadows: 0=off, 1+=projection (blob) shadows. Mirrors cg_shadows in GL2.
 	r_shadows_ = ri_.Cvar_Get("cg_shadows", "1", 0);
+	// Max distance for per-object shadow consideration (mirrors GL2's r_pshadowDist).
+	r_pshadowDist_ = ri_.Cvar_Get("r_pshadowDist", "512", CVAR_ARCHIVE);
 	// Patch subdivision flatness tolerance (world units). Matches GL2's r_subdivisions.
 	r_subdivisions_ = ri_.Cvar_Get("r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH);
 
@@ -12313,6 +14264,20 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	r_flareSize_ = ri_.Cvar_Get("r_flareSize", "40",   CVAR_CHEAT);
 	r_flareFade_ = ri_.Cvar_Get("r_flareFade", "7",    CVAR_CHEAT);
 	r_flareCoeff_ = ri_.Cvar_Get("r_flareCoeff", "150", CVAR_CHEAT);
+
+	// Post-processing cvars
+	r_hdr_                  = ri_.Cvar_Get("r_hdr",                 "1",    CVAR_ARCHIVE);
+	r_bloom_                = ri_.Cvar_Get("r_bloom",               "0",    CVAR_ARCHIVE);
+	r_bloomThreshold_       = ri_.Cvar_Get("r_bloomThreshold",      "1.0",  CVAR_ARCHIVE);
+	r_bloomStrength_        = ri_.Cvar_Get("r_bloomStrength",       "0.5",  CVAR_ARCHIVE);
+	r_ssao_                 = ri_.Cvar_Get("r_ssao",                "0",    CVAR_ARCHIVE | CVAR_LATCH);
+	r_dof_                  = ri_.Cvar_Get("r_dof",                 "0",    CVAR_ARCHIVE);
+	r_sunlightMode_         = ri_.Cvar_Get("r_sunlightMode",        "0",    CVAR_ARCHIVE);
+	r_autoExposure_         = ri_.Cvar_Get("r_autoExposure",        "1",    CVAR_ARCHIVE);
+	r_autoExposureMinValue_ = ri_.Cvar_Get("r_autoExposureMinValue","-2",   CVAR_ARCHIVE);
+	r_autoExposureMaxValue_ = ri_.Cvar_Get("r_autoExposureMaxValue","2",    CVAR_ARCHIVE);
+	r_cameraExposure_       = ri_.Cvar_Get("r_cameraExposure",      "0",    CVAR_ARCHIVE);
+	r_tonemapExposure_      = ri_.Cvar_Get("r_tonemapExposure",     "0.18", CVAR_ARCHIVE);
 
 	resetShaderCaches();
 	// TextureManager will be created when device is available

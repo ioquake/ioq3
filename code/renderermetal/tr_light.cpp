@@ -27,6 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "tr_scene.h"
 #include <cmath>
 #include <cstring>
+#include <cfloat>
+#include <cstdio>
+#include <vector>
 
 // Constants from GL2 renderer
 #define DLIGHT_AT_RADIUS        16
@@ -54,6 +57,12 @@ namespace {
         // Matches tr.sinTable in OpenGL renderer
         float sinTable[FUNCTABLE_SIZE]{};
 
+        // Cubemap probe origins (textures are owned by MetalRenderer)
+        struct CubemapProbeOrigin {
+            float xyz[3];
+        };
+        std::vector<CubemapProbeOrigin> cubemapProbes;
+
         bool isValid() const {
             return lightGridData != nullptr &&
                    lightGridBounds[0] > 0 &&
@@ -72,6 +81,7 @@ namespace {
             }
             lightGridDataSize = 0;
             lightGridBounds[0] = lightGridBounds[1] = lightGridBounds[2] = 0;
+            cubemapProbes.clear();
         }
     };
 
@@ -128,6 +138,17 @@ Return current identity light value
 */
 float R_GetIdentityLight(void) {
     return g_worldLighting.identityLight;
+}
+
+/*
+=================
+R_GetSunDirection
+Return current sun direction (world-space unit vector).
+Used by the post-processing pipeline for sun-ray projection.
+=================
+*/
+void R_GetSunDirection(vec3_t out) {
+    VectorCopy(g_worldLighting.sunDirection, out);
 }
 
 /*
@@ -580,4 +601,149 @@ uint32_t R_DlightBmodel(const MetalBrushModel& bmodel, const refEntity_t& ent,
     }
 
     return mask;
+}
+
+// ============================================================================
+// Cubemap Probe System
+// Mirrors GL2's R_CubemapForPoint (tr_light.c) and R_LoadCubemapEntities
+// (tr_bsp.c).  Probe origins are stored here; Metal textures live in
+// MetalRenderer (tr_backend.cpp).
+// ============================================================================
+
+void R_InitCubemapProbes(void) {
+    g_worldLighting.cubemapProbes.clear();
+}
+
+void R_ShutdownCubemapProbes(void) {
+    g_worldLighting.cubemapProbes.clear();
+}
+
+/*
+======================
+R_LoadCubemapProbeOrigins
+
+Parse the BSP entity string looking for cubemap probe entities.
+Priority: 'misc_cubemap' → 'info_player_deathmatch' (same fallback as GL2).
+Returns the number of probes loaded.
+======================
+*/
+int R_LoadCubemapProbeOrigins(const char* entitiesData, int entitiesLen) {
+    g_worldLighting.cubemapProbes.clear();
+
+    if (!entitiesData || entitiesLen <= 0) {
+        return 0;
+    }
+
+    // Entity string format: { "key" "value" ... } repeated.
+    // We do two passes: first try misc_cubemap, then info_player_deathmatch.
+    static const char* const kCandidates[] = { "misc_cubemap", "info_player_deathmatch", nullptr };
+
+    for (const char* const* candidate = kCandidates; *candidate; ++candidate) {
+        const char* targetClass = *candidate;
+        const char* p   = entitiesData;
+        const char* end = entitiesData + entitiesLen;
+
+        // Mini-lambda helpers using nested loops
+        auto skipWS = [&]() {
+            while (p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
+        };
+        auto readQuotedToken = [&](char* buf, int bufLen) -> bool {
+            skipWS();
+            if (p >= end || *p != '"') return false;
+            ++p; // skip open quote
+            int i = 0;
+            while (p < end && *p != '"' && i < bufLen - 1) buf[i++] = *p++;
+            buf[i] = '\0';
+            if (p < end && *p == '"') ++p; // skip close quote
+            return true;
+        };
+
+        while (p < end) {
+            skipWS();
+            if (p >= end) break;
+            if (*p != '{') { ++p; continue; }
+            ++p; // consume '{'
+
+            char key[64], value[256];
+            bool isTarget  = false;
+            bool hasOrigin = false;
+            float origin[3] = {0.0f, 0.0f, 0.0f};
+
+            while (p < end) {
+                skipWS();
+                if (p >= end || *p == '}') break;
+                if (!readQuotedToken(key, sizeof(key))) { ++p; continue; }
+                if (!readQuotedToken(value, sizeof(value))) continue;
+
+                if (strcmp(key, "classname") == 0 && strcmp(value, targetClass) == 0) {
+                    isTarget = true;
+                }
+                if (strcmp(key, "origin") == 0) {
+                    if (sscanf(value, "%f %f %f", &origin[0], &origin[1], &origin[2]) == 3) {
+                        hasOrigin = true;
+                    }
+                }
+            }
+            if (p < end && *p == '}') ++p;
+
+            if (isTarget && hasOrigin) {
+                WorldLightingData::CubemapProbeOrigin probe;
+                probe.xyz[0] = origin[0];
+                probe.xyz[1] = origin[1];
+                probe.xyz[2] = origin[2];
+                g_worldLighting.cubemapProbes.push_back(probe);
+            }
+        }
+
+        if (!g_worldLighting.cubemapProbes.empty()) {
+            break; // found probes from this class; don't try fallback
+        }
+    }
+
+    return (int)g_worldLighting.cubemapProbes.size();
+}
+
+/*
+======================
+R_CubemapForPoint
+
+Return the 1-based index of the nearest probe to 'point', or 0 if none.
+Matches GL2's convention: caller subtracts 1 to index into the array.
+======================
+*/
+int R_CubemapForPoint(const vec3_t point) {
+    if (g_worldLighting.cubemapProbes.empty()) {
+        return 0;
+    }
+
+    int   nearest   = -1;
+    float shortestSq = FLT_MAX;
+
+    for (int i = 0; i < (int)g_worldLighting.cubemapProbes.size(); ++i) {
+        const float* o = g_worldLighting.cubemapProbes[i].xyz;
+        float dx = point[0] - o[0];
+        float dy = point[1] - o[1];
+        float dz = point[2] - o[2];
+        float sq = dx*dx + dy*dy + dz*dz;
+        if (sq < shortestSq) {
+            shortestSq = sq;
+            nearest    = i;
+        }
+    }
+
+    return nearest + 1; // 1-based; 0 means "no probe"
+}
+
+int R_GetNumCubemapProbes(void) {
+    return (int)g_worldLighting.cubemapProbes.size();
+}
+
+void R_GetCubemapProbeOrigin(int idx, vec3_t out) {
+    if (idx < 0 || idx >= (int)g_worldLighting.cubemapProbes.size()) {
+        VectorClear(out);
+        return;
+    }
+    out[0] = g_worldLighting.cubemapProbes[idx].xyz[0];
+    out[1] = g_worldLighting.cubemapProbes[idx].xyz[1];
+    out[2] = g_worldLighting.cubemapProbes[idx].xyz[2];
 }
