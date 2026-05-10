@@ -1748,6 +1748,13 @@ private:
 	bool usingHDRRenderPath_  = false;   // beginFrame set this when r_hdr=1
 	bool postProcessingDone_  = false;   // set after runPostProcessing()
 
+	// Pixel format of the active scene colour target (hdrColorTarget_ when HDR is
+	// on, or the drawable when HDR is off).  All 3-D scene pipeline states must
+	// declare this same format so Metal validation passes and the GPU writes
+	// correctly.  Initialised to BGRA8Unorm (non-HDR default); updated in
+	// beginFrame() and used by every ensure*Pipeline() / getStagePipeline() call.
+	MTL::PixelFormat sceneColorFormat_ = MTL::PixelFormatBGRA8Unorm;
+
 	bool initializeWindow(int& width, int& height, qboolean& fullscreen);
 	bool createPipeline(MTL::Texture* drawableTexture);
 	bool create2DPipeline();
@@ -3870,7 +3877,7 @@ bool MetalRenderer::createFlarePipeline() {
 	MTL::RenderPipelineDescriptor* pd = MTL::RenderPipelineDescriptor::alloc()->init();
 	pd->setVertexFunction(vfn);
 	pd->setFragmentFunction(ffn);
-	pd->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	pd->colorAttachments()->object(0)->setPixelFormat(sceneColorFormat_);
 	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
 
 	// Additive blend: src=One, dst=One (GL_ONE, GL_ONE)
@@ -5359,6 +5366,30 @@ void MetalRenderer::beginFrame(stereoFrame_t stereoFrame) {
 		// HDR disabled or allocation failed — render directly to drawable.
 		usingHDRRenderPath_ = false;
 		colorTarget = currentDrawable_->texture();
+	}
+
+	// Track scene colour format; invalidate stale scene pipeline states if it changed.
+	{
+		MTL::PixelFormat newSceneColorFormat = colorTarget->pixelFormat();
+		if (newSceneColorFormat != sceneColorFormat_) {
+			sceneColorFormat_ = newSceneColorFormat;
+			resetStagePipelineCache();
+			fogPipeline_.reset();
+			modelPipeline_.reset();
+			modelPipelineAdditive_.reset();
+			shadowPipeline_.reset();
+			dlightPipeline_.reset();
+			dlightAnimatedPipeline_.reset();
+			pshadowRecvWorldPipeline_.reset();
+			pshadowRecvModelPipeline_.reset();
+			pipelineFlare_.reset();
+			// Portal texture must also match the scene format (stage pipelines are
+			// shared between the main scene and portal sub-passes).
+			portalTexture_.reset();
+			portalDepthTexture_.reset();
+			portalTextureWidth_  = 0;
+			portalTextureHeight_ = 0;
+		}
 	}
 
 	rpd->colorAttachments()->object(0)->setTexture(colorTarget);
@@ -6871,7 +6902,7 @@ bool MetalRenderer::ensureFogPipeline() {
 
 	// Color attachment with alpha blending
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
-	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setPixelFormat(sceneColorFormat_);
 	colorAttachment->setBlendingEnabled(true);
 	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
 	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
@@ -7006,7 +7037,7 @@ bool MetalRenderer::ensureModelPipeline() {
 
 	// Color attachment - enable alpha blending for transparent model surfaces
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
-	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setPixelFormat(sceneColorFormat_);
 	colorAttachment->setBlendingEnabled(true);
 	colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
 	colorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
@@ -7064,7 +7095,7 @@ bool MetalRenderer::ensureModelPipeline() {
 		addPd->setVertexDescriptor(modelVertexDescriptor_.get());
 
 		MTL::RenderPipelineColorAttachmentDescriptor* addColorAttachment = addPd->colorAttachments()->object(0);
-		addColorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+		addColorAttachment->setPixelFormat(sceneColorFormat_);
 		addColorAttachment->setBlendingEnabled(true);
 		addColorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorOne);
 		addColorAttachment->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
@@ -7151,7 +7182,7 @@ bool MetalRenderer::ensureShadowPipeline() {
 	pd->setVertexDescriptor(shadowVertexDescriptor_.get());
 
 	MTL::RenderPipelineColorAttachmentDescriptor* ca = pd->colorAttachments()->object(0);
-	ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	ca->setPixelFormat(sceneColorFormat_);
 	ca->setBlendingEnabled(true);
 	ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
 	ca->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
@@ -7424,7 +7455,7 @@ bool MetalRenderer::ensurePshadowResources() {
 		pd->setFragmentFunction(pshadowRecvFFn_.get());
 		pd->setVertexDescriptor(vd);
 		auto* ca = pd->colorAttachments()->object(0);
-		ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+		ca->setPixelFormat(sceneColorFormat_);
 		ca->setBlendingEnabled(true);
 		ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
 		ca->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
@@ -7754,7 +7785,7 @@ MetalRenderer::StagePipelineEntry* MetalRenderer::getStagePipeline(
 	pd->setVertexFunction(sceneVertexFunction_.get());
 	pd->setFragmentFunction(sceneFragmentFunction_.get());
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
-	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setPixelFormat(sceneColorFormat_);
 	const bool enableBlend = !(key.srcBlend == MetalBlendFactor::One && key.dstBlend == MetalBlendFactor::Zero);
 	colorAttachment->setBlendingEnabled(enableBlend);
 	colorAttachment->setSourceRGBBlendFactor(ToMetalBlendFactor(key.srcBlend));
@@ -7815,7 +7846,7 @@ MetalRenderer::ModelStagePipelineEntry* MetalRenderer::getModelStagePipeline(con
 	pd->setFragmentFunction(modelFragmentFunction_.get());
 	
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pd->colorAttachments()->object(0);
-	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setPixelFormat(sceneColorFormat_);
 	const bool enableBlend = !(key.srcBlend == MetalBlendFactor::One && key.dstBlend == MetalBlendFactor::Zero);
 	colorAttachment->setBlendingEnabled(enableBlend);
 	colorAttachment->setSourceRGBBlendFactor(ToMetalBlendFactor(key.srcBlend));
@@ -9611,7 +9642,7 @@ bool MetalRenderer::ensurePortalTexture(int width, int height) {
 
 	// Create color texture for portal rendering
 	MTL::TextureDescriptor* colorDesc = MTL::TextureDescriptor::texture2DDescriptor(
-		MTL::PixelFormatBGRA8Unorm,
+		sceneColorFormat_,
 		static_cast<NS::UInteger>(width),
 		static_cast<NS::UInteger>(height),
 		false
@@ -13585,7 +13616,7 @@ bool MetalRenderer::ensureDlightResources() {
 
 	// Color attachment
 	MTL::RenderPipelineColorAttachmentDescriptor* colorAttachment = pipelineDesc->colorAttachments()->object(0);
-	colorAttachment->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	colorAttachment->setPixelFormat(sceneColorFormat_);
 
 	// Blend mode for additive or multiplicative dlights
 	// Additive: ONE + ONE, Multiplicative: DST_COLOR + ONE
@@ -13671,7 +13702,7 @@ bool MetalRenderer::ensureDlightAnimatedResources() {
 
 	// Additive blend: src ONE + dst ONE
 	MTL::RenderPipelineColorAttachmentDescriptor* ca = pd->colorAttachments()->object(0);
-	ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+	ca->setPixelFormat(sceneColorFormat_);
 	ca->setBlendingEnabled(true);
 	ca->setSourceRGBBlendFactor(MTL::BlendFactorOne);
 	ca->setDestinationRGBBlendFactor(MTL::BlendFactorOne);
