@@ -3711,7 +3711,7 @@ bool MetalRenderer::createPipeline(MTL::Texture* drawableTexture) {
 	pd->setVertexFunction(vfn);
 	pd->setFragmentFunction(ffn);
 	pd->colorAttachments()->object(0)->setPixelFormat(drawableTexture->pixelFormat());
-	pd->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+	// No depth attachment — cinematics render in the 2D encoder which has no depth.
 
 	pipeline_.reset(device_->newRenderPipelineState(pd, &error));
 
@@ -4370,16 +4370,35 @@ void MetalRenderer::runPostProcessing() {
 		             &sp, sizeof(sp));
 
 		// Depth-aware bilateral blur (H pass → bloomTarget_[0], V pass → ssaoTarget_).
-		doRenderPass(ppDepthBlurPso_.get(),
-		             ssaoTarget_.get(), depthTexture_.get(), nullptr,
-		             bloomTarget_[0].get(),
-		             MTL::LoadActionDontCare,
-		             nullptr, 0);
-		doRenderPass(ppDepthBlurPso_.get(),
-		             bloomTarget_[0].get(), depthTexture_.get(), nullptr,
-		             ssaoTarget_.get(),
-		             MTL::LoadActionDontCare,
-		             nullptr, 0);
+		{
+			struct DepthBlurParams {
+				float viewInfo[4];   // x=zFar/zNear, y=zFar, z=1/w, w=1/h
+				float scale[2];      // texel-space blur half-axis
+				float isHorizontal;
+				float _pad;
+			};
+			DepthBlurParams dbpH{}, dbpV{};
+			const float invW = config_.vidWidth  > 0 ? 1.0f / (float)config_.vidWidth  : 0.0f;
+			const float invH = config_.vidHeight > 0 ? 1.0f / (float)config_.vidHeight : 0.0f;
+			dbpH.viewInfo[0] = dbpV.viewInfo[0] = sceneCamera_.zFar / std::max(sceneCamera_.zNear, 0.001f);
+			dbpH.viewInfo[1] = dbpV.viewInfo[1] = sceneCamera_.zFar;
+			dbpH.viewInfo[2] = dbpV.viewInfo[2] = invW;
+			dbpH.viewInfo[3] = dbpV.viewInfo[3] = invH;
+			dbpH.scale[0] = dbpV.scale[0] = invW;
+			dbpH.scale[1] = dbpV.scale[1] = invH;
+			dbpH.isHorizontal = 1.0f;
+			dbpV.isHorizontal = 0.0f;
+			doRenderPass(ppDepthBlurPso_.get(),
+			             ssaoTarget_.get(), depthTexture_.get(), nullptr,
+			             bloomTarget_[0].get(),
+			             MTL::LoadActionDontCare,
+			             &dbpH, sizeof(dbpH));
+			doRenderPass(ppDepthBlurPso_.get(),
+			             bloomTarget_[0].get(), depthTexture_.get(), nullptr,
+			             ssaoTarget_.get(),
+			             MTL::LoadActionDontCare,
+			             &dbpV, sizeof(dbpV));
+		}
 	}
 
 	// -----------------------------------------------------------------------
@@ -4388,23 +4407,24 @@ void MetalRenderer::runPostProcessing() {
 	{
 		struct TonemapParams {
 			float exposureBias;
-			float autoExposureMinMax[2];
-			float toneAvg;
+			float autoExposureMinMax[2];   // [0]=min, [1]=max
+			float toneAvgFactor;
 			int   hasSSAO;
 			int   hasAutoExposure;
 			float _pad[2];
 		};
 		TonemapParams tp{};
-		tp.exposureBias = r_cameraExposure_ ? r_cameraExposure_->value : 0.0f;
+		tp.exposureBias         = r_cameraExposure_ ? r_cameraExposure_->value : 0.0f;
 		tp.autoExposureMinMax[0] = r_autoExposureMinValue_ ? r_autoExposureMinValue_->value : -2.0f;
 		tp.autoExposureMinMax[1] = r_autoExposureMaxValue_ ? r_autoExposureMaxValue_->value :  2.0f;
-		tp.toneAvg   = r_tonemapExposure_ ? r_tonemapExposure_->value : 0.18f;
-		tp.hasSSAO   = (r_ssao_ && r_ssao_->integer) ? 1 : 0;
-		tp.hasAutoExposure = (r_autoExposure_ && r_autoExposure_->integer) ? 1 : 0;
+		tp.toneAvgFactor         = r_tonemapExposure_ ? r_tonemapExposure_->value : 0.18f;
+		tp.hasSSAO               = (r_ssao_ && r_ssao_->integer) ? 1 : 0;
 
 		// Bind HDR source, optional SSAO, optional lum accum.
 		MTL::Texture* lumTex = lumAccumInitialized_ ? lumAccumTarget_[lumAccumIdx_].get() : nullptr;
 		MTL::Texture* aoTex  = (tp.hasSSAO && ssaoTarget_) ? ssaoTarget_.get() : nullptr;
+		// Only enable auto-exposure if the luminance accumulator texture is ready.
+		tp.hasAutoExposure = (r_autoExposure_ && r_autoExposure_->integer && lumTex) ? 1 : 0;
 
 		MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
 		rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
@@ -4447,16 +4467,21 @@ void MetalRenderer::runPostProcessing() {
 		             &bep, sizeof(bep));
 
 		// H blur → bloomTarget_[1], V blur → bloomTarget_[0]
-		doRenderPass(ppGaussianBlurHPso_.get(),
-		             bloomTarget_[0].get(), nullptr, nullptr,
-		             bloomTarget_[1].get(),
-		             MTL::LoadActionDontCare,
-		             nullptr, 0);
-		doRenderPass(ppGaussianBlurVPso_.get(),
-		             bloomTarget_[1].get(), nullptr, nullptr,
-		             bloomTarget_[0].get(),
-		             MTL::LoadActionDontCare,
-		             nullptr, 0);
+		{
+			const float invW = bloomTargetWidth_  > 0 ? 1.0f / (float)bloomTargetWidth_  : 0.0f;
+			const float invH = bloomTargetHeight_ > 0 ? 1.0f / (float)bloomTargetHeight_ : 0.0f;
+			const float blurParams[4] = { invW, invH, 1.0f, 0.0f };
+			doRenderPass(ppGaussianBlurHPso_.get(),
+			             bloomTarget_[0].get(), nullptr, nullptr,
+			             bloomTarget_[1].get(),
+			             MTL::LoadActionDontCare,
+			             blurParams, sizeof(blurParams));
+			doRenderPass(ppGaussianBlurVPso_.get(),
+			             bloomTarget_[1].get(), nullptr, nullptr,
+			             bloomTarget_[0].get(),
+			             MTL::LoadActionDontCare,
+			             blurParams, sizeof(blurParams));
+		}
 
 		// Additive composite onto drawable.
 		struct { float strength; float _pad[3]; } bc{ bep.strength };
@@ -13277,25 +13302,25 @@ float MetalRenderer::pickFarPlane(const MetalSceneState& scene) const {
 }
 
 void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty) {
-	// If we have a pending 3D scene that hasn't been submitted for this frame, submit it now.
-	// This ensures 3D draws before 2D cinematics.
+	// Submit any pending 3D scene, run post-processing, then render the cinematic
+	// into the 2D (drawable) encoder so it is never tonemapped.
 	submitScene();
 	ensureSceneRendered();
+	ensurePostProcessed();
 
 	if (!device_ || !layer_ || !currentRenderEncoder_) {
 		return;
 	}
 
-	// Ensure pipeline exists
+	// Ensure cinematic pipeline exists (targets drawable pixel format, no depth).
 	if (!pipeline_ || !sampler_) {
-		// Try to create it (needs a texture to infer format, use current drawable)
 		if (currentDrawable_) {
 			createPipeline(currentDrawable_->texture());
 		}
 		if (!pipeline_ || !sampler_) return;
 	}
 
-	// Update cinematic texture if needed
+	// Upload cinematic frame data if provided.
 	pendingCinematic_.cols = cols;
 	pendingCinematic_.rows = rows;
 	pendingCinematic_.client = client;
@@ -13311,72 +13336,26 @@ void MetalRenderer::drawCinematic(int x, int y, int w, int h, int cols, int rows
 		return;
 	}
 
-	// Set pipeline state
 	MetalStateCache::Instance().bindPipeline(currentRenderEncoder_, pipeline_.get());
-	if (depthState2D_) {
-		currentRenderEncoder_->setDepthStencilState(depthState2D_.get());
-	}
 	currentRenderEncoder_->setCullMode(MTL::CullModeNone);
 
-	// Calculate viewport
-	// Note: x,y,w,h passed to this function are usually full screen for cinematics
-	// But we should respect them if possible.
-	// For now, let's use the logic we had in endFrame for aspect ratio, or just use the passed rect?
-	// The passed rect (x,y,w,h) is in pixels.
-	
 	MTL::Viewport vp;
 	vp.originX = static_cast<double>(x);
 	vp.originY = static_cast<double>(y);
-	vp.width = static_cast<double>(w);
+	vp.width  = static_cast<double>(w);
 	vp.height = static_cast<double>(h);
-	vp.znear = 0.0;
-	vp.zfar = 1.0;
+	vp.znear  = 0.0;
+	vp.zfar   = 1.0;
 	currentRenderEncoder_->setViewport(vp);
 
-	// Draw cinematic quad
-	struct Uniforms {
-		float cols;
-		float rows;
-	} uniforms = {
-		static_cast<float>(frameCinematicCols_),
-		static_cast<float>(frameCinematicRows_)
-	};
-
-	// Full screen quad vertices (NDC)
-	// The vertex shader 'vertex_cinematic' likely expects specific vertex data or generates it?
-	// Let's check 'vertex_cinematic' in cinematic.metal.
-	// It uses 'VertexIn' struct with position and texCoord.
-	// So we need to send vertex data.
-	
-	// Vertices for a full-screen quad (or whatever viewport covers)
-	// Since we set viewport to x,y,w,h, we can draw a quad from -1 to 1 in NDC.
-	struct Vertex {
-		float position[2];
-		float texCoord[2];
-	};
-	
+	// vertex_cinematic expects: const device VertexIn* verts [[buffer(0)]]
+	struct Vertex { float position[2]; float texCoord[2]; };
 	Vertex verts[4] = {
-		{{-1, 1},  {0, 0}},
-		{{ 1, 1},  {1, 0}},
+		{{-1,  1}, {0, 0}},
+		{{ 1,  1}, {1, 0}},
 		{{-1, -1}, {0, 1}},
 		{{ 1, -1}, {1, 1}}
 	};
-
-	currentRenderEncoder_->setVertexBytes(verts, sizeof(verts), 0);
-	currentRenderEncoder_->setVertexBytes(&uniforms, sizeof(uniforms), 1); // Uniforms at buffer 1?
-	// Wait, let's check cinematic.metal to be sure about buffer indices.
-	// We don't have it open. But previous code used:
-	/*
-	Vertex verts[6] = { ... };
-	enc->setVertexBytes(verts, sizeof(verts), 0);
-	enc->setFragmentTexture(frameCinematicTexture_, 0);
-	enc->setFragmentSamplerState(sampler_.get(), 0);
-	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, ...);
-	*/
-	// It didn't send uniforms. The shader must not need them or hardcoded?
-	// Actually, the shader 'vertex_cinematic' probably just takes position/uv.
-	// Let's stick to what was working.
-	
 	currentRenderEncoder_->setVertexBytes(verts, sizeof(verts), 0);
 	MetalStateCache::Instance().bindFragmentTexture(currentRenderEncoder_, 0, frameCinematicTexture_);
 	MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, sampler_.get());

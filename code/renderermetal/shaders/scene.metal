@@ -83,6 +83,10 @@ struct NormalSpecularParams {
     float useSpecularMap;  // 1.0 if a specular map is active, 0.0 otherwise
     float normalScale;     // XY normal perturbation scale (typically 1.0)
     float specularPower;   // Blinn-Phong shininess exponent (typically 32.0)
+    float useCubemap;      // 1.0 if a cubemap probe is bound, 0.0 otherwise
+    float cubemapStrength; // Base reflection blend strength (typically 0.25)
+    float _pad0;
+    float _pad1;
 };
 
 struct VertexIn {
@@ -196,6 +200,7 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
                                       texture2d<float> tex [[texture(0)]],
                                       texture2d<float> normalMap [[texture(1)]],
                                       texture2d<float> specMap [[texture(2)]],
+                                      texturecube<float> cubeMap [[texture(3)]],
                                       sampler samp [[sampler(0)]],
                                       constant StageFragmentParams& stage [[buffer(0)]],
                                       constant SceneUniforms& uniforms [[buffer(1)]],
@@ -370,6 +375,21 @@ fragment float4 fragment_scene_basic(SceneVSOut in [[stage_in]],
             specLight *= specMap.sample(samp, uv).rgb;
         }
         color.rgb += specLight * specF;
+    }
+
+    // Cubemap environment reflections (additive, matching GL2 USE_CUBEMAP).
+    // Uses the per-surface nearest-probe assigned by loadWorldCubemaps().
+    if (nsParams.useCubemap > 0.5f) {
+        float3 N = normalize(in.normal);
+        float3 V = normalize(uniforms.viewOrigin.xyz - in.worldPosition);
+        float3 R = reflect(-V, N);
+        float4 cubeColor = cubeMap.sample(samp, R);
+        float strength = nsParams.cubemapStrength;
+        // Modulate by specular-map alpha when a spec map is present
+        if (nsParams.useSpecularMap > 0.5f) {
+            strength *= specMap.sample(samp, uv).a;
+        }
+        color.rgb += cubeColor.rgb * strength;
     }
 
     // Apply greyscale (matches GL2 greyscale_fp.glsl, Rec. 709-1 LUMA coefficients)
@@ -719,4 +739,128 @@ vertex float4 vertex_shadow(ShadowVertexIn in [[stage_in]],
 fragment float4 fragment_shadow(float4 in [[position]],
                                  constant ShadowShaderUniforms& uniforms [[buffer(1)]]) {
     return uniforms.color;
+}
+
+//=============================================================================
+//
+// PER-OBJECT SHADOW MAPS (PSHADOW)
+// Ported from renderergl2 pshadow_vp.glsl / pshadow_fp.glsl.
+//
+//=============================================================================
+
+// Caster uniforms — layout must match PShadowCasterUniforms in tr_backend.cpp exactly.
+struct PShadowCasterUniforms {
+    float4 lightOrigin;   // xyz = light origin,  w = viewRadius
+    float4 lightForward;  // xyz = axis[0] (toward scene = -lightDir),  w = lightRadius
+    float4 lightRight;    // xyz = axis[1]
+    float4 lightUp;       // xyz = axis[2]
+};
+
+struct PShadowCasterVSIn {
+    float3 position [[attribute(0)]];
+};
+
+// Projects a world-space vertex into light-space orthographic clip space.
+//   x_ndc = -dot(right,  ltp) / viewRadius  → texture u = (x+1)/2
+//   y_ndc = -dot(up,     ltp) / viewRadius  → texture v = (1-y)/2  (Metal top-left origin)
+//   z_ndc =  clamp(dot(fwd, ltp) / lightRadius, 0, 1)
+//   w     = 1.0  (orthographic — no perspective divide needed)
+vertex float4 vertex_pshadow_caster(PShadowCasterVSIn in [[stage_in]],
+                                     constant PShadowCasterUniforms& u [[buffer(1)]]) {
+    float3 ltp = in.position - u.lightOrigin.xyz;
+    float viewRadius  = u.lightOrigin.w;
+    float lightRadius = u.lightForward.w;
+    float x = -dot(u.lightRight.xyz,   ltp) / viewRadius;
+    float y = -dot(u.lightUp.xyz,      ltp) / viewRadius;
+    float z =  clamp(dot(u.lightForward.xyz, ltp) / lightRadius, 0.0f, 1.0f);
+    return float4(x, y, z, 1.0);
+}
+
+// Depth-only caster pass — no colour output.
+fragment void fragment_pshadow_caster() {}
+
+// ---------------------------------------------------------------------------
+// Receiver
+// ---------------------------------------------------------------------------
+
+// Per-shadow receiver uniforms — layout must match PShadowReceiverUniforms in tr_backend.cpp.
+struct PShadowReceiverUniforms {
+    float4 lightOrigin;   // xyz = light origin, w = lightRadius
+    float4 lightForward;  // xyz = axis[0] (unscaled)
+    float4 lightRight;    // xyz = axis[1] / viewRadius  (pre-scaled)
+    float4 lightUp;       // xyz = axis[2] / viewRadius  (pre-scaled)
+};
+
+struct PShadowReceiverVSOut {
+    float4 position [[position]];
+    float3 worldPos;
+};
+
+// World-surface receiver vertex shader.  Uses the same VertexIn layout as
+// the main scene pass so the same vertex buffer can be reused.
+vertex PShadowReceiverVSOut vertex_pshadow_receiver_world(
+    VertexIn in [[stage_in]],
+    constant SceneUniforms& scene [[buffer(1)]])
+{
+    PShadowReceiverVSOut out;
+    out.worldPos = in.position;
+    out.position = scene.viewProjection * float4(in.position, 1.0);
+    return out;
+}
+
+// Model-surface receiver vertex shader.  Lerps between animation frames
+// and transforms to world space with the entity model matrix.
+vertex PShadowReceiverVSOut vertex_pshadow_receiver_model(
+    ModelVertexIn in [[stage_in]],
+    constant ModelUniforms& model [[buffer(1)]],
+    constant SceneUniforms& scene [[buffer(2)]])
+{
+    PShadowReceiverVSOut out;
+    float3 localPos  = mix(in.position, in.position2, model.vertexLerp);
+    float4 worldPos4 = model.modelMatrix * float4(localPos, 1.0);
+    out.worldPos     = worldPos4.xyz;
+    out.position     = scene.viewProjection * worldPos4;
+    return out;
+}
+
+// Samples the shadow depth texture and outputs a dark semi-transparent
+// overlay for fragments that lie within the shadow footprint of a caster.
+// Mirrors pshadow_fp.glsl from renderergl2.
+fragment float4 fragment_pshadow_receiver(
+    PShadowReceiverVSOut in [[stage_in]],
+    depth2d<float> shadowMap [[texture(0)]],
+    constant PShadowReceiverUniforms& su [[buffer(0)]])
+{
+    float3 ltp = in.worldPos - su.lightOrigin.xyz;
+
+    // Reject pixels on the back side of the light (not lit from this direction).
+    float fwdDist = dot(su.lightForward.xyz, ltp);
+    if (fwdDist < 0.0) {
+        discard_fragment();
+    }
+
+    // Compute shadow-map UV.  lightRight/lightUp are pre-scaled by 1/viewRadius,
+    // so the result is in [-1, 1] for fragments within the shadow footprint.
+    float2 st;
+    st.x = -dot(su.lightRight.xyz, ltp);
+    st.y =  dot(su.lightUp.xyz,    ltp);
+    float2 uv = st * 0.5 + 0.5;
+
+    // Discard fragments outside the shadow map footprint.
+    if (any(uv < float2(0.0)) || any(uv > float2(1.0))) {
+        discard_fragment();
+    }
+
+    constexpr sampler ss(coord::normalized, address::clamp_to_edge, filter::nearest);
+    float shadowDepth = shadowMap.sample(ss, uv);
+
+    // shadowDepth == 1.0 means no caster was rendered at this UV location.
+    if (shadowDepth >= 0.96) {
+        discard_fragment();
+    }
+
+    // Distance attenuation: shadow fades as the receiver moves away from the light.
+    float lightRadius = su.lightOrigin.w;
+    float atten = 1.0 - clamp(fwdDist / lightRadius, 0.0f, 1.0f);
+    return float4(0.0, 0.0, 0.0, 0.6 * atten);
 }

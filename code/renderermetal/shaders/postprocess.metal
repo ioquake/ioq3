@@ -188,20 +188,20 @@ static float FilmicTonemap(float x)
 // Matches GL2 tonemap_fp.glsl.
 //
 // texture(0) = HDR scene color
-// texture(1) = luminance map (min/avg/max encoded, 1×1)
-// texture(2) = SSAO map (r = occlusion, 1=lit, 0=occluded)
-//              ignored when params.useSSAO == 0
-// buffer(0)  = TonemapParams
+// texture(1) = luminance map (min/avg/max encoded, 1×1) — only sampled when hasAutoExposure != 0
+// texture(2) = SSAO map (r = occlusion) — only sampled when hasSSAO != 0
+// buffer(0)  = TonemapParams  (must match C++ struct layout exactly)
 // ============================================================
 
 struct TonemapParams {
-    float4 colorScale;          // xyz = exp2(exposure) multiplier, w = 1
-    float2 autoExposureMinMax;  // clamp range for log-luminance (GL2 u_AutoExposureMinMax)
-    float  toneMin;             // GL2 u_ToneMinAvgMaxLinear.x
-    float  toneAvgFactor;       // GL2 u_ToneMinAvgMaxLinear.y
-    float  invWhite;            // 1/FilmicTonemap(toneMax-toneMin) for white normalisation
-    float  useSSAO;             // 1.0 if SSAO composite enabled
+    float exposureBias;       // log2 manual exposure offset
+    float autoExposureMin;    // clamp low  bound for log-luminance
+    float autoExposureMax;    // clamp high bound for log-luminance
+    float toneAvgFactor;      // GL2 u_ToneMinAvgMaxLinear.y (avg lum weight)
+    int   hasSSAO;
+    int   hasAutoExposure;
     float2 _pad;
+    // Total: 32 bytes — identical to C++ TonemapParams
 };
 
 fragment float4 fragment_tonemap(
@@ -212,34 +212,36 @@ fragment float4 fragment_tonemap(
     sampler          s        [[sampler(0)]],
     constant TonemapParams& p [[buffer(0)]])
 {
-    float4 color = hdrTex.sample(s, in.texCoord) * p.colorScale;
+    float4 color = hdrTex.sample(s, in.texCoord);
 
-    // Decode accumulated luminance map.
-    // GL2: logMinAvgMaxLum = clamp(minAvgMax * 20 - 10, -maxExp, -minExp)
-    float3 minAvgMax = lumTex.sample(s, in.texCoord).rgb;
-    float3 logLum    = clamp(minAvgMax * 20.0f - 10.0f,
-                             -p.autoExposureMinMax.y,
-                             -p.autoExposureMinMax.x);
+    if (p.hasAutoExposure != 0) {
+        // Sample 1×1 accumulated log-luminance (packed as (logLum + 10) / 20).
+        float3 minAvgMax = lumTex.sample(s, float2(0.5f, 0.5f)).rgb;
+        float3 logLum    = clamp(minAvgMax * 20.0f - 10.0f,
+                                 -p.autoExposureMax,
+                                 -p.autoExposureMin);
+        float invAvgLum  = p.toneAvgFactor * exp2(-logLum.y);
+        color.rgb        = max(color.rgb * invAvgLum, 0.0f);
+    } else {
+        color.rgb *= exp2(p.exposureBias);
+    }
 
-    float invAvgLum = p.toneAvgFactor * exp2(-logLum.y);
-
-    color.rgb = color.rgb * invAvgLum - float3(p.toneMin);
-    color.rgb = max(float3(0.0f), color.rgb);
-
+    // Uncharted 2 filmic curve
     color.r = FilmicTonemap(color.r);
     color.g = FilmicTonemap(color.g);
     color.b = FilmicTonemap(color.b);
 
-    color.rgb = clamp(color.rgb * p.invWhite, 0.0f, 1.0f);
+    // Normalise to white point (linear white = 11.2)
+    const float kInvWhite = 1.0f / FilmicTonemap(11.2f);
+    color.rgb = clamp(color.rgb * kInvWhite, 0.0f, 1.0f);
 
-    // Optional SSAO multiplicative composite (matches GL2 FBO_Blit with
-    // GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO applied to SSAO result).
-    if (p.useSSAO > 0.5f) {
+    // Optional SSAO multiplicative composite
+    if (p.hasSSAO != 0) {
         float ao = ssaoTex.sample(s, in.texCoord).r;
         color.rgb *= ao;
     }
 
-    return color;
+    return float4(color.rgb, 1.0f);
 }
 
 // ============================================================
@@ -429,7 +431,7 @@ fragment float4 fragment_depthblur(
     float  zFarDivZNear = p.viewInfo.x;
     float  zFar         = p.viewInfo.y;
 
-    // GL2 gauss coefficients (BLUR_SIZE=4)
+    // GL2 gauss coefficients (BLUR_SIZE=4) — used for weighted bilateral tap
     const float gauss[4] = { 0.40f, 0.24f, 0.054f, 0.0044f };
 
     float2 direction, nudge;
@@ -457,7 +459,7 @@ fragment float4 fragment_depthblur(
             float2 offset     = direction * (float(j) - 0.25f) + nudge;
             float  depthSmp   = ssao_linearDepth(depthTex, s, tc + offset, zFarDivZNear);
             float  depthExp   = depthCenter + dot(slope, offset);
-            float  useSample  = (abs(depthSmp - depthExp) < zLimit) ? 1.0f : 0.0f;
+            float  useSample  = (abs(depthSmp - depthExp) < zLimit) ? gauss[j] : 0.0f;
             result += imageTex.sample(s, tc + offset) * useSample;
             total  += useSample;
             nudge   = -nudge;
