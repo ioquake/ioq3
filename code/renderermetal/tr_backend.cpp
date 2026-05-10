@@ -9204,9 +9204,14 @@ bool MetalRenderer::drawDynamicLights() {
 	}
 
 	// Set dlight pipeline and resources
+	// Use ClampToEdge sampler: the radial-falloff texture must not tile.
+	// With Repeat, a vertex whose UV wraps back toward the centre of the 16×16
+	// falloff disk (UV ≈ 0.5,0.5 after wrapping) samples full brightness even
+	// though it is well outside the light radius, producing orange/coloured
+	// blotches on the floor (visible after rocket impacts).
 	currentRenderEncoder_->setRenderPipelineState(dlightPipeline_.get());
 	currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
-	currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+	currentRenderEncoder_->setFragmentSamplerState(sceneClampSampler_.get(), 0);
 
 	// Create uniform buffer for dlight uniforms
 	DlightUniforms uniforms{};
@@ -10499,7 +10504,7 @@ void MetalRenderer::renderModelSurface(
 		currentRenderEncoder_->setCullMode(MTL::CullModeFront);
 		currentRenderEncoder_->setVertexBuffer(vertexBuffer, 0, 0);
 		currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
-		currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+		currentRenderEncoder_->setFragmentSamplerState(sceneClampSampler_.get(), 0);
 
 		DlightUniforms dlightUniforms{};
 		std::memcpy(dlightUniforms.modelViewProjection, mvpMatrix, sizeof(float) * 16);
@@ -11830,6 +11835,16 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 				boundImageHandle = desiredHandle;
 			}
 
+			// Lightmap stages on brush-model surfaces require ClampToEdge — same rule as
+			// world surfaces.  Without this the repeat sampler wraps UV overshoots from
+			// the opposite tile edge, causing bright rectangular seam artifacts.
+			{
+				bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap);
+				MTL::SamplerState* samp = (useClamp && sceneClampSampler_)
+				                          ? sceneClampSampler_.get() : sceneSampler_.get();
+				MetalStateCache::Instance().bindFragmentSampler(currentRenderEncoder_, 0, samp);
+			}
+
 			// Bind normal/specular maps and NormalSpecularParams for this stage.
 			{
 				NormalSpecularParams nsParams{};
@@ -11880,7 +11895,7 @@ void MetalRenderer::renderBrushModel(const refEntity_t& ent, MetalBrushModel& bm
 				currentRenderEncoder_->setDepthStencilState(dlightDepthState_.get());
 				currentRenderEncoder_->setVertexBuffer(staticWorldVertexBuffer_.get(), 0, 0);
 				currentRenderEncoder_->setFragmentTexture(dlightTexture_.get(), 0);
-				currentRenderEncoder_->setFragmentSamplerState(sampler2D_.get(), 0);
+				currentRenderEncoder_->setFragmentSamplerState(sceneClampSampler_.get(), 0);
 
 				DlightUniforms dlightUniforms{};
 				// The brush-model MVP already includes the entity transform:
