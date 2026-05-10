@@ -37,3 +37,9 @@ instead of the hardcoded literal.  The portal render target is also created with
   so portal texture format must equal `sceneColorFormat_`
 - `r_hdr_` defaults to `"1"` (HDR always on unless the user sets it to 0)
 - `resetStagePipelineCache()` clears both `stagePipelineCache_` and `modelStagePipelineCache_`
+
+## Decision Captured
+
+**Scene Pipeline Colour-Attachment Format Must Track the Active Render Target** (2026-05-10)
+
+Documented decision that any Metal pipeline state writing to the main 3D scene encoder must declare the same pixel format as the active scene colour target. This is a formal record of the architecture decision made in Session 1.
