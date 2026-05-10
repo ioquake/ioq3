@@ -3203,6 +3203,9 @@ bool MetalRenderer::loadWorldMap(const char* name) {
 	worldLoaded_ = !worldPacketTemplate_.empty();
 	if (worldLoaded_) {
 		worldName_ = requestedName;
+		// Reset auto-exposure so the first frame of the new map primes the
+		// luminance accumulator from actual scene content (not prior black screen).
+		lumAccumInitialized_ = false;
 		if (ri_.Printf) {
 			// Count surfaces with fog
 			int foggedSurfaces = 0;
