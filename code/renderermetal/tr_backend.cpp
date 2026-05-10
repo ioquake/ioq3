@@ -1724,6 +1724,7 @@ private:
 	MetalPtr<MTL::RenderPipelineState> ppDofBlurPso_;           // DOF bokeh
 	// Additive blend pipeline (for bloom composite and sun-ray composite).
 	MetalPtr<MTL::RenderPipelineState> ppAdditivePso_;
+	MetalPtr<MTL::RenderPipelineState> ppBypassPso_;  // raw HDR→drawable, no tonemap
 
 	// Shared linear-clamp sampler for all post-processing passes.
 	MetalPtr<MTL::SamplerState> ppLinearSampler_;
@@ -1741,6 +1742,7 @@ private:
 	cvar_t* r_autoExposureMaxValue_ = nullptr;
 	cvar_t* r_cameraExposure_    = nullptr;   // manual exposure bias
 	cvar_t* r_tonemapExposure_   = nullptr;   // target average scene luminance
+	cvar_t* r_noPostProcess_     = nullptr;   // 1 = skip all PP, blit raw HDR to drawable
 
 	// Per-frame post-processing state.
 	bool usingHDRRenderPath_  = false;   // beginFrame set this when r_hdr=1
@@ -2013,7 +2015,7 @@ void MetalRenderer::shutdown(qboolean destroyWindow) {
 	ppSunRaysPso_.reset();
 	ppDofBlurPso_.reset();
 	ppAdditivePso_.reset();
-	ppLinearSampler_.reset();
+	ppBypassPso_.reset();
 	
 	for (auto& slot : cinematicSlots_) {
 		slot.texture.reset();
@@ -4217,6 +4219,7 @@ bool MetalRenderer::createPostProcessPipelines() {
 	ppSunRaysPso_         .reset(makePPPso(lib, "vertex_fullscreen", "fragment_sun_rays",             fmtDraw, /*additive=*/true));
 	ppDofBlurPso_         .reset(makePPPso(lib, "vertex_fullscreen", "fragment_dof_blur",             fmt16));
 	ppAdditivePso_        .reset(makePPPso(lib, "vertex_fullscreen", "fragment_passthrough",          fmtDraw, /*additive=*/true));
+	ppBypassPso_          .reset(makePPPso(lib, "vertex_fullscreen", "fragment_passthrough",          fmtDraw));
 
 	lib->release();
 
@@ -4289,8 +4292,27 @@ void MetalRenderer::runPostProcessing() {
 		goto create_2d_encoder;
 	}
 
-	// -----------------------------------------------------------------------
-	// 1. Luminance chain: build per-frame log-lum then temporal smooth
+	// r_noPostProcess 1: skip all effects and blit raw HDR content directly.
+	// Useful for diagnosing whether post-processing is causing rendering issues.
+	if (r_noPostProcess_ && r_noPostProcess_->integer && ppBypassPso_) {
+		MTL::RenderPassDescriptor* rpd = MTL::RenderPassDescriptor::renderPassDescriptor();
+		rpd->colorAttachments()->object(0)->setTexture(currentDrawable_->texture());
+		rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+		rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+		rpd->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+		auto* enc = currentCommandBuffer_->renderCommandEncoder(rpd);
+		rpd->release();
+		if (enc) {
+			enc->setRenderPipelineState(ppBypassPso_.get());
+			enc->setFragmentSamplerState(ppLinearSampler_.get(), 0);
+			enc->setFragmentTexture(hdrColorTarget_.get(), 0);
+			enc->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+			enc->endEncoding();
+			enc->release();
+		}
+		goto create_2d_encoder;
+	}
+
 	// -----------------------------------------------------------------------
 	if (r_autoExposure_ && r_autoExposure_->integer && lumScratch_[0] && lumRawTarget_) {
 		// First pass: log-lum from full HDR → lumScratch_[0] (256×256 ish)
@@ -14257,6 +14279,7 @@ bool MetalRenderer::initialize(refimport_t imports) {
 	r_autoExposureMaxValue_ = ri_.Cvar_Get("r_autoExposureMaxValue","2",    CVAR_ARCHIVE);
 	r_cameraExposure_       = ri_.Cvar_Get("r_cameraExposure",      "0",    CVAR_ARCHIVE);
 	r_tonemapExposure_      = ri_.Cvar_Get("r_tonemapExposure",     "0.18", CVAR_ARCHIVE);
+	r_noPostProcess_        = ri_.Cvar_Get("r_noPostProcess",        "0",    CVAR_ARCHIVE);
 
 	resetShaderCaches();
 	// TextureManager will be created when device is available
