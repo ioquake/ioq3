@@ -351,12 +351,18 @@ MATHLIB
 
 
 typedef float vec_t;
-typedef vec_t vec2_t[2];
-typedef vec_t vec3_t[3];
-typedef vec_t vec4_t[4];
-typedef vec_t vec5_t[5];
+typedef arr(vec_t,2) vec2_t;
+typedef arr(vec_t,3) vec3_t;
+typedef arr(vec_t,4) vec4_t;
+typedef arr(vec_t,5) vec5_t;
+typedef arr(vec_t,6) vec6_t;
+typedef arr(vec_t,7) vec7_t;
+typedef arr(vec_t,8) vec8_t;
 
-typedef vec_t quat_t[4];
+typedef arr(vec_t,4)  quat_t;
+typedef arr(quat_t,2) motor_t;
+#define motor_rotor(m) { (m)[0][0], (m)[0][1], (m)[0][2], (m)[0][3] }
+#define motor_screw(m) { (m)[1][0], (m)[1][1], (m)[1][2], (m)[1][3] }
 
 typedef	int	fixed4_t;
 typedef	int	fixed8_t;

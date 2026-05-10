@@ -26,6 +26,47 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // this is for determining if we have an asm version of a C function
 #define idx64 0
 
+#if     defined(Q3_VM)
+#define ID_INLINE
+#elif   defined(_MSC_VER)
+#define ID_INLINE __force_inline __flatten __declspec(nothrow) inline
+#else
+#define ID_INLINE __attribute__((always_inline,nothrow,flatten)) inline
+#endif
+
+#define BITOP_RUP01__(x) (             (x) | (             (x) >>  1))
+#define BITOP_RUP02__(x) (BITOP_RUP01__(x) | (BITOP_RUP01__(x) >>  2))
+#define BITOP_RUP04__(x) (BITOP_RUP02__(x) | (BITOP_RUP02__(x) >>  4))
+#define BITOP_RUP08__(x) (BITOP_RUP04__(x) | (BITOP_RUP04__(x) >>  8))
+#define BITOP_RUP16__(x) (BITOP_RUP08__(x) | (BITOP_RUP08__(x) >> 16))
+
+#define bitceil(x) (const uint32_t)(BITOP_RUP16__(((uint32_t)(x)) - 1) + 1)
+#ifndef countof
+#define countof(x) sizeof(x)/sizeof((x)[0]) 
+#endif
+#ifndef alignof
+#ifdef _MSC_VER
+#define alignof(x) __alignof(x)
+#else
+#define alignof(x) __alignof__(x)	
+#endif
+#endif
+#define isarray(a) __builtin_choose_expr(__builtin_types_compatible_p(typeof((a)[0]) [], typeof((a))), true, false)
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(push,1)
+#define arr(T,N) typeof(__attribute__((aligned((N == bitceil(N) ? N : 1) * alignof(T)))) T[N])
+#pragma pack(pop)
+#elif defined(_MSC_VER)
+#pragma pack(push,1)
+#define arr(T,N) typeof(__delcspec((align((N == bitceil(N) ? N : 1) * alignof(T)))) T[N])
+#pragma pack(pop)
+#else
+#pragma pack(push,1)
+#define arr(T,N) typeof(T[N])
+#pragma pack(pop)
+#endif
+
 #ifdef Q3_VM
 
 #define id386 0
@@ -72,25 +113,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // for windows fastcall option
 #define QDECL
 #define QCALL
-
+#define QCONST
 //================================================================= WIN64/32 ===
 
 #if defined(_WIN64) || defined(__WIN64__)
 
-#undef QDECL
+#undef  QDECL
 #define QDECL __cdecl
-
-#undef QCALL
+#undef  QCALL
 #define QCALL __stdcall
+#undef  QCONST
+#define QCONST __declspec((noalias))
+#define PATH_SEP '\\'
 
 #if defined( _MSC_VER )
 #define OS_STRING "win_msvc64"
 #elif defined __MINGW64__
 #define OS_STRING "win_mingw64"
 #endif
-
-#define ID_INLINE __inline
-#define PATH_SEP '\\'
 
 #if defined(__x86_64__) || defined(_M_X64)
 #undef idx64
@@ -107,20 +147,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #elif defined(_WIN32) || defined(__WIN32__)
 
-#undef QDECL
+#undef  QDECL
 #define QDECL __cdecl
-
-#undef QCALL
+#undef  QCALL
 #define QCALL __stdcall
+#undef  QCONST
+#define QCONST __declspec((noalias))
+#define PATH_SEP '\\'
 
 #if defined( _MSC_VER )
 #define OS_STRING "win_msvc"
 #elif defined __MINGW32__
 #define OS_STRING "win_mingw"
 #endif
-
-#define ID_INLINE __inline
-#define PATH_SEP '\\'
 
 #if defined( _M_IX86 ) || defined( __i386__ )
 #define ARCH_STRING "x86"
@@ -141,7 +180,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if defined(__APPLE__) || defined(__APPLE_CC__)
 
 #define OS_STRING "macosx"
-#define ID_INLINE inline
 #define PATH_SEP '/'
 
 #ifdef __ppc__
@@ -180,8 +218,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #else
 #define OS_STRING "GNU"
 #endif
-
-#define ID_INLINE inline
 
 #define PATH_SEP '/'
 
@@ -240,7 +276,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define OS_STRING "netbsd"
 #endif
 
-#define ID_INLINE inline
 #define PATH_SEP '/'
 
 #ifdef __i386__
@@ -273,7 +308,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <sys/byteorder.h>
 
 #define OS_STRING "solaris"
-#define ID_INLINE inline
 #define PATH_SEP '/'
 
 #ifdef __i386__
@@ -299,7 +333,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __sgi
 
 #define OS_STRING "irix"
-#define ID_INLINE __inline
 #define PATH_SEP '/'
 
 #define ARCH_STRING "mips"
@@ -315,7 +348,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __EMSCRIPTEN__
 
 #define OS_STRING "emscripten"
-#define ID_INLINE inline
 #define PATH_SEP '/'
 
 #define ARCH_STRING "wasm32"
@@ -331,7 +363,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef Q3_VM
 
 #define OS_STRING "q3vm"
-#define ID_INLINE
 #define PATH_SEP '/'
 
 #define ARCH_STRING "bytecode"
