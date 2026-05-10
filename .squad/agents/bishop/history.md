@@ -70,3 +70,29 @@ Lightmap textures are individual 128×128 textures per BSP surface face; they ar
 - `r_autoExposure 0` disables luminance adaptation and uses `r_cameraExposure` bias instead.
 - `stageInfo->usesLightmap` is the canonical flag for lightmap texture stages; `stageInfo->clampMap` is only for the `clampmap` shader keyword.
 - Lightmap textures use `false` for mipmap on upload (correct); their sampler must be ClampToEdge to avoid inter-tile wrapping.
+
+---
+
+### Session 3 — Brush-Model Lightmap Seam + Orange Dlight Blotch
+
+**Bugs**:
+1. Lighter/brighter rectangular patch on the floor — lightmap seam artifact.
+2. Bright orange splash/blotch on the floor under rocket launcher — incorrect dlight coloring.
+
+**Root cause — Issue 1 (brush-model lightmap seam)**:
+`renderBrushModel()` binds `sceneSampler_` (Repeat) once before the per-stage rendering loop, but never updates the sampler inside the loop. Lightmap stages in brush-model surfaces (doors, platforms, func_wall) therefore always use Repeat mode, causing UV overshoots past 1.0 to wrap to the opposite edge of the 128×128 lightmap tile, picking up a brighter texel. The previous fix (Session 2) only covered the world BSP surface path (`drawPacket` lambda and `drawPolyPackets*`); brush-model surfaces had a separate rendering loop that was missed.
+
+**Root cause — Issue 2 (orange dlight splash)**:
+All three dlight pass sampler binds (`encodeDlights` for world surfaces, animated model dlight pass, and brush-model dlight pass) used `sampler2D_` which is configured with `SamplerAddressModeRepeat`. The dlight vertex shader computes UV as `dist.xy * (1/radius) + 0.5`. A surface vertex between 1× and 1.5× the light radius away in XY gets UV in range (1.0, 1.5); with Repeat this wraps to (0.0, 0.5), landing near the centre of the 16×16 radial-falloff disk and producing full-brightness dlight contribution far outside the light radius. With an orange/red rocket dlight this created a vivid orange blotch on the floor.
+
+**Fixes**:
+1. Added per-stage `useClamp` check in `renderBrushModel()`'s stage loop, immediately after the texture bind: `bool useClamp = stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap)` → routes to `sceneClampSampler_` as needed.
+2. Changed all three dlight pass sampler binds from `sampler2D_.get()` to `sceneClampSampler_.get()`. The ClampToEdge mode ensures UVs outside [0,1] sample the black border of the falloff disk (zero intensity) instead of wrapping to a bright region.
+
+**Files changed**: `code/renderermetal/tr_backend.cpp` only.
+
+**Key architecture notes**:
+- The `useClamp` sampler-selection pattern (`stageInfo && (stageInfo->clampMap || stageInfo->usesLightmap)`) must be applied at EVERY per-stage texture bind site, not just the world-surface paths.
+- `sampler2D_` is the 2D/UI sampler (Repeat mode) — do NOT use it for any 3D scene pass that needs clamped texture sampling (dlights, lightmaps).
+- `sceneClampSampler_` (ClampToEdge) is the correct sampler for: lightmap stages, clampmap stages, AND the dlight radial-falloff texture.
+- Dlight UV = `dist.xy * (1/radius) + 0.5` is only in [0,1] when the vertex is within the light radius; surfaces outside the radius WILL have UV outside [0,1] and MUST use ClampToEdge.
