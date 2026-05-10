@@ -43,3 +43,30 @@ instead of the hardcoded literal.  The portal render target is also created with
 **Scene Pipeline Colour-Attachment Format Must Track the Active Render Target** (2026-05-10)
 
 Documented decision that any Metal pipeline state writing to the main 3D scene encoder must declare the same pixel format as the active scene colour target. This is a formal record of the architecture decision made in Session 1.
+
+---
+
+### Session 2 — HDR Darkness + Lightmap Seam Artifacts
+
+**Bugs**:
+1. Entire scene severely underexposed / dark; sky dark red instead of bright; surfaces muddy.
+2. Visible lighter rectangular patches on floors with hard edges — lightmap tiles at different brightness than neighbours.
+
+**Root cause — Issue 1 (darkness)**:
+The `fragment_tonemap` shader (postprocess.metal) outputs linear-space values after the Uncharted 2 filmic curve. The CAMetalLayer drawable is configured as `MTL::PixelFormatBGRA8Unorm` (NOT sRGB), so Metal does NOT automatically apply linear→sRGB conversion. GL2's `tonemap_fp.glsl` applies `pow(x, 1/2.2)` at the end of its tonemap; our Metal shader was missing this step. Tonemapped linear 0.5 reads as display-0.5 (mid-grey correct), but the filmic curve already compresses highlights so a typical "bright surface" came out at ~0.3 linear, which displays very dark without gamma lift.
+
+**Root cause — Issue 2 (lightmap seams)**:
+Lightmap textures are individual 128×128 textures per BSP surface face; they are NOT atlased. UV coordinates for each face are nominally in [0,1] but can overshoot by a tiny floating-point epsilon at surface boundaries. All nine `useClamp` sampler-selection sites in the renderer only checked `stageInfo->clampMap`; lightmap stages never set `clampMap` (it's for `clampmap` shader keyword, not `$lightmap`), so every lightmap stage used `sceneSampler_` (Repeat address mode). A UV overshoot past 1.0 with Repeat wraps to the opposite edge of the 128×128 tile. If the opposite edge happens to be significantly brighter (common in Q3 lightmap data), those texels appear as a bright rectangle matching the surface polygon footprint.
+
+**Fixes**:
+1. Added `color.rgb = pow(color.rgb, float3(1.0f / 2.2f));` at the end of `fragment_tonemap` in `postprocess.metal`, after the SSAO composite, before `return`. This matches GL2's gamma correction step.
+2. Extended every `useClamp` expression in `tr_backend.cpp` (9 sites) to `stageInfo->clampMap || stageInfo->usesLightmap`. Lightmap stages now always use `sceneClampSampler_` (ClampToEdge). Also added the missing `sceneClampSampler_.reset()` to the shutdown cleanup.
+
+**Files changed**: `code/renderermetal/shaders/postprocess.metal`, `code/renderermetal/tr_backend.cpp`.
+
+**Key architecture notes**:
+- The BGRA8Unorm drawable has NO automatic gamma conversion — the tonemap shader is solely responsible for gamma correction.
+- `r_noPostProcess 1` bypasses all PP (including tonemap + gamma) and blits raw HDR to drawable — useful for debugging; scene will appear linear/dark as expected.
+- `r_autoExposure 0` disables luminance adaptation and uses `r_cameraExposure` bias instead.
+- `stageInfo->usesLightmap` is the canonical flag for lightmap texture stages; `stageInfo->clampMap` is only for the `clampmap` shader keyword.
+- Lightmap textures use `false` for mipmap on upload (correct); their sampler must be ClampToEdge to avoid inter-tile wrapping.
