@@ -504,6 +504,11 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 	if (attacker && attacker->client) {
 		attacker->client->lastkilled_client = self->s.number;
+		G_LogPrintf("[kv] event=kill killer=%i kteam=%s victim=%i vteam=%s means=%s :: %s killed %s by %s\n", 
+							killer, TeamName(attacker->client->sess.sessionTeam),
+							self->s.number, TeamName(self->client->sess.sessionTeam),
+							obit, killerName, 
+							self->client->pers.netname, obit );
 
 		if ( attacker == self || OnSameTeam (self, attacker ) ) {
 			AddScore( attacker, self->r.currentOrigin, -1 );
