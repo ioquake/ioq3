@@ -23,10 +23,12 @@ jobs:
     needs: version
     steps:
     - uses: actions/checkout@v4
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsdl2-dev
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -45,6 +47,12 @@ jobs:
     needs: version
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       run: |
         cmake -S . -B build -G "Visual Studio 17 2022"
@@ -65,6 +73,12 @@ jobs:
     needs: version
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -85,6 +99,12 @@ jobs:
     needs: version
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Import Code Signing Certificate
       if: github.ref_name == 'main'
       run: |
@@ -138,6 +158,12 @@ jobs:
       uses: mymindstorm/setup-emsdk@v13
       with:
         version: 3.1.58
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       run: |
         emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -153,10 +179,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libsdl2-dev zlib1g-dev libjpeg-dev libopenal-dev \
+        sudo apt-get install libsdl3-dev zlib1g-dev libjpeg-dev libopenal-dev \
           libogg-dev libvorbis-dev libopus-dev libopusfile-dev libcurl4-openssl-dev
     - name: Compile
       run: |
@@ -167,11 +199,17 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Install Dependencies
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt-get install gcc-multilib libsdl2-dev:i386
+        sudo apt-get install gcc-multilib libsdl3-dev:i386
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-m32 -msse -msse2"
@@ -181,11 +219,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       uses: vmactions/freebsd-vm@v1
       with:
         prepare: |
-          pkg install -y cmake ninja devel/sdl20
+          pkg install -y cmake ninja devel/sdl30
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
@@ -194,11 +238,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@v1
+      with:
+        version: sdl3-latest
+        cmake-generator: Ninja
     - name: Compile
       uses: vmactions/openbsd-vm@v1
       with:
         prepare: |
-          pkg_add cmake ninja sdl2
+          pkg_add cmake ninja sdl3
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build

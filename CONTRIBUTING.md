@@ -205,7 +205,7 @@ This is a reminder for how official installers should be built:
     providing pak0.pk3 and the patch pk3s are not referred to or included in the
     installer.
 
-  * Please include at least a libSDL2 so/dylib/dll on every platform.
+  * Please include at least a libSDL3 so/dylib/dll on every platform.
 
   * Please include an OpenAL so/dylib/dll, since every platform should be using
     it by now.

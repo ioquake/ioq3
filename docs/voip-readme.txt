@@ -153,8 +153,7 @@ By default, all of this is enabled. You can build with or without VoIP
  support explicitly with USE_VOIP=[1|0] on the make command line.
 
 You currently must use OpenAL to speak, as we have ALC_EXT_capture support
- in place to pull data from the microphone. If you are using the SDL backend,
- you can still hear people, but not speak.
+ in place to pull data from the microphone.
 
 There is no in-game UI to speak of: we encourage mods to add some. Largely
  they will just need to set cvars and run console commands for choosing
