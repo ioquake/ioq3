@@ -96,23 +96,26 @@ static int UI_CDKeyMenu_PreValidateKey( const char *key ) {
 	}
 
 	while( ( ch = *key++ ) ) {
+			if (ch>='a' && ch<='z') {
+			ch -= 32;
+		}
 		switch( ch ) {
 		case '2':
 		case '3':
 		case '7':
-		case 'a':
-		case 'b':
-		case 'c':
-		case 'd':
-		case 'g':
-		case 'h':
-		case 'j':
-		case 'l':
-		case 'p':
-		case 'r':
-		case 's':
-		case 't':
-		case 'w':
+		case 'A':
+		case 'B':
+		case 'C':
+		case 'D':
+		case 'G':
+		case 'H':
+		case 'J':
+		case 'L':
+		case 'P':
+		case 'R':
+		case 'S':
+		case 'T':
+		case 'W':
 			continue;
 		default:
 			return -1;
