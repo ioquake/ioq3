@@ -4719,26 +4719,23 @@ qboolean CL_CDKeyValidate( const char *key, const char *checksum ) {
 	// for loop gets rid of conditional assignment warning
 	for (i = 0; i < len; i++) {
 		ch = *key++;
-		if (ch>='a' && ch<='z') {
-			ch -= 32;
-		}
-		switch( ch ) {
+		switch(tolower(ch)) {
 		case '2':
 		case '3':
 		case '7':
-		case 'A':
-		case 'B':
-		case 'C':
-		case 'D':
-		case 'G':
-		case 'H':
-		case 'J':
-		case 'L':
-		case 'P':
-		case 'R':
-		case 'S':
-		case 'T':
-		case 'W':
+		case 'a':
+		case 'b':
+		case 'c':
+		case 'd':
+		case 'g':
+		case 'h':
+		case 'j':
+		case 'l':
+		case 'p':
+		case 'r':
+		case 's':
+		case 't':
+		case 'w':
 			sum += ch;
 			continue;
 		default:
