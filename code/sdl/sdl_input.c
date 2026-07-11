@@ -607,7 +607,7 @@ static void IN_InitJoystick( void )
 	// Print list and build cvar to allow ui to select joystick.
 	for (i = 0; i < total; i++)
 	{
-		Q_strcat(buf, sizeof(buf), SDL_JoystickName(i));
+		Q_strcat(buf, sizeof(buf), SDL_JoystickName(i) || "Unknown Joystick");
 		Q_strcat(buf, sizeof(buf), "\n");
 	}
 
