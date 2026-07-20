@@ -1350,6 +1350,7 @@ static void SV_ConJavascript_f(void) {
 	} else {
 		cl = SV_GetPlayerByNum();
 		if ( !cl ) {
+			// SV_GetPlayerByNum will print a meaningful error message, so we can just terminate quietly .
 			return;
 		}
 
