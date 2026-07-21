@@ -119,6 +119,7 @@ cvar_t	*cl_lanForcePackets;
 cvar_t	*cl_guidServerUniq;
 
 cvar_t	*cl_consoleKeys;
+cvar_t	*cl_consoleUseScanCode;
 
 cvar_t	*cl_rate;
 
@@ -3658,6 +3659,7 @@ void CL_Init( void ) {
 
 	// ~ and `, as keys and characters
 	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60", CVAR_ARCHIVE);
+	cl_consoleUseScanCode = Cvar_Get( "cl_consoleUseScanCode", "1", CVAR_ARCHIVE);
 
 	// userinfo
 	Cvar_Get ("name", "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE );
