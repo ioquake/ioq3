@@ -202,8 +202,14 @@ var LibrarySysCommon = {
 			});
 		},
 		DownloadAsset: function (asset, onprogress, onload) {
+			// The quake server itself uses a different fs_cdn than the client...
+			// so when it tells us where to download assets from, replace the 
+			// hostname with the browser's url hostname.
 			var root = SYSC.GetCDN();
+			var server = root.replace(/^[^:]+/, document.location.hostname);
 			var name = asset.name.replace(/(.+\/|)(.+?)$/, '$1' + asset.checksum + '-$2');
+			console.log(`DownloadAsset from ${server} (originally, ${root}) - ${name}`);
+
 			var url = 'http://' + root + '/assets/' + name;
 
 			SYS.DoXHR(url, {
