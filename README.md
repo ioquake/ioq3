@@ -134,6 +134,13 @@ For macOS,
   7. Copy the resulting `ioquake3.app` in `/build/`
      to your `/Applications/ioquake3` folder.
 
+  To build with the Vulkan renderer, add `-DBUILD_RENDERER_VULKAN=ON` to the
+  cmake command in step 5. The Vulkan renderer requires MoltenVK at runtime:
+
+     `brew install molten-vk`
+
+  See `docs/vulkan-readme.md` for more details on macOS Vulkan setup.
+
 For Emscripten,
   1. Follow the installation instructions for the Emscripten SDK including
      setting up the environment with emsdk_env. https://emscripten.org/
@@ -163,6 +170,7 @@ The following CMake variables may be set, using `-D` on the command line.
   BUILD_CLIENT            - build the 'ioquake3' client binary
   BUILD_RENDERER_OPENGL1  - build the opengl1 client / renderer library
   BUILD_RENDERER_OPENGL2  - build the opengl2 client / renderer library
+  BUILD_RENDERER_VULKAN   - build the vulkan client / renderer library (default OFF)
   BUILD_GAME_LIBRARIES    - build the game shared libraries
   BUILD_GAME_QVMS         - build the game qvms
   BUILD_STANDALONE        - build binaries suited for stand-alone games
@@ -186,6 +194,8 @@ The following CMake variables may be set, using `-D` on the command line.
   USE_INTERNAL_OGG        - build and link against internal ogg library
   USE_INTERNAL_VORBIS     - build and link against internal Vorbis library
   USE_INTERNAL_OPUS       - build and link against internal opus/opusfile libraries
+  USE_INTERNAL_VULKAN_HEADERS - use bundled Vulkan headers instead of system-provided
+                            ones; only relevant when BUILD_RENDERER_VULKAN is ON
 
   EMSCRIPTEN_PRELOAD_FILE - set to 1 to package 'baseq3' (BASEGAME) directory
                             containing pk3s and loose files as a single
