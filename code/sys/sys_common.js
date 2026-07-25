@@ -210,7 +210,7 @@ var LibrarySysCommon = {
 			var name = asset.name.replace(/(.+\/|)(.+?)$/, '$1' + asset.checksum + '-$2');
 			console.log(`DownloadAsset from ${server} (originally, ${root}) - ${name}`);
 
-			var url = 'http://' + root + '/assets/' + name;
+			var url = 'http://' + server + '/assets/' + name;
 
 			SYS.DoXHR(url, {
 				dataType: 'arraybuffer',
