@@ -80,6 +80,8 @@ vmCvar_t	g_smoothClients;
 vmCvar_t	pmove_fixed;
 vmCvar_t	pmove_msec;
 vmCvar_t	g_rankings;
+vmCvar_t	g_scoreRestoreDebug;
+vmCvar_t	g_scoreRestoreCrossTeam;
 vmCvar_t	g_listEntity;
 #ifdef MISSIONPACK
 vmCvar_t	g_obeliskHealth;
@@ -180,6 +182,9 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &pmove_msec, "pmove_msec", "8", CVAR_SYSTEMINFO, 0, qfalse},
 
 	{ &g_rankings, "g_rankings", "0", 0, 0, qfalse},
+
+	{ &g_scoreRestoreDebug, "g_scoreRestoreDebug", "1", 0, 0, qfalse},
+	{ &g_scoreRestoreCrossTeam, "g_scoreRestoreCrossTeam", "0", 0, 0, qfalse},
 
 	{ &g_testing, "g_testing", "0", 0, 0, qfalse}
 
@@ -425,6 +430,11 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	// set some level globals
 	memset( &level, 0, sizeof( level ) );
+
+	// scores never carry across a map load or a map_restart
+	G_ClearScoreRestore();
+	G_Printf( "ScoreRestore: G_InitGame, table cleared (restart=%i, levelTime=%i)\n",
+		restart, levelTime );
 	level.time = levelTime;
 	level.startTime = levelTime;
 
