@@ -707,6 +707,7 @@ void ClientUserinfoChanged( int clientNum ) {
 	char	model[MAX_QPATH];
 	char	headModel[MAX_QPATH];
 	char	oldname[MAX_STRING_CHARS];
+	char	oldGuid[33];
 	gclient_t	*client;
 	char	c1[MAX_INFO_STRING];
 	char	c2[MAX_INFO_STRING];
@@ -730,6 +731,21 @@ void ClientUserinfoChanged( int clientNum ) {
 	s = Info_ValueForKey( userinfo, "ip" );
 	if ( !strcmp( s, "localhost" ) ) {
 		client->pers.localClient = qtrue;
+	}
+
+	// remember the client's guid so we can match them up again on reconnect
+	Q_strncpyz( oldGuid, client->pers.guid, sizeof( oldGuid ) );
+	Q_strncpyz( client->pers.guid, Info_ValueForKey( userinfo, "cl_guid" ),
+		sizeof( client->pers.guid ) );
+
+	if ( g_scoreRestoreDebug.integer ) {
+		G_Printf( "ScoreRestore: userinfo client %i guid=\"%s\"%s\n",
+			clientNum, client->pers.guid,
+			client->pers.guid[0] ? "" : "  <-- EMPTY, this client can never be restored" );
+		if ( oldGuid[0] && client->pers.guid[0] && Q_stricmp( oldGuid, client->pers.guid ) ) {
+			G_Printf( "ScoreRestore: WARNING client %i guid CHANGED mid-connection, was \"%s\"\n",
+				clientNum, oldGuid );
+		}
 	}
 
 	// check the item prediction
@@ -1034,8 +1050,20 @@ void ClientBegin( int clientNum ) {
 	memset( &client->ps, 0, sizeof( client->ps ) );
 	client->ps.eFlags = flags;
 
+	// hand back any score they had earlier on this map
+	if ( g_scoreRestoreDebug.integer ) {
+		G_Printf( "ScoreRestore: ClientBegin %i, score before restore = %i\n",
+			clientNum, client->ps.persistant[PERS_SCORE] );
+	}
+	G_RestoreClientScore( client );
+
 	// locate ent at a spawn point
 	ClientSpawn( ent );
+
+	if ( g_scoreRestoreDebug.integer ) {
+		G_Printf( "ScoreRestore: ClientBegin %i, score after ClientSpawn = %i\n",
+			clientNum, client->ps.persistant[PERS_SCORE] );
+	}
 
 	if ( client->sess.sessionTeam != TEAM_SPECTATOR ) {
 		if ( g_gametype.integer != GT_TOURNAMENT  ) {
@@ -1313,6 +1341,9 @@ void ClientDisconnect( int clientNum ) {
 	}
 
 	G_LogPrintf( "ClientDisconnect: %i\n", clientNum );
+
+	// stash the score so it can be handed back if they reconnect this map
+	G_SaveClientScore( ent->client );
 
 	// if we are playing in tourney mode and losing, give a win to the other player
 	if ( (g_gametype.integer == GT_TOURNAMENT )

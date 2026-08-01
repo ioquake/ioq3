@@ -246,6 +246,11 @@ typedef struct {
 	int			voteCount;			// to prevent people from constantly calling votes
 	int			teamVoteCount;		// to prevent people from constantly calling votes
 	qboolean	teamInfo;			// send team overlay updates?
+	char		guid[33];			// cl_guid from userinfo ("" for bots / old clients)
+	int			restoreScore;		// claimed from the score restore table at ClientBegin
+	int			restoreDeaths;
+	team_t		restoreTeam;		// team they were on when the score was banked
+	qboolean	restoreValid;		// restoreScore/restoreDeaths are meaningful
 } clientPersistant_t;
 
 
@@ -647,6 +652,9 @@ void G_InitSessionData( gclient_t *client, char *userinfo );
 
 void G_InitWorldSession( void );
 void G_WriteSessionData( void );
+void G_ClearScoreRestore( void );
+void G_SaveClientScore( gclient_t *client );
+void G_RestoreClientScore( gclient_t *client );
 
 //
 // g_arenas.c
@@ -741,6 +749,8 @@ extern	vmCvar_t	g_smoothClients;
 extern	vmCvar_t	pmove_fixed;
 extern	vmCvar_t	pmove_msec;
 extern	vmCvar_t	g_rankings;
+extern	vmCvar_t	g_scoreRestoreDebug;
+extern	vmCvar_t	g_scoreRestoreCrossTeam;
 extern	vmCvar_t	g_enableDust;
 extern	vmCvar_t	g_enableBreath;
 extern	vmCvar_t	g_singlePlayer;
