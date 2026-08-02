@@ -82,6 +82,7 @@ vmCvar_t bot_testrchat;
 vmCvar_t bot_challenge;
 vmCvar_t bot_predictobstacles;
 vmCvar_t g_spSkill;
+vmCvar_t bot_skynet;
 
 extern vmCvar_t bot_developer;
 
@@ -3015,8 +3016,15 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 		} //end if
 		//if the bot has no
 		if (squaredist > Square(900.0 + alertness * 4000.0)) continue;
-		//if on the same team
-		if (BotSameTeam(bs, i)) continue;
+
+		// Humans are a threat.
+		// Skynet bots should attack only humans, and all humans.
+		if (bot_skynet.integer > 0) {
+			if (level.gentities[i].r.svFlags & SVF_BOT)
+				continue;
+		} else {
+			if (BotSameTeam(bs, i)) continue;
+		}
 		//if the bot's health decreased or the enemy is shooting
 		if (curenemy < 0 && (healthdecrease || EntityIsShooting(&entinfo)))
 			f = 360;
@@ -5407,6 +5415,7 @@ void BotSetupDeathmatchAI(void) {
 	trap_Cvar_Register(&bot_testrchat, "bot_testrchat", "0", 0);
 	trap_Cvar_Register(&bot_challenge, "bot_challenge", "0", 0);
 	trap_Cvar_Register(&bot_predictobstacles, "bot_predictobstacles", "1", 0);
+	trap_Cvar_Register(&bot_skynet, "bot_skynet", "0", 0);
 	trap_Cvar_Register(&g_spSkill, "g_spSkill", "2", 0);
 	//
 	if (gametype == GT_CTF) {

@@ -99,6 +99,7 @@ vmCvar_t	g_proxMineTimeout;
 
 
 vmCvar_t	g_testing;
+extern vmCvar_t bot_skynet;
 
 static cvarTable_t		gameCvarTable[] = {
 	// don't override the cheat state set by the system
@@ -186,7 +187,8 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_scoreRestoreDebug, "g_scoreRestoreDebug", "1", 0, 0, qfalse},
 	{ &g_scoreRestoreCrossTeam, "g_scoreRestoreCrossTeam", "0", 0, 0, qfalse},
 
-	{ &g_testing, "g_testing", "0", 0, 0, qfalse}
+	{ &g_testing, "g_testing", "0", 0, 0, qfalse},
+	{ &bot_skynet, "bot_skynet", "0", 0, 0, qfalse}
 
 };
 
