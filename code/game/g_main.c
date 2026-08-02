@@ -1451,15 +1451,15 @@ void CheckTournament( void ) {
 		return;
 	}
 
-	if ( g_gametype.integer == GT_TOURNAMENT ) {
+	if ( g_gametype.integer == GT_TOURNAMENT || g_gametype.integer == GT_CTF) {
 
 		// pull in a spectator if needed
-		if ( level.numPlayingClients < 2 ) {
+		if ( level.numPlayingClients < 2 && g_gametype.integer == GT_TOURNAMENT) {
 			AddTournamentPlayer();
 		}
 
 		// if we don't have two players, go back to "waiting for players"
-		if ( level.numPlayingClients != 2 ) {
+		if ( level.numPlayingClients < 2 ) {
 			if ( level.warmupTime != -1 ) {
 				level.warmupTime = -1;
 				trap_SetConfigstring( CS_WARMUP, va("%i", level.warmupTime) );
@@ -1480,7 +1480,7 @@ void CheckTournament( void ) {
 
 		// if all players have arrived, start the countdown
 		if ( level.warmupTime < 0 ) {
-			if ( level.numPlayingClients == 2 ) {
+			if ( level.numPlayingClients >= 2 ) {
 				// fudge by -1 to account for extra delays
 				if ( g_warmup.integer > 1 ) {
 					level.warmupTime = level.time + ( g_warmup.integer - 1 ) * 1000;
