@@ -189,7 +189,7 @@ void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
 	va_start (argptr,fmt);
 	Q_vsnprintf ((char *)message, sizeof(message), fmt,argptr);
 	va_end (argptr);
-	Com_Printf ("SV_SendServerCommand message: %s\n", (const char *)message);
+	//Com_Printf ("SV_SendServerCommand message: %s\n", (const char *)message);
 
 	// Fix to http://aluigi.altervista.org/adv/q3msgboom-adv.txt
 	// The actual cause of the bug is probably further downstream

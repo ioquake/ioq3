@@ -422,10 +422,12 @@ static int	FloatAsInt( float f ) {
 void evalJavascriptSuperSafeOK(const char *js) {
 #ifdef __EMSCRIPTEN__
 		char code[1024];
-		Com_Printf( "Executing Javascript, definitely a safe thing to do: %s\n", js);
+		// Wrap the javascript code in a try-catch to keep it from crashing the emscripten vm
 		Com_sprintf( code, 1024, "try { %s } catch (e) { console.log('evalJavascript error', e); }", js);
-		Com_Printf( "Code: %s\n", code);
-		//emscripten_run_script((const char *)VMA(1));
+
+		//Com_Printf( "Executing Javascript, definitely a safe thing to do: %s\n", js);
+		//Com_Printf( "Code: %s\n", code);
+	//
 		emscripten_run_script(code);
 			// console.error('QVM Javascript Error: ', e);
 #else

@@ -1038,7 +1038,7 @@ static void CG_ServerCommand( void ) {
 	if ( !strcmp( cmd, "javascript" ) ) {
 		Q_strncpyz( text, CG_Argv(1), MAX_SAY_TEXT );
 		CG_RemoveChatEscapeChar( text );
-		CG_Printf("CG_ServerCommand javascript: %s\n", text);
+		//CG_Printf("CG_ServerCommand javascript: %s\n", text);
 		trap_Javascript(CG_Argv(1));
 		return;
 	}
