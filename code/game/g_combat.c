@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-
 /*
 ============
 ScorePlum
@@ -287,6 +286,7 @@ char	*modNames[] = {
 	"MOD_GRENADE_SPLASH",
 	"MOD_ROCKET",
 	"MOD_ROCKET_SPLASH",
+	"MOD_SKYNET",
 	"MOD_PLASMA",
 	"MOD_PLASMA_SPLASH",
 	"MOD_RAILGUN",
@@ -934,7 +934,9 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 #else	
 		if ( targ != attacker && OnSameTeam (targ, attacker)  ) {
 #endif
-			if ( !g_friendlyFire.integer ) {
+			if (bot_skynet.integer > 0 && attacker->r.svFlags & SVF_BOT) {
+				// If skynet, and attacker is a bot, take damage!
+			} else if ( !g_friendlyFire.integer ) {
 				return;
 			}
 		}
@@ -1049,6 +1051,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				targ->health = -999;
 
 			targ->enemy = attacker;
+
+			if (bot_skynet.integer > 0 && attacker->r.svFlags & SVF_BOT) {
+				mod = MOD_SKYNET;
+			}
 			targ->die (targ, inflictor, attacker, take, mod);
 			return;
 		} else if ( targ->pain ) {

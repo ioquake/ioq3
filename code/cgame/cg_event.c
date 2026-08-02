@@ -246,6 +246,7 @@ static void CG_Obituary( entityState_t *ent ) {
 	}
 
 	if ( attacker != ENTITYNUM_WORLD ) {
+
 		switch (mod) {
 		case MOD_GRAPPLE:
 			message = "was caught by";
@@ -274,6 +275,10 @@ static void CG_Obituary( entityState_t *ent ) {
 		case MOD_ROCKET_SPLASH:
 			message = "almost dodged";
 			message2 = "'s rocket";
+			break;
+		case MOD_SKYNET:
+			message = "was eliminated by ^6Skynet^7 [as ^1";
+			message2 = "^7 ]";
 			break;
 		case MOD_PLASMA:
 			message = "was melted by";
