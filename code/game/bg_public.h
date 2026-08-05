@@ -550,6 +550,12 @@ typedef enum {
 	TEAM_NUM_TEAMS
 } team_t;
 
+typedef enum {
+	JUDGE_ALL,
+	JUDGE_TEAM,
+	JUDGE_PLAYER,
+} judge_target_t;
+
 // Time between location updates
 #define TEAM_LOCATION_UPDATE_TIME		1000
 

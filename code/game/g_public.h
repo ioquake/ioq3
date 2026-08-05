@@ -231,6 +231,7 @@ typedef enum {
 	G_FS_SEEK,
 
 	G_JAVASCRIPT = 91,
+	G_JUDGE_COMMAND = 92,
 
 	BOTLIB_SETUP = 200,				// ( void );
 	BOTLIB_SHUTDOWN,				// ( void );
@@ -427,6 +428,8 @@ typedef enum {
 	// The game can issue trap_argc() / trap_argv() commands to get the command
 	// and parameters.  Return qfalse if the game doesn't recognize it as a command.
 
-	BOTAI_START_FRAME				// ( int time );
+	BOTAI_START_FRAME,				// ( int time );
+													//
+	GAME_JUDGE_COMMAND = 92
 } gameExport_t;
 

@@ -234,6 +234,9 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 	case GAME_CLIENT_COMMAND:
 		ClientCommand( arg0 );
 		return 0;
+	case GAME_JUDGE_COMMAND:
+		JudgeCommand( arg0, arg1 );
+		return 0;
 	case GAME_RUN_FRAME:
 		G_RunFrame( arg0 );
 		return 0;

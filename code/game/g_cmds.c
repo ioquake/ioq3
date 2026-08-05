@@ -1755,3 +1755,87 @@ void ClientCommand( int clientNum ) {
 	else
 		trap_SendServerCommand( clientNum, va("print \"unknown cmd %s\n\"", cmd ) );
 }
+
+static void judge(int clientNum) {
+	gentity_t *ent;
+	char *cmd, *arg;
+	int i;
+
+	/// XXX In progress making judge work for team|all|playerid
+
+	ent = &g_entities[clientNum];
+
+	if ( !ent->inuse || !ent->client ) {
+		G_LogPrintf( "JudgeCommand(%d) - slot number is not held by a client\n", clientNum);
+		return;
+	}
+
+	trap_Argv( 0, cmd, sizeof( cmd ) );
+
+	if (Q_stricmp(cmd, "give") == 0) {
+		trap_Argv( 1, arg, sizeof( arg ) );
+
+		if (Q_stricmp(arg, "weapons") == 0) {
+			// All weapons, max ammo.
+			G_LogPrintf( "JudgeCommand(%d) - giving weapons and ammo\n", clientNum);
+			ent->client->ps.stats[STAT_WEAPONS] = (1 << WP_NUM_WEAPONS) - 1 - ( 1 << WP_GRAPPLING_HOOK ) - ( 1 << WP_NONE );
+
+			for ( i = 0 ; i < MAX_WEAPONS ; i++ ) {
+				ent->client->ps.ammo[i] = 999;
+			}
+		} else {
+			G_LogPrintf( "JudgeCommand(%d) give: unknown arg, '%s'\n", clientNum, arg);
+		}
+	} else if (Q_stricmp(cmd, "take") == 0) {
+		trap_Argv( 1, arg, sizeof( arg ) );
+		if (Q_stricmp(arg, "ammo") == 0) {
+				G_LogPrintf( "JudgeCommand(%d) - taking away ammo\n", clientNum);
+				for ( i = 0 ; i < MAX_WEAPONS ; i++ ) {
+					ent->client->ps.ammo[i] = 0;
+				}
+		} else {
+			G_LogPrintf( "JudgeCommand(%d) take: unknown arg, '%s'\n", clientNum, arg);
+		}
+	} else if (Q_stricmp(cmd, "hurt") == 0) {
+		trap_Argv( 1, arg, sizeof( arg ) );
+		G_LogPrintf( "JudgeCommand(%d) - hurt(%s) - %d\n", clientNum, arg, atoi(arg));
+		G_Damage(ent, NULL, NULL, NULL, NULL, atoi(arg), 0, MOD_UNKNOWN);
+	} else if (Q_stricmp(cmd, "god") == 0) {
+		trap_Argv( 1, arg, sizeof( arg ) );
+		G_LogPrintf( "JudgeCommand(%d) - god(%s)\n", clientNum, arg);
+		if (Q_stricmp(arg, "on") == 0) {
+			G_LogPrintf( "JudgeCommand(%d) - god mode on\n", clientNum);
+			ent->flags |= FL_GODMODE;
+		} else {
+			G_LogPrintf( "JudgeCommand(%d) - god mode off\n", clientNum);
+			ent->flags &= ~FL_GODMODE;
+		}
+	}
+}
+
+void JudgeCommand(int target, int id ) {
+	gentity_t	*ent;
+	int i;
+	char	cmd[16];
+	char	arg[24];
+
+	if (target == JUDGE_ALL) {
+		G_LogPrintf( "Judge All (%s)\n", cmd);
+		for (i = 0; i < level.maxclients; i++) {
+			if (g_entities[i].r.svFlags & SVF_BOT) continue;
+			if (level.clients[i].pers.connected != CON_CONNECTED) continue;
+			judge(i);
+		}
+	} else if (target == JUDGE_TEAM) {
+		G_LogPrintf( "Judge Team %d (%s)\n", id, cmd);
+		for (i = 0; i < level.maxclients; i++) {
+			if (g_entities[i].r.svFlags & SVF_BOT) continue;
+			if (level.clients[i].sess.sessionTeam == id) {
+				judge(i);
+			}
+		}
+	} else if (target == JUDGE_PLAYER) {
+		G_LogPrintf( "Judge Player %d (%s)\n", id, cmd);
+		judge(id);
+	}
+}

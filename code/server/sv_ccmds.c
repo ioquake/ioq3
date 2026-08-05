@@ -1359,8 +1359,10 @@ static void SV_ConJavascript_f(void) {
 	}
 }
 
-static void SV_ConGive_f(void) {
+static void SV_ConJudge_f(void) {
 	char	*p;
+	int i;
+	char	target[6];
 	client_t	*cl;
 	char text[1024];
 
@@ -1373,27 +1375,34 @@ static void SV_ConGive_f(void) {
 	}
 
 	if ( Cmd_Argc() < 3 ) {
-		Com_Printf ("Usage: give <client number> <item>\n");
+		Com_Printf ("Usage: judge <client number | red | blue | all> judge_cmd\n");
 		return;
 	}
 
-	cl = SV_GetPlayerByNum();
-	if ( !cl ) {
-		return;
+	Q_strncpyz(target, Cmd_Argv(1), sizeof(target));
+
+
+	if (strcmp(target, "all") == 0) {
+		Cmd_TokenizeString(Cmd_ArgsFrom(2));
+		VM_Call( gvm, GAME_JUDGE_COMMAND, JUDGE_ALL, 0);
+	} else if (strcmp(target, "red") == 0) {
+		Cmd_TokenizeString(Cmd_ArgsFrom(2));
+		VM_Call( gvm, GAME_JUDGE_COMMAND, JUDGE_TEAM, TEAM_RED);
+	} else if (strcmp(target, "blue") == 0) {
+		Cmd_TokenizeString(Cmd_ArgsFrom(2));
+		VM_Call( gvm, GAME_JUDGE_COMMAND, JUDGE_TEAM, TEAM_BLUE);
+	} else {
+		cl = SV_GetPlayerByNum();
+		if ( !cl ) {
+			return;
+		}
+
+		Cmd_TokenizeString(Cmd_ArgsFrom(2));
+		// Pass remaining arguments to the JudgeCommand via the GAME_JUDGE_COMMAND syscall
+		// judge 0 some command
+		//         ^---these---^
+		VM_Call( gvm, GAME_JUDGE_COMMAND, JUDGE_PLAYER, cl - svs.clients );
 	}
-
-	Com_Printf ("SV_ConJavascript text (ArgsFrom(0)): <<<%s>>>\n", (const char *)text);
-	//Com_sprintf(expanded, sizeof(expanded), "maps/%s.bsp", map);
-
-	// Create a new command text 'give <item>' and execute it.
-	Com_sprintf(text, sizeof(text), "give %s", Cmd_Argv(2));
-	Com_Printf ("[Client %d] %s\n", cl-svs.clients, (const char *)text);
-
-	// Replace the current argc/argv with the text we generated, then invoked
-	// ClientCommand() through the VM
-	Cmd_TokenizeString(text);
-	//ClientCommand(cl - svs.clients);
-	VM_Call( gvm, GAME_CLIENT_COMMAND, cl - svs.clients );
 }
 
 
@@ -1548,7 +1557,7 @@ void SV_AddOperatorCommands( void ) {
 		Cmd_AddCommand ("say", SV_ConSay_f);
 		Cmd_AddCommand ("tell", SV_ConTell_f);
 		Cmd_AddCommand ("javascript", SV_ConJavascript_f);
-		Cmd_AddCommand ("give", SV_ConGive_f);
+		Cmd_AddCommand ("judge", SV_ConJudge_f);
 	}
 	
 	Cmd_AddCommand("rehashbans", SV_RehashBans_f);

@@ -435,6 +435,8 @@ void BroadcastTeamChange( gclient_t *client, int oldTeam );
 void SetTeam( gentity_t *ent, char *s );
 void Cmd_FollowCycle_f( gentity_t *ent, int dir );
 
+void JudgeCommand(int target, int id );
+
 //
 // g_items.c
 //
