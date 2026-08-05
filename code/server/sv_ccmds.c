@@ -1379,8 +1379,9 @@ static void SV_ConJudge_f(void) {
 		return;
 	}
 
+  Com_Printf("sv_ccmds.c > SV_ConJudge_f\n");
 	Q_strncpyz(target, Cmd_Argv(1), sizeof(target));
-
+  Com_Printf("sv_ccmds.c > SV_ConJudge_f > copy done\n");
 
 	if (strcmp(target, "all") == 0) {
 		Cmd_TokenizeString(Cmd_ArgsFrom(2));

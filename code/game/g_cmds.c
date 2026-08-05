@@ -1758,7 +1758,7 @@ void ClientCommand( int clientNum ) {
 
 static void judge(int clientNum) {
 	gentity_t *ent;
-	char *cmd, *arg;
+	char cmd[16], arg[20];
 	int i;
 
 	/// XXX In progress making judge work for team|all|playerid
@@ -1801,6 +1801,7 @@ static void judge(int clientNum) {
 		G_LogPrintf( "JudgeCommand(%d) - hurt(%s) - %d\n", clientNum, arg, atoi(arg));
 		G_Damage(ent, NULL, NULL, NULL, NULL, atoi(arg), 0, MOD_UNKNOWN);
 	} else if (Q_stricmp(cmd, "god") == 0) {
+    G_LogPrintf("judge > god\n");
 		trap_Argv( 1, arg, sizeof( arg ) );
 		G_LogPrintf( "JudgeCommand(%d) - god(%s)\n", clientNum, arg);
 		if (Q_stricmp(arg, "on") == 0) {
@@ -1816,18 +1817,16 @@ static void judge(int clientNum) {
 void JudgeCommand(int target, int id ) {
 	gentity_t	*ent;
 	int i;
-	char	cmd[16];
-	char	arg[24];
 
 	if (target == JUDGE_ALL) {
-		G_LogPrintf( "Judge All (%s)\n", cmd);
+		G_LogPrintf( "Judge All\n");
 		for (i = 0; i < level.maxclients; i++) {
 			if (g_entities[i].r.svFlags & SVF_BOT) continue;
 			if (level.clients[i].pers.connected != CON_CONNECTED) continue;
 			judge(i);
 		}
 	} else if (target == JUDGE_TEAM) {
-		G_LogPrintf( "Judge Team %d (%s)\n", id, cmd);
+		G_LogPrintf( "Judge Team (%s)\n", id == TEAM_RED ? "red" : "blue");
 		for (i = 0; i < level.maxclients; i++) {
 			if (g_entities[i].r.svFlags & SVF_BOT) continue;
 			if (level.clients[i].sess.sessionTeam == id) {
@@ -1835,7 +1834,7 @@ void JudgeCommand(int target, int id ) {
 			}
 		}
 	} else if (target == JUDGE_PLAYER) {
-		G_LogPrintf( "Judge Player %d (%s)\n", id, cmd);
+		G_LogPrintf( "Judge Player %d\n", id);
 		judge(id);
 	}
 }

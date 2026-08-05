@@ -430,6 +430,6 @@ typedef enum {
 
 	BOTAI_START_FRAME,				// ( int time );
 													//
-	GAME_JUDGE_COMMAND = 92
+	GAME_JUDGE_COMMAND = G_JUDGE_COMMAND
 } gameExport_t;
 
