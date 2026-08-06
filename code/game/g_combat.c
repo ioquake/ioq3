@@ -309,7 +309,8 @@ char	*modNames[] = {
 	"MOD_KAMIKAZE",
 	"MOD_JUICED",
 #endif
-	"MOD_GRAPPLE"
+	"MOD_GRAPPLE",
+	"MOD_JUDGEMENT"
 };
 
 #ifdef MISSIONPACK

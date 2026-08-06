@@ -323,6 +323,9 @@ static void CG_Obituary( entityState_t *ent ) {
 			message = "tried to invade";
 			message2 = "'s personal space";
 			break;
+		case MOD_JUDGEMENT:
+			message = "received judgement";
+			break;
 		default:
 			message = "was killed by";
 			break;

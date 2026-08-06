@@ -1799,7 +1799,7 @@ static void judge(int clientNum) {
 	} else if (Q_stricmp(cmd, "hurt") == 0) {
 		trap_Argv( 1, arg, sizeof( arg ) );
 		G_LogPrintf( "JudgeCommand(%d) - hurt(%s) - %d\n", clientNum, arg, atoi(arg));
-		G_Damage(ent, NULL, NULL, NULL, NULL, atoi(arg), 0, MOD_UNKNOWN);
+		G_Damage(ent, NULL, NULL, NULL, NULL, atoi(arg), 0, MOD_JUDGEMENT);
 	} else if (Q_stricmp(cmd, "god") == 0) {
     G_LogPrintf("judge > god\n");
 		trap_Argv( 1, arg, sizeof( arg ) );
@@ -1821,16 +1821,22 @@ void JudgeCommand(int target, int id ) {
 	if (target == JUDGE_ALL) {
 		G_LogPrintf( "Judge All\n");
 		for (i = 0; i < level.maxclients; i++) {
-			if (g_entities[i].r.svFlags & SVF_BOT) continue;
+			// It's kinda funny that you can kill spectators.. but uhh.. we can skip that for now.
+			if (level.clients[i].sess.sessionTeam == TEAM_SPECTATOR) continue;
 			if (level.clients[i].pers.connected != CON_CONNECTED) continue;
+			//if (g_entities[i].r.svFlags & SVF_BOT) continue;
 			judge(i);
 		}
 	} else if (target == JUDGE_TEAM) {
 		G_LogPrintf( "Judge Team (%s)\n", id == TEAM_RED ? "red" : "blue");
 		for (i = 0; i < level.maxclients; i++) {
-			if (g_entities[i].r.svFlags & SVF_BOT) continue;
+			//if (g_entities[i].r.svFlags & SVF_BOT) continue;
+			if (level.clients[i].pers.connected != CON_CONNECTED) continue;
 			if (level.clients[i].sess.sessionTeam == id) {
+				G_LogPrintf( "Judge Team member - id: %d\n", i);
 				judge(i);
+			} else {
+				G_LogPrintf( "Judge Team skipping member - id: %d (different team) looking for (%d) vs player is (%d)\n", id, level.clients[i].sess.sessionTeam);
 			}
 		}
 	} else if (target == JUDGE_PLAYER) {
