@@ -139,14 +139,24 @@ trigger_push
 
 ==============================================================================
 */
+static int seed;
 
 void trigger_push_touch (gentity_t *self, gentity_t *other, trace_t *trace ) {
+	float acme = 0;
 
 	if ( !other->client ) {
 		return;
 	}
 
+  G_Printf("Jump pad in g_trigger - g_acme_jumppad == %d\n", g_acme_jumppad.integer);
 	BG_TouchJumpPad( &other->client->ps, &self->s );
+
+	if (g_acme_jumppad.integer > 0) {
+		// Mess with the jump pad trajectory...
+		acme = 1.0 + Q_crandom(&seed) * 0.1;
+		G_Printf ("Jump pad calculation x %0.4f\n", acme);
+		VectorScale(other->client->ps.velocity, acme, other->client->ps.velocity);
+	}
 }
 
 

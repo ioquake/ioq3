@@ -757,6 +757,7 @@ extern	vmCvar_t	g_enableDust;
 extern	vmCvar_t	g_enableBreath;
 extern	vmCvar_t	g_singlePlayer;
 extern	vmCvar_t	g_proxMineTimeout;
+extern	vmCvar_t	g_acme_jumppad;
 extern  vmCvar_t	g_testing;
 
 extern	vmCvar_t	bot_skynet;

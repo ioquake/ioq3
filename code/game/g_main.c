@@ -99,6 +99,7 @@ vmCvar_t	g_proxMineTimeout;
 
 
 vmCvar_t	g_testing;
+vmCvar_t	g_acme_jumppad;
 extern vmCvar_t bot_skynet;
 
 static cvarTable_t		gameCvarTable[] = {
@@ -188,7 +189,8 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_scoreRestoreCrossTeam, "g_scoreRestoreCrossTeam", "0", 0, 0, qfalse},
 
 	{ &g_testing, "g_testing", "0", 0, 0, qfalse},
-	{ &bot_skynet, "bot_skynet", "0", 0, 0, qfalse}
+	{ &g_acme_jumppad, "g_acme_jumppad", "0", 0, 0, qtrue},
+	{ &bot_skynet, "bot_skynet", "0", 0, 0, qtrue}
 
 };
 
