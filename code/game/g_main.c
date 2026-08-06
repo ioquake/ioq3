@@ -189,7 +189,7 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_scoreRestoreCrossTeam, "g_scoreRestoreCrossTeam", "0", 0, 0, qfalse},
 
 	{ &g_testing, "g_testing", "0", 0, 0, qfalse},
-	{ &g_acme_jumppad, "g_acme_jumppad", "0", 0, 0, qtrue},
+	{ &g_acme_jumppad, "g_acme_jumppad", "0", 0, 0, qfalse},
 	{ &bot_skynet, "bot_skynet", "0", 0, 0, qtrue}
 
 };
