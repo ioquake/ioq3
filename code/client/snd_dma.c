@@ -109,7 +109,7 @@ void S_Base_SoundInfo(void) {
 		} else {
 			Com_Printf("No background file.\n" );
 		}
-
+		SNDDMA_SoundInfo();
 	}
 	Com_Printf("----------------------\n" );
 }
