@@ -74,6 +74,7 @@ typedef struct {
 	menubitmap_s	go;
 	menubitmap_s	back;
 
+	qboolean		includeRandomBotItem;
 	int				numBots;
 	int				delay;
 	int				baseBotNum;
@@ -144,11 +145,17 @@ UI_AddBotsMenu_SetBotNames
 */
 static void UI_AddBotsMenu_SetBotNames( void ) {
 	int			n;
+	int 		arrayOffset = addBotsMenuInfo.includeRandomBotItem ? -1 : 0;
 	const char	*info;
 
 	for ( n = 0; n < 7; n++ ) {
-		info = UI_GetBotInfoByNumber( addBotsMenuInfo.sortedBotNums[addBotsMenuInfo.baseBotNum + n] );
-		Q_strncpyz( addBotsMenuInfo.botnames[n], Info_ValueForKey( info, "name" ), sizeof(addBotsMenuInfo.botnames[n]) );
+		int ind = addBotsMenuInfo.baseBotNum + n + arrayOffset;
+		if (ind < 0) {
+			Q_strncpyz( addBotsMenuInfo.botnames[n], "RANDOM", sizeof(addBotsMenuInfo.botnames[n]) );
+		} else {
+			info = UI_GetBotInfoByNumber( addBotsMenuInfo.sortedBotNums[ind] );
+			Q_strncpyz( addBotsMenuInfo.botnames[n], Info_ValueForKey( info, "name" ), sizeof(addBotsMenuInfo.botnames[n]) );
+		}
 	}
 
 }
@@ -177,11 +184,14 @@ UI_AddBotsMenu_DownEvent
 =================
 */
 static void UI_AddBotsMenu_DownEvent( void* ptr, int event ) {
+	int numMenuItems;
+
 	if (event != QM_ACTIVATED) {
 		return;
 	}
 
-	if( addBotsMenuInfo.baseBotNum + 7 < addBotsMenuInfo.numBots ) {
+	numMenuItems = addBotsMenuInfo.numBots + (addBotsMenuInfo.includeRandomBotItem ? 1 : 0);
+	if( addBotsMenuInfo.baseBotNum + 7 < numMenuItems ) {
 		addBotsMenuInfo.baseBotNum++;
 		UI_AddBotsMenu_SetBotNames();
 	}
@@ -263,8 +273,13 @@ static void UI_AddBotsMenu_Init( void ) {
 
 	UI_AddBots_Cache();
 
+	// TODO declare this cvar.
+	addBotsMenuInfo.includeRandomBotItem = !trap_Cvar_VariableValue( "ui_oldUi" );
 	addBotsMenuInfo.numBots = UI_GetNumBots();
-	count = addBotsMenuInfo.numBots < 7 ? addBotsMenuInfo.numBots : 7;
+	count = addBotsMenuInfo.numBots + (addBotsMenuInfo.includeRandomBotItem ? 1 : 0);
+	if (count > 7) {
+		count = 7;
+	}
 
 	addBotsMenuInfo.banner.generic.type			= MTYPE_BTEXT;
 	addBotsMenuInfo.banner.generic.x			= 320;
