@@ -282,7 +282,7 @@ fuzzyseperator_t *ReadFuzzySeperators_r(source_t *source)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-weightconfig_t *ReadWeightConfig(char *filename)
+weightconfig_t *ReadWeightConfig(const char *filename)
 {
 	int newindent, avail = 0, n;
 	token_t token;

@@ -95,7 +95,7 @@ int BotChooseBestFightWeapon(int weaponstate, int *inventory);
 //returns the information of the current weapon
 void BotGetWeaponInfo(int weaponstate, int weapon, weaponinfo_t *weaponinfo);
 //loads the weapon weights
-int BotLoadWeaponWeights(int weaponstate, char *filename);
+int BotLoadWeaponWeights(int weaponstate, const char *filename);
 //returns a handle to a newly allocated weapon state
 int BotAllocWeaponState(void);
 //frees the weapon state
