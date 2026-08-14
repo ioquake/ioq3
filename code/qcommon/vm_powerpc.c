@@ -151,7 +151,7 @@ typedef enum powerpc_iname {
 	iBLTm, iBC, iBCL, iB, iBL, iBLR, iBCTR, iBCTRL, iRLWINM, iNOP, iORI,
 	iXORIS, iLDX, iLWZX, iSLW, iAND, iSUB, iLBZX, iNEG, iNOT, iSTWX, iSTBX,
 	iMULLW, iADD, iLHZX, iXOR, iMFLR, iSTHX, iMR, iOR, iDIVWU, iMTLR,
-	iMTCTR, iDIVW, iLFSX, iSRW, iSTFSX, iSRAW, iEXTSH, iEXTSB, iLWZ, iLBZ,
+	iMTCTR, iDIVW, iLFSX, iSRW, iSTFSX, iSRAW, iEXTSH, iEXTSB, iEXTSW, iLWZ, iLBZ,
 	iSTW, iSTWU, iSTB, iLHZ, iSTH, iLFS, iLFD, iSTFS, iSTFD, iLD, iFDIVS,
 	iFSUBS, iFADDS, iFMULS, iSTD, iSTDU, iFRSP, iFCTIWZ, iFSUB, iFNEG,
 } powerpc_iname_t;
@@ -1100,6 +1100,7 @@ static const struct powerpc_opcode powerpc_opcodes[] = {
 { "sraw",    XRC(31,792,0), X_MASK,	PPCCOM,		{ RA, RS, RB } },
 { "extsh",   XRC(31,922,0), XRB_MASK,	PPCCOM,		{ RA, RS } },
 { "extsb",   XRC(31,954,0), XRB_MASK,	PPC,		{ RA, RS} },
+{ "extsw",   XRC(31,986,0), XRB_MASK,	PPC64,		{ RA, RS } },
 
 { "lwz",     OP(32),	OP_MASK,	PPCCOM,		{ RT, D, RA0 } },
 { "lbz",     OP(34),	OP_MASK,	COM,		{ RT, D, RA0 } },
@@ -1189,7 +1190,11 @@ PPC_Malloc( size_t size )
  *
  * - Linux 64 bits (not fully conformant)
  *   ( http://www.ibm.com/developerworks/linux/library/l-powasm4.html )
- *   * needs "official procedure descriptors" (only first function has one)
+ *   * ELFv1 ABI (big endian only):
+ *     needs "official procedure descriptors" (only first function has one)
+ *   * ELFv2 ABI (little endian, and some modern big-endian distributions):
+ *     uses direct code addresses, r12 must hold the entry address at
+ *     every global entry point
  *   * LR at r0 + 16
  *   * local variable space required, min 64 bytes, starts at 48
  *     -> store caller safe regs at 128+
@@ -1221,10 +1226,39 @@ PPC_Malloc( size_t size )
 #  define SA( a, b ) (b)
 #endif
 
+/* Select Endian - first for big endian, second for little endian */
+#ifdef Q3_BIG_ENDIAN
+#  define SE( a, b ) (a)
+#else
+#  define SE( a, b ) (b)
+#endif
+
+/* indices for accessing high/low 16-bit halves of a 32-bit int via
+ * a union of short[2]; on big-endian [0] is high, on little-endian [1] is */
+#define HI16	SE( 0, 1 )
+#define LO16	SE( 1, 0 )
+
+/* offset of high/low 32-bit word within a 64-bit double stored in memory */
+#define FPRHI	SE( 0, 4 )
+#define FPRLO	SE( 4, 0 )
+
 #define ELF32	SL( SA( 1, 0 ), 0 )
 #define ELF64	SL( 0, SA( 1, 0 ) )
 #define OSX32	SL( SA( 0, 1 ), 0 )
 #define OSX64	SL( 0, SA( 0, 1 ) )
+
+/* Distinguish the ELFv1 from the ELFv2 ABI. ELFv1 uses Official Procedure
+ * Descriptors (OPD) for function pointers; ELFv2 uses direct code addresses.
+ * ELFv2 is always used on ppc64le and is also the default on some modern
+ * big-endian ppc64 distributions, so it is detected via _CALL_ELF rather
+ * than by endianness. */
+#if ELF64 && defined(_CALL_ELF) && _CALL_ELF == 2
+#  define ELFV2	1
+#  define ELFV1	0
+#else
+#  define ELFV2	0
+#  define ELFV1	ELF64
+#endif
 
 /* native length load/store instructions ( L stands for long ) */
 #define iSTLU	SL( iSTWU, iSTDU )
@@ -1248,11 +1282,11 @@ PPC_Malloc( size_t size )
  * prepared properly */
 #define STACK_RTEMP	(-16)
 
-#if ELF64
+#if ELFV1
 /*
- * Official Procedure Descriptor
+ * Official Procedure Descriptor (ELFv1 only)
  *  we need to prepare one for generated code if we want to call it
- * as function
+ * as function.  ELFv2 uses direct code addresses instead.
  */
 typedef struct {
 	void *function;
@@ -1411,8 +1445,8 @@ typedef struct VM_Data {
 	// fixed number used to convert from integer to float
 	unsigned int floatBase; // 0x59800004
 
-#if ELF64
-	// official procedure descriptor
+#if ELFV1
+	// official procedure descriptor (ELFv1 only)
 	opd_t opd;
 #endif
 
@@ -1873,9 +1907,9 @@ PPC_EmitConst( source_instruction_t * const i_const )
 			in( iLI, rFIRST, 0 );
 			in( iORI, rFIRST, rFIRST, i_const->arg.i );
 		} else {
-			in( iLIS, rFIRST, i_const->arg.ss[ 0 ] );
-			if ( i_const->arg.us[ 1 ] != 0 )
-				in( iORI, rFIRST, rFIRST, i_const->arg.us[ 1 ] );
+			in( iLIS, rFIRST, i_const->arg.ss[ HI16 ] );
+			if ( i_const->arg.us[ LO16 ] != 0 )
+				in( iORI, rFIRST, rFIRST, i_const->arg.us[ LO16 ] );
 		}
 
 	} else {
@@ -2177,9 +2211,9 @@ VM_CompileFunction( source_instruction_t * const i_first )
 						in( iLI, r3, 0 );
 						in( iORI, r3, r3, i_const->arg.i );
 					} else {
-						in( iLIS, r3, i_const->arg.ss[ 0 ] );
-						if ( i_const->arg.us[ 1 ] != 0 )
-							in( iORI, r3, r3, i_const->arg.us[ 1 ] );
+						in( iLIS, r3, i_const->arg.ss[ HI16 ] );
+						if ( i_const->arg.us[ LO16 ] != 0 )
+							in( iORI, r3, r3, i_const->arg.us[ LO16 ] );
 					}
 					gpr_pos--;
 				} else {
@@ -2240,6 +2274,9 @@ VM_CompileFunction( source_instruction_t * const i_first )
 						in( iLI, r3, i_const->arg.si ); // negative value
 						in( iMR, r4, rPSTACK ); // push PSTACK on argument list
 
+#if ELFV2
+						in( iMR, r12, r0 ); // ELFv2: r12 must hold target addr
+#endif
 						in( iMTCTR, r0 );
 						in( iBCTRL );
 					}
@@ -2257,16 +2294,21 @@ VM_CompileFunction( source_instruction_t * const i_first )
 					in( iRLWINM, rFIRST, rFIRST, GPRLEN_SHIFT, 0, 31-GPRLEN_SHIFT ); // mul * GPRLEN
 					in( iLLX, r0, rFIRST, r0 ); // load pointer
 
-					in( iB, +4*(3 + (rFIRST != r3 ? 1 : 0) ) ); // XXX jump !
+					in( iB, +4*(SL( 3, 4 ) + (rFIRST != r3 ? 1 : 0) ) ); // skip syscall-specific code to common tail
 
 					/* syscall */
 					in( iLL, r0, VM_Data_Offset( AsmCall ), rVMDATA ); // get asmCall pointer
 					/* rFIRST can be r3 or some static register */
 					if ( rFIRST != r3 )
 						in( iMR, r3, rFIRST ); // push OPSTACK top value on argument list
+					if ( SL( 0, 1 ) )
+						in( iEXTSW, r3, r3 ); // sign-extend 32-bit syscall number for 64-bit ABI
 					in( iMR, r4, rPSTACK ); // push PSTACK on argument list
 
 					/* common code */
+#if ELFV2
+					in( iMR, r12, r0 ); // ELFv2: r12 must hold target addr
+#endif
 					in( iMTCTR, r0 );
 					in( iBCTRL );
 
@@ -2304,8 +2346,8 @@ VM_CompileFunction( source_instruction_t * const i_first )
 				MAYBE_EMIT_CONST();
 				{
 					signed long int hi, lo;
-					hi = i_now->arg.ss[ 0 ];
-					lo = i_now->arg.ss[ 1 ];
+					hi = i_now->arg.ss[ HI16 ];
+					lo = i_now->arg.ss[ LO16 ];
 					if ( lo < 0 )
 						hi += 1;
 
@@ -2622,8 +2664,8 @@ VM_CompileFunction( source_instruction_t * const i_first )
 						in( iLI, r5, 0 );
 						r5_ori = i_now->arg.i;
 					} else {
-						in( iLIS, r5, i_now->arg.ss[ 0 ] );
-						r5_ori = i_now->arg.us[ 1 ];
+						in( iLIS, r5, i_now->arg.ss[ HI16 ] );
+						r5_ori = i_now->arg.us[ LO16 ];
 					}
 
 					in( iLL, r0, VM_Data_Offset( BlockCopy ), rVMDATA ); // get blockCopy pointer
@@ -2631,6 +2673,9 @@ VM_CompileFunction( source_instruction_t * const i_first )
 					if ( r5_ori )
 						in( iORI, r5, r5, r5_ori );
 
+#if ELFV2
+					in( iMR, r12, r0 ); // ELFv2: r12 must hold target addr
+#endif
 					in( iMTCTR, r0 );
 
 					if ( rFIRST != r4 )
@@ -2664,8 +2709,8 @@ VM_CompileFunction( source_instruction_t * const i_first )
 					EMIT_FALSE_CONST();
 
 					signed short int hi, lo;
-					hi = i_const->arg.ss[ 0 ];
-					lo = i_const->arg.ss[ 1 ];
+					hi = i_const->arg.ss[ HI16 ];
+					lo = i_const->arg.ss[ LO16 ];
 					if ( lo < 0 )
 						hi += 1;
 
@@ -2800,8 +2845,8 @@ VM_CompileFunction( source_instruction_t * const i_first )
 				fpr_pos++;
 				in( iXORIS, rFIRST, rFIRST, 0x8000 );
 				in( iLIS, r0, 0x4330 );
-				in( iSTW, rFIRST, stack_temp + 4, r1 );
-				in( iSTW, r0, stack_temp, r1 );
+				in( iSTW, rFIRST, stack_temp + FPRLO, r1 );
+				in( iSTW, r0, stack_temp + FPRHI, r1 );
 				in( iLFS, fTMP, VM_Data_Offset( floatBase ), rVMDATA );
 				in( iLFD, fFIRST, stack_temp, r1 );
 				in( iFSUB, fFIRST, fFIRST, fTMP );
@@ -2814,7 +2859,7 @@ VM_CompileFunction( source_instruction_t * const i_first )
 				gpr_pos++;
 				in( iFCTIWZ, fFIRST, fFIRST );
 				in( iSTFD, fFIRST, stack_temp, r1 );
-				in( iLWZ, rFIRST, stack_temp + 4, r1 );
+				in( iLWZ, rFIRST, stack_temp + FPRLO, r1 );
 				fpr_pos--;
 				break;
 		}
@@ -2994,8 +3039,8 @@ PPC_ComputeCode( vm_t *vm )
 
 	vm_data_t *data = (vm_data_t *)dataAndCode;
 
-#if ELF64
-	// prepare Official Procedure Descriptor for the generated code
+#if ELFV1
+	// ELFv1: prepare Official Procedure Descriptor for the generated code
 	// and retrieve real function pointer for helper functions
 
 	opd_t *ac = (void *)VM_AsmCall, *bc = (void *)VM_BlockCopy;
@@ -3084,12 +3129,8 @@ VM_Compile( vm_t *vm, vmHeader_t *header )
 	i_first = PPC_Malloc( sizeof( source_instruction_t ) );
 	i_first->next = NULL;
 
-	// realloc instructionPointers with correct size
-	// use Z_Malloc so vm.c will be able to free the memory
-	if ( sizeof( void * ) != sizeof( int ) ) {
-		Z_Free( vm->instructionPointers );
-		vm->instructionPointers = Z_Malloc( header->instructionCount * sizeof( void * ) );
-	}
+	// vm->instructionPointers is already allocated as intptr_t* by vm.c
+	// (pointer-sized entries), so no reallocation needed
 	di_pointers = (void *)vm->instructionPointers;
 	memset( di_pointers, 0, header->instructionCount * sizeof( void * ) );
 
@@ -3123,12 +3164,10 @@ VM_Compile( vm_t *vm, vmHeader_t *header )
 		i_now->next = NULL;
 
 		if ( vm_opInfo[op] & opImm4 ) {
-			union {
-				unsigned char b[4];
-				unsigned int i;
-			} c = { { code[ pc + 3 ], code[ pc + 2 ], code[ pc + 1 ], code[ pc + 0 ] }, };
-
-			i_now->arg.i = c.i;
+			i_now->arg.i = (unsigned int)code[ pc ]
+				| ( (unsigned int)code[ pc + 1 ] << 8 )
+				| ( (unsigned int)code[ pc + 2 ] << 16 )
+				| ( (unsigned int)code[ pc + 3 ] << 24 );
 			pc += 4;
 		} else if ( vm_opInfo[op] & opImm1 ) {
 			i_now->arg.b = code[ pc++ ];
@@ -3151,6 +3190,10 @@ VM_Compile( vm_t *vm, vmHeader_t *header )
 		if ( di_pointers[ i ] == 0 )
 			Com_Printf( S_COLOR_RED "Pointer %ld not initialized !\n", i );
 #endif
+
+	/* flush data cache and invalidate instruction cache for generated code;
+	 * PowerPC has split D/I caches and requires explicit synchronization */
+	__builtin___clear_cache( vm->codeBase, vm->codeBase + vm->codeLength );
 
 	/* mark memory as executable and not writeable */
 	if ( mprotect( vm->codeBase, vm->codeLength, PROT_READ|PROT_EXEC ) ) {
@@ -3209,7 +3252,7 @@ VM_CallCompiled( vm_t *vm, int *args )
 	/* call generated code */
 	{
 		int ( *entry )( void *, int, void * );
-#ifdef __PPC64__
+#if ELFV1
 		entry = (void *)&(vm_dataAndCode->opd);
 #else
 		entry = (void *)(vm->codeBase + vm_dataAndCode->dataLength);
