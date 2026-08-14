@@ -154,6 +154,7 @@ typedef enum powerpc_iname {
 	iMTCTR, iDIVW, iLFSX, iSRW, iSTFSX, iSRAW, iEXTSH, iEXTSB, iEXTSW, iLWZ, iLBZ,
 	iSTW, iSTWU, iSTB, iLHZ, iSTH, iLFS, iLFD, iSTFS, iSTFD, iLD, iFDIVS,
 	iFSUBS, iFADDS, iFMULS, iSTD, iSTDU, iFRSP, iFCTIWZ, iFSUB, iFNEG,
+	iFCFIDS, iMTVSRWA, iMFVSRWZ,
 } powerpc_iname_t;
 
 #include <stdint.h>
@@ -1125,6 +1126,11 @@ static const struct powerpc_opcode powerpc_opcodes[] = {
 { "fctiwz",  XRC(63,15,0), XRA_MASK,	PPCCOM,		{ FRT, FRB } },
 { "fsub",    A(63,20,0), AFRC_MASK,	PPCCOM,		{ FRT, FRA, FRB } },
 { "fneg",    XRC(63,40,0), XRA_MASK,	COM,		{ FRT, FRB } },
+
+/* ISA 2.06/2.07 (POWER7/POWER8+), used only when built with -mcpu=power8+ */
+{ "fcfids",  XRC(59,846,0), XRA_MASK,	PPC64,		{ FRT, FRB } },
+{ "mtvsrwa", X(31,211),	XRB_MASK,	PPC64,		{ FRT, RA } },
+{ "mfvsrwz", X(31,115),	XRB_MASK,	PPC64,		{ RA, FRS } },
 };
 
 /*
@@ -2843,6 +2849,13 @@ VM_CompileFunction( source_instruction_t * const i_first )
 			case OP_CVIF:
 				MAYBE_EMIT_CONST();
 				fpr_pos++;
+#if defined( _ARCH_PWR8 )
+				/* ISA 2.07+: move the int into the FPR and convert
+				 * directly, avoiding the classic double-magic sequence
+				 * and its two memory round-trips */
+				in( iMTVSRWA, fFIRST, rFIRST );
+				in( iFCFIDS, fFIRST, fFIRST );
+#else
 				in( iXORIS, rFIRST, rFIRST, 0x8000 );
 				in( iLIS, r0, 0x4330 );
 				in( iSTW, rFIRST, stack_temp + FPRLO, r1 );
@@ -2851,6 +2864,7 @@ VM_CompileFunction( source_instruction_t * const i_first )
 				in( iLFD, fFIRST, stack_temp, r1 );
 				in( iFSUB, fFIRST, fFIRST, fTMP );
 				in( iFRSP, fFIRST, fFIRST );
+#endif
 				gpr_pos--;
 				break;
 
@@ -2858,8 +2872,14 @@ VM_CompileFunction( source_instruction_t * const i_first )
 				MAYBE_EMIT_CONST();
 				gpr_pos++;
 				in( iFCTIWZ, fFIRST, fFIRST );
+#if defined( _ARCH_PWR8 )
+				/* ISA 2.07+: read the converted word straight from the
+				 * FPR instead of bouncing it through the stack */
+				in( iMFVSRWZ, rFIRST, fFIRST );
+#else
 				in( iSTFD, fFIRST, stack_temp, r1 );
 				in( iLWZ, rFIRST, stack_temp + FPRLO, r1 );
+#endif
 				fpr_pos--;
 				break;
 		}
