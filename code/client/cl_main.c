@@ -716,7 +716,11 @@ void CL_Record_f( void ) {
 	}
 
   // sync 0 doesn't prevent recording, so not forcing it off .. everyone does g_sync 1 ; record ; g_sync 0 ..
-	if ( NET_IsLocalAddress( clc.serverAddress ) && !Cvar_VariableValue( "g_synchronousClients" ) ) {
+	if ( NET_IsLocalAddress( clc.serverAddress ) &&
+		!Cvar_VariableValue( "g_synchronousClients" ) &&
+		// Don't nag if we're simply recording everything automatically.
+		!cl_autoRecordDemo->integer )
+	{
 		Com_Printf (S_COLOR_YELLOW "WARNING: You should set 'g_synchronousClients 1' for smoother demo recording\n");
 	}
 
