@@ -13,13 +13,13 @@ set -e
 TMPDIR=$(mktemp -d)
 cd "$TMPDIR"
 
-SDL_TARBALL="SDL2-${SDL_VERSION}.tar.gz"
+SDL_TARBALL="SDL3-${SDL_VERSION}.tar.gz"
 SDL_URL="https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/${SDL_TARBALL}"
 
-curl -sL "$SDL_URL"
+curl -sLO "$SDL_URL"
 
 tar -xzf "$SDL_TARBALL"
-SDL_DIR="SDL2-${SDL_VERSION}"
+SDL_DIR="SDL3-${SDL_VERSION}"
 cd $TMPDIR/$SDL_DIR
 
 BUILD_DIR="build"
@@ -29,9 +29,8 @@ cmake --build ${BUILD_DIR} --parallel $(sysctl -n hw.ncpu)
 DEST_DIR="${ROOT_DIR}/code/thirdparty/libs/macos/"
 mkdir -p ${DEST_DIR}
 
-cp ${BUILD_DIR}/libSDL2-2.0.0.dylib ${DEST_DIR}
-cp ${BUILD_DIR}/libSDL2main.a ${DEST_DIR}
-install_name_tool -id @executable_path/libSDL2-2.0.0.dylib ${DEST_DIR}/libSDL2-2.0.0.dylib
+cp ${BUILD_DIR}/libSDL3.dylib ${DEST_DIR}
+install_name_tool -id @executable_path/libSDL3.dylib ${DEST_DIR}/libSDL3.dylib
 
 cd
 rm -rf "$TMPDIR"
