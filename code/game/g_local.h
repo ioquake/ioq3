@@ -694,57 +694,9 @@ extern	gentity_t		g_entities[MAX_GENTITIES];
 
 #define	FOFS(x) ((size_t)&(((gentity_t *)0)->x))
 
-extern	vmCvar_t	g_gametype;
-extern	vmCvar_t	g_dedicated;
-extern	vmCvar_t	g_cheats;
-extern	vmCvar_t	g_maxclients;			// allow this many total, including spectators
-extern	vmCvar_t	g_maxGameClients;		// allow this many active
-extern	vmCvar_t	g_restarted;
-
-extern	vmCvar_t	g_dmflags;
-extern	vmCvar_t	g_fraglimit;
-extern	vmCvar_t	g_timelimit;
-extern	vmCvar_t	g_capturelimit;
-extern	vmCvar_t	g_friendlyFire;
-extern	vmCvar_t	g_password;
-extern	vmCvar_t	g_needpass;
-extern	vmCvar_t	g_gravity;
-extern	vmCvar_t	g_speed;
-extern	vmCvar_t	g_knockback;
-extern	vmCvar_t	g_quadfactor;
-extern	vmCvar_t	g_forcerespawn;
-extern	vmCvar_t	g_inactivity;
-extern	vmCvar_t	g_debugMove;
-extern	vmCvar_t	g_debugAlloc;
-extern	vmCvar_t	g_debugDamage;
-extern	vmCvar_t	g_weaponRespawn;
-extern	vmCvar_t	g_weaponTeamRespawn;
-extern	vmCvar_t	g_synchronousClients;
-extern	vmCvar_t	g_motd;
-extern	vmCvar_t	g_warmup;
-extern	vmCvar_t	g_doWarmup;
-extern	vmCvar_t	g_blood;
-extern	vmCvar_t	g_allowVote;
-extern	vmCvar_t	g_teamAutoJoin;
-extern	vmCvar_t	g_teamForceBalance;
-extern	vmCvar_t	g_banIPs;
-extern	vmCvar_t	g_filterBan;
-extern	vmCvar_t	g_obeliskHealth;
-extern	vmCvar_t	g_obeliskRegenPeriod;
-extern	vmCvar_t	g_obeliskRegenAmount;
-extern	vmCvar_t	g_obeliskRespawnDelay;
-extern	vmCvar_t	g_cubeTimeout;
-extern	vmCvar_t	g_redteam;
-extern	vmCvar_t	g_blueteam;
-extern	vmCvar_t	g_smoothClients;
-extern	vmCvar_t	pmove_fixed;
-extern	vmCvar_t	pmove_msec;
-extern	vmCvar_t	g_rankings;
-extern	vmCvar_t	g_enableDust;
-extern	vmCvar_t	g_enableBreath;
-extern	vmCvar_t	g_singlePlayer;
-extern	vmCvar_t	g_proxMineTimeout;
-extern	vmCvar_t	g_localTeamPref;
+#define G_CVAR_EXTERN
+#include "g_cvar.h"
+#undef G_CVAR_EXTERN
 
 void	trap_Print( const char *text );
 void	trap_Error( const char *text ) Q_NO_RETURN;
