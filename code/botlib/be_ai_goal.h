@@ -85,11 +85,11 @@ int BotTouchingGoal(vec3_t origin, bot_goal_t *goal);
 int BotItemGoalInVisButNotVisible(int viewer, vec3_t eye, vec3_t viewangles, bot_goal_t *goal);
 //search for a goal for the given classname, the index can be used
 //as a start point for the search when multiple goals are available with that same classname
-int BotGetLevelItemGoal(int index, char *classname, bot_goal_t *goal);
+int BotGetLevelItemGoal(int index, const char *classname, bot_goal_t *goal);
 //get the next camp spot in the map
 int BotGetNextCampSpotGoal(int num, bot_goal_t *goal);
 //get the map location with the given name
-int BotGetMapLocationGoal(char *name, bot_goal_t *goal);
+int BotGetMapLocationGoal(const char *name, bot_goal_t *goal);
 //returns the avoid goal time
 float BotAvoidGoalTime(int goalstate, int number);
 //set the avoid goal time
@@ -101,11 +101,11 @@ void BotUpdateEntityItems(void);
 //interbreed the goal fuzzy logic
 void BotInterbreedGoalFuzzyLogic(int parent1, int parent2, int child);
 //save the goal fuzzy logic to disk
-void BotSaveGoalFuzzyLogic(int goalstate, char *filename);
+void BotSaveGoalFuzzyLogic(int goalstate, const char *filename);
 //mutate the goal fuzzy logic
 void BotMutateGoalFuzzyLogic(int goalstate, float range);
 //loads item weights for the bot
-int BotLoadItemWeights(int goalstate, char *filename);
+int BotLoadItemWeights(int goalstate, const char *filename);
 //frees the item weights of the bot
 void BotFreeItemWeights(int goalstate);
 //returns the handle of a newly allocated goal state
