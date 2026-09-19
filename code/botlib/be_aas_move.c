@@ -840,9 +840,9 @@ int AAS_ClientMovementPrediction(struct aas_clientmove_s *move,
 							if (swimming) delta = 0;
 							// never take falling damage if completely underwater
 							/*
-							if (ent->waterlevel == 3) return;
-							if (ent->waterlevel == 2) delta *= 0.25;
-							if (ent->waterlevel == 1) delta *= 0.5;
+							if (ent->waterlevel == WATERLEVEL_SUBMERGED) return;
+							if (ent->waterlevel == WATERLEVEL_HALFWAY) delta *= 0.25;
+							if (ent->waterlevel == WATERLEVEL_FEET) delta *= 0.5;
 							*/
 							if (delta > 40)
 							{
