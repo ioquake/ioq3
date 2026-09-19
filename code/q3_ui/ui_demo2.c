@@ -216,6 +216,7 @@ static void Demos_MenuInit( void ) {
 	protocolLegacy = trap_Cvar_VariableValue("com_legacyprotocol");
 	protocol = trap_Cvar_VariableValue("com_protocol");
 
+	Com_Printf("\n\n\n\n!protocol: %i\n\n\n\n", !protocol);
 	if(!protocol)
 		protocol = trap_Cvar_VariableValue("protocol");
 	if(protocolLegacy == protocol)

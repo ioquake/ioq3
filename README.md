@@ -245,6 +245,8 @@ the above locations, if desired.
 
 ```
   cl_autoRecordDemo                 - record a new demo on each map change
+                                      (similar to cg_autoAction in other
+                                      id Tech 3 games)
   cl_aviFrameRate                   - the framerate to use when capturing video
   cl_aviMotionJpeg                  - use the mjpeg codec when capturing video
   cl_guidServerUniq                 - makes cl_guid unique for each server
