@@ -411,6 +411,10 @@ the above locations, if desired.
                                       cl_aviMotionJpeg is enabled
   r_mode -2                         - This new video mode automatically uses the
                                       desktop resolution.
+  ui_oldUi                          - Try to preserve the old UI look. Remove
+                                      some new items, such as "RANDOM" bot
+                                      in "ADD BOT" menu.
+                                      This only restores _some_ of the changes.
 ```
 
 ## New commands
