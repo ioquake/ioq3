@@ -74,6 +74,11 @@ function(finish_macos_app)
             set_output_dirs(${RENDERER_GL2_BINARY} SUBDIRECTORY ${MACOS_APP_BINARY_DIR})
             add_dependencies(${CLIENT_BINARY} ${RENDERER_GL2_BINARY})
         endif()
+
+        if(BUILD_RENDERER_VULKAN)
+            set_output_dirs(${RENDERER_VULKAN_BINARY} SUBDIRECTORY ${MACOS_APP_BINARY_DIR})
+            add_dependencies(${CLIENT_BINARY} ${RENDERER_VULKAN_BINARY})
+        endif()
     endif()
 endfunction()
 
