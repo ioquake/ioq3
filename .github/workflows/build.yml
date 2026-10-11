@@ -143,7 +143,7 @@ jobs:
     - name: Install emsdk
       uses: mymindstorm/setup-emsdk@v13
       with:
-        version: 3.1.58
+        version: 6.0.12
     - name: Compile
       run: |
         emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
