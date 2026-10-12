@@ -25,19 +25,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef DEDICATED
 #ifdef USE_INTERNAL_SDL_HEADERS
-#	include "SDL_version.h"
+#	include "SDL3/SDL_version.h"
 #else
-#	include <SDL_version.h>
+#	include <SDL3/SDL_version.h>
 #endif
 
 // Require a minimum version of SDL
-#define MINSDL_MAJOR 2
-#define MINSDL_MINOR 0
-#if SDL_VERSION_ATLEAST( 2, 0, 5 )
-#define MINSDL_PATCH 5
-#else
-#define MINSDL_PATCH 0
-#endif
+#define MINSDL_MAJOR 3
+#define MINSDL_MINOR 2
+#define MINSDL_MICRO 0
 #endif
 
 // Console
