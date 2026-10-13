@@ -33,6 +33,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if !defined(__APPLE__)
 #include <altivec.h>
+#undef bool
+#undef pixel
+#else
+/* Apple's -faltivec provides the AltiVec keywords without altivec.h,
+   but only the unprefixed spellings */
+#define __vector vector
 #endif
 
 void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE], int snd_vol, channel_t *ch, const sfx_t *sc, int count, int sampleOffset, int bufferOffset ) {
@@ -72,12 +78,25 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 	}
 
 	if (!ch->doppler || ch->dopplerScale==1.0f) {
-		vector signed short volume_vec;
-		vector unsigned int volume_shift;
+		__vector signed short volume_vec;
+		__vector unsigned int volume_shift;
 		int vectorCount, samplesLeft, chunkSamplesLeft;
 		leftvol = ch->leftvol*snd_vol;
 		rightvol = ch->rightvol*snd_vol;
 		samples = chunk->sndChunk;
+#if defined(__VSX__)
+		/* Build volume vector: {L, L, R, R, L, L, R, R}
+		   Use vec_perm to interleave left and right volume splats
+		   in an endian-safe way (BE-style indices). */
+		{
+			__vector signed short vl = vec_splats((short)leftvol);
+			__vector signed short vr = vec_splats((short)rightvol);
+			__vector unsigned char volume_perm = VECCONST_UINT8(
+				0, 1, 2, 3, 16, 17, 18, 19,
+				4, 5, 6, 7, 20, 21, 22, 23);
+			volume_vec = (__vector signed short)vec_perm(vl, vr, volume_perm);
+		}
+#else
 		((short *)&volume_vec)[0] = leftvol;
 		((short *)&volume_vec)[1] = leftvol;
 		((short *)&volume_vec)[4] = leftvol;
@@ -86,6 +105,7 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 		((short *)&volume_vec)[3] = rightvol;
 		((short *)&volume_vec)[6] = rightvol;
 		((short *)&volume_vec)[7] = rightvol;
+#endif
 		volume_shift = vec_splat_u32(8);
 		i = 0;
 
@@ -119,15 +139,70 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 			
 			if(vectorCount)
 			{
-				vector unsigned char tmp;
-				vector short s0, s1, sampleData0, sampleData1;
-				vector signed int merge0, merge1;
-				vector signed int d0, d1, d2, d3;				
-				vector unsigned char samplePermute0 =
+#if defined(__VSX__)
+				__vector short s0, sampleData0, sampleData1;
+				__vector signed int merge0, merge1;
+				__vector signed int d0, d1, d2, d3;
+				__vector unsigned char samplePermute0 =
 					VECCONST_UINT8(0, 1, 4, 5, 0, 1, 4, 5, 2, 3, 6, 7, 2, 3, 6, 7);
-				vector unsigned char samplePermute1 = 
+				__vector unsigned char samplePermute1 =
 					VECCONST_UINT8(8, 9, 12, 13, 8, 9, 12, 13, 10, 11, 14, 15, 10, 11, 14, 15);
-				vector unsigned char loadPermute0, loadPermute1;
+
+				while(vectorCount)
+				{
+					/* Load up source (16-bit) sample data */
+					s0 = vec_xl(0, &samples[sampleOffset]);
+
+					/* Load up destination sample data */
+					d0 = vec_xl(0, (int *)&samp[i]);
+					d1 = vec_xl(0, (int *)&samp[i+2]);
+					d2 = vec_xl(0, (int *)&samp[i+4]);
+					d3 = vec_xl(0, (int *)&samp[i+6]);
+
+					/* Rearrange samples: duplicate each sample for L/R processing.
+					   samplePermute0 selects first 4 samples (each duplicated twice),
+					   samplePermute1 selects second 4 samples (each duplicated twice). */
+					sampleData0 = vec_perm(s0, s0, samplePermute0);
+					sampleData1 = vec_perm(s0, s0, samplePermute1);
+
+					merge0 = vec_mule(sampleData0, volume_vec);
+					merge0 = vec_sra(merge0, volume_shift);
+
+					merge1 = vec_mulo(sampleData0, volume_vec);
+					merge1 = vec_sra(merge1, volume_shift);
+
+					d0 = vec_add(merge0, d0);
+					d1 = vec_add(merge1, d1);
+
+					merge0 = vec_mule(sampleData1, volume_vec);
+					merge0 = vec_sra(merge0, volume_shift);
+
+					merge1 = vec_mulo(sampleData1, volume_vec);
+					merge1 = vec_sra(merge1, volume_shift);
+
+					d2 = vec_add(merge0, d2);
+					d3 = vec_add(merge1, d3);
+
+					/* Store destination sample data */
+					vec_xst(d0, 0, (int *)&samp[i]);
+					vec_xst(d1, 0, (int *)&samp[i+2]);
+					vec_xst(d2, 0, (int *)&samp[i+4]);
+					vec_xst(d3, 0, (int *)&samp[i+6]);
+
+					i += 8;
+					vectorCount--;
+					sampleOffset += 8;
+				}
+#else
+				__vector unsigned char tmp;
+				__vector short s0, s1, sampleData0, sampleData1;
+				__vector signed int merge0, merge1;
+				__vector signed int d0, d1, d2, d3;
+				__vector unsigned char samplePermute0 =
+					VECCONST_UINT8(0, 1, 4, 5, 0, 1, 4, 5, 2, 3, 6, 7, 2, 3, 6, 7);
+				__vector unsigned char samplePermute1 =
+					VECCONST_UINT8(8, 9, 12, 13, 8, 9, 12, 13, 10, 11, 14, 15, 10, 11, 14, 15);
+				__vector unsigned char loadPermute0, loadPermute1;
 				
 				// Rather than permute the vectors after we load them to do the sample
 				// replication and rearrangement, we permute the alignment vector so
@@ -136,17 +211,22 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 				loadPermute0 = vec_perm(tmp,tmp,samplePermute0);
 				loadPermute1 = vec_perm(tmp,tmp,samplePermute1);
 				
-				s0 = *(vector short *)&samples[sampleOffset];
+				s0 = *(__vector short *)&samples[sampleOffset];
 				while(vectorCount)
 				{
-					/* Load up source (16-bit) sample data */
-					s1 = *(vector short *)&samples[sampleOffset+7];
+					/* Load up source (16-bit) sample data.  The offset
+					   must reach the next 16-byte block for every source
+					   alignment: +8 shorts (+16 bytes) always does, while
+					   the old +7 stayed in the current block when
+					   sampleOffset was 16-byte aligned, going stale after
+					   the s0 = s1 carry below */
+					s1 = *(__vector short *)&samples[sampleOffset+8];
 					
 					/* Load up destination sample data */
-					d0 = *(vector signed int *)&samp[i];
-					d1 = *(vector signed int *)&samp[i+2];
-					d2 = *(vector signed int *)&samp[i+4];
-					d3 = *(vector signed int *)&samp[i+6];
+					d0 = *(__vector signed int *)&samp[i];
+					d1 = *(__vector signed int *)&samp[i+2];
+					d2 = *(__vector signed int *)&samp[i+4];
+					d3 = *(__vector signed int *)&samp[i+6];
 
 					sampleData0 = vec_perm(s0,s1,loadPermute0);
 					sampleData1 = vec_perm(s0,s1,loadPermute1);
@@ -170,16 +250,17 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 					d3 = vec_add(merge1,d3);
 
 					/* Store destination sample data */
-					*(vector signed int *)&samp[i] = d0;
-					*(vector signed int *)&samp[i+2] = d1;
-					*(vector signed int *)&samp[i+4] = d2;
-					*(vector signed int *)&samp[i+6] = d3;
+					*(__vector signed int *)&samp[i] = d0;
+					*(__vector signed int *)&samp[i+2] = d1;
+					*(__vector signed int *)&samp[i+4] = d2;
+					*(__vector signed int *)&samp[i+6] = d3;
 
 					i += 8;
 					vectorCount--;
 					s0 = s1;
 					sampleOffset += 8;
 				}
+#endif
 				if (sampleOffset == SND_CHUNK_SIZE) {
 					chunk = chunk->next;
 					samples = chunk->sndChunk;
@@ -226,4 +307,3 @@ void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER
 
 
 #endif
-

@@ -32,18 +32,32 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #if !defined(__APPLE__)
 #include <altivec.h>
+#undef bool
+#undef pixel
+#else
+/* Apple's -faltivec provides the AltiVec keywords without altivec.h,
+   but only the unprefixed spellings */
+#define __vector vector
 #endif
 
 void ProjectDlightTexture_altivec( void ) {
 	int		i, l;
 	vec_t	origin0, origin1, origin2;
 	float   texCoords0, texCoords1;
-	vector float floatColorVec0, floatColorVec1;
-	vector float modulateVec, colorVec, zero;
-	vector short colorShort;
-	vector signed int colorInt;
-	vector unsigned char floatColorVecPerm, modulatePerm, colorChar;
-	vector unsigned char vSel = VECCONST_UINT8(0x00, 0x00, 0x00, 0xff,
+#if defined(__VSX__)
+	__vector float floatColorVec0;
+	__vector float modulateVec, colorVec, zero;
+	__vector short colorShort;
+	__vector signed int colorInt;
+	__vector unsigned char colorChar;
+#else
+	__vector float floatColorVec0, floatColorVec1;
+	__vector float modulateVec, colorVec, zero;
+	__vector short colorShort;
+	__vector signed int colorInt;
+	__vector unsigned char floatColorVecPerm, modulatePerm, colorChar;
+#endif
+	__vector unsigned char vSel = VECCONST_UINT8(0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff);
@@ -56,19 +70,22 @@ void ProjectDlightTexture_altivec( void ) {
 	int		numIndexes;
 	float	scale;
 	float	radius;
-	vec3_t	floatColor;
+	// sized and aligned so the 16-byte vector load below stays in bounds
+	float	floatColor[4] Q_ALIGN(16) = { 0.0f, 0.0f, 0.0f, 0.0f };
 	float	modulate = 0.0f;
 
 	if ( !backEnd.refdef.num_dlights ) {
 		return;
 	}
 
+#if !defined(__VSX__)
 	// There has to be a better way to do this so that floatColor
 	// and/or modulate are already 16-byte aligned.
 	floatColorVecPerm = vec_lvsl(0,(float *)floatColor);
 	modulatePerm = vec_lvsl(0,(float *)&modulate);
-	modulatePerm = (vector unsigned char)vec_splat((vector unsigned int)modulatePerm,0);
-	zero = (vector float)vec_splat_s8(0);
+	modulatePerm = (__vector unsigned char)vec_splat((__vector unsigned int)modulatePerm,0);
+#endif
+	zero = (__vector float)vec_splat_s8(0);
 
 	for ( l = 0 ; l < backEnd.refdef.num_dlights ; l++ ) {
 		dlight_t	*dl;
@@ -108,9 +125,14 @@ void ProjectDlightTexture_altivec( void ) {
 			floatColor[1] = dl->color[1] * 255.0f;
 			floatColor[2] = dl->color[2] * 255.0f;
 		}
+#if defined(__VSX__)
+		// Load floatColor[0..2] into a vector (endian-safe)
+		floatColorVec0 = vec_xl(0, floatColor);
+#else
 		floatColorVec0 = vec_ld(0, floatColor);
 		floatColorVec1 = vec_ld(11, floatColor);
 		floatColorVec0 = vec_perm(floatColorVec0,floatColorVec0,floatColorVecPerm);
+#endif
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
 			vec_t dist0, dist1, dist2;
@@ -162,14 +184,18 @@ void ProjectDlightTexture_altivec( void ) {
 			}
 			clipBits[i] = clip;
 
+#if defined(__VSX__)
+			modulateVec = vec_splats(modulate);
+#else
 			modulateVec = vec_ld(0,(float *)&modulate);
 			modulateVec = vec_perm(modulateVec,modulateVec,modulatePerm);
+#endif
 			colorVec = vec_madd(floatColorVec0,modulateVec,zero);
 			colorInt = vec_cts(colorVec,0);	// RGBx
 			colorShort = vec_pack(colorInt,colorInt);		// RGBxRGBx
 			colorChar = vec_packsu(colorShort,colorShort);	// RGBxRGBxRGBxRGBx
 			colorChar = vec_sel(colorChar,vSel,vSel);		// RGBARGBARGBARGBA replace alpha with 255
-			vec_ste((vector unsigned int)colorChar,0,(unsigned int *)colors);	// store color
+			vec_ste((__vector unsigned int)colorChar,0,(unsigned int *)colors);	// store color
 		}
 
 		// build a list of triangles that need light
@@ -222,64 +248,105 @@ void RB_CalcDiffuseColor_altivec( unsigned char *colors )
 	int				ambientLightInt;
 	vec3_t			lightDir;
 	int				numVertexes;
-	vector unsigned char vSel = VECCONST_UINT8(0x00, 0x00, 0x00, 0xff,
+	__vector unsigned char vSel = VECCONST_UINT8(0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff,
                                                0x00, 0x00, 0x00, 0xff);
-	vector float ambientLightVec;
-	vector float directedLightVec;
-	vector float lightDirVec;
-	vector float normalVec0, normalVec1;
-	vector float incomingVec0, incomingVec1, incomingVec2;
-	vector float zero, jVec;
-	vector signed int jVecInt;
-	vector signed short jVecShort;
-	vector unsigned char jVecChar, normalPerm;
+	__vector float ambientLightVec;
+	__vector float directedLightVec;
+	__vector float lightDirVec;
+	__vector float normalVec0;
+	__vector float incomingVec0, incomingVec1, incomingVec2;
+	__vector float zero, jVec;
+	__vector signed int jVecInt;
+	__vector signed short jVecShort;
+	__vector unsigned char jVecChar;
+#if !defined(__VSX__)
+	__vector float normalVec1;
+	__vector unsigned char normalPerm;
+#endif
 	ent = backEnd.currentEntity;
 	ambientLightInt = ent->ambientLightInt;
+
+#if defined(__VSX__)
+	// Build the vectors element-wise: this is one-time setup, and a 16-byte
+	// vec_xl would read past the end of the vec3_t fields (directedLight is
+	// the last member of trRefEntity_t)
+	ambientLightVec = (__vector float){ ent->ambientLight[0],
+		ent->ambientLight[1], ent->ambientLight[2], 0.0f };
+	directedLightVec = (__vector float){ ent->directedLight[0],
+		ent->directedLight[1], ent->directedLight[2], 0.0f };
+	lightDirVec = (__vector float){ ent->lightDir[0],
+		ent->lightDir[1], ent->lightDir[2], 0.0f };
+#else
 	// A lot of this could be simplified if we made sure
 	// entities light info was 16-byte aligned.
 	jVecChar = vec_lvsl(0, ent->ambientLight);
-	ambientLightVec = vec_ld(0, (vector float *)ent->ambientLight);
-	jVec = vec_ld(11, (vector float *)ent->ambientLight);
+	ambientLightVec = vec_ld(0, (__vector float *)ent->ambientLight);
+	jVec = vec_ld(11, (__vector float *)ent->ambientLight);
 	ambientLightVec = vec_perm(ambientLightVec,jVec,jVecChar);
 
 	jVecChar = vec_lvsl(0, ent->directedLight);
-	directedLightVec = vec_ld(0,(vector float *)ent->directedLight);
-	jVec = vec_ld(11,(vector float *)ent->directedLight);
+	directedLightVec = vec_ld(0,(__vector float *)ent->directedLight);
+	jVec = vec_ld(11,(__vector float *)ent->directedLight);
 	directedLightVec = vec_perm(directedLightVec,jVec,jVecChar);	 
 
 	jVecChar = vec_lvsl(0, ent->lightDir);
-	lightDirVec = vec_ld(0,(vector float *)ent->lightDir);
-	jVec = vec_ld(11,(vector float *)ent->lightDir);
+	lightDirVec = vec_ld(0,(__vector float *)ent->lightDir);
+	jVec = vec_ld(11,(__vector float *)ent->lightDir);
 	lightDirVec = vec_perm(lightDirVec,jVec,jVecChar);	 
+#endif
 
-	zero = (vector float)vec_splat_s8(0);
+	zero = (__vector float)vec_splat_s8(0);
 	VectorCopy( ent->lightDir, lightDir );
 
 	v = tess.xyz[0];
 	normal = tess.normal[0];
 
+#if !defined(__VSX__)
 	normalPerm = vec_lvsl(0,normal);
+#endif
 	numVertexes = tess.numVertexes;
 	for (i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
-		normalVec0 = vec_ld(0,(vector float *)normal);
-		normalVec1 = vec_ld(11,(vector float *)normal);
+#if defined(__VSX__)
+		normalVec0 = vec_xl(0, normal);
+#else
+		normalVec0 = vec_ld(0,(__vector float *)normal);
+		normalVec1 = vec_ld(11,(__vector float *)normal);
 		normalVec0 = vec_perm(normalVec0,normalVec1,normalPerm);
+#endif
 		incomingVec0 = vec_madd(normalVec0, lightDirVec, zero);
+#if defined(__VSX__)
+		/* lightDirVec has w = 0, so a full horizontal sum leaves
+		   x*x' + y*y' + z*z' in every lane (up to rounding); unlike the
+		   splat-based reduction below this is endian-independent.  The
+		   splat then makes all lanes bit-identical - any lane is a
+		   correct full sum, so the index needs no endian adjustment */
+		incomingVec1 = vec_sld(incomingVec0,incomingVec0,4);
+		incomingVec2 = vec_add(incomingVec0,incomingVec1);
+		incomingVec1 = vec_sld(incomingVec2,incomingVec2,8);
+		incomingVec2 = vec_add(incomingVec2,incomingVec1);
+		incomingVec0 = vec_splat(incomingVec2,0);
+		incomingVec0 = vec_max(incomingVec0,zero);
+#else
 		incomingVec1 = vec_sld(incomingVec0,incomingVec0,4);
 		incomingVec2 = vec_add(incomingVec0,incomingVec1);
 		incomingVec1 = vec_sld(incomingVec1,incomingVec1,4);
 		incomingVec2 = vec_add(incomingVec2,incomingVec1);
 		incomingVec0 = vec_splat(incomingVec2,0);
 		incomingVec0 = vec_max(incomingVec0,zero);
-		normalPerm = vec_lvsl(12,normal);
+#endif
+		/* no normalPerm update needed: tess.normal rows are vec4_t
+		   (16-byte stride), so the alignment computed before the loop
+		   never changes.  The old vec_lvsl(12,normal) update was a
+		   leftover from a 12-byte-stride layout and rotated every
+		   normal after the first */
 		jVec = vec_madd(incomingVec0, directedLightVec, ambientLightVec);
 		jVecInt = vec_cts(jVec,0);	// RGBx
 		jVecShort = vec_pack(jVecInt,jVecInt);		// RGBxRGBx
 		jVecChar = vec_packsu(jVecShort,jVecShort);	// RGBxRGBxRGBxRGBx
 		jVecChar = vec_sel(jVecChar,vSel,vSel);		// RGBARGBARGBARGBA replace alpha with 255
-		vec_ste((vector unsigned int)jVecChar,0,(unsigned int *)&colors[i*4]);	// store color
+		vec_ste((__vector unsigned int)jVecChar,0,(unsigned int *)&colors[i*4]);	// store color
 	}
 }
 
@@ -308,22 +375,30 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 	numVerts = surf->numVerts;
 
 	if ( backlerp == 0 ) {
-		vector signed short newNormalsVec0;
-		vector signed short newNormalsVec1;
-		vector signed int newNormalsIntVec;
-		vector float newNormalsFloatVec;
-		vector float newXyzScaleVec;
-		vector unsigned char newNormalsLoadPermute;
-		vector unsigned char newNormalsStorePermute;
-		vector float zero;
+#if defined(__VSX__)
+		__vector float newXyzScaleVec;
+		__vector float zero;
 		
+		newXyzScaleVec = vec_splats(newXyzScale);
+		zero = (__vector float)vec_splat_s8(0);
+#else
+		__vector signed short newNormalsVec0;
+		__vector signed short newNormalsVec1;
+		__vector signed int newNormalsIntVec;
+		__vector float newNormalsFloatVec;
+		__vector float newXyzScaleVec;
+		__vector unsigned char newNormalsLoadPermute;
+		__vector unsigned char newNormalsStorePermute;
+		__vector float zero;
+
 		newNormalsStorePermute = vec_lvsl(0,(float *)&newXyzScaleVec);
-		newXyzScaleVec = *(vector float *)&newXyzScale;
+		newXyzScaleVec = *(__vector float *)&newXyzScale;
 		newXyzScaleVec = vec_perm(newXyzScaleVec,newXyzScaleVec,newNormalsStorePermute);
 		newXyzScaleVec = vec_splat(newXyzScaleVec,0);		
 		newNormalsLoadPermute = vec_lvsl(0,newXyz);
 		newNormalsStorePermute = vec_lvsr(0,outXyz);
-		zero = (vector float)vec_splat_s8(0);
+		zero = (__vector float)vec_splat_s8(0);
+#endif
 		//
 		// just copy the vertexes
 		//
@@ -331,6 +406,22 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 			newXyz += 4, newNormals += 4,
 			outXyz += 4, outNormal += 4) 
 		{
+#if defined(__VSX__)
+			__vector signed short newNormalsVec0;
+			__vector signed int newNormalsIntVec;
+			__vector float newNormalsFloatVec;
+
+			// Build from the 4 shorts of this vertex; a 16-byte vector
+			// load could read past the end of the xyz data on the last
+			// vertex.  Vector literals are in memory element order on
+			// both endians.
+			newNormalsVec0 = (__vector signed short){ newXyz[0],
+				newXyz[1], newXyz[2], newXyz[3], 0, 0, 0, 0 };
+			// Unpack first 4 shorts to signed int
+			newNormalsIntVec = vec_unpackh(newNormalsVec0);
+			newNormalsFloatVec = vec_ctf(newNormalsIntVec,0);
+			newNormalsFloatVec = vec_madd(newNormalsFloatVec,newXyzScaleVec,zero);
+#else
 			newNormalsLoadPermute = vec_lvsl(0,newXyz);
 			newNormalsStorePermute = vec_lvsr(0,outXyz);
 			newNormalsVec0 = vec_ld(0,newXyz);
@@ -340,9 +431,7 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 			newNormalsFloatVec = vec_ctf(newNormalsIntVec,0);
 			newNormalsFloatVec = vec_madd(newNormalsFloatVec,newXyzScaleVec,zero);
 			newNormalsFloatVec = vec_perm(newNormalsFloatVec,newNormalsFloatVec,newNormalsStorePermute);
-			//outXyz[0] = newXyz[0] * newXyzScale;
-			//outXyz[1] = newXyz[1] * newXyzScale;
-			//outXyz[2] = newXyz[2] * newXyzScale;
+#endif
 
 			lat = ( newNormals[0] >> 8 ) & 0xff;
 			lng = ( newNormals[0] & 0xff );
@@ -357,9 +446,14 @@ void LerpMeshVertexes_altivec(md3Surface_t *surf, float backlerp)
 			outNormal[1] = tr.sinTable[lat] * tr.sinTable[lng];
 			outNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];
 
+#if defined(__VSX__)
+			// Store xyz result (endian-safe)
+			vec_xst(newNormalsFloatVec, 0, outXyz);
+#else
 			vec_ste(newNormalsFloatVec,0,outXyz);
 			vec_ste(newNormalsFloatVec,4,outXyz);
 			vec_ste(newNormalsFloatVec,8,outXyz);
+#endif
 		}
 	} else {
 		//
