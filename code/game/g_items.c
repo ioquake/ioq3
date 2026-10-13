@@ -363,15 +363,33 @@ void RespawnItem( gentity_t *ent ) {
 		}
 		master = ent->teammaster;
 
-		for (count = 0, ent = master; ent; ent = ent->teamchain, count++)
-			;
+		for (count = 0, ent = master; ent; ent = ent->teamchain) {
+			// Skip disabled (possibly through a disable_%s cvar) items
+			if ( !ent->item ) {
+				continue;
+			}
+
+			count++;
+		}
+
+		// No valid items to spawn
+		if ( count == 0 ) {
+			return;
+		}
 
 		choice = rand() % count;
 
-		for (count = 0, ent = master; ent && count < choice; ent = ent->teamchain, count++)
-			;
+		for (count = 0, ent = master; ent && count < choice; ent = ent->teamchain) {
+			// Skip disabled (possibly through a disable_%s cvar) items
+			if ( !ent->item ) {
+				continue;
+			}
+
+			count++;
+		}
 	}
 
+	// ent->item should not be nullish to this time
 	if (!ent) {
 		return;
 	}
@@ -883,14 +901,18 @@ Sets the clipping size and plants the object on the floor.
 
 Items can't be immediately dropped to floor, because they might
 be on an entity that hasn't spawned yet.
+
+forceSpawn lets to bypass check for disabled through disable_%s
+cvar items and spawn them anyway. Used for spawning items through
+third party sources like give command.
 ============
 */
-void G_SpawnItem (gentity_t *ent, gitem_t *item) {
+void G_SpawnItem (gentity_t *ent, gitem_t *item, qboolean forceSpawn) {
 	G_SpawnFloat( "random", "0", &ent->random );
 	G_SpawnFloat( "wait", "0", &ent->wait );
 
 	RegisterItem( item );
-	if ( G_ItemDisabled(item) )
+	if ( !forceSpawn && G_ItemDisabled(item) )
 		return;
 
 	ent->item = item;

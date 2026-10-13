@@ -277,7 +277,7 @@ qboolean G_CallSpawn( gentity_t *ent ) {
 	// check item spawn functions
 	for ( item=bg_itemlist+1 ; item->classname ; item++ ) {
 		if ( !strcmp(item->classname, ent->classname) ) {
-			G_SpawnItem( ent, item );
+			G_SpawnItem( ent, item, qfalse );
 			return qtrue;
 		}
 	}
