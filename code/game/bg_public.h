@@ -48,11 +48,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYER_WIDTH		15
 #define	MINS_Z				-24
-#define DEFAULT_HEIGHT		32
+#define MAXS_Z				32
 #define	DEFAULT_VIEWHEIGHT	26
-#define CROUCH_HEIGHT		16
+#define CROUCH_MAXS_Z		16
 #define CROUCH_VIEWHEIGHT	12
-#define DEAD_HEIGHT			-8
+#define DEAD_MAXS_Z			-8
 #define	DEAD_VIEWHEIGHT		-16
 #define INVUL_RADIUS		42
 
