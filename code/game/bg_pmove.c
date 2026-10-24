@@ -192,7 +192,7 @@ static void PM_Friction( void ) {
 	drop = 0;
 
 	// apply ground friction
-	if ( pm->waterlevel <= 1 ) {
+	if ( pm->waterlevel <= WATERLEVEL_FEET ) {
 		if ( pml.walking && !(pml.groundTrace.surfaceFlags & SURF_SLICK) ) {
 			// if getting knocked back, no friction
 			if ( ! (pm->ps->pm_flags & PMF_TIME_KNOCKBACK) ) {
@@ -406,7 +406,7 @@ static qboolean	PM_CheckWaterJump( void ) {
 	}
 
 	// check for water jump
-	if ( pm->waterlevel != 2 ) {
+	if ( pm->waterlevel != WATERLEVEL_HALFWAY ) {
 		return qfalse;
 	}
 
@@ -699,7 +699,7 @@ static void PM_WalkMove( void ) {
 	float		accelerate;
 	float		vel;
 
-	if ( pm->waterlevel > 2 && DotProduct( pml.forward, pml.groundTrace.plane.normal ) > 0 ) {
+	if ( pm->waterlevel > WATERLEVEL_HALFWAY && DotProduct( pml.forward, pml.groundTrace.plane.normal ) > 0 ) {
 		// begin swimming
 		PM_WaterMove();
 		return;
@@ -708,7 +708,7 @@ static void PM_WalkMove( void ) {
 
 	if ( PM_CheckJump () ) {
 		// jumped away
-		if ( pm->waterlevel > 1 ) {
+		if ( pm->waterlevel > WATERLEVEL_FEET ) {
 			PM_WaterMove();
 		} else {
 			PM_AirMove();
@@ -960,15 +960,15 @@ static void PM_CrashLand( void ) {
 	}
 
 	// never take falling damage if completely underwater
-	if ( pm->waterlevel == 3 ) {
+	if ( pm->waterlevel == WATERLEVEL_SUBMERGED ) {
 		return;
 	}
 
 	// reduce falling damage if there is standing water
-	if ( pm->waterlevel == 2 ) {
+	if ( pm->waterlevel == WATERLEVEL_HALFWAY ) {
 		delta *= 0.25;
 	}
-	if ( pm->waterlevel == 1 ) {
+	if ( pm->waterlevel == WATERLEVEL_FEET ) {
 		delta *= 0.5;
 	}
 
@@ -1210,7 +1210,7 @@ static void PM_SetWaterLevel( void ) {
 	//
 	// get waterlevel, accounting for ducking
 	//
-	pm->waterlevel = 0;
+	pm->waterlevel = WATERLEVEL_NONE;
 	pm->watertype = 0;
 
 	point[0] = pm->ps->origin[0];
@@ -1223,15 +1223,15 @@ static void PM_SetWaterLevel( void ) {
 		sample1 = sample2 / 2;
 
 		pm->watertype = cont;
-		pm->waterlevel = 1;
+		pm->waterlevel = WATERLEVEL_FEET;
 		point[2] = pm->ps->origin[2] + MINS_Z + sample1;
 		cont = pm->pointcontents (point, pm->ps->clientNum );
 		if ( cont & MASK_WATER ) {
-			pm->waterlevel = 2;
+			pm->waterlevel = WATERLEVEL_HALFWAY;
 			point[2] = pm->ps->origin[2] + MINS_Z + sample2;
 			cont = pm->pointcontents (point, pm->ps->clientNum );
 			if ( cont & MASK_WATER ){
-				pm->waterlevel = 3;
+				pm->waterlevel = WATERLEVEL_SUBMERGED;
 			}
 		}
 	}
@@ -1336,7 +1336,7 @@ static void PM_Footsteps( void ) {
 			PM_ContinueLegsAnim( LEGS_IDLECR );
 		}
 		// airborne leaves position in cycle intact, but doesn't advance
-		if ( pm->waterlevel > 1 ) {
+		if ( pm->waterlevel > WATERLEVEL_FEET ) {
 			PM_ContinueLegsAnim( LEGS_SWIM );
 		}
 		return;
@@ -1404,18 +1404,18 @@ static void PM_Footsteps( void ) {
 
 	// if we just crossed a cycle boundary, play an appropriate footstep event
 	if ( ( ( old + 64 ) ^ ( pm->ps->bobCycle + 64 ) ) & 128 ) {
-		if ( pm->waterlevel == 0 ) {
+		if ( pm->waterlevel == WATERLEVEL_NONE ) {
 			// on ground will only play sounds if running
 			if ( footstep && !pm->noFootsteps ) {
 				PM_AddEvent( PM_FootstepForSurface() );
 			}
-		} else if ( pm->waterlevel == 1 ) {
+		} else if ( pm->waterlevel == WATERLEVEL_FEET ) {
 			// splashing
 			PM_AddEvent( EV_FOOTSPLASH );
-		} else if ( pm->waterlevel == 2 ) {
+		} else if ( pm->waterlevel == WATERLEVEL_HALFWAY ) {
 			// wading / swimming at surface
 			PM_AddEvent( EV_SWIM );
-		} else if ( pm->waterlevel == 3 ) {
+		} else if ( pm->waterlevel == WATERLEVEL_SUBMERGED ) {
 			// no sound when completely underwater
 
 		}
@@ -1447,14 +1447,14 @@ static void PM_WaterEvents( void ) {		// FIXME?
 	//
 	// check for head just going under water
 	//
-	if (pml.previous_waterlevel != 3 && pm->waterlevel == 3) {
+	if (pml.previous_waterlevel != WATERLEVEL_SUBMERGED && pm->waterlevel == WATERLEVEL_SUBMERGED) {
 		PM_AddEvent( EV_WATER_UNDER );
 	}
 
 	//
 	// check for head just coming out of water
 	//
-	if (pml.previous_waterlevel == 3 && pm->waterlevel != 3) {
+	if (pml.previous_waterlevel == WATERLEVEL_SUBMERGED && pm->waterlevel != WATERLEVEL_SUBMERGED) {
 		PM_AddEvent( EV_WATER_CLEAR );
 	}
 }
@@ -1842,7 +1842,7 @@ void PmoveSingle (pmove_t *pmove) {
 	// clear results
 	pm->numtouch = 0;
 	pm->watertype = 0;
-	pm->waterlevel = 0;
+	pm->waterlevel = WATERLEVEL_NONE;
 
 	if ( pm->ps->stats[STAT_HEALTH] <= 0 ) {
 		pm->tracemask &= ~CONTENTS_BODY;	// corpses can fly through bodies
@@ -1981,7 +1981,7 @@ void PmoveSingle (pmove_t *pmove) {
 		PM_AirMove();
 	} else if (pm->ps->pm_flags & PMF_TIME_WATERJUMP) {
 		PM_WaterJumpMove();
-	} else if ( pm->waterlevel > 1 ) {
+	} else if ( pm->waterlevel > WATERLEVEL_FEET ) {
 		// swimming
 		PM_WaterMove();
 	} else if ( pml.walking ) {

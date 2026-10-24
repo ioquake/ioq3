@@ -161,6 +161,12 @@ typedef enum {
 
 #define	PMF_ALL_TIMES	(PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK)
 
+// pmove->waterlevel
+#define WATERLEVEL_NONE 0		// no water at all
+#define WATERLEVEL_FEET 1		// just the feet are under water
+#define WATERLEVEL_HALFWAY 2 	// wading / swimming at surface
+#define WATERLEVEL_SUBMERGED 3 	// fully underwater (max possible waterlevel)
+
 #define	MAXTOUCH	32
 typedef struct {
 	// state (in / out)
