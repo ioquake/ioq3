@@ -177,6 +177,8 @@ void	SNDDMA_BeginPainting (void);
 
 void	SNDDMA_Submit(void);
 
+void	SNDDMA_SoundInfo(void);
+
 #ifdef USE_VOIP
 void SNDDMA_StartCapture(void);
 int SNDDMA_AvailableCaptureSamples(void);
