@@ -22,6 +22,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_surf.c
 #include "tr_local.h"
 
+#if idppc_altivec && defined(__VSX__)
+#include <altivec.h>
+#undef bool
+#undef pixel
+#endif
+
 /*
 
   THIS ENTIRE FILE IS BACK END
@@ -559,6 +565,41 @@ void VectorArrayNormalize(vec4_t *normals, unsigned int count)
 //    assert(count);
         
 #if idppc
+#if idppc_altivec && defined(__VSX__)
+    {
+        // VSX vectorized path: use vec_rsqrte + Newton-Raphson
+        __vector float zero = (__vector float){0.0f, 0.0f, 0.0f, 0.0f};
+        __vector float half = vec_splats(0.5f);
+        __vector float three_half = vec_splats(1.5f);
+        // vector literals are in memory element order on both endians,
+        // so this masks off the w component of a vec_xl load
+        __vector unsigned int xyzMask = (__vector unsigned int){~0U, ~0U, ~0U, 0};
+        float *components = (float *)normals;
+
+        while (count--) {
+            // Load xyz (4th component ignored)
+            __vector float v = vec_xl(0, components);
+            // dot = x*x + y*y + z*z, w zeroed so it can't pollute the sum
+            __vector float sq = vec_madd(v, v, zero);
+            sq = (__vector float)vec_and((__vector unsigned int)sq, xyzMask);
+            // full horizontal sum: every lane ends up with x*x + y*y + z*z,
+            // independent of vec_sld's endian behavior
+            __vector float dot = vec_add(sq, vec_sld(sq, sq, 4));
+            dot = vec_add(dot, vec_sld(dot, dot, 8));
+            // rsqrt estimate + Newton-Raphson refinement
+            __vector float y0 = vec_rsqrte(dot);
+            __vector float half_dot = vec_mul(half, dot);
+            __vector float y0_sq = vec_madd(y0, y0, zero);
+            __vector float factor = vec_nmsub(half_dot, y0_sq, three_half);
+            __vector float inv_len = vec_madd(y0, factor, zero);
+            // Scale xyz by inv_len
+            __vector float result = vec_mul(v, inv_len);
+            // Store back xyz (stores 4 floats, w is overwritten but unused)
+            vec_xst(result, 0, components);
+            components += 4;
+        }
+    }
+#else
     {
         float half = 0.5;
         float one  = 1.0;
@@ -569,7 +610,7 @@ void VectorArrayNormalize(vec4_t *normals, unsigned int count)
         // refinement step to get a little more precision.  This seems to yield results
         // that are correct to 3 decimal places and usually correct to at least 4 (sometimes 5).
         // (That is, for the given input range of about 0.6 to 2.0).
-        do {
+        while (count--) {
             float x, y, z;
             float B, y0, y1;
             
@@ -579,7 +620,7 @@ void VectorArrayNormalize(vec4_t *normals, unsigned int count)
             components += 4;
             B = x*x + y*y + z*z;
 
-#ifdef __GNUC__            
+#ifdef __GNUC__
             asm("frsqrte %0,%1" : "=f" (y0) : "f" (B));
 #else
 			y0 = __frsqrte(B);
@@ -592,8 +633,9 @@ void VectorArrayNormalize(vec4_t *normals, unsigned int count)
             z = z * y1;
             components[-3] = y;
             components[-2] = z;
-        } while(count--);
+        }
     }
+#endif
 #else // No assembly version for this architecture, or C_ONLY defined
 	// given the input, it's safe to call VectorNormalizeFast
     while (count--) {
