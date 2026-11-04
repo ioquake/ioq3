@@ -37,11 +37,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef DEDICATED
 #ifdef USE_INTERNAL_SDL_HEADERS
-#	include "SDL.h"
-#	include "SDL_cpuinfo.h"
+#	include "SDL3/SDL.h"
+#	include "SDL3/SDL_main.h"
+#	include "SDL3/SDL_cpuinfo.h"
 #else
-#	include <SDL.h>
-#	include <SDL_cpuinfo.h>
+#	include <SDL3/SDL.h>
+#	include <SDL3/SDL_main.h>
+#	include <SDL3/SDL_cpuinfo.h>
 #endif
 #endif
 
@@ -341,8 +343,6 @@ cpuFeatures_t Sys_GetProcessorFeatures( void )
 	cpuFeatures_t features = 0;
 
 #ifndef DEDICATED
-	if( SDL_HasRDTSC( ) )      features |= CF_RDTSC;
-	if( SDL_Has3DNow( ) )      features |= CF_3DNOW;
 	if( SDL_HasMMX( ) )        features |= CF_MMX;
 	if( SDL_HasSSE( ) )        features |= CF_SSE;
 	if( SDL_HasSSE2( ) )       features |= CF_SSE2;
@@ -602,8 +602,9 @@ void *Sys_LoadGameDll(const char *name,
 	vmMainProc *entryPoint,
 	intptr_t (*systemcalls)(intptr_t, ...))
 {
+	typedef void (*dllEntry_t)(intptr_t (*syscallptr)(intptr_t, ...));
+	dllEntry_t dllEntry;
 	void *libHandle;
-	void (*dllEntry)(intptr_t (*syscallptr)(intptr_t, ...));
 
 	assert(name);
 
@@ -622,8 +623,8 @@ void *Sys_LoadGameDll(const char *name,
 		return NULL;
 	}
 
-	dllEntry = Sys_LoadFunction( libHandle, "dllEntry" );
-	*entryPoint = Sys_LoadFunction( libHandle, "vmMain" );
+	dllEntry = (dllEntry_t)Sys_LoadFunction( libHandle, "dllEntry" );
+	*entryPoint = (vmMainProc)Sys_LoadFunction( libHandle, "vmMain" );
 
 	if ( !*entryPoint || !dllEntry )
 	{
@@ -798,25 +799,27 @@ int main( int argc, char **argv )
 	// SDL version check
 
 	// Compile time
-#	if !SDL_VERSION_ATLEAST(MINSDL_MAJOR,MINSDL_MINOR,MINSDL_PATCH)
+#	if !SDL_VERSION_ATLEAST(MINSDL_MAJOR,MINSDL_MINOR,MINSDL_MICRO)
 #		error A more recent version of SDL is required
 #	endif
 
 	// Run time
-	SDL_version ver;
-	SDL_GetVersion( &ver );
+	int version = SDL_GetVersion();
+	int major = SDL_VERSIONNUM_MAJOR(version);
+	int minor = SDL_VERSIONNUM_MINOR(version);
+	int micro = SDL_VERSIONNUM_MICRO(version);
 
 #define MINSDL_VERSION \
 	XSTRING(MINSDL_MAJOR) "." \
 	XSTRING(MINSDL_MINOR) "." \
-	XSTRING(MINSDL_PATCH)
+	XSTRING(MINSDL_MICRO)
 
-	if( SDL_VERSIONNUM( ver.major, ver.minor, ver.patch ) <
-			SDL_VERSIONNUM( MINSDL_MAJOR, MINSDL_MINOR, MINSDL_PATCH ) )
+	if( SDL_VERSIONNUM( major, minor, micro ) <
+			SDL_VERSIONNUM( MINSDL_MAJOR, MINSDL_MINOR, MINSDL_MICRO ) )
 	{
 		Sys_Dialog( DT_ERROR, va( "SDL version " MINSDL_VERSION " or greater is required, "
 			"but only version %d.%d.%d was found. You may be able to obtain a more recent copy "
-			"from https://www.libsdl.org/.", ver.major, ver.minor, ver.patch ), "SDL Library Too Old" );
+			"from https://www.libsdl.org/.", major, minor, micro ), "SDL Library Too Old" );
 
 		Sys_Exit( 1 );
 	}
