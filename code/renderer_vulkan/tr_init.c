@@ -106,6 +106,7 @@ void R_Init( void )
 	ri.Cmd_AddCommand( "skinlist", R_SkinList_f );
 
     ri.Cmd_AddCommand( "vkinfo", vulkanInfo_f );
+    ri.Cmd_AddCommand( "gfxinfo", vulkanInfo_f );
     ri.Cmd_AddCommand( "minimize", vk_minimizeWindow );
 
     ri.Cmd_AddCommand( "pipelineList", R_PipelineList_f );
@@ -160,6 +161,7 @@ void RE_Shutdown( qboolean destroyWindow )
     ri.Cmd_RemoveCommand("minimize");
 	
 	ri.Cmd_RemoveCommand("vkinfo");
+	ri.Cmd_RemoveCommand("gfxinfo");
     ri.Cmd_RemoveCommand("pipelineList");
     ri.Cmd_RemoveCommand("gpuMem");
     ri.Cmd_RemoveCommand("printOR");

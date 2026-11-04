@@ -198,176 +198,155 @@ void R_glConfigInit(void)
 // ==================================================
 // ==================================================
 
-static void printDeviceExtensions(void)
+static const char *vendorName(uint32_t vendorID)
 {
-    uint32_t nDevExts = 0;
-
-    // To query the extensions available to a given physical device
-    VK_CHECK( qvkEnumerateDeviceExtensionProperties( vk.physical_device, NULL, &nDevExts, NULL) );
-
-    assert(nDevExts > 0);
-
-    VkExtensionProperties* pDevExt = 
-        (VkExtensionProperties *) malloc(sizeof(VkExtensionProperties) * nDevExts);
-
-    qvkEnumerateDeviceExtensionProperties(
-            vk.physical_device, NULL, &nDevExts, pDevExt);
-
-
-    ri.Printf(PRINT_ALL, "--------- Total %d Device Extension Supported ---------\n", nDevExts);
-    uint32_t i;
-    for (i=0; i<nDevExts; ++i)
-    {
-        ri.Printf(PRINT_ALL, " %s \n", pDevExt[i].extensionName);
-    }
-    ri.Printf(PRINT_ALL, "--------- ----------------------------------- ---------\n");
-
-    free(pDevExt);
+	switch (vendorID)
+	{
+	case 0x1002: return "Advanced Micro Devices, Inc.";
+	case 0x1010: return "Imagination Technologies";
+	case 0x106B: return "Apple Inc.";
+	case 0x10DE: return "NVIDIA";
+	case 0x13B5: return "ARM";
+	case 0x5143: return "Qualcomm";
+	case 0x8086: return "Intel Corporation";
+	case 0x10005: return "Mesa";	// VK_VENDOR_ID_MESA, e.g. lavapipe
+	default: return "unknown";
+	}
 }
 
 
-static void printInstanceExtensions(int setting)
+static const char *deviceTypeName(VkPhysicalDeviceType type)
 {
-    uint32_t i = 0;
-
-	uint32_t nInsExt = 0;
-    // To retrieve a list of supported extensions before creating an instance
-	VK_CHECK( qvkEnumerateInstanceExtensionProperties( NULL, &nInsExt, NULL) );
-
-    assert(nInsExt > 0);
-
-    VkExtensionProperties* pInsExt = (VkExtensionProperties *) malloc(sizeof(VkExtensionProperties) * nInsExt);
-    
-    VK_CHECK(qvkEnumerateInstanceExtensionProperties( NULL, &nInsExt, pInsExt));
-
-    ri.Printf(PRINT_ALL, "\n");
-
-    ri.Printf(PRINT_ALL, "----- Total %d Instance Extension Supported -----\n", nInsExt);
-    for (i = 0; i < nInsExt; ++i)
-    {            
-        ri.Printf(PRINT_ALL, "%s\n", pInsExt[i].extensionName );
-    }
-    ri.Printf(PRINT_ALL, "----- ------------------------------------- -----\n\n");
-   
-    // =================================================================
-
-    // we enabled all the instance extenstion, dose this reasonable???
-    // so we copy it to glConfig.ext str, 
-    // split it with create instance function so that made it clear and clean
-    if( setting )
-    {
-        uint32_t indicator = 0;
-
-        for (i = 0; i < nInsExt; ++i)
-        {    
-            uint32_t len = strlen(pInsExt[i].extensionName);
-            memcpy(glConfig.extensions_string + indicator, 
-                    pInsExt[i].extensionName, len);
-            indicator += len;
-            glConfig.extensions_string[indicator++] = ' ';
-        }
-
-        free(pInsExt);
-    }
-    // ==================================================================
-/*    
-    uint32_t nDevExts = 0;
-
-    // To query the extensions available to a given physical device
-    VK_CHECK( qvkEnumerateDeviceExtensionProperties( vk.physical_device, NULL, &nDevExts, NULL) );
-
-    assert(nDevExts > 0);
-
-    VkExtensionProperties* pDevExt = 
-        (VkExtensionProperties *) malloc(sizeof(VkExtensionProperties) * nDevExts);
-
-    qvkEnumerateDeviceExtensionProperties(
-            vk.physical_device, NULL, &nDevExts, pDevExt);
-
-
-    ri.Printf(PRINT_ALL, "---- Total %d Device Extension Supported ----\n", nDevExts);
-    uint32_t i;
-    for (i=0; i<nDevExts; ++i)
-    {
-        ri.Printf(PRINT_ALL, " %s \n", pDevExt[i].extensionName);
-    }
-    ri.Printf(PRINT_ALL, "---- ----------------------------------- ----\n\n");
-
-// There much more device extentions, beyound UI driver info can display
-// and we only use VK_KHR_swapchain for now, so won't copy that,
-// just print it out.
-    
-    for (i = 0; i < nDevExts; ++i)
-    {    
-        uint32_t len = strlen(pDevExt[i].extensionName);
-        memcpy(glConfig.extensions_string + indicator, pDevExt[i].extensionName, len);
-        indicator += len;
-        glConfig.extensions_string[indicator++] = ' ';
-    }
-    free(pDevExt);
-*/
-
+	switch (type)
+	{
+	case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "integrated GPU";
+	case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "discrete GPU";
+	case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "virtual GPU";
+	case VK_PHYSICAL_DEVICE_TYPE_CPU: return "CPU";
+	default: return "other";
+	}
 }
 
 
-void vulkanInfo_f( void ) 
+// driverVersion is vendor-specific, most drivers use the VK_MAKE_VERSION encoding
+static void driverVersionString(const VkPhysicalDeviceProperties *props, char *buf, size_t size)
 {
-    ri.Printf( PRINT_ALL, "\nActive 3D API: Vulkan\n" );
+	uint32_t v = props->driverVersion;
 
-    // To query general properties of physical devices once enumerated
-    VkPhysicalDeviceProperties props;
-    qvkGetPhysicalDeviceProperties(vk.physical_device, &props);
+	if (props->vendorID == 0x10DE)
+	{
+		Com_sprintf(buf, size, "%u.%u.%u.%u",
+			(v >> 22) & 0x3ff, (v >> 14) & 0xff, (v >> 6) & 0xff, v & 0x3f);
+	}
+#ifdef _WIN32
+	else if (props->vendorID == 0x8086)
+	{
+		Com_sprintf(buf, size, "%u.%u", v >> 14, v & 0x3fff);
+	}
+#endif
+	else
+	{
+		Com_sprintf(buf, size, "%u.%u.%u",
+			VK_VERSION_MAJOR(v), VK_VERSION_MINOR(v), VK_VERSION_PATCH(v));
+	}
+}
 
-    uint32_t major = VK_VERSION_MAJOR(props.apiVersion);
-    uint32_t minor = VK_VERSION_MINOR(props.apiVersion);
-    uint32_t patch = VK_VERSION_PATCH(props.apiVersion);
 
-    const char* device_type;
-    if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-        device_type = "INTEGRATED_GPU";
-    else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-        device_type = "DISCRETE_GPU";
-    else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
-        device_type = "VIRTUAL_GPU";
-    else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
-        device_type = "CPU";
-    else
-        device_type = "Unknown";
+// Print "label: ext1 ext2 ...", like GL_EXTENSIONS in the GL renderers.
+// Returns the list, to be freed by the caller, or NULL.
+static VkExtensionProperties *printExtensions(const char *label, qboolean device, uint32_t *count)
+{
+	VkExtensionProperties *ext = NULL;
+	uint32_t i;
+	VkResult result;
 
-    const char* vendor_name = "unknown";
-    if (props.vendorID == 0x1002) {
-        vendor_name = "Advanced Micro Devices, Inc.";
-    } else if (props.vendorID == 0x10DE) {
-        vendor_name = "NVIDIA";
-    } else if (props.vendorID == 0x8086) {
-        vendor_name = "Intel Corporation";
-    }
+	*count = 0;
+	if (device)
+		result = qvkEnumerateDeviceExtensionProperties(vk.physical_device, NULL, count, NULL);
+	else
+		result = qvkEnumerateInstanceExtensionProperties(NULL, count, NULL);
 
-    ri.Printf(PRINT_ALL, "Vk api version: %d.%d.%d\n", major, minor, patch);
-    ri.Printf(PRINT_ALL, "Vk driver version: %d\n", props.driverVersion);
-    ri.Printf(PRINT_ALL, "Vk vendor id: 0x%X (%s)\n", props.vendorID, vendor_name);
-    ri.Printf(PRINT_ALL, "Vk device id: 0x%X\n", props.deviceID);
-    ri.Printf(PRINT_ALL, "Vk device type: %s\n", device_type);
-    ri.Printf(PRINT_ALL, "Vk device name: %s\n", props.deviceName);
+	if (result == VK_SUCCESS && *count > 0)
+	{
+		ext = malloc(sizeof(VkExtensionProperties) * *count);
+		if (ext != NULL)
+		{
+			if (device)
+				result = qvkEnumerateDeviceExtensionProperties(vk.physical_device, NULL, count, ext);
+			else
+				result = qvkEnumerateInstanceExtensionProperties(NULL, count, ext);
+		}
+		if (ext == NULL || result != VK_SUCCESS)
+		{
+			free(ext);
+			ext = NULL;
+			*count = 0;
+		}
+	}
 
-    // 
-    char tmpBuf[128] = {0};
-    snprintf(tmpBuf, 128, " Vk api version: %d.%d.%d ", major, minor, patch);
-    strncpy( glConfig.version_string, tmpBuf, sizeof( glConfig.version_string ) );
-	strncpy( glConfig.vendor_string, vendor_name, sizeof( glConfig.vendor_string ) );
-	
-    strncpy( glConfig.renderer_string, props.deviceName, sizeof( glConfig.renderer_string ) );
-    if (*glConfig.renderer_string && 
-            glConfig.renderer_string[strlen(glConfig.renderer_string) - 1] == '\n')
-         glConfig.renderer_string[strlen(glConfig.renderer_string) - 1] = 0;  
-    
-	
-    //
-	// Info that for UI display
-	//
-    printInstanceExtensions(1);
+	ri.Printf(PRINT_ALL, "%s: ", label);
+	for (i = 0; i < *count; i++)
+		ri.Printf(PRINT_ALL, "%s ", ext[i].extensionName);
+	ri.Printf(PRINT_ALL, "\n");
 
-    printDeviceExtensions();
+	return ext;
+}
 
-    gpuMemUsageInfo_f();
+
+void vulkanInfo_f( void )
+{
+	const char *fsstrings[] = { "windowed", "fullscreen" };
+	VkPhysicalDeviceProperties props;
+	VkExtensionProperties *ext;
+	uint32_t numExt, i;
+	size_t len = 0, nameLen;
+	char driverVersion[32];
+
+	// To query general properties of physical devices once enumerated
+	qvkGetPhysicalDeviceProperties(vk.physical_device, &props);
+	driverVersionString(&props, driverVersion, sizeof(driverVersion));
+
+	ri.Printf(PRINT_ALL, "\nVK_VENDOR: %s (0x%X)\n", vendorName(props.vendorID), props.vendorID);
+	ri.Printf(PRINT_ALL, "VK_RENDERER: %s (%s, device 0x%X)\n",
+		props.deviceName, deviceTypeName(props.deviceType), props.deviceID);
+	ri.Printf(PRINT_ALL, "VK_VERSION: %u.%u.%u\n", VK_VERSION_MAJOR(props.apiVersion),
+		VK_VERSION_MINOR(props.apiVersion), VK_VERSION_PATCH(props.apiVersion));
+	ri.Printf(PRINT_ALL, "VK_DRIVER_VERSION: %s\n", driverVersion);
+
+	Q_strncpyz(glConfig.vendor_string, vendorName(props.vendorID), sizeof(glConfig.vendor_string));
+	Q_strncpyz(glConfig.renderer_string, props.deviceName, sizeof(glConfig.renderer_string));
+	Com_sprintf(glConfig.version_string, sizeof(glConfig.version_string), "Vulkan %u.%u.%u, driver %s",
+		VK_VERSION_MAJOR(props.apiVersion), VK_VERSION_MINOR(props.apiVersion),
+		VK_VERSION_PATCH(props.apiVersion), driverVersion);
+
+	// The instance extensions go to glConfig.extensions_string, for the
+	// driver info menu (all of them are enabled); there are too many device
+	// extensions for it
+	ext = printExtensions("VK_INSTANCE_EXTENSIONS", qfalse, &numExt);
+	glConfig.extensions_string[0] = '\0';
+	for (i = 0; i < numExt; i++)
+	{
+		nameLen = strlen(ext[i].extensionName);
+		if (len + nameLen + 2 > sizeof(glConfig.extensions_string))
+			break;
+		memcpy(glConfig.extensions_string + len, ext[i].extensionName, nameLen);
+		len += nameLen;
+		glConfig.extensions_string[len++] = ' ';
+		glConfig.extensions_string[len] = '\0';
+	}
+	free(ext);
+
+	free(printExtensions("VK_DEVICE_EXTENSIONS", qtrue, &numExt));
+
+	ri.Printf(PRINT_ALL, "VK_MAX_IMAGE_DIMENSION_2D: %u\n", props.limits.maxImageDimension2D);
+	ri.Printf(PRINT_ALL, "\nPIXELFORMAT: color(%d-bits) Z(%d-bit) stencil(%d-bits)\n",
+		glConfig.colorBits, glConfig.depthBits, glConfig.stencilBits);
+	ri.Printf(PRINT_ALL, "MODE: %d, %d x %d %s hz:", r_mode->integer,
+		glConfig.vidWidth, glConfig.vidHeight, fsstrings[r_fullscreen->integer == 1]);
+	if (glConfig.displayFrequency)
+		ri.Printf(PRINT_ALL, "%d\n", glConfig.displayFrequency);
+	else
+		ri.Printf(PRINT_ALL, "N/A\n");
+
+	gpuMemUsageInfo_f();
 }
