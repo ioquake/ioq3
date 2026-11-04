@@ -527,7 +527,7 @@ signed char ClampChar( int i );
 signed short ClampShort( int i );
 
 // this isn't a real cheap function to call!
-int DirToByte( vec3_t dir );
+int DirToByte( const vec3_t dir );
 void ByteToDir( int b, vec3_t dir );
 
 #if	1
@@ -665,7 +665,7 @@ void CrossProduct( const vec3_t v1, const vec3_t v2, vec3_t cross );
 vec_t VectorNormalize (vec3_t v);		// returns vector length
 vec_t VectorNormalize2( const vec3_t v, vec3_t out );
 void Vector4Scale( const vec4_t in, vec_t scale, vec4_t out );
-void VectorRotate( vec3_t in, vec3_t matrix[3], vec3_t out );
+void VectorRotate( const vec3_t in, vec3_t matrix[3], vec3_t out );
 int Q_log2(int val);
 
 float Q_acos(float c);
@@ -684,7 +684,7 @@ void AxisClear( vec3_t axis[3] );
 void AxisCopy( vec3_t in[3], vec3_t out[3] );
 
 void SetPlaneSignbits( struct cplane_s *out );
-int BoxOnPlaneSide (vec3_t emins, vec3_t emaxs, struct cplane_s *plane);
+int BoxOnPlaneSide (const vec3_t emins, const vec3_t emaxs, const struct cplane_s *plane);
 
 qboolean BoundsIntersect(const vec3_t mins, const vec3_t maxs,
 		const vec3_t mins2, const vec3_t maxs2);
@@ -696,7 +696,7 @@ qboolean BoundsIntersectPoint(const vec3_t mins, const vec3_t maxs,
 float	AngleMod(float a);
 float	LerpAngle (float from, float to, float frac);
 float	AngleSubtract( float a1, float a2 );
-void	AnglesSubtract( vec3_t v1, vec3_t v2, vec3_t v3 );
+void	AnglesSubtract( const vec3_t v1, const vec3_t v2, vec3_t v3 );
 
 float AngleNormalize360 ( float angle );
 float AngleNormalize180 ( float angle );
