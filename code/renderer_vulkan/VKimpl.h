@@ -38,12 +38,15 @@ IMPLEMENTATION SPECIFIC FUNCTIONS
 */
 
 
+#include "../qcommon/q_shared.h"
+
 #define VK_NO_PROTOTYPES
 #include "vulkan/vulkan.h"
 
 void vk_createWindow(void);
 void vk_destroyWindow(void);
 
+qboolean vk_isSupported(void);
 void vk_getInstanceProcAddrImpl(void);
 
 void vk_createSurfaceImpl(void);

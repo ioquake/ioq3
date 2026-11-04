@@ -382,6 +382,121 @@ unsigned int vk_getRequiredInstanceExtensions(const char **names, unsigned int m
 }
 
 
+/*
+ * Check that Vulkan can be used at all (a Vulkan library, a driver and a
+ * physical device) before the renderer is chosen, so that the client can
+ * fall back to another renderer instead of failing in vk_initialize().
+ * Leaves SDL and the Vulkan library as it found them.
+ */
+qboolean vk_isSupported(void)
+{
+	PFN_vkGetInstanceProcAddr getInstanceProcAddr;
+	PFN_vkEnumerateInstanceExtensionProperties enumerateInstanceExtensionProperties;
+	PFN_vkCreateInstance createInstance;
+	PFN_vkDestroyInstance destroyInstance;
+	PFN_vkEnumeratePhysicalDevices enumeratePhysicalDevices;
+	VkApplicationInfo appInfo;
+	VkInstanceCreateInfo instanceCreateInfo;
+	VkExtensionProperties *extensions;
+	VkInstance instance;
+	VkResult result;
+	const char *portability = VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
+	uint32_t numExtensions = 0, numDevices = 0, i;
+	qboolean videoWasInit = SDL_WasInit(SDL_INIT_VIDEO) != 0;
+	qboolean supported = qfalse;
+
+	if (!videoWasInit && SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: SDL_InitSubSystem( SDL_INIT_VIDEO ) failed: %s\n", SDL_GetError());
+		return qfalse;
+	}
+
+	if (vk_loadLibrary() != 0)
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: cannot load the Vulkan library: %s\n", SDL_GetError());
+		goto quit_video;
+	}
+
+	getInstanceProcAddr = (PFN_vkGetInstanceProcAddr) SDL_Vulkan_GetVkGetInstanceProcAddr();
+	if (getInstanceProcAddr == NULL)
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: cannot find vkGetInstanceProcAddr\n");
+		goto unload;
+	}
+
+	enumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)
+		getInstanceProcAddr(NULL, "vkEnumerateInstanceExtensionProperties");
+	createInstance = (PFN_vkCreateInstance) getInstanceProcAddr(NULL, "vkCreateInstance");
+	if (enumerateInstanceExtensionProperties == NULL || createInstance == NULL)
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: cannot find the instance creation functions\n");
+		goto unload;
+	}
+
+	memset(&appInfo, 0, sizeof(appInfo));
+	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	appInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
+
+	memset(&instanceCreateInfo, 0, sizeof(instanceCreateInfo));
+	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	instanceCreateInfo.pApplicationInfo = &appInfo;
+
+	// As in vk_createInstance(): MoltenVK devices are only enumerated
+	// with VK_KHR_portability_enumeration
+	if (enumerateInstanceExtensionProperties(NULL, &numExtensions, NULL) == VK_SUCCESS && numExtensions > 0)
+	{
+		extensions = malloc(sizeof(VkExtensionProperties) * numExtensions);
+		if (extensions != NULL &&
+			enumerateInstanceExtensionProperties(NULL, &numExtensions, extensions) == VK_SUCCESS)
+		{
+			for (i = 0; i < numExtensions; i++)
+			{
+				if (!strcmp(extensions[i].extensionName, portability))
+				{
+					instanceCreateInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+					instanceCreateInfo.enabledExtensionCount = 1;
+					instanceCreateInfo.ppEnabledExtensionNames = &portability;
+					break;
+				}
+			}
+		}
+		free(extensions);
+	}
+
+	result = createInstance(&instanceCreateInfo, NULL, &instance);
+	if (result != VK_SUCCESS)
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: cannot create an instance (error %d), no Vulkan driver?\n", result);
+		goto unload;
+	}
+
+	destroyInstance = (PFN_vkDestroyInstance) getInstanceProcAddr(instance, "vkDestroyInstance");
+	enumeratePhysicalDevices = (PFN_vkEnumeratePhysicalDevices)
+		getInstanceProcAddr(instance, "vkEnumeratePhysicalDevices");
+
+	if (enumeratePhysicalDevices != NULL &&
+		enumeratePhysicalDevices(instance, &numDevices, NULL) == VK_SUCCESS && numDevices > 0)
+	{
+		supported = qtrue;
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, "Vulkan: no physical device found\n");
+	}
+
+	if (destroyInstance != NULL)
+		destroyInstance(instance, NULL);
+
+unload:
+	SDL_Vulkan_UnloadLibrary();
+quit_video:
+	if (!videoWasInit)
+		SDL_QuitSubSystem(SDL_INIT_VIDEO);
+
+	return supported;
+}
+
+
 void vk_getInstanceProcAddrImpl(void)
 {
 	ri.Printf(PRINT_ALL, " *** Vulkan Initialization ***\n");

@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_public.h"
+#include "VKimpl.h"
 
 extern refexport_t* R_Export(void);
 
@@ -55,6 +56,10 @@ refexport_t* GetRefAPI(int apiVersion, refimport_t *rimp)
 		ri.Printf(PRINT_ALL, "Mismatched REF_API_VERSION: expected %i, got %i\n", REF_API_VERSION, apiVersion );
 		return NULL;
 	}
+
+	// Let the client fall back to another renderer
+	if ( !vk_isSupported() )
+		return NULL;
 
     return R_Export();
 }

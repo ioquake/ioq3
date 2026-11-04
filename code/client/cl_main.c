@@ -3340,6 +3340,34 @@ void CL_InitRef( void ) {
 
 	ret = GetRefAPI( REF_API_VERSION, &ri );
 
+#ifdef USE_RENDERER_DLOPEN
+	// A renderer can refuse to start, e.g. Vulkan without a Vulkan driver:
+	// fall back to the default one
+	if ( !ret && strcmp( cl_renderer->string, cl_renderer->resetString ) )
+	{
+		Com_Printf( "Renderer \"%s\" is not usable, falling back to \"%s\"\n",
+			cl_renderer->string, cl_renderer->resetString );
+
+		Sys_UnloadLibrary( rendererLib );
+		Cvar_ForceReset( "cl_renderer" );
+
+		Com_sprintf( dllName, sizeof( dllName ), "renderer_%s" DLL_EXT, cl_renderer->string );
+		if ( !( rendererLib = Sys_LoadDll( dllName, qfalse ) ) )
+		{
+			Com_Printf( "failed:\n\"%s\"\n", Sys_LibraryError() );
+			Com_Error( ERR_FATAL, "Failed to load renderer" );
+		}
+
+		GetRefAPI = Sys_LoadFunction( rendererLib, "GetRefAPI" );
+		if ( !GetRefAPI )
+		{
+			Com_Error( ERR_FATAL, "Can't load symbol GetRefAPI: '%s'", Sys_LibraryError() );
+		}
+
+		ret = GetRefAPI( REF_API_VERSION, &ri );
+	}
+#endif
+
 #if defined __USEA3D && defined __A3D_GEOM
 	hA3Dg_ExportRenderGeom (ret);
 #endif
