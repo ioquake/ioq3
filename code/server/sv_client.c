@@ -1305,6 +1305,13 @@ static void SV_VerifyPaks_f( client_t *cl ) {
 			// store number to compare against (minus one cause the last is the number of checksums)
 			nClientPaks = i - 1;
 
+			// with no pak checksums reported the final check below
+			// would read the checksum array out of bounds
+			if (nClientPaks < 1) {
+				bGood = qfalse;
+				break;
+			}
+
 			// make sure none of the client check sums are the same
 			// so the client can't send 5 the same checksums
 			for (i = 0; i < nClientPaks; i++) {
