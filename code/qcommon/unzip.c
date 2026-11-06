@@ -672,8 +672,16 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
             *(szFileName+file_info.size_filename)='\0';
             uSizeRead = file_info.size_filename;
         }
+        else if (fileNameBufferSize>0)
+        {
+            /* keep the name terminated even if the buffer is too small :
+               callers treat the name as a C string, and the smallest
+               reader hands us MAX_ZPATH bytes exactly */
+            uSizeRead = fileNameBufferSize - 1;
+            *(szFileName + uSizeRead)='\0';
+        }
         else
-            uSizeRead = fileNameBufferSize;
+            uSizeRead = 0;
 
         if ((file_info.size_filename>0) && (fileNameBufferSize>0))
             if (ZREAD(s->z_filefunc, s->filestream,szFileName,uSizeRead)!=uSizeRead)
