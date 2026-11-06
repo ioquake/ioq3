@@ -1253,7 +1253,7 @@ static void SV_ConSay_f(void) {
 		p[strlen(p)-1] = 0;
 	}
 
-	strcat(text, p);
+	Q_strcat( text, sizeof( text ), p );
 
 	Com_Printf("%s\n", text);
 	SV_SendServerCommand(NULL, "chat \"%s\"", text);
@@ -1293,7 +1293,7 @@ static void SV_ConTell_f(void) {
 		p[strlen(p)-1] = 0;
 	}
 
-	strcat(text, p);
+	Q_strcat( text, sizeof( text ), p );
 
 	Com_Printf("%s\n", text);
 	SV_SendServerCommand(cl, "chat \"%s\"", text);
@@ -1359,7 +1359,7 @@ static void SV_ConSayto_f(void) {
 		p[strlen(p)-1] = 0;
 	}
 
-	strcat(text, p);
+	Q_strcat( text, sizeof( text ), p );
 
 	Com_Printf("%s\n", text);
 	SV_SendServerCommand(saytocl, "chat \"%s\"", text);
