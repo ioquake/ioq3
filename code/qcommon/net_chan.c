@@ -374,7 +374,7 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 			return qfalse;
 		}
 
-		if ( chan->fragmentLength > msg->maxsize ) {
+		if ( chan->fragmentLength + 4 > msg->maxsize ) {
 			Com_Printf( "%s:fragmentLength %i > msg->maxsize\n"
 				, NET_AdrToString (chan->remoteAddress ),
 				chan->fragmentLength );
