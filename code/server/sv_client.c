@@ -139,8 +139,10 @@ void SV_GetChallenge(netadr_t from)
 		challenge->connected = qfalse;
 	}
 
-	// always generate a new challenge number, so the client cannot circumvent sv_maxping
-	challenge->challenge = ( ((unsigned int)rand() << 16) ^ (unsigned int)rand() ) ^ svs.time;
+	// always generate a new challenge number, so the client cannot circumvent sv_maxping.
+	// derive it from the system randomizer: the C rand stream can be predicted from
+	// earlier challenges, and these feed the netchan checksum
+	Com_RandomBytes( (byte *)&challenge->challenge, sizeof( challenge->challenge ) );
 	challenge->wasrefused = qfalse;
 	challenge->time = svs.time;
 
