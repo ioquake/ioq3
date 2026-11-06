@@ -1824,6 +1824,10 @@ void SV_UserVoip(client_t *cl, msg_t *msg, qboolean ignoreData)
 	if (msg->readcount > msg->cursize)
 		return;   // short/invalid packet, bail.
 
+	if (packetsize < 0) {  // negative packet size, bail.
+		return;
+	}
+
 	if (packetsize > sizeof (encoded)) {  // overlarge packet?
 		int bytesleft = packetsize;
 		while (bytesleft) {
