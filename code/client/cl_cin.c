@@ -949,6 +949,18 @@ static void setupQuad( long xOff, long yOff )
 	numQuadCels += numQuadCels/4;
 	numQuadCels += 64;							  // for overflow
 
+	// dims check: everything below ( qStatus writes, linbuf reads ) indexes
+	// fixed size buffers by these dimensions
+	if ( cinTable[currentHandle].xsize == 0
+		|| cinTable[currentHandle].xsize > DEFAULT_CIN_WIDTH
+		|| cinTable[currentHandle].ysize == 0
+		|| cinTable[currentHandle].ysize > DEFAULT_CIN_HEIGHT ) {
+		Com_DPrintf( "cinematic has invalid dimensions %d x %d, disabling\n",
+			cinTable[currentHandle].xsize, cinTable[currentHandle].ysize );
+		cinTable[currentHandle].status = FMV_EOF;
+		return;
+	}
+
 	cinTable[currentHandle].onQuad = 0;
 
 	for(y=0;y<(long)cinTable[currentHandle].ysize;y+=16) 
@@ -1208,8 +1220,8 @@ redump:
 	cinTable[currentHandle].roqF0		 = (signed char)framedata[7];
 	cinTable[currentHandle].roqF1		 = (signed char)framedata[6];
 
-	if (cinTable[currentHandle].RoQFrameSize>65536||cinTable[currentHandle].roq_id==0x1084) {
-		Com_DPrintf("roq_size>65536||roq_id==0x1084\n");
+	if (cinTable[currentHandle].RoQFrameSize>65528||cinTable[currentHandle].roq_id==0x1084) {
+		Com_DPrintf("roq_size>65528||roq_id==0x1084\n");
 		cinTable[currentHandle].status = FMV_EOF;
 		if (cinTable[currentHandle].looping) {
 			RoQReset();
