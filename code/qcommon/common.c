@@ -1795,6 +1795,10 @@ void *Hunk_AllocateTempMemory( int size ) {
 	void		*buf;
 	hunkHeader_t	*hdr;
 
+	if ( size < 0 ) {
+		Com_Error( ERR_DROP, "Hunk_AllocateTempMemory: negative size %i", size );
+	}
+
 	// return a Z_Malloc'd block if the hunk has not been initialized
 	// this allows the config and product id files ( journal files too ) to be loaded
 	// by the file system without redunant routines in the file system utilizing different 

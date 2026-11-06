@@ -1877,6 +1877,17 @@ long FS_ReadFileDir(const char *qpath, void *searchPath, qboolean unpure, void *
 	fs_loadCount++;
 	fs_loadStack++;
 
+	// file lengths for pk3 members come straight from the central
+	// directory, which is not trusted data; a bogus length would hand a
+	// negative size to the hunk and the read below
+	if ( len < 0 || len + 1 < len ) {
+		if ( buffer ) {
+			*buffer = NULL;
+		}
+		FS_FCloseFile( h );
+		return -1;
+	}
+
 	buf = Hunk_AllocateTempMemory(len+1);
 	*buffer = buf;
 
