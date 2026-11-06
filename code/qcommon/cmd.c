@@ -395,7 +395,7 @@ Returns a single string containing argv(1) to argv(argc()-1)
 ============
 */
 char	*Cmd_Args( void ) {
-	static	char		cmd_args[MAX_STRING_CHARS];
+	static	char		cmd_args[BIG_INFO_STRING];
 	int		i;
 
 	cmd_args[0] = 0;
@@ -514,7 +514,10 @@ static void Cmd_TokenizeString2( const char *text_in, qboolean ignoreQuotes ) {
 	
 	Q_strncpyz( cmd_cmd, text_in, sizeof(cmd_cmd) );
 
-	text = text_in;
+	// tokenize the bounded copy: text_in itself can be arbitrarily long
+	// (vm syscalls hand over executor text straight from vm memory) and
+	// the argv buffers are only sized for cmd_cmd
+	text = cmd_cmd;
 	textOut = cmd_tokenized;
 
 	while ( 1 ) {
