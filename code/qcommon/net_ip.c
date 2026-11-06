@@ -670,6 +670,11 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	NetadrToSockadr( &to, (struct sockaddr *) &addr );
 
 	if( usingSocks && to.type == NA_IP ) {
+		if ( length > (int)sizeof( socksBuf ) - 10 ) {
+			// the socks wrapper has no room for this packet
+			Com_DPrintf( "Sys_SendPacket: dropping oversized packet\n" );
+			return;
+		}
 		socksBuf[0] = 0;	// reserved
 		socksBuf[1] = 0;
 		socksBuf[2] = 0;	// fragment (not fragmented)
