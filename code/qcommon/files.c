@@ -2228,6 +2228,14 @@ char **FS_ListFilteredFiles( const char *path, const char *extension,
 		extension = "";
 	}
 
+	// vm traps and console commands pick this path arbitrarily; the read
+	// path refuses directory traversal and the list path must not go
+	// outside the game tree either
+	if ( FS_CheckDirTraversal( path ) ) {
+		*numfiles = 0;
+		return NULL;
+	}
+
 	pathLength = strlen( path );
 	if ( path[pathLength-1] == '\\' || path[pathLength-1] == '/' ) {
 		pathLength--;
