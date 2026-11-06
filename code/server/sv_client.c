@@ -530,9 +530,11 @@ void SV_DirectConnect( netadr_t from ) {
 		}
 	}
 
-	// we got a newcl, so reset the reliableSequence and reliableAcknowledge
-	cl->reliableAcknowledge = 0;
-	cl->reliableSequence = 0;
+	// we got a newcl, so reset the reliableSequence and reliableAcknowledge.
+	// watch out that it's newcl: the slot loop may have run past the end
+	// of the client array on the trailing-bot fallback path
+	newcl->reliableAcknowledge = 0;
+	newcl->reliableSequence = 0;
 
 gotnewcl:	
 	// build a new connection
