@@ -1,5 +1,5 @@
 set(PROJECT_NAME ioq3)
-set(PROJECT_VERSION 1.36)
+set(PROJECT_VERSION 1.40)
 
 set(SERVER_NAME ioq3ded)
 set(CLIENT_NAME ioquake3)
