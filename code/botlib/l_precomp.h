@@ -128,7 +128,7 @@ int PC_WhiteSpaceBeforeToken(token_t *token);
 //add a define to the source
 int PC_AddDefine(source_t *source, char *string);
 //add a globals define that will be added to all opened sources
-int PC_AddGlobalDefine(char *string);
+int PC_AddGlobalDefine(const char *string);
 //remove the given global define
 int PC_RemoveGlobalDefine(char *name);
 //remove all globals defines
@@ -172,5 +172,5 @@ typedef struct pc_token_s
 int PC_LoadSourceHandle(const char *filename);
 int PC_FreeSourceHandle(int handle);
 int PC_ReadTokenHandle(int handle, pc_token_t *pc_token);
-int PC_SourceFileAndLine(int handle, char *filename, int *line);
+int PC_SourceFileAndLine(int handle, char *filename, size_t filenameCapacity, int *line);
 void PC_CheckOpenSourceHandles(void);

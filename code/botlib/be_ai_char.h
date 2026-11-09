@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *****************************************************************************/
 
 //loads a bot character from a file
-int BotLoadCharacter(char *charfile, float skill);
+int BotLoadCharacter(const char *charfile, float skill);
 //frees a bot character
 void BotFreeCharacter(int character);
 //returns a float characteristic

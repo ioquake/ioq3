@@ -209,7 +209,7 @@ void BotDefaultCharacteristics(bot_character_t *ch, bot_character_t *defaultch)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-bot_character_t *BotLoadCharacterFromFile(char *charfile, int skill)
+bot_character_t *BotLoadCharacterFromFile(const char *charfile, int skill)
 {
 	int indent, index, foundcharacter;
 	bot_character_t *ch;
@@ -359,7 +359,7 @@ bot_character_t *BotLoadCharacterFromFile(char *charfile, int skill)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotFindCachedCharacter(char *charfile, float skill)
+int BotFindCachedCharacter(const char *charfile, float skill)
 {
 	int handle;
 
@@ -380,7 +380,7 @@ int BotFindCachedCharacter(char *charfile, float skill)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotLoadCachedCharacter(char *charfile, float skill, int reload)
+int BotLoadCachedCharacter(const char *charfile, float skill, int reload)
 {
 	int handle, cachedhandle, intskill;
 	bot_character_t *ch = NULL;
@@ -493,7 +493,7 @@ int BotLoadCachedCharacter(char *charfile, float skill, int reload)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotLoadCharacterSkill(char *charfile, float skill)
+int BotLoadCharacterSkill(const char *charfile, float skill)
 {
 	int ch, defaultch;
 
@@ -565,7 +565,7 @@ int BotInterpolateCharacters(int handle1, int handle2, float desiredskill)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotLoadCharacter(char *charfile, float skill)
+int BotLoadCharacter(const char *charfile, float skill)
 {
 	int firstskill, secondskill, handle;
 

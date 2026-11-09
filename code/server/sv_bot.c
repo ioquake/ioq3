@@ -422,7 +422,7 @@ static void BotImport_DebugLineShow(int line, vec3_t start, vec3_t end, int colo
 SV_BotClientCommand
 ==================
 */
-static void BotClientCommand( int client, char *command ) {
+static void BotClientCommand( int client, const char *command ) {
 	SV_ExecuteClientCommand( &svs.clients[client], command, qtrue );
 }
 
