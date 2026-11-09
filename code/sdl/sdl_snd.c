@@ -40,6 +40,10 @@ cvar_t *s_sdlSpeed;
 cvar_t *s_sdlChannels;
 cvar_t *s_sdlDevSamps;
 cvar_t *s_sdlMixSamps;
+cvar_t *s_sdlDevice;
+cvar_t *s_sdlInputDevice;
+cvar_t *s_sdlAvailableDevices;
+cvar_t *s_sdlAvailableInputDevices;
 
 /* The audio callback. All the magic happens here. */
 static int dmapos = 0;
@@ -178,6 +182,15 @@ static void SNDDMA_PrintAudiospec(const char *str, const SDL_AudioSpec *spec)
 	Com_Printf( "  Channels: %d\n", (int) spec->channels );
 }
 
+void SNDDMA_SoundInfo(void) {
+	Com_Printf( "Output device: %s\n", s_sdlDevice->string );
+	Com_Printf( "Available Devices:\n%s", s_sdlAvailableDevices->string );
+#ifdef USE_SDL_AUDIO_CAPTURE
+	Com_Printf( "Input Device: %s\n", s_sdlInputDevice->string );
+	Com_Printf( "Available Input Devices:\n%s", s_sdlAvailableInputDevices->string );
+#endif
+}
+
 /*
 ===============
 SNDDMA_Init
@@ -187,7 +200,10 @@ qboolean SNDDMA_Init(void)
 {
 	SDL_AudioSpec desired;
 	SDL_AudioSpec obtained;
-	int tmp;
+	int tmp, count, i;
+	const char *device;
+	const char *inputdevice;
+	char devicenames[16384] = "";
 
 	if (snd_inited)
 		return qtrue;
@@ -240,10 +256,31 @@ qboolean SNDDMA_Init(void)
 			desired.samples = 2048;  // (*shrug*)
 	}
 
+	count = SDL_GetNumAudioDevices(0);
+	for (i = 0; i < count; ++i) {
+		const char *name = SDL_GetAudioDeviceName(i, 0);
+		if (name) {
+			Q_strcat(devicenames, sizeof(devicenames), name);
+			Q_strcat(devicenames, sizeof(devicenames), "\n");
+		}
+	}
+	s_sdlAvailableDevices = Cvar_Get("s_sdlAvailableDevices", devicenames, CVAR_ROM | CVAR_NORESTART);
+
+	s_sdlInputDevice = Cvar_Get("s_sdlInputDevice", "", CVAR_ARCHIVE | CVAR_LATCH);
+	s_sdlDevice = Cvar_Get("s_sdlDevice", "", CVAR_ARCHIVE | CVAR_LATCH);
+
+	device = s_sdlDevice->string;
+	if (device && !*device)
+		device = NULL;
+
+	inputdevice = s_sdlInputDevice->string;
+	if (inputdevice && !*inputdevice)
+		inputdevice = NULL;
+
 	desired.channels = (int) s_sdlChannels->value;
 	desired.callback = SNDDMA_AudioCallback;
 
-	sdlPlaybackDevice = SDL_OpenAudioDevice(NULL, SDL_FALSE, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
+	sdlPlaybackDevice = SDL_OpenAudioDevice(device, SDL_FALSE, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
 	if (sdlPlaybackDevice == 0)
 	{
 		Com_Printf("SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());
@@ -279,7 +316,6 @@ qboolean SNDDMA_Init(void)
 	dma.buffer = calloc(1, dmasize);
 
 #ifdef USE_SDL_AUDIO_CAPTURE
-	// !!! FIXME: some of these SDL_OpenAudioDevice() values should be cvars.
 	s_sdlCapture = Cvar_Get( "s_sdlCapture", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	if (!s_sdlCapture->integer)
 	{
@@ -293,14 +329,24 @@ qboolean SNDDMA_Init(void)
 #endif
 	else
 	{
-		/* !!! FIXME: list available devices and let cvar specify one, like OpenAL does */
+		count = SDL_GetNumAudioDevices(1);
+		devicenames[0] = '\0';
+		for (i = 0; i < count; ++i) {
+			const char *name = SDL_GetAudioDeviceName(i, 1);
+			if (name) {
+				Q_strcat(devicenames, sizeof(devicenames), name);
+				Q_strcat(devicenames, sizeof(devicenames), "\n");
+			}
+		}
+		s_sdlAvailableInputDevices =
+			Cvar_Get("s_sdlAvailableInputDevices", devicenames, CVAR_ROM | CVAR_NORESTART);
 		SDL_AudioSpec spec;
 		SDL_zero(spec);
 		spec.freq = 48000;
 		spec.format = AUDIO_S16SYS;
 		spec.channels = 1;
 		spec.samples = VOIP_MAX_PACKET_SAMPLES * 4;
-		sdlCaptureDevice = SDL_OpenAudioDevice(NULL, SDL_TRUE, &spec, NULL, 0);
+		sdlCaptureDevice = SDL_OpenAudioDevice(inputdevice, SDL_TRUE, &spec, NULL, 0);
 		Com_Printf( "SDL capture device %s.\n",
 				    (sdlCaptureDevice == 0) ? "failed to open" : "opened");
 	}
